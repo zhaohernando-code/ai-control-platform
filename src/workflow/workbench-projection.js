@@ -345,6 +345,8 @@ function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
   const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
   const metadata = artifact?.metadata || latestEvent.metadata || {};
   const steps = asArray(metadata.result?.steps || metadata.steps);
+  const closeoutLoop = steps.find((step) => normalizeString(step?.id) === "run-autonomous-closeout-loop")
+    ?.outputs?.autonomous_closeout_loop_artifact || {};
 
   return {
     status: latestEvent.status || metadata.status || "unknown",
@@ -355,6 +357,10 @@ function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
     event_id: latestEvent.id || null,
     artifact_id: latestEvent.artifact_id || artifact?.id || null,
     created_at: latestEvent.created_at || artifact?.created_at || null,
+    next_continuation_status: closeoutLoop.next_decision_status || null,
+    next_continuation_action: closeoutLoop.next_decision_action || null,
+    next_work_package_count: closeoutLoop.next_work_package_count || 0,
+    closeout_loop_phase: closeoutLoop.phase || null,
     ...policySummary
   };
 }
@@ -546,7 +552,10 @@ export function createMobileWorkbenchProjection(input = {}) {
       policy_status: projection.scheduler_dispatch.policy_status,
       policy_execution_mode: projection.scheduler_dispatch.policy_execution_mode,
       policy_issue_count: projection.scheduler_dispatch.policy_issue_count,
-      policy_latest_issue: projection.scheduler_dispatch.policy_latest_issue
+      policy_latest_issue: projection.scheduler_dispatch.policy_latest_issue,
+      next_continuation_status: projection.scheduler_dispatch.next_continuation_status,
+      next_continuation_action: projection.scheduler_dispatch.next_continuation_action,
+      next_work_package_count: projection.scheduler_dispatch.next_work_package_count
     },
     model: {
       selected_model: projection.model_routing.selected_model,

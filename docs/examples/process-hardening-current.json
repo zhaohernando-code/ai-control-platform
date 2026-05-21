@@ -589,6 +589,14 @@
       "regression_test": "scheduler dispatch approved mock profile expands to bounded non-dry-run controls; scheduler dispatch control request rejects unsupported profiles; workbench server runs approved mocked non-dry-run scheduler dispatch from profile; workbench server rejects unsupported scheduler dispatch execution profiles; run-reviewer-shard CLI can execute all pending shards with mock executor; publishWorkbenchSnapshot initializes missing history for scheduler-owned roots; scheduler_dispatch_approved_mock_click browser scenario",
       "verification": "node --test test/workbench-snapshots.test.js test/reviewer-shard-runner.test.js test/scheduler-dispatch-policy.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "approved-dispatch-result-without-continuation-summary",
+      "invariant": "Approved scheduler dispatch artifacts must summarize declared downstream outputs, especially closeout loop next continuation status/action/work package count, so the workbench can decide whether autonomous execution should continue without parsing stdout.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-runner.js; src/workflow/workbench-projection.js; apps/workbench/desktop.html; apps/workbench/mobile.html; apps/workbench/workbench.js; tools/check-workbench-browser-events.mjs; test/scheduler-dispatch-runner.test.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/workbench-shell.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch runner summarizes step output artifacts; workbench projection exposes scheduler dispatch run status; workbench server runs approved mocked non-dry-run scheduler dispatch from profile; workbench shell has separate desktop and mobile entries; scheduler_dispatch_approved_mock_click browser scenario renders next continuation status and package count",
+      "verification": "node --test test/scheduler-dispatch-runner.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

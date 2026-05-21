@@ -430,7 +430,21 @@ test("workbench projection exposes scheduler dispatch run status", () => {
         steps: [
           { id: "run-reviewer-shard-loop", status: "pass", dry_run: false },
           { id: "prepare-reviewer-shard-loop-continuation", status: "pass", dry_run: false },
-          { id: "run-autonomous-closeout-loop", status: "pass", dry_run: false }
+          {
+            id: "run-autonomous-closeout-loop",
+            status: "pass",
+            dry_run: false,
+            outputs: {
+              autonomous_closeout_loop_artifact: {
+                status: "available",
+                phase: "next_continuation",
+                next_decision_status: "pass",
+                next_decision_action: "rerun",
+                should_continue: true,
+                next_work_package_count: 2
+              }
+            }
+          }
         ]
       }
     }
@@ -463,8 +477,12 @@ test("workbench projection exposes scheduler dispatch run status", () => {
   assert.equal(projection.scheduler_dispatch.step_count, 3);
   assert.equal(projection.scheduler_dispatch.failed_step_count, 0);
   assert.equal(projection.scheduler_dispatch.dry_run, false);
+  assert.equal(projection.scheduler_dispatch.next_continuation_status, "pass");
+  assert.equal(projection.scheduler_dispatch.next_continuation_action, "rerun");
+  assert.equal(projection.scheduler_dispatch.next_work_package_count, 2);
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 3);
   assert.equal(mobile.scheduler_dispatch.step_count, 3);
+  assert.equal(mobile.scheduler_dispatch.next_work_package_count, 2);
 });
 
 test("workbench projection exposes scheduler dispatch policy blockers", () => {

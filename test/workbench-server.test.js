@@ -447,6 +447,8 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
     assert.equal(created.result.status, "pass");
     assert.equal(created.projection.scheduler_dispatch.dry_run, false);
     assert.equal(created.projection.scheduler_dispatch.policy_execution_mode, "execute");
+    assert.equal(created.projection.scheduler_dispatch.next_continuation_action, "rerun");
+    assert.equal(created.projection.scheduler_dispatch.next_work_package_count, 3);
     assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_policy");
     assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
   }, { historyPath, snapshotsRoot });

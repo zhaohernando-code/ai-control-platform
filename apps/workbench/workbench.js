@@ -123,6 +123,9 @@ function renderProjection(projection) {
   setText("scheduler_policy_mode", schedulerDispatch.policy_execution_mode);
   setText("scheduler_policy_issues", schedulerDispatch.policy_issue_count ?? 0);
   setText("scheduler_policy_reason", schedulerDispatch.policy_latest_issue);
+  setText("scheduler_next_status", schedulerDispatch.next_continuation_status);
+  setText("scheduler_next_packages", schedulerDispatch.next_work_package_count ?? 0);
+  setText("scheduler_next_action", schedulerDispatch.next_continuation_action);
 
   renderNextActions(projection);
   renderModelRoles(projection);

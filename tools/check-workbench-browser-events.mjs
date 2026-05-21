@@ -218,6 +218,8 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
     const schedulerDispatchDryRun = await page.textContent('[data-bind="scheduler_dispatch_dry_run"]');
     const schedulerPolicyStatus = await page.textContent('[data-bind="scheduler_policy_status"]');
     const schedulerPolicyMode = await page.textContent('[data-bind="scheduler_policy_mode"]');
+    const schedulerNextStatus = await page.textContent('[data-bind="scheduler_next_status"]');
+    const schedulerNextPackages = await page.textContent('[data-bind="scheduler_next_packages"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -228,6 +230,8 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
     assert(schedulerDispatchDryRun === "no", "approved mock dispatch must render non-dry-run");
     assert(schedulerPolicyStatus === "pass", "approved mock dispatch must render policy pass");
     assert(schedulerPolicyMode === "execute", "approved mock dispatch must render execute policy mode");
+    assert(schedulerNextStatus === "pass", "approved mock dispatch must render next continuation status");
+    assert(schedulerNextPackages === "3", "approved mock dispatch must render next work package count");
     assert(dimensions.scrollWidth <= dimensions.width, "approved mock dispatch must not create horizontal overflow");
 
     console.log(JSON.stringify({
@@ -236,6 +240,8 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
       scheduler_dispatch_dry_run: schedulerDispatchDryRun,
       scheduler_policy_status: schedulerPolicyStatus,
       scheduler_policy_mode: schedulerPolicyMode,
+      scheduler_next_status: schedulerNextStatus,
+      scheduler_next_packages: schedulerNextPackages,
       dimensions
     }, null, 2));
   });

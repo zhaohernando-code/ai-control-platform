@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
 
@@ -120,6 +122,74 @@ function canRunStep(step, completed) {
     .every((dependencyId) => completed.has(normalizeString(dependencyId)));
 }
 
+function readJsonOutput(path) {
+  const filePath = resolve(path);
+  return JSON.parse(readFileSync(filePath, "utf8"));
+}
+
+function summarizeOutput(kind, path) {
+  const outputPath = normalizeString(path);
+  if (!outputPath) return null;
+
+  try {
+    const payload = readJsonOutput(outputPath);
+    if (kind === "reviewer_shard_loop_artifact") {
+      return {
+        status: "available",
+        path: outputPath,
+        version: payload.version || null,
+        artifact_status: payload.status || null,
+        phase: payload.phase || payload.result?.phase || null,
+        run_count: asArray(payload.result?.runs).length,
+        aggregate_status: payload.result?.aggregate?.status || null,
+        pending_shards: payload.result?.aggregate?.pending_shards ?? null
+      };
+    }
+    if (kind === "continuation_input") {
+      return {
+        status: "available",
+        path: outputPath,
+        project_status: payload.project_status?.project || null,
+        next_step: payload.project_status?.next_step || null,
+        work_package_count: asArray(payload.workflow_state?.manifest?.work_packages).length
+      };
+    }
+    if (kind === "autonomous_closeout_loop_artifact") {
+      const nextDecision = payload.result?.next_decision || {};
+      return {
+        status: "available",
+        path: outputPath,
+        version: payload.version || null,
+        artifact_status: payload.status || null,
+        phase: payload.phase || payload.result?.phase || null,
+        result_status: payload.result?.status || null,
+        next_decision_status: nextDecision.status || null,
+        next_decision_action: nextDecision.action || null,
+        should_continue: nextDecision.should_continue ?? null,
+        next_work_package_count: asArray(nextDecision.next_work_packages).length
+      };
+    }
+    return {
+      status: "available",
+      path: outputPath
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      path: outputPath,
+      issue: error.message
+    };
+  }
+}
+
+function summarizeStepOutputs(outputs = {}) {
+  return Object.fromEntries(
+    Object.entries(outputs || {})
+      .map(([kind, path]) => [kind, summarizeOutput(kind, path)])
+      .filter(([, summary]) => summary !== null)
+  );
+}
+
 export async function runSchedulerDispatchPlan(plan = {}, options = {}) {
   const validation = validateSchedulerDispatchPlan(plan);
   if (validation.status !== "pass") {
@@ -156,7 +226,10 @@ export async function runSchedulerDispatchPlan(plan = {}, options = {}) {
       exit_code: execution.exit_code ?? null,
       dry_run: execution.dry_run === true,
       stdout: execution.stdout || "",
-      stderr: execution.stderr || ""
+      stderr: execution.stderr || "",
+      outputs: execution.status === "pass" && !options.dry_run
+        ? summarizeStepOutputs(step.outputs)
+        : {}
     };
     results.push(stepResult);
 

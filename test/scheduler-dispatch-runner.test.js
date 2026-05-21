@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -71,6 +71,58 @@ test("scheduler dispatch runner executes steps with injected executor", async ()
     "run-autonomous-closeout-loop"
   ]);
   assert.equal(result.steps.length, 3);
+});
+
+test("scheduler dispatch runner summarizes step output artifacts", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "scheduler-dispatch-output-summary-"));
+  const plan = dispatchPlan({
+    reviewer_shard_loop_artifact_path: join(dir, "reviewer-shard-loop-run.json"),
+    continuation_input_path: join(dir, "continuation-input.json"),
+    closeout_loop_artifact_path: join(dir, "autonomous-closeout-loop-run.json")
+  });
+  const result = await runSchedulerDispatchPlan(plan, {
+    executor: async (step) => {
+      for (const outputPath of Object.values(step.outputs || {})) {
+        mkdirSync(dir, { recursive: true });
+        if (outputPath.includes("reviewer-shard-loop")) {
+          writeFileSync(outputPath, JSON.stringify({
+            version: "reviewer-shard-loop-run.v1",
+            status: "pass",
+            phase: "aggregated",
+            result: { runs: [{ shard_id: "one" }], aggregate: { status: "pass", pending_shards: 0 } }
+          }));
+        } else if (outputPath.includes("continuation-input")) {
+          writeFileSync(outputPath, JSON.stringify({
+            project_status: { project: "ai-control-platform", next_step: "continue" },
+            workflow_state: { manifest: { work_packages: [{ id: "next" }] } }
+          }));
+        } else if (outputPath.includes("autonomous-closeout-loop")) {
+          writeFileSync(outputPath, JSON.stringify({
+            version: "autonomous-closeout-loop-run.v1",
+            status: "pass",
+            phase: "next_continuation",
+            result: {
+              status: "pass",
+              phase: "next_continuation",
+              next_decision: {
+                status: "pass",
+                action: "rerun",
+                should_continue: true,
+                next_work_packages: [{ id: "next-a" }, { id: "next-b" }]
+              }
+            }
+          }));
+        }
+      }
+      return { status: "pass", exit_code: 0, stdout: "", stderr: "" };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.steps[0].outputs.reviewer_shard_loop_artifact.aggregate_status, "pass");
+  assert.equal(result.steps[1].outputs.continuation_input.next_step, "continue");
+  assert.equal(result.steps[2].outputs.autonomous_closeout_loop_artifact.next_decision_action, "rerun");
+  assert.equal(result.steps[2].outputs.autonomous_closeout_loop_artifact.next_work_package_count, 2);
 });
 
 test("scheduler dispatch runner stops on step failure", async () => {

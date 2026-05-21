@@ -663,3 +663,12 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - `approved_mock_non_dry_run` 展开为非 dry-run、`approved_non_dry_run`、`max_steps=3`、`max_external_reviewer_calls=0`、`provider_cost_mode=mocked`、`reviewer_mock_status=pass`。
 - PC/mobile 工作台新增“批准 Mock 执行”控制，但只发送 profile，不直接拼安全参数。
 - 非 dry-run 试运行暴露了两个底座缺口：reviewer shard CLI 必须创建输出目录；snapshot publisher 必须能在受控路径内初始化缺失的 projection history。
+
+[2026-05-21T23:45:13+08:00] Scheduler dispatch artifacts must summarize downstream continuation:
+只知道 scheduler 三步都成功仍然不够，工作台还需要知道 closeout loop 是否产生下一轮任务，否则“自动执行后是否该继续”仍要人工读 stdout。
+
+决策：
+- Scheduler dispatch runner 在非 dry-run step 成功后读取声明的 `outputs` 文件。
+- `scheduler-dispatch-run.v1` step result 必须包含 reviewer shard loop、continuation input、autonomous closeout loop 的结构化摘要。
+- Workbench projection 从 closeout loop artifact 摘要中展示 next continuation status、action 和 next work package count。
+- PC/mobile 工作台展示 approved dispatch 后的下一轮任务数量。
