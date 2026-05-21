@@ -116,11 +116,13 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.scheduler_dispatch.status, "not_configured");
   assert.equal(projection.scheduler_continuation.status, "not_configured");
   assert.equal(projection.scheduler_loop.status, "not_configured");
+  assert.equal(projection.operations_timeline.status, "not_configured");
   assert.equal(projection.one_screen.counters.resume_blockers, 0);
   assert.equal(projection.one_screen.counters.provider_health_events, 0);
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 0);
   assert.equal(projection.one_screen.counters.scheduler_continuation_ready, 0);
   assert.equal(projection.one_screen.counters.scheduler_loop_iterations, 0);
+  assert.equal(projection.one_screen.counters.operation_events, 0);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
@@ -763,6 +765,78 @@ test("workbench projection exposes scheduler loop resume attempts", () => {
   assert.equal(projection.scheduler_loop.latest_resume_issue, "loop artifact invalid");
   assert.equal(mobile.scheduler_loop.latest_resume_status, "blocked");
   assert.equal(mobile.scheduler_loop.latest_resume_target, "target");
+});
+
+test("workbench projection exposes compact operations timeline", () => {
+  const input = baseInput();
+  const dispatchArtifact = {
+    id: "scheduler-dispatch-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-dispatch://run/run-projection/cycle-20260521/scheduler-dispatch-run-projection-cycle-20260521-001",
+    producer: "scheduler-dispatch-runner",
+    created_at: "2026-05-22T02:10:00.000Z",
+    metadata: {
+      type: "scheduler_dispatch_run",
+      status: "pass",
+      phase: "completed",
+      result: { steps: [{ id: "run-reviewer-shard-loop" }] }
+    }
+  };
+  const resumeArtifact = {
+    id: "scheduler-loop-resume-attempt-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-loop://resume-attempt/run-projection/cycle-20260521/scheduler-loop-resume-attempt-run-projection-cycle-20260521-001",
+    producer: "autonomous-scheduler-loop",
+    created_at: "2026-05-22T02:11:00.000Z",
+    metadata: {
+      type: "scheduler_loop_resume_attempt",
+      version: "scheduler-loop-resume-attempt.v1",
+      status: "pass",
+      resume_projection_id: "next-projection",
+      issues: []
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${dispatchArtifact.id}`,
+        type: "scheduler_dispatch_run",
+        status: "pass",
+        artifact_id: dispatchArtifact.id,
+        created_at: dispatchArtifact.created_at,
+        metadata: dispatchArtifact.metadata
+      },
+      {
+        id: `event-${resumeArtifact.id}`,
+        type: "scheduler_loop_resume_attempt",
+        status: "pass",
+        artifact_id: resumeArtifact.id,
+        created_at: resumeArtifact.created_at,
+        metadata: resumeArtifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, dispatchArtifact, resumeArtifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, dispatchArtifact, resumeArtifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.operations_timeline.status, "available");
+  assert.equal(projection.operations_timeline.count, 2);
+  assert.equal(projection.operations_timeline.items[0].type, "scheduler_dispatch_run");
+  assert.equal(projection.operations_timeline.latest.type, "scheduler_loop_resume_attempt");
+  assert.equal(projection.operations_timeline.latest.summary, "pass -> next-projection");
+  assert.equal(projection.one_screen.counters.operation_events, 2);
+  assert.equal(mobile.operations_timeline.status, "available");
+  assert.equal(mobile.operations_timeline.latest.type, "scheduler_loop_resume_attempt");
 });
 
 test("workbench projection exposes scheduler dispatch policy blockers", () => {

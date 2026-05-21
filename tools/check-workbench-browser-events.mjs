@@ -269,6 +269,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     const resumedLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const resumedLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const resumedLoopAttempt = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
+    const operationEventCount = await page.textContent('[data-bind="counter_operation_events"]');
+    const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -281,6 +283,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(resumedLoopStatus === "pass", "autonomous scheduler loop resume must render loop pass");
     assert(resumedLoopRecovery === "idle", "autonomous scheduler loop resume must render idle recovery when no actions remain");
     assert(resumedLoopAttempt === "not_configured", "resume target projection should not claim the source resume attempt");
+    assert(Number(operationEventCount) >= 1, "autonomous scheduler loop resume must render operation event count");
+    assert(operationRows >= 1, "autonomous scheduler loop resume must render operation timeline rows");
     assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
 
     console.log(JSON.stringify({
@@ -291,6 +295,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       resumed_loop_status: resumedLoopStatus,
       resumed_loop_recovery: resumedLoopRecovery,
       resumed_loop_attempt: resumedLoopAttempt,
+      operation_events: operationEventCount,
+      operation_rows: operationRows,
       dimensions
     }, null, 2));
   });
@@ -320,6 +326,7 @@ async function verifyMobileProjectionLoad(browser) {
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const schedulerLoopResumeStatus = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
+    const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
@@ -332,6 +339,7 @@ async function verifyMobileProjectionLoad(browser) {
     assert(schedulerLoopStatus, "mobile workbench must render scheduler loop status");
     assert(schedulerLoopRecovery, "mobile workbench must render scheduler loop recovery");
     assert(schedulerLoopResumeStatus, "mobile workbench must render scheduler loop resume attempt status");
+    assert(operationRows >= 1, "mobile workbench must render operation timeline rows");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -346,6 +354,7 @@ async function verifyMobileProjectionLoad(browser) {
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_recovery: schedulerLoopRecovery,
       scheduler_loop_resume_status: schedulerLoopResumeStatus,
+      operation_rows: operationRows,
       dimensions
     }, null, 2));
   });

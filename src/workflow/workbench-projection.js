@@ -516,6 +516,80 @@ function summarizeSchedulerLoopResumeAttempt(manifest = {}, artifactLedger = {})
   };
 }
 
+const OPERATION_EVENT_TYPES = new Set([
+  "scheduler_dispatch_policy",
+  "scheduler_dispatch_run",
+  "scheduler_dispatch_continuation",
+  "scheduler_next_cycle_enqueue",
+  "autonomous_scheduler_loop_run",
+  "scheduler_loop_resume_attempt",
+  "reviewer_provider_health",
+  "reviewer_scope_split",
+  "reviewer_shard_result",
+  "reviewer_shard_aggregate"
+]);
+
+function operationSummary(type, metadata = {}) {
+  if (type === "scheduler_dispatch_run") {
+    return `${metadata.phase || metadata.result?.phase || "dispatch"} / ${asArray(metadata.result?.steps || metadata.steps).length} step(s)`;
+  }
+  if (type === "scheduler_dispatch_continuation") {
+    return `${metadata.status || "unknown"} / ${metadata.next_work_package_count || 0} package(s)`;
+  }
+  if (type === "scheduler_next_cycle_enqueue") {
+    return metadata.snapshot_id || metadata.next_step || metadata.status || "queued";
+  }
+  if (type === "autonomous_scheduler_loop_run") {
+    return `${metadata.phase || metadata.result?.phase || "loop"} / ${asArray(metadata.result?.iterations).length} iteration(s)`;
+  }
+  if (type === "scheduler_loop_resume_attempt") {
+    return `${metadata.status || "unknown"} -> ${metadata.resume_projection_id || "none"}`;
+  }
+  if (type === "reviewer_provider_health") {
+    return `${metadata.provider_health || "unknown"} / ${asArray(metadata.scheduled_actions).join(", ") || "no_action"}`;
+  }
+  if (type === "reviewer_scope_split") {
+    return `${metadata.shard_count || asArray(metadata.shards).length} shard(s)`;
+  }
+  if (type === "reviewer_shard_result") {
+    return metadata.shard_id || metadata.status || "shard_result";
+  }
+  if (type === "reviewer_shard_aggregate") {
+    return `${metadata.status || "aggregate"} / ${metadata.failed_finding_count || 0} failed`;
+  }
+  return metadata.status || "recorded";
+}
+
+function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const items = asArray(manifest?.events)
+    .filter((event) => OPERATION_EVENT_TYPES.has(event?.type))
+    .map((event) => {
+      const artifact = artifacts.find((entry) => entry.id === event.artifact_id) || null;
+      const metadata = artifact?.metadata || event.metadata || {};
+      return {
+        event_id: event.id || null,
+        type: event.type,
+        status: event.status || metadata.status || artifact?.status || "unknown",
+        artifact_id: event.artifact_id || artifact?.id || null,
+        created_at: event.created_at || artifact?.created_at || null,
+        summary: operationSummary(event.type, metadata)
+      };
+    })
+    .sort((left, right) => normalizeString(left.created_at).localeCompare(normalizeString(right.created_at)))
+    .slice(-12);
+
+  return {
+    status: items.length > 0 ? "available" : "not_configured",
+    count: items.length,
+    latest: items.at(-1) || null,
+    items
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -583,6 +657,7 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
+  const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -618,6 +693,7 @@ export function createWorkbenchProjection(input = {}) {
     scheduler_dispatch: schedulerDispatch,
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
+    operations_timeline: operationsTimeline,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -649,7 +725,8 @@ export function createWorkbenchProjection(input = {}) {
         reviewer_shards_completed: reviewerShardReview.completed_shards || 0,
         scheduler_dispatch_steps: schedulerDispatch.step_count || 0,
         scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0,
-        scheduler_loop_iterations: schedulerLoop.iteration_count || 0
+        scheduler_loop_iterations: schedulerLoop.iteration_count || 0,
+        operation_events: operationsTimeline.count || 0
       }
     }
   };
@@ -737,6 +814,12 @@ export function createMobileWorkbenchProjection(input = {}) {
       latest_resume_status: projection.scheduler_loop.latest_resume_status,
       latest_resume_target: projection.scheduler_loop.latest_resume_target
     },
+    operations_timeline: {
+      status: projection.operations_timeline.status,
+      count: projection.operations_timeline.count,
+      latest: projection.operations_timeline.latest,
+      items: projection.operations_timeline.items.slice(-5)
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -758,5 +841,6 @@ export {
   summarizeSchedulerDispatchContinuation,
   summarizeAutonomousSchedulerLoop,
   summarizeSchedulerLoopResumeAttempt,
+  summarizeOperationsTimeline,
   summarizeSchedulerDispatch
 };

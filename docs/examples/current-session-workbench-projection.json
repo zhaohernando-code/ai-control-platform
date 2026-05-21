@@ -151,6 +151,36 @@
     "latest_issue": null,
     "created_at": null
   },
+  "operations_timeline": {
+    "status": "available",
+    "count": 2,
+    "latest": {
+      "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "type": "reviewer_scope_split",
+      "status": "planned",
+      "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "created_at": "2026-05-21T20:20:30.000Z",
+      "summary": "2 shard(s)"
+    },
+    "items": [
+      {
+        "event_id": "event-reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_provider_health",
+        "status": "retry",
+        "artifact_id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-21T19:55:30.000+08:00",
+        "summary": "healthy / rerun_without_tools, split_scope"
+      },
+      {
+        "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_scope_split",
+        "status": "planned",
+        "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-21T20:20:30.000Z",
+        "summary": "2 shard(s)"
+      }
+    ]
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -285,7 +315,8 @@
       "reviewer_shards_completed": 0,
       "scheduler_dispatch_steps": 0,
       "scheduler_continuation_ready": 0,
-      "scheduler_loop_iterations": 0
+      "scheduler_loop_iterations": 0,
+      "operation_events": 2
     }
   }
 }

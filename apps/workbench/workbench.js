@@ -44,6 +44,25 @@ function renderNextActions(projection) {
   }
 }
 
+function renderOperationsTimeline(projection) {
+  const operations = projection.operations_timeline?.items || [];
+  const lists = qsa('[data-list="operations_timeline"]');
+  const rows = operations.length > 0
+    ? operations.slice(-6).reverse()
+    : [{ type: "not_configured", status: "idle", summary: "暂无运行事件" }];
+
+  for (const list of lists) {
+    list.replaceChildren(
+      ...rows.map((item) => {
+        const row = document.createElement("article");
+        row.className = list.classList.contains("mobile-list") ? "mobile-action" : "timeline-item";
+        row.innerHTML = `<strong>${text(item.type)} · ${text(item.status)}</strong><span>${text(item.summary)}</span>`;
+        return row;
+      })
+    );
+  }
+}
+
 function renderModelRoles(projection) {
   const list = qs('[data-list="model_roles"]');
   if (!list) return;
@@ -96,6 +115,7 @@ function renderProjection(projection) {
   setText("counter_reviewer_findings", counters.reviewer_findings ?? 0);
   setText("counter_dispatchable_tasks", counters.dispatchable_tasks ?? 0);
   setText("counter_scheduler_dispatch_steps", counters.scheduler_dispatch_steps ?? schedulerDispatch.step_count ?? 0);
+  setText("counter_operation_events", counters.operation_events ?? projection.operations_timeline?.count ?? 0);
   setText("closeout_status", closeout.status);
   setText("closeout_publish_status", closeout.publish_status);
   setText("closeout_snapshot", closeout.snapshot_id);
@@ -142,6 +162,7 @@ function renderProjection(projection) {
   setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
 
   renderNextActions(projection);
+  renderOperationsTimeline(projection);
   renderModelRoles(projection);
 }
 

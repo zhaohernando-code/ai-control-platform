@@ -239,6 +239,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Scheduler loop resume attempts, including blocked recovery, must be recorded as workflow facts; otherwise process restart cannot distinguish no attempt from a failed or quarantined resume."
+    },
+    {
+      "id": "operations-hidden-in-raw-manifest",
+      "status": "fail",
+      "category": "observability",
+      "severity": "p1",
+      "message": "Operators and schedulers need a compact ordered operations timeline; otherwise dispatch, continuation, loop, resume, and reviewer recovery facts remain buried in raw manifest events."
     }
   ],
   "hardening_items": [
@@ -688,6 +695,14 @@
       "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/autonomous-scheduler-loop.test.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/workbench-shell.test.js",
       "regression_test": "scheduler loop resume attempts are durable workflow facts; workbench projection exposes scheduler loop resume attempts; workbench server rejects autonomous scheduler loop resume without ready recovery while writing a blocked attempt; workbench server resumes autonomous scheduler loop from registry recovery policy while writing a pass attempt",
       "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "operations-hidden-in-raw-manifest",
+      "invariant": "Workbench projection must expose a bounded operations_timeline derived from durable manifest events and artifact ledger metadata, and PC/mobile shells must render it without parsing raw manifest JSON.",
+      "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/workbench-projection-fixture.test.js; test/workbench-shell.test.js",
+      "regression_test": "workbench projection exposes compact operations timeline; validates current PC workbench projection fixture; validates mobile projection schema; workbench shell consumes projection json instead of logs; browser gate renders operation timeline rows",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-projection-fixture.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

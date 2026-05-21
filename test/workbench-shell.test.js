@@ -43,6 +43,10 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-bind="scheduler_loop_resume_status"/);
   assert.match(desktop, /data-bind="counter_scheduler_dispatch_steps"/);
   assert.match(mobile, /data-bind="counter_scheduler_dispatch_steps"/);
+  assert.match(desktop, /data-list="operations_timeline"/);
+  assert.match(mobile, /data-list="operations_timeline"/);
+  assert.match(desktop, /data-bind="counter_operation_events"/);
+  assert.match(mobile, /data-bind="counter_operation_events"/);
   assert.match(desktop, /data-scheduler-dispatch="dry-run"/);
   assert.match(mobile, /data-scheduler-dispatch="dry-run"/);
   assert.match(desktop, /data-scheduler-dispatch="approved-mock"/);
@@ -73,6 +77,8 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(script, /scheduler_loop_status/);
   assert.match(script, /scheduler_loop_recovery/);
   assert.match(script, /scheduler_loop_resume_status/);
+  assert.match(script, /operations_timeline/);
+  assert.match(script, /counter_operation_events/);
   assert.match(script, /counter_scheduler_dispatch_steps/);
   assert.match(script, /runSchedulerDispatch/);
   assert.match(script, /approved_mock_non_dry_run/);
