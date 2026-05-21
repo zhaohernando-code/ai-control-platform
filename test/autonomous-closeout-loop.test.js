@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { decideContinuation } from "../src/workflow/autonomous-continuation.js";
+import { runAutonomousCloseoutLoop } from "../src/workflow/autonomous-orchestrator.js";
 import { runCloseoutPlan } from "../src/workflow/closeout-runner.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
@@ -59,4 +60,31 @@ test("continuation closeout loop remains autonomous and projection-ready", async
   assert.equal(nextDecision.context_pack_seed.target_project_id, "ai-control-platform");
   assert.equal(nextDecision.snapshot_publish_plan.action, "publish_workbench_snapshot");
   assert.deepEqual(nextDecision.snapshot_publish_issues, []);
+});
+
+test("runAutonomousCloseoutLoop executes the reusable closeout orchestration", async () => {
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/orchestrator-loop-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(process.cwd(), "tmp/orchestrator-loop-snapshots");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  const result = await runAutonomousCloseoutLoop({
+    project_status: projectStatus("Publish closeout evidence and continue."),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  }, {
+    root: process.cwd(),
+    historyPath,
+    snapshotsRoot,
+    created_at: "2026-05-21T10:50:00.000Z"
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "next_continuation");
+  assert.equal(result.closeout.status, "created");
+  assert.equal(result.projection.closeout.status, "pass");
+  assert.equal(result.next_decision.should_continue, true);
+  assert.equal(result.next_decision.snapshot_publish_plan.action, "publish_workbench_snapshot");
 });
