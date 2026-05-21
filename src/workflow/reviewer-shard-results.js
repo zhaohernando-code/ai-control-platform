@@ -174,6 +174,7 @@ export function createReviewerShardResult(input = {}) {
     findings: normalizedFindings,
     finding_count: normalizedFindings.length,
     failed_finding_count: normalizedFindings.filter((finding) => finding.status === "fail").length,
+    executor_provenance: input.executor_provenance || input.executorProvenance || null,
     created_at: createdAt,
     issues
   };

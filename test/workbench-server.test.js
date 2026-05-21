@@ -647,6 +647,105 @@ test("workbench server runs reviewer shard through projected next action", async
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server blocks reviewer shard execution when mock profile has no mock output", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-reviewer-policy-block-"));
+  const inputPath = join(snapshotsRoot, "reviewer-policy-block-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "reviewer-policy-block",
+    items: [
+      {
+        id: "reviewer-policy-block",
+        label: "Reviewer policy block",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/reviewer-shard-run?id=reviewer-policy-block`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        execution_profile: "approved_mock_non_dry_run",
+        created_at: "2026-05-22T04:40:00.000Z"
+      })
+    });
+    const rejected = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "reviewer execution policy rejected");
+    assert.ok(rejected.issues.some((entry) => entry.code === "missing_mock_reviewer_output"));
+    assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server runs bounded real reviewer profile only with explicit budget", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-real-reviewer-policy-"));
+  const inputPath = join(snapshotsRoot, "real-reviewer-policy-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "real-reviewer-policy",
+    items: [
+      {
+        id: "real-reviewer-policy",
+        label: "Real reviewer policy",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  const calls = [];
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/reviewer-shard-run?id=real-reviewer-policy`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        execution_profile: "approved_bounded_real_reviewer",
+        max_external_reviewer_calls: 1,
+        provider_cost_mode: "bounded",
+        timeout_seconds: 90,
+        created_at: "2026-05-22T04:41:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.reviewer_execution_policy.execution_mode, "bounded_real_reviewer");
+    assert.equal(created.result.executor_provenance.executor_kind, "test_real_reviewer");
+    assert.equal(calls.length, 1);
+    assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_result");
+  }, {
+    historyPath,
+    snapshotsRoot,
+    realReviewerExecutor: async ({ shard }) => {
+      calls.push(shard.id);
+      return {
+        status: "pass",
+        findings: [],
+        provenance: {
+          executor_kind: "test_real_reviewer",
+          provider: "deepseek",
+          model: "deepseek-v4-pro",
+          timeout_seconds: 90,
+          external_call_budget_used: 1
+        }
+      };
+    }
+  });
+});
+
 test("workbench server records direct reviewer shard runs", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-reviewer-shard-run-"));

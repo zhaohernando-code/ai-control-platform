@@ -61,6 +61,9 @@ test("claude deepseek shard executor returns structured findings from stdout", a
 
   assert.equal(result.status, "fail");
   assert.equal(result.findings[0].id, "ds-finding");
+  assert.equal(result.provenance.executor_kind, "claude_deepseek");
+  assert.equal(result.provenance.model, "deepseek-v4-pro[1m]");
+  assert.equal(result.provenance.external_call_budget_used, 1);
   assert.equal(calls[0].command, "python3");
   assert.equal(calls[0].options.cwd, "/repo");
 });
@@ -78,6 +81,7 @@ test("claude deepseek shard executor converts timeouts into reviewer timeout fin
 
   assert.equal(result.status, "fail");
   assert.equal(result.findings[0].category, "reviewer_timeout");
+  assert.equal(result.provenance.timeout_seconds, 45);
   assert.match(result.findings[0].message, /45s/);
 });
 

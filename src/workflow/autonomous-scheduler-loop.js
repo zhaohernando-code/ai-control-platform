@@ -1,5 +1,9 @@
 import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
+import {
+  APPROVED_BOUNDED_REAL_REVIEWER_PROFILE,
+  APPROVED_MOCK_REVIEWER_PROFILE
+} from "./reviewer-execution-policy.js";
 
 const AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION = "autonomous-scheduler-loop-run.v1";
 const SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION = "scheduler-loop-resume-attempt.v1";
@@ -49,8 +53,11 @@ function schedulerLoopInput(input = {}) {
   const executionStrategy = normalizeString(input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain");
   const issues = [...maxIterations.issues];
 
-  if (executionProfile !== "approved_mock_non_dry_run") {
-    issues.push(issue("unsupported_scheduler_loop_profile", "scheduler loop currently supports only approved_mock_non_dry_run", "execution_profile"));
+  if (![APPROVED_MOCK_REVIEWER_PROFILE, APPROVED_BOUNDED_REAL_REVIEWER_PROFILE].includes(executionProfile)) {
+    issues.push(issue("unsupported_scheduler_loop_profile", "scheduler loop profile must be approved_mock_non_dry_run or approved_bounded_real_reviewer", "execution_profile"));
+  }
+  if (executionProfile === APPROVED_BOUNDED_REAL_REVIEWER_PROFILE && executionStrategy !== "projected_next_action") {
+    issues.push(issue("real_reviewer_requires_projected_strategy", "approved_bounded_real_reviewer requires projected_next_action strategy", "execution_strategy"));
   }
   if (!["scheduler_dispatch_chain", "projected_next_action"].includes(executionStrategy)) {
     issues.push(issue("unsupported_scheduler_loop_strategy", "scheduler loop strategy must be scheduler_dispatch_chain or projected_next_action", "execution_strategy"));
@@ -182,6 +189,11 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
           execution_profile: normalized.execution_profile,
           reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
           reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
+          provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
+          budget_tier: input.budget_tier || input.budgetTier,
+          risk: input.risk || input.risk_level || input.riskLevel,
+          timeout_seconds: input.timeout_seconds || input.timeoutSeconds,
           record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
           snapshot_id: loopSnapshotId(normalized.snapshot_prefix, currentProjectionId, index),
           snapshot_prefix: normalized.snapshot_prefix,

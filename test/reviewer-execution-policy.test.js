@@ -1,0 +1,60 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { evaluateReviewerExecutionPolicy } from "../src/workflow/reviewer-execution-policy.js";
+
+test("reviewer execution policy requires mock output for mock profile", () => {
+  const policy = evaluateReviewerExecutionPolicy({
+    execution_profile: "approved_mock_non_dry_run"
+  });
+
+  assert.equal(policy.status, "fail");
+  assert.equal(policy.execution_mode, "blocked");
+  assert.ok(policy.issues.some((entry) => entry.code === "missing_mock_reviewer_output"));
+});
+
+test("reviewer execution policy allows mock profile with zero external calls", () => {
+  const policy = evaluateReviewerExecutionPolicy({
+    execution_profile: "approved_mock_non_dry_run",
+    reviewer_mock_status: "pass"
+  });
+
+  assert.equal(policy.status, "pass");
+  assert.equal(policy.execution_mode, "mocked");
+  assert.equal(policy.controls.executor_mode, "mock");
+  assert.equal(policy.controls.max_external_reviewer_calls, 0);
+  assert.equal(policy.controls.provider_cost_mode, "mocked");
+});
+
+test("reviewer execution policy allows bounded real reviewer profile", () => {
+  const policy = evaluateReviewerExecutionPolicy({
+    execution_profile: "approved_bounded_real_reviewer",
+    max_external_reviewer_calls: 1,
+    provider_cost_mode: "bounded",
+    timeout_seconds: 90,
+    budget_tier: "medium"
+  });
+
+  assert.equal(policy.status, "pass");
+  assert.equal(policy.execution_mode, "bounded_real_reviewer");
+  assert.equal(policy.controls.executor_mode, "claude_deepseek");
+  assert.equal(policy.controls.max_external_reviewer_calls, 1);
+  assert.equal(policy.controls.provider_cost_mode, "bounded");
+  assert.equal(policy.controls.model_routing.selected_model, "deepseek-v4-pro");
+});
+
+test("reviewer execution policy rejects mock output and unsafe bounds for real profile", () => {
+  const policy = evaluateReviewerExecutionPolicy({
+    execution_profile: "approved_bounded_real_reviewer",
+    reviewer_mock_status: "pass",
+    max_external_reviewer_calls: 2,
+    provider_cost_mode: "mocked",
+    timeout_seconds: 180
+  });
+
+  assert.equal(policy.status, "fail");
+  assert.ok(policy.issues.some((entry) => entry.code === "mock_output_for_real_reviewer"));
+  assert.ok(policy.issues.some((entry) => entry.code === "invalid_real_reviewer_budget"));
+  assert.ok(policy.issues.some((entry) => entry.code === "invalid_real_reviewer_cost_mode"));
+  assert.ok(policy.issues.some((entry) => entry.code === "invalid_reviewer_timeout"));
+});

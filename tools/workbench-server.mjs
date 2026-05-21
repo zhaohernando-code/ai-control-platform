@@ -36,6 +36,7 @@ import {
 } from "../src/workflow/autonomous-scheduler-loop.js";
 import { runReviewerShard } from "../src/workflow/reviewer-shard-runner.js";
 import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
+import { evaluateReviewerExecutionPolicy } from "../src/workflow/reviewer-execution-policy.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -471,21 +472,45 @@ const SUPPORTED_NEXT_ACTIONS = new Set([
   "resume_autonomous_scheduler_loop"
 ]);
 
-function reviewerShardExecutorFromInput(input = {}) {
-  const mockFindingsJson = normalizeString(input.reviewer_mock_findings_json || input.reviewerMockFindingsJson);
-  const mockStatus = normalizeString(input.reviewer_mock_status || input.reviewerMockStatus);
-  if (mockFindingsJson || mockStatus) {
-    return async () => ({
-      status: mockStatus || "pass",
-      findings: mockFindingsJson ? JSON.parse(mockFindingsJson) : []
-    });
+function reviewerShardExecutorFromInput(input = {}, options = {}) {
+  const policy = evaluateReviewerExecutionPolicy(input);
+  if (policy.status !== "pass") {
+    const error = new Error("reviewer execution policy rejected");
+    error.code = "reviewer_execution_policy_rejected";
+    error.issues = policy.issues;
+    error.policy = policy;
+    throw error;
   }
 
-  const timeoutSeconds = Math.min(180, Math.max(30, Number(input.timeout_seconds || input.timeoutSeconds || 90) || 90));
-  return createClaudeDeepSeekShardExecutor({
-    cwd: root,
-    timeout_seconds: timeoutSeconds
-  });
+  const mockFindingsJson = normalizeString(input.reviewer_mock_findings_json || input.reviewerMockFindingsJson);
+  const mockStatus = normalizeString(input.reviewer_mock_status || input.reviewerMockStatus);
+  if (policy.controls.executor_mode === "mock") {
+    return {
+      policy,
+      executor: async () => ({
+      status: mockStatus || "pass",
+        findings: mockFindingsJson ? JSON.parse(mockFindingsJson) : [],
+        provenance: {
+          executor_kind: "mock",
+          provider: "mock",
+          model: "mock",
+          timeout_seconds: null,
+          tools: "",
+          external_call_budget_used: 0,
+          execution_profile: policy.profile
+        }
+      })
+    };
+  }
+
+  const timeoutSeconds = policy.controls.timeout_seconds;
+  return {
+    policy,
+    executor: options.realReviewerExecutor || createClaudeDeepSeekShardExecutor({
+      cwd: root,
+      timeout_seconds: timeoutSeconds
+    })
+  };
 }
 
 async function executeProjectedNextAction({ req, selectedId, projection, input = {} }) {
@@ -536,6 +561,11 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
       aggregate_created_at: input.aggregate_created_at || input.aggregateCreatedAt,
       record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout ?? true,
       provider_smoke_status: input.provider_smoke_status || input.providerSmokeStatus,
+      execution_profile: input.execution_profile || input.executionProfile,
+      max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
+      provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
+      budget_tier: input.budget_tier || input.budgetTier,
+      risk: input.risk || input.risk_level || input.riskLevel,
       reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
       reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
       timeout_seconds: input.timeout_seconds || input.timeoutSeconds
@@ -556,6 +586,14 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
   const result = await client.runAutonomousSchedulerLoop(selectedId, {
     max_iterations: input.max_iterations || input.maxIterations || 1,
     execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+    execution_strategy: input.execution_strategy || input.executionStrategy,
+    reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+    reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+    max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
+    provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
+    budget_tier: input.budget_tier || input.budgetTier,
+    risk: input.risk || input.risk_level || input.riskLevel,
+    timeout_seconds: input.timeout_seconds || input.timeoutSeconds,
     snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "autonomous-loop",
     created_at: input.created_at || input.createdAt
   });
@@ -578,6 +616,7 @@ export function createWorkbenchServer(options = {}) {
   const serverHistoryPath = options.historyPath || historyPath;
   const snapshotsRoot = resolve(options.snapshotsRoot || defaultSnapshotsRoot);
   const allowedHistoryRoots = [examplesRoot, snapshotsRoot];
+  const realReviewerExecutor = options.realReviewerExecutor;
 
   return createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -750,11 +789,18 @@ export function createWorkbenchServer(options = {}) {
 
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
-        let executor;
+        let executorSetup;
         try {
-          executor = reviewerShardExecutorFromInput(input);
+          executorSetup = reviewerShardExecutorFromInput(input, { realReviewerExecutor });
         } catch (error) {
-          jsonResponse(res, 400, { error: "reviewer shard executor setup failed", issues: [{ code: "reviewer_shard_executor_setup_failed", message: error.message, path: "reviewer_mock_findings_json" }] });
+          jsonResponse(res, 400, {
+            error: error.code === "reviewer_execution_policy_rejected"
+              ? "reviewer execution policy rejected"
+              : "reviewer shard executor setup failed",
+            issues: error.issues || [{ code: "reviewer_shard_executor_setup_failed", message: error.message, path: "reviewer_mock_findings_json" }],
+            policy: error.policy || null,
+            projection: createWorkbenchProjection(readJson(inputPath))
+          });
           return;
         }
 
@@ -764,7 +810,7 @@ export function createWorkbenchServer(options = {}) {
           aggregate_created_at: input.aggregate_created_at || input.aggregateCreatedAt,
           record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout ?? true,
           provider_smoke_status: input.provider_smoke_status || input.providerSmokeStatus,
-          executor
+          executor: executorSetup.executor
         });
         if (result.status !== "pass") {
           jsonResponse(res, 400, { error: "reviewer shard run failed", issues: result.issues || [], projection: createWorkbenchProjection(workflowState) });
@@ -779,6 +825,7 @@ export function createWorkbenchServer(options = {}) {
           shard_id: result.result?.shard_id || result.shard?.id || null,
           shard_status: result.result?.status || null,
           result: result.result,
+          reviewer_execution_policy: executorSetup.policy,
           provider_health: result.provider_health || null,
           aggregate: result.aggregate || null,
           pending_shards: result.pending_shards ?? result.aggregate?.pending_shards ?? null,
@@ -1087,6 +1134,11 @@ export function createWorkbenchServer(options = {}) {
           execution_strategy: input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain",
           reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
           reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
+          provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
+          budget_tier: input.budget_tier || input.budgetTier,
+          risk: input.risk || input.risk_level || input.riskLevel,
+          timeout_seconds: input.timeout_seconds || input.timeoutSeconds,
           record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
           snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "autonomous-loop",
           created_at: input.created_at || input.createdAt
@@ -1200,6 +1252,11 @@ export function createWorkbenchServer(options = {}) {
           execution_strategy: input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain",
           reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
           reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
+          provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
+          budget_tier: input.budget_tier || input.budgetTier,
+          risk: input.risk || input.risk_level || input.riskLevel,
+          timeout_seconds: input.timeout_seconds || input.timeoutSeconds,
           record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
           snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "resume-loop",
           created_at: input.created_at || input.createdAt

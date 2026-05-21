@@ -171,6 +171,7 @@ export async function runReviewerShard(workflowState = {}, input = {}) {
     shard_id: shard.id,
     status: execution?.status,
     findings: execution?.findings || execution?.review_findings || [],
+    executor_provenance: execution?.provenance || execution?.executor_provenance || execution?.executorProvenance,
     created_at: input.created_at || execution?.created_at
   });
   if (recorded.status !== "pass") return recorded;

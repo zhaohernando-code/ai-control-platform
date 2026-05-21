@@ -177,6 +177,54 @@ test("scheduler loop can follow projected next-action recommendations", async ()
   assert.equal(calls[2][2].snapshot_id, "projected-loop-current-01");
 });
 
+test("scheduler loop real reviewer profile requires projected strategy and passes reviewer controls", async () => {
+  const calls = [];
+  const client = {
+    async loadHistory() {
+      calls.push(["loadHistory"]);
+      return { latest: "current" };
+    },
+    async loadProjection(id) {
+      calls.push(["projection", id]);
+      return {
+        next_action_readout: {
+          status: "ready",
+          action: id === "current-next" ? "inspect_resume_target" : "run_reviewer_scope_shard"
+        }
+      };
+    },
+    async runNextAction(id, body) {
+      calls.push(["nextAction", id, body]);
+      return {
+        status: "executed",
+        action: body.expected_action,
+        result: { next_item: { id: `${id}-next` } }
+      };
+    }
+  };
+  const invalid = schedulerLoopInput({
+    execution_profile: "approved_bounded_real_reviewer",
+    execution_strategy: "scheduler_dispatch_chain"
+  });
+  const result = await runSchedulerLoopDriver({
+    max_iterations: 2,
+    execution_profile: "approved_bounded_real_reviewer",
+    execution_strategy: "projected_next_action",
+    max_external_reviewer_calls: 1,
+    provider_cost_mode: "bounded",
+    timeout_seconds: 90,
+    budget_tier: "medium"
+  }, { client });
+
+  assert.equal(invalid.status, "fail");
+  assert.ok(invalid.issues.some((entry) => entry.code === "real_reviewer_requires_projected_strategy"));
+  assert.equal(result.status, "pass");
+  assert.equal(calls[2][2].execution_profile, "approved_bounded_real_reviewer");
+  assert.equal(calls[2][2].max_external_reviewer_calls, 1);
+  assert.equal(calls[2][2].provider_cost_mode, "bounded");
+  assert.equal(calls[2][2].timeout_seconds, 90);
+});
+
 test("scheduler loop fails when dispatch does not produce ready continuation", async () => {
   const client = fakeClient({
     dispatch: {

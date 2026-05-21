@@ -868,3 +868,13 @@ Projected mock loop 暴露在工作台后，操作者仍需要知道当前读数
 - Workbench projection 的 `scheduler_loop` 摘要在 PC/mobile 版本都暴露 strategy/profile。
 - Projection history readout 同步暴露 strategy/profile，供列表级状态和恢复选择使用。
 - PC/mobile 工作台显示 `Loop profile`，浏览器门禁验证 projected mock trial 渲染为 `projected_next_action`。
+
+[2026-05-22T04:45:00+08:00] Reviewer execution source must be policy-gated:
+子进程审查发现一个比“接入真实 reviewer profile”更优先的风险：服务端 reviewer shard 之前是“有 mock 字段就 mock，否则走真实 Claude/DeepSeek”。这会让 mock profile 也存在误触发真实外部调用的路径。
+
+决策：
+- 新增 `reviewer-execution-policy`，把 mock 和 bounded real reviewer profile 分开。
+- `approved_mock_non_dry_run` 必须显式提供 mock 输出，且外部 reviewer 调用预算固定为 0。
+- `approved_bounded_real_reviewer` 必须显式提供 bounded cost mode、单次外部调用预算和 bounded timeout，并记录 model routing 读数。
+- `/api/workbench/reviewer-shard-run` 与 projected `run_reviewer_scope_shard` 都必须先通过该 policy，再选择 executor。
+- Reviewer shard result 与 Claude/DeepSeek executor 返回 executor provenance，避免后续评估只看到 finding 而不知道执行来源。

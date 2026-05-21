@@ -91,13 +91,23 @@ test("reviewer shard runner records one shard and leaves remaining shard pending
     executor: async ({ shard, prompt }) => {
       assert.equal(shard.id, "reviewer-scope-shard-001");
       assert.match(prompt, /reviewer-scope-shard-001/);
-      return { status: "pass", findings: [] };
+      return {
+        status: "pass",
+        findings: [],
+        provenance: {
+          executor_kind: "mock",
+          provider: "mock",
+          model: "mock",
+          external_call_budget_used: 0
+        }
+      };
     }
   });
 
   assert.equal(result.status, "pass");
   assert.equal(result.phase, "shard_recorded");
   assert.equal(result.pending_shards, 1);
+  assert.equal(result.result.executor_provenance.executor_kind, "mock");
   assert.equal(result.workflow_state.manifest.events.at(-1).type, "reviewer_shard_result");
 });
 

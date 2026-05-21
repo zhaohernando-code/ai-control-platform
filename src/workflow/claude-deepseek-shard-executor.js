@@ -110,11 +110,20 @@ export function createClaudeDeepSeekShardExecutor(options = {}) {
     const exitCode = Number(result.status ?? result.exitCode ?? 0);
     const timedOut = exitCode === 124 || /CLAUDE_DEEPSEEK_TIMEOUT/.test(stderr);
     const findings = parseClaudeDeepSeekFindings(stdout);
+    const provenance = {
+      executor_kind: "claude_deepseek",
+      provider: "deepseek",
+      model: command.model,
+      timeout_seconds: command.timeout_seconds,
+      tools: command.tools,
+      external_call_budget_used: 1
+    };
 
     if (exitCode === 0 && findings.length > 0) {
       return {
         status: findings.some((finding) => normalizeString(finding.status).toLowerCase() === "fail") ? "fail" : "pass",
         findings,
+        provenance,
         stdout,
         stderr
       };
@@ -132,6 +141,7 @@ export function createClaudeDeepSeekShardExecutor(options = {}) {
             message: stdout || "external shard reviewer returned no structured findings"
           }
         ],
+        provenance,
         stdout,
         stderr
       };
@@ -157,6 +167,7 @@ export function createClaudeDeepSeekShardExecutor(options = {}) {
           }
         }
       ],
+      provenance,
       stdout,
       stderr
     };
