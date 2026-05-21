@@ -7,6 +7,7 @@ import test from "node:test";
 import { decideContinuation } from "../src/workflow/autonomous-continuation.js";
 import {
   createAutonomousLoopRunArtifact,
+  prepareAutonomousContinuationFromLoopArtifact,
   runAutonomousCloseoutLoop,
   validateAutonomousLoopRunArtifact
 } from "../src/workflow/autonomous-orchestrator.js";
@@ -187,4 +188,145 @@ test("check-autonomous-closeout-loop-run CLI fails closed before artifact reuse"
   assert.notEqual(damagedResult.status, 0);
   assert.equal(JSON.parse(damagedResult.stdout).status, "fail");
   assert.match(damagedResult.stdout, /identity_run_id_mismatch/);
+});
+
+test("prepareAutonomousContinuationFromLoopArtifact blocks scheduler reuse of invalid artifacts", async () => {
+  const artifact = await createValidLoopArtifact("orchestrator-reuse");
+  const ready = prepareAutonomousContinuationFromLoopArtifact(artifact);
+
+  assert.equal(ready.status, "ready");
+  assert.equal(ready.should_continue, true);
+  assert.equal(ready.continuation_input.project_status.project, "ai-control-platform");
+  assert.equal(ready.continuation_input.workflow_state.manifest.run_id, artifact.run_id);
+  assert.equal(ready.snapshot_publish_plan.action, "publish_workbench_snapshot");
+
+  const damaged = JSON.parse(JSON.stringify(artifact));
+  damaged.result.next_decision.snapshot_publish_plan.input.manifest.run_id = "wrong-run";
+  const blocked = prepareAutonomousContinuationFromLoopArtifact(damaged);
+
+  assert.equal(blocked.status, "blocked");
+  assert.equal(blocked.should_continue, false);
+  assert.equal(blocked.continuation_input, null);
+  assert.equal(blocked.blockers[0].category, "replay_artifact_invalid");
+  assert.ok(blocked.issues.some((entry) => entry.path === "result.next_decision.snapshot_publish_plan.input.manifest.run_id"));
+
+  const failedArtifact = {
+    version: "autonomous-closeout-loop-run.v1",
+    run_id: artifact.run_id,
+    cycle_id: artifact.cycle_id,
+    status: "fail",
+    phase: "closeout",
+    created_at: "2026-05-21T11:00:00.000Z",
+    input: artifact.input,
+    result: {
+      status: "fail",
+      phase: "closeout",
+      issues: [],
+      decision: null,
+      closeout: null,
+      projection: null,
+      next_decision: null
+    }
+  };
+  const failedBlocked = prepareAutonomousContinuationFromLoopArtifact(failedArtifact);
+
+  assert.equal(validateAutonomousLoopRunArtifact(failedArtifact).status, "pass");
+  assert.equal(failedBlocked.status, "blocked");
+  assert.ok(failedBlocked.issues.some((entry) => entry.code === "non_reusable_artifact_status"));
+
+  const missingCloseoutState = JSON.parse(JSON.stringify(artifact));
+  delete missingCloseoutState.result.closeout.workflow_state;
+  const missingCloseoutBlocked = prepareAutonomousContinuationFromLoopArtifact(missingCloseoutState);
+
+  assert.equal(missingCloseoutBlocked.status, "blocked");
+  assert.ok(missingCloseoutBlocked.issues.some((entry) => entry.code === "missing_reusable_workflow_state"));
+
+  const missingContextSeed = JSON.parse(JSON.stringify(artifact));
+  delete missingContextSeed.result.next_decision.context_pack_seed;
+  const missingContextBlocked = prepareAutonomousContinuationFromLoopArtifact(missingContextSeed);
+
+  assert.equal(missingContextBlocked.status, "blocked");
+  assert.ok(missingContextBlocked.issues.some((entry) => entry.code === "missing_reusable_context_pack_seed"));
+
+  const missingInitialPlan = JSON.parse(JSON.stringify(artifact));
+  delete missingInitialPlan.result.decision.snapshot_publish_plan;
+  const missingInitialPlanBlocked = prepareAutonomousContinuationFromLoopArtifact(missingInitialPlan);
+
+  assert.equal(missingInitialPlanBlocked.status, "blocked");
+  assert.ok(missingInitialPlanBlocked.issues.some((entry) => entry.code === "invalid_initial_snapshot_publish_plan"));
+
+  const malformedInitialPlan = JSON.parse(JSON.stringify(artifact));
+  malformedInitialPlan.result.decision.snapshot_publish_plan = {};
+  const malformedInitialPlanBlocked = prepareAutonomousContinuationFromLoopArtifact(malformedInitialPlan);
+
+  assert.equal(malformedInitialPlanBlocked.status, "blocked");
+  assert.ok(malformedInitialPlanBlocked.issues.some((entry) => entry.code === "invalid_initial_snapshot_publish_plan"));
+});
+
+test("run-autonomous-closeout-loop resume mode validates artifacts before scheduler continuation", async () => {
+  const artifact = await createValidLoopArtifact("orchestrator-resume-cli");
+  const dir = mkdtempSync(join(process.cwd(), "tmp/orchestrator-resume-cli-check-"));
+  const artifactPath = join(dir, "loop-run.json");
+  writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
+
+  const ready = spawnSync(process.execPath, ["tools/run-autonomous-closeout-loop.mjs", "--resume-from", artifactPath], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  assert.equal(ready.status, 0);
+  assert.equal(JSON.parse(ready.stdout).status, "ready");
+
+  const damagedPath = join(dir, "damaged-loop-run.json");
+  const damaged = JSON.parse(JSON.stringify(artifact));
+  damaged.result.closeout.workflow_state.manifest.cycle_id = "wrong-cycle";
+  writeFileSync(damagedPath, `${JSON.stringify(damaged, null, 2)}\n`);
+  const blocked = spawnSync(process.execPath, ["tools/run-autonomous-closeout-loop.mjs", "--resume-from", damagedPath], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  assert.notEqual(blocked.status, 0);
+  assert.equal(JSON.parse(blocked.stdout).status, "blocked");
+  assert.match(blocked.stdout, /replay_artifact_invalid/);
+
+  const missing = spawnSync(process.execPath, ["tools/run-autonomous-closeout-loop.mjs", "--resume-from", join(dir, "missing.json")], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  assert.notEqual(missing.status, 0);
+  assert.equal(JSON.parse(missing.stdout).status, "blocked");
+  assert.match(missing.stdout, /replay_artifact_read_failed/);
+
+  const badJsonPath = join(dir, "bad.json");
+  writeFileSync(badJsonPath, "{bad json");
+  const badJson = spawnSync(process.execPath, ["tools/run-autonomous-closeout-loop.mjs", "--resume-from", badJsonPath], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  assert.notEqual(badJson.status, 0);
+  assert.equal(JSON.parse(badJson.stdout).status, "blocked");
+  assert.match(badJson.stdout, /replay_artifact_read_failed/);
+
+  const ambiguous = spawnSync(process.execPath, [
+    "tools/run-autonomous-closeout-loop.mjs",
+    "--input",
+    artifactPath,
+    "--resume-from",
+    artifactPath
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+
+  assert.notEqual(ambiguous.status, 0);
+  assert.equal(JSON.parse(ambiguous.stdout).status, "blocked");
+  assert.match(ambiguous.stdout, /ambiguous_autonomous_loop_mode/);
 });

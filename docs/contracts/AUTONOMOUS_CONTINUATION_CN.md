@@ -91,6 +91,14 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 校验失败时必须 fail closed，不能把损坏、串线或半完成的 orchestration output 当作下一轮 Context Pack 输入。
 
+`tools/run-autonomous-closeout-loop.mjs --resume-from <path>` 是当前最小 scheduler 复用入口。它必须先运行同一 replay validator：
+
+- valid artifact 输出 `status=ready`、`phase=scheduler_continuation`、`continuation_input`、`context_pack_seed` 和 `snapshot_publish_plan`。
+- invalid artifact 输出 `status=blocked`、`phase=replay_validation` 和 `replay_artifact_invalid` blocker，并以非零退出。
+- 只有 `status=pass`、`phase=next_continuation` 且包含 closeout workflow state、projection、context pack seed、snapshot publish plan 的 artifact 可复用。
+- artifact 不存在、JSON 损坏或 CLI mode 歧义时也必须输出结构化 blocker JSON，不能只输出 Node stack trace。
+- resume mode 不得在校验失败时生成 continuation input。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。

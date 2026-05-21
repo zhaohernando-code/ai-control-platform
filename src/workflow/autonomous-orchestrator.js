@@ -25,6 +25,10 @@ function hasContinuingSnapshotPlan(decision) {
   );
 }
 
+function hasSnapshotPublishPlan(decision) {
+  return decision?.snapshot_publish_plan?.action === "publish_workbench_snapshot";
+}
+
 function manifestIdentity(value) {
   const manifest = value?.manifest || value?.input?.manifest || value?.workflow_state?.manifest;
   return {
@@ -78,6 +82,34 @@ function createAutonomousLoopRunArtifact(input = {}, result = {}, options = {}) 
       projection: result.projection || null,
       next_decision: result.next_decision || null
     }
+  };
+}
+
+function replayBlocker(validation) {
+  return {
+    id: "autonomous_loop_artifact_replay",
+    category: "replay_artifact_invalid",
+    status: "blocked",
+    message: "autonomous closeout loop artifact failed replay validation",
+    issues: validation.issues
+  };
+}
+
+function replayBlockedResult(issues) {
+  const validation = {
+    status: "fail",
+    issues
+  };
+  return {
+    status: "blocked",
+    phase: "replay_validation",
+    should_continue: false,
+    issues,
+    blockers: [replayBlocker(validation)],
+    continuation_input: null,
+    context_pack_seed: null,
+    snapshot_publish_plan: null,
+    next_decision: null
   };
 }
 
@@ -184,6 +216,13 @@ function validateAutonomousLoopRunArtifact(artifact = {}) {
     if (result?.decision?.should_continue !== true) {
       issues.push(issue("missing_initial_continuation", "pass artifact must include continuing initial decision", "result.decision"));
     }
+    if (!hasSnapshotPublishPlan(result?.decision)) {
+      issues.push(issue(
+        "invalid_initial_snapshot_publish_plan",
+        "pass artifact must include initial publish_workbench_snapshot plan",
+        "result.decision.snapshot_publish_plan"
+      ));
+    }
     if (result?.closeout?.status !== "created") {
       issues.push(issue("missing_created_closeout", "pass artifact must include created closeout result", "result.closeout.status"));
     }
@@ -216,6 +255,56 @@ function validateAutonomousLoopRunArtifact(artifact = {}) {
   return {
     status: issues.length ? "fail" : "pass",
     issues
+  };
+}
+
+function prepareAutonomousContinuationFromLoopArtifact(artifact = {}) {
+  const validation = validateAutonomousLoopRunArtifact(artifact);
+  if (validation.status !== "pass") {
+    return replayBlockedResult(validation.issues);
+  }
+
+  const reuseIssues = [];
+  if (artifact.status !== "pass") {
+    reuseIssues.push(issue("non_reusable_artifact_status", "only pass autonomous loop artifacts can resume scheduler continuation", "status"));
+  }
+  if (artifact.phase !== "next_continuation") {
+    reuseIssues.push(issue("non_reusable_artifact_phase", "only next_continuation artifacts can resume scheduler continuation", "phase"));
+  }
+  if (!isObject(artifact.result?.closeout?.workflow_state)) {
+    reuseIssues.push(issue("missing_reusable_workflow_state", "result.closeout.workflow_state is required for scheduler continuation", "result.closeout.workflow_state"));
+  }
+  if (!isObject(artifact.result?.projection)) {
+    reuseIssues.push(issue("missing_reusable_projection", "result.projection is required for scheduler continuation", "result.projection"));
+  }
+  if (!isObject(artifact.result?.next_decision?.context_pack_seed)) {
+    reuseIssues.push(issue("missing_reusable_context_pack_seed", "result.next_decision.context_pack_seed is required for scheduler continuation", "result.next_decision.context_pack_seed"));
+  }
+  if (!isObject(artifact.result?.next_decision?.snapshot_publish_plan)) {
+    reuseIssues.push(issue("missing_reusable_snapshot_publish_plan", "result.next_decision.snapshot_publish_plan is required for scheduler continuation", "result.next_decision.snapshot_publish_plan"));
+  }
+  if (!isObject(artifact.result?.decision?.snapshot_publish_plan)) {
+    reuseIssues.push(issue("missing_initial_snapshot_publish_plan", "result.decision.snapshot_publish_plan is required for replay auditability", "result.decision.snapshot_publish_plan"));
+  }
+
+  if (reuseIssues.length > 0) {
+    return replayBlockedResult(reuseIssues);
+  }
+
+  return {
+    status: "ready",
+    phase: "scheduler_continuation",
+    should_continue: true,
+    issues: [],
+    blockers: [],
+    continuation_input: continuationInputFromProjection(
+      artifact.input,
+      artifact.result.closeout.workflow_state,
+      artifact.result.projection
+    ),
+    context_pack_seed: artifact.result.next_decision.context_pack_seed,
+    snapshot_publish_plan: artifact.result.next_decision.snapshot_publish_plan,
+    next_decision: artifact.result.next_decision
   };
 }
 
@@ -274,6 +363,7 @@ async function runAutonomousCloseoutLoop(input = {}, options = {}) {
 export {
   AUTONOMOUS_LOOP_ARTIFACT_VERSION,
   createAutonomousLoopRunArtifact,
+  prepareAutonomousContinuationFromLoopArtifact,
   runAutonomousCloseoutLoop,
   validateAutonomousLoopRunArtifact
 };

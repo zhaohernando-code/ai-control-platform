@@ -92,6 +92,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Replayable autonomous closeout loop artifacts must not be reused unless their input, output, closeout evidence, projection identity, and next continuation are validated."
+    },
+    {
+      "id": "autonomous-loop-validator-not-wired",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Replay validation must be wired into the scheduler continuation reuse path; a standalone validator is insufficient if resume can bypass it."
     }
   ],
   "hardening_items": [
@@ -197,6 +204,14 @@
       "enforcement_target": "src/workflow/autonomous-orchestrator.js; tools/check-autonomous-closeout-loop-run.mjs; test/autonomous-closeout-loop.test.js",
       "regression_test": "validateAutonomousLoopRunArtifact accepts complete loop artifacts and rejects damaged status, version, identity, or continuation fields",
       "verification": "node --test test/autonomous-closeout-loop.test.js; npm run check:autonomous-closeout-loop-run -- <artifact>; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "autonomous-loop-validator-not-wired",
+      "invariant": "Scheduler continuation from a replay artifact must call the replay validator and return a blocker instead of continuation input when validation fails or the artifact is structurally valid but not reusable.",
+      "enforcement_target": "src/workflow/autonomous-orchestrator.js; tools/run-autonomous-closeout-loop.mjs; test/autonomous-closeout-loop.test.js",
+      "regression_test": "prepareAutonomousContinuationFromLoopArtifact and run-autonomous-closeout-loop --resume-from block invalid, failed, incomplete, unreadable, and ambiguous replay artifacts before scheduler continuation",
+      "verification": "node --test test/autonomous-closeout-loop.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]
