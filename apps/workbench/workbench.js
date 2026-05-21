@@ -1,4 +1,6 @@
-const PROJECTION_URL = "../../docs/examples/current-session-workbench-projection.json";
+import { createProjectionSource } from "./projection-source.js";
+
+const source = createProjectionSource();
 
 function text(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
@@ -88,17 +90,9 @@ function renderProjection(projection) {
   renderModelRoles(projection);
 }
 
-async function loadProjection() {
-  const response = await fetch(PROJECTION_URL);
-  if (!response.ok) {
-    throw new Error(`Projection fetch failed: ${response.status}`);
-  }
-  return response.json();
-}
-
 async function main() {
   try {
-    const projection = await loadProjection();
+    const projection = await source.load();
     renderProjection(projection);
   } catch (error) {
     renderProjection({
@@ -117,7 +111,13 @@ async function main() {
 
 qsa("[data-action]").forEach((button) => {
   button.addEventListener("click", () => {
-    button.textContent = button.dataset.action === "validate" ? "Projection 已校验" : "已生成下一轮";
+    if (button.dataset.action === "validate") {
+      button.textContent = "Projection 已校验";
+      main();
+      return;
+    }
+
+    button.textContent = "已生成下一轮";
   });
 });
 

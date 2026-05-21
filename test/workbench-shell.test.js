@@ -26,8 +26,10 @@ test("workbench shell has separate desktop and mobile entries", () => {
 
 test("workbench shell consumes projection json instead of logs", () => {
   const script = read("apps/workbench/workbench.js");
+  const source = read("apps/workbench/projection-source.js");
 
-  assert.match(script, /current-session-workbench-projection\.json/);
+  assert.match(script, /createProjectionSource/);
+  assert.match(source, /current-session-workbench-projection\.json/);
   assert.doesNotMatch(script, /console\.log|PROCESS\.md|PROJECT_STATUS\.json/);
 });
 
@@ -40,7 +42,7 @@ test("desktop shell is fixed viewport without horizontal overflow by design", ()
 });
 
 test("workbench files avoid legacy and managed project references", () => {
-  const combined = FILES.map(read).join("\n");
+  const combined = [...FILES, "apps/workbench/projection-source.js"].map(read).join("\n");
 
   assert.doesNotMatch(combined, /stock_dashboard|legacy\/|local-control-server|dashboard-ui/);
 });

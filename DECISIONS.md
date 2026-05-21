@@ -71,3 +71,12 @@
 - Mobile 入口为 `apps/workbench/mobile.html`，使用独立信息架构。
 - 两个入口共用 `apps/workbench/workbench.js`，只读取 projection JSON。
 - 浏览器验证必须检查 projection 是否加载、PC/mobile 是否无横向溢出。
+
+[2026-05-21T16:44:15+08:00] Workbench projection source supports service-backed mode:
+工作台 shell 不应永久绑定本地 fixture。`projection-source.js` 现在提供数据源抽象，默认读取本地 fixture，也允许通过安全 query 参数切到服务接口，例如 `?projection=/api/workbench/projection`。
+
+决策：
+- 只接受 `http(s)`、站内绝对路径、`./` 或 `../` 相对路径。
+- 拒绝 `javascript:` 和协议相对 URL。
+- projection 加载后先做最小 shape validation，避免空对象进入 UI。
+- 下一步应增加本地 projection API/server adapter 和 projection history index。
