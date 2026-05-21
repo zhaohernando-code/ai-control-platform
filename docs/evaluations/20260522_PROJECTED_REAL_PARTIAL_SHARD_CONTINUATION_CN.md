@@ -40,6 +40,12 @@
 - 渲染推荐动作：`run_reviewer_scope_shard`
 - 1440px 宽度下无横向溢出
 
+Closeout 证据：
+
+- `tools/check-workbench-browser-events.mjs --output <path>` 写出 `workbench-browser-events-run.v1`
+- `tools/check-closeout.mjs` 读取该 artifact，校验 `projected_real_partial_shard_readout`、`next_action_readout=run_reviewer_scope_shard` 和无横向溢出
+- 本轮 artifact smoke：`version=workbench-browser-events-run.v1`，`status=pass`，`scenario_count=10`
+
 ## 结论
 
 单片预算真实 reviewer loop 可以通过重复 bounded projected loop 自主推进，不需要人工选择 shard，也不会重复调用已完成 shard。

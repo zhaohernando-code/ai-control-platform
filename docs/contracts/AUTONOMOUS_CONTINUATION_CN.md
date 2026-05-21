@@ -182,6 +182,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Reviewer shard projection 在尚未 aggregate 时，必须根据 split shard ids 减去已完成 shard result ids 计算 `next_shard`；不能在 partial result 后继续展示 split plan 的初始 shard。
 - Projected loop 在 `iteration_limit_reached` 后，如果 durable reviewer shard state 显示仍有 `pending_shards`，`next_action_readout` 必须继续推荐 `run_reviewer_scope_shard`，并由 reviewer shard runner 根据已完成 result 跳到下一片。只有服务返回的真实 `next_item.id` 可以成为跨 projection resume target；当前 `item.id` 不能被误判为新 resume 目标。
 - PC/mobile 工作台必须把 reviewer shard review 的 `next_shard` 渲染为独立读数；浏览器门禁必须覆盖真实 reviewer 单片预算后的 partial shard readout，验证 next shard、executor、external budget 和推荐动作同时可见。
+- `tools/check-workbench-browser-events.mjs --output <path>` 必须写出 `workbench-browser-events-run.v1` artifact；closeout 必须读取该 artifact 并校验 `projected_real_partial_shard_readout`、`run_reviewer_scope_shard` 和无横向溢出，不能只依赖 stdout。
 
 ## 5. 与工作台关系
 

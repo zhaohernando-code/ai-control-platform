@@ -2,16 +2,56 @@
 import { once } from "node:events";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { chromium } from "playwright";
 
 import { createWorkbenchServer } from "./workbench-server.mjs";
 
+const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
+const scenarioResults = [];
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function valueAfter(flag, args = process.argv.slice(2)) {
+  const index = args.indexOf(flag);
+  return index >= 0 ? args[index + 1] : null;
+}
+
+function recordScenario(result) {
+  scenarioResults.push(result);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+function writeRunArtifact(outputPath) {
+  if (!outputPath) return null;
+  const resolved = resolve(outputPath);
+  const artifact = {
+    version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
+    status: "pass",
+    created_at: new Date().toISOString(),
+    scenario_count: scenarioResults.length,
+    required_scenarios: [
+      "success",
+      "failure",
+      "provider_health_click",
+      "scheduler_dispatch_click",
+      "scheduler_dispatch_approved_mock_click",
+      "guarded_next_action_click",
+      "projected_mock_loop_click",
+      "projected_real_partial_shard_readout",
+      "autonomous_scheduler_loop_click",
+      "mobile_projection"
+    ],
+    scenarios: scenarioResults
+  };
+  mkdirSync(dirname(resolved), { recursive: true });
+  writeFileSync(resolved, `${JSON.stringify(artifact, null, 2)}\n`);
+  return resolved;
 }
 
 async function withWorkbenchServer(fn, options = {}) {
@@ -90,7 +130,7 @@ async function verifySuccessfulClick(browser) {
     assert(schedulerDispatchStatus, "desktop workbench must render scheduler dispatch status");
     assert(schedulerDispatchSteps !== null, "desktop workbench must render scheduler dispatch steps");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "success",
       event_count: ledger.events.length,
       action: ledger.events[0].action,
@@ -101,7 +141,7 @@ async function verifySuccessfulClick(browser) {
       scheduler_dispatch_status: schedulerDispatchStatus,
       scheduler_dispatch_steps: schedulerDispatchSteps,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -133,11 +173,11 @@ async function verifyFailedClickDoesNotShowSuccess(browser) {
     assert(ledger.events.length === 0, "failed click must not persist an operator event");
     assert(!buttonText.includes("已校验"), "failed click must not show validation success");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "failure",
       event_count: ledger.events.length,
       button_text: buttonText
-    }, null, 2));
+    });
   });
 }
 
@@ -163,12 +203,12 @@ async function verifyProviderHealthClick(browser) {
     assert(nextAction === "fallback_model_or_defer_external_review", "provider health click must render fallback next action");
     assert(dimensions.scrollWidth <= dimensions.width, "provider health click must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "provider_health_click",
       provider_health: providerHealth,
       next_action: nextAction,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -198,14 +238,14 @@ async function verifySchedulerDispatchClick(browser) {
     assert(schedulerPolicyMode === "dry_run", "scheduler dispatch click must render policy execution mode");
     assert(dimensions.scrollWidth <= dimensions.width, "scheduler dispatch click must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "scheduler_dispatch_click",
       scheduler_dispatch_status: schedulerDispatchStatus,
       scheduler_dispatch_steps: schedulerDispatchSteps,
       scheduler_policy_status: schedulerPolicyStatus,
       scheduler_policy_mode: schedulerPolicyMode,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -241,7 +281,7 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
     assert(schedulerContinuationReady === "ready", "approved mock dispatch must render scheduler continuation readiness");
     assert(dimensions.scrollWidth <= dimensions.width, "approved mock dispatch must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "scheduler_dispatch_approved_mock_click",
       scheduler_dispatch_status: schedulerDispatchStatus,
       scheduler_dispatch_dry_run: schedulerDispatchDryRun,
@@ -251,7 +291,7 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
       scheduler_next_packages: schedulerNextPackages,
       scheduler_continuation_ready: schedulerContinuationReady,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -281,13 +321,13 @@ async function verifyGuardedNextActionClick(browser) {
     assert(schedulerContinuationReady, "guarded next action must render a projection after execution");
     assert(dimensions.scrollWidth <= dimensions.width, "guarded next action must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "guarded_next_action_click",
       projected_action: projectedAction,
       button_text: buttonText,
       scheduler_continuation_ready: schedulerContinuationReady,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -325,7 +365,7 @@ async function verifyProjectedMockLoopClick(browser) {
     assert(nextActionReadout, "projected mock loop must render a follow-up next-action readout");
     assert(dimensions.scrollWidth <= dimensions.width, "projected mock loop must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "projected_mock_loop_click",
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_iterations: schedulerLoopIterations,
@@ -336,7 +376,7 @@ async function verifyProjectedMockLoopClick(browser) {
       shard_review_budget: shardReviewBudget,
       next_action_readout: nextActionReadout,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -376,7 +416,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
     assert(nextActionReadout === "run_reviewer_scope_shard", "projected real partial loop must recommend the next shard");
     assert(dimensions.scrollWidth <= dimensions.width, "projected real partial loop must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "projected_real_partial_shard_readout",
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_iterations: schedulerLoopIterations,
@@ -387,7 +427,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
       shard_review_budget: shardReviewBudget,
       next_action_readout: nextActionReadout,
       dimensions
-    }, null, 2));
+    });
   }, {
     realReviewerExecutor: async ({ shard }) => {
       calls.push(shard.id);
@@ -445,7 +485,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(nextActionReadout, "autonomous scheduler loop resume must render next-action readout");
     assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "autonomous_scheduler_loop_click",
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_iterations: schedulerLoopIterations,
@@ -457,7 +497,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       operation_rows: operationRows,
       next_action_readout: nextActionReadout,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -502,7 +542,7 @@ async function verifyMobileProjectionLoad(browser) {
     assert(operationRows >= 1, "mobile workbench must render operation timeline rows");
     assert(nextActionReadout, "mobile workbench must render next-action readout");
 
-    console.log(JSON.stringify({
+    recordScenario({
       scenario: "mobile_projection",
       cycle_id: cycleId,
       status,
@@ -518,7 +558,7 @@ async function verifyMobileProjectionLoad(browser) {
       operation_rows: operationRows,
       next_action_readout: nextActionReadout,
       dimensions
-    }, null, 2));
+    });
   });
 }
 
@@ -536,4 +576,15 @@ try {
   await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();
+}
+
+const outputPath = valueAfter("--output") || process.env.WORKBENCH_BROWSER_EVENTS_OUTPUT || null;
+const written = writeRunArtifact(outputPath);
+if (written) {
+  console.log(JSON.stringify({
+    status: "pass",
+    artifact_version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
+    output: written,
+    scenario_count: scenarioResults.length
+  }, null, 2));
 }
