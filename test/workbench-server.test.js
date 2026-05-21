@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -145,7 +145,61 @@ test("workbench server rejects projection history paths outside examples", async
     const body = response.json();
 
     assert.equal(response.status, 400);
-    assert.match(body.error, /input_path must stay under docs\/examples/);
+    assert.match(body.error, /input_path must stay under allowed workbench history roots/);
+  }, { historyPath });
+});
+
+test("workbench server persists workflow state snapshots and updates history", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-snapshots-"));
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+
+  await withServer(async (baseUrl) => {
+    const createResponse = await request(`${baseUrl}/api/workbench/snapshots`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "posted-snapshot",
+        label: "Posted snapshot",
+        input: workflowState,
+        created_at: "2026-05-21T09:00:00.000Z"
+      })
+    });
+    const created = createResponse.json();
+    const history = (await request(`${baseUrl}/api/workbench/projections`)).json();
+    const projection = (await request(`${baseUrl}/api/workbench/projection?id=posted-snapshot`)).json();
+    const snapshot = (await request(`${baseUrl}/api/workbench/snapshot?id=posted-snapshot`)).json();
+
+    assert.equal(createResponse.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.item.id, "posted-snapshot");
+    assert.match(created.item.input_path, /^tmp\/workbench-server-snapshots-/);
+    assert.equal(history.latest, "posted-snapshot");
+    assert.equal(projection.run_id, "run-20260521-platform-self-trial");
+    assert.equal(projection.operator_events.status, "pass");
+    assert.equal(snapshot.manifest.run_id, "run-20260521-platform-self-trial");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects unsafe workflow state snapshot ids", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/snapshots`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "../escape", input: {} })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "invalid workflow state snapshot");
+    assert.ok(rejected.issues.includes("id must be a safe snapshot id"));
   }, { historyPath });
 });
 

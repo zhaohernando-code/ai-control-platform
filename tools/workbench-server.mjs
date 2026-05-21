@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { extname, isAbsolute, normalize, resolve } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { extname, isAbsolute, normalize, relative, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
@@ -9,6 +9,7 @@ const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
 const defaultEventsPath = resolve(root, "docs/examples/operator-events.json");
 const examplesRoot = resolve(root, "docs/examples");
+const defaultSnapshotsRoot = resolve(root, "tmp/workbench-snapshots");
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -29,17 +30,21 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function historyItemPath(itemPath, field) {
+function isWithinPath(basePath, filePath) {
+  return filePath === basePath || filePath.startsWith(`${basePath}/`);
+}
+
+function historyItemPath(itemPath, field, allowedRoots = [examplesRoot, defaultSnapshotsRoot]) {
   if (!itemPath) return null;
   if (typeof itemPath !== "string" || isAbsolute(itemPath)) {
-    const error = new Error(`${field} must be a relative docs/examples path`);
+    const error = new Error(`${field} must be a relative workbench history path`);
     error.code = "INVALID_HISTORY_PATH";
     throw error;
   }
 
   const filePath = resolve(root, itemPath);
-  if (!filePath.startsWith(`${examplesRoot}/`)) {
-    const error = new Error(`${field} must stay under docs/examples`);
+  if (!allowedRoots.some((allowedRoot) => isWithinPath(allowedRoot, filePath))) {
+    const error = new Error(`${field} must stay under allowed workbench history roots`);
     error.code = "INVALID_HISTORY_PATH";
     throw error;
   }
@@ -47,7 +52,7 @@ function historyItemPath(itemPath, field) {
   return filePath;
 }
 
-function projectionById(id = null, history = readJson(historyPath)) {
+function projectionById(id = null, history = readJson(historyPath), allowedRoots = [examplesRoot, defaultSnapshotsRoot]) {
   const selectedId = id || history.latest;
   const item = history.items.find((entry) => entry.id === selectedId);
 
@@ -61,8 +66,8 @@ function projectionById(id = null, history = readJson(historyPath)) {
     history,
     item,
     projection: item.input_path
-      ? createWorkbenchProjection(readJson(historyItemPath(item.input_path, "input_path")))
-      : readJson(historyItemPath(item.projection_path, "projection_path"))
+      ? createWorkbenchProjection(readJson(historyItemPath(item.input_path, "input_path", allowedRoots)))
+      : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))
   };
 }
 
@@ -122,6 +127,44 @@ function appendEvent(eventsPath, event) {
   return nextLedger;
 }
 
+function snapshotIssues(input = {}) {
+  const issues = [];
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return ["snapshot request must be an object"];
+  }
+  if (typeof input.id !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,80}$/.test(input.id)) {
+    issues.push("id must be a safe snapshot id");
+  }
+  const workflowState = input.input || input.workflow_state || input.workflowState;
+  if (!workflowState || typeof workflowState !== "object" || Array.isArray(workflowState)) {
+    issues.push("input must be a workflow state object");
+  }
+  return issues;
+}
+
+function historyWithSnapshot(history, item) {
+  const items = Array.isArray(history.items) ? history.items.filter((entry) => entry.id !== item.id) : [];
+  return {
+    version: history.version || "projection-history.v1",
+    latest: item.id,
+    items: [item, ...items]
+  };
+}
+
+function relativeHistoryPath(filePath) {
+  return relative(root, filePath);
+}
+
+function snapshotPath(snapshotsRoot, id) {
+  const filePath = resolve(snapshotsRoot, `${id}.workbench-input.json`);
+  if (!isWithinPath(snapshotsRoot, filePath)) {
+    const error = new Error("snapshot path must stay under snapshot root");
+    error.code = "INVALID_HISTORY_PATH";
+    throw error;
+  }
+  return filePath;
+}
+
 function safeStaticPath(pathname) {
   const normalized = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
   const filePath = resolve(root, normalized.replace(/^[/\\]/, ""));
@@ -136,13 +179,15 @@ function safeStaticPath(pathname) {
 export function createWorkbenchServer(options = {}) {
   const eventsPath = options.eventsPath || defaultEventsPath;
   const serverHistoryPath = options.historyPath || historyPath;
+  const snapshotsRoot = resolve(options.snapshotsRoot || defaultSnapshotsRoot);
+  const allowedHistoryRoots = [examplesRoot, snapshotsRoot];
 
   return createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
       if (url.pathname === "/api/workbench/projection") {
-        const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath));
+        const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath), allowedHistoryRoots);
         jsonResponse(res, 200, projection);
         return;
       }
@@ -150,6 +195,51 @@ export function createWorkbenchServer(options = {}) {
       if (url.pathname === "/api/workbench/projections") {
         const history = readJson(serverHistoryPath);
         jsonResponse(res, 200, history);
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/snapshot" && req.method === "GET") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 404, { error: `snapshot input not found: ${selectedId}` });
+          return;
+        }
+        jsonResponse(res, 200, readJson(historyItemPath(item.input_path, "input_path", allowedHistoryRoots)));
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/snapshots" && req.method === "POST") {
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const issues = snapshotIssues(input);
+        if (issues.length > 0) {
+          jsonResponse(res, 400, { error: "invalid workflow state snapshot", issues });
+          return;
+        }
+        const workflowState = input.input || input.workflow_state || input.workflowState;
+        const projection = createWorkbenchProjection(workflowState);
+        mkdirSync(snapshotsRoot, { recursive: true });
+        const filePath = snapshotPath(snapshotsRoot, input.id);
+        writeFileSync(filePath, `${JSON.stringify(workflowState, null, 2)}\n`);
+        const history = readJson(serverHistoryPath);
+        const item = {
+          id: input.id,
+          label: input.label || input.id,
+          input_path: relativeHistoryPath(filePath),
+          projection_path: null,
+          created_at: input.created_at || new Date().toISOString(),
+          status: projection.status
+        };
+        writeFileSync(serverHistoryPath, `${JSON.stringify(historyWithSnapshot(history, item), null, 2)}\n`);
+        jsonResponse(res, 201, { status: "created", item, projection });
         return;
       }
 

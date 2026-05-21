@@ -188,3 +188,12 @@
 - History path 必须解析到 `docs/examples/` 目录下。
 - 非法 history path 返回 400，不读取文件。
 - 增加动态 input 优先级分歧测试，证明 server 没有回退到静态 projection。
+
+[2026-05-21T17:48:02+08:00] Autonomous runs need a snapshot publish API:
+只靠手工修改 `docs/examples` 不能满足自动化中台。完成一轮 autonomous run 后，系统需要把 manifest、artifact ledger、operator events、model plan、reviewer gate 和 DAG 等状态发布为 projection-ready workflow state snapshot。
+
+决策：
+- 新增 `POST /api/workbench/snapshots`，写入 workflow state input 并更新 projection history latest。
+- 新增 `GET /api/workbench/snapshot?id=<id>`，读取 history item 对应 input snapshot。
+- Snapshot id 必须是安全 slug，snapshot 文件写入受控 snapshot root。
+- Projection API 继续通过 history item 动态生成 projection。
