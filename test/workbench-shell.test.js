@@ -19,6 +19,8 @@ test("workbench shell has separate desktop and mobile entries", () => {
 
   assert.match(desktop, /data-view="desktop"/);
   assert.match(mobile, /data-view="mobile"/);
+  assert.match(desktop, /data-history-select/);
+  assert.match(mobile, /data-history-select/);
   assert.notEqual(desktop, mobile);
   assert.match(desktop, /desktop-app/);
   assert.match(mobile, /phone-app/);

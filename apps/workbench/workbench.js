@@ -90,9 +90,45 @@ function renderProjection(projection) {
   renderModelRoles(projection);
 }
 
-async function main() {
+function projectionUrlForHistoryItem(item) {
+  if (!item?.id) return source.url;
+  if (source.url.includes("/api/workbench/projection")) {
+    const separator = source.url.includes("?") ? "&" : "?";
+    return `${source.url}${separator}id=${encodeURIComponent(item.id)}`;
+  }
+  return item.projection_path ? `../../${item.projection_path}` : source.url;
+}
+
+async function renderHistorySelect() {
+  const selects = qsa("[data-history-select]");
+  if (selects.length === 0) return;
+
   try {
-    const projection = await source.load();
+    const history = await source.loadHistory();
+    for (const select of selects) {
+      select.replaceChildren(
+        ...history.items.map((item) => {
+          const option = document.createElement("option");
+          option.value = projectionUrlForHistoryItem(item);
+          option.textContent = `${item.label} · ${item.status}`;
+          option.selected = item.id === history.latest;
+          return option;
+        })
+      );
+      select.addEventListener("change", async () => {
+        await main(select.value);
+      });
+    }
+  } catch {
+    for (const select of selects) {
+      select.replaceChildren(new Option("Projection history unavailable", source.url));
+    }
+  }
+}
+
+async function main(url = null) {
+  try {
+    const projection = url ? await createProjectionSource({ url }).load() : await source.load();
     renderProjection(projection);
   } catch (error) {
     renderProjection({
@@ -121,4 +157,5 @@ qsa("[data-action]").forEach((button) => {
   });
 });
 
+renderHistorySelect();
 main();

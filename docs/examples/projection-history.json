@@ -9,6 +9,14 @@
       "input_path": "docs/examples/current-session-workbench-input.json",
       "created_at": "2026-05-21T08:25:00.000Z",
       "status": "rerun"
+    },
+    {
+      "id": "bootstrap",
+      "label": "Platform repository bootstrap",
+      "projection_path": "docs/examples/bootstrap-workbench-projection.json",
+      "input_path": null,
+      "created_at": "2026-05-21T07:30:00.000Z",
+      "status": "pass"
     }
   ]
 }

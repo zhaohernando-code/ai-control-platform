@@ -89,3 +89,12 @@
 - `GET /api/workbench/projections` 返回 projection history index。
 - PC/mobile 工作台可通过 `?projection=/api/workbench/projection` 切换到 API 模式。
 - 浏览器回归必须覆盖 fixture 模式和 API 模式，检查 projection 加载与横向溢出。
+
+[2026-05-21T16:53:32+08:00] Operators can inspect projection history:
+工作台不只展示 latest projection，还需要让 operator 在当前和历史自主开发周期之间切换，判断流程是否持续改善。
+
+决策：
+- `docs/examples/projection-history.json` 是当前 projection history index。
+- `workbench-server` 支持按 `id` 读取历史 projection。
+- PC/mobile 都提供 `data-history-select`，切换后重新读取对应 projection。
+- 浏览器回归必须验证从 current `rerun` 切换到 bootstrap `pass`。

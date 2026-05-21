@@ -45,6 +45,18 @@ button {
   font-size: 13px;
 }
 
+select {
+  height: 32px;
+  min-width: 156px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: #263449;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+}
+
 .primary {
   background: var(--blue);
   border-color: var(--blue);
@@ -405,6 +417,10 @@ h2 {
   gap: 8px;
   border: 0;
   background: transparent;
+}
+
+.mobile-select {
+  width: 100%;
 }
 
 .mobile-tabbar {

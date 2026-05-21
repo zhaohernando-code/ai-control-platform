@@ -58,7 +58,18 @@ test("workbench server returns projection history index", async () => {
     assert.equal(response.status, 200);
     assert.equal(history.version, "projection-history.v1");
     assert.equal(history.latest, "current-session");
-    assert.equal(history.items.length, 1);
+    assert.equal(history.items.length, 2);
+  });
+});
+
+test("workbench server returns selected historical projection", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/projection?id=bootstrap`);
+    const projection = response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(projection.run_id, "run-20260521-platform-bootstrap");
+    assert.equal(projection.status, "pass");
   });
 });
 

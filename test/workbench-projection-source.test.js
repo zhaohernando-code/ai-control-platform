@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   createProjectionSource,
+  DEFAULT_HISTORY_URL,
   DEFAULT_PROJECTION_URL,
+  historyUrlFromLocation,
   isSafeProjectionUrl,
   projectionUrlFromLocation,
   validateProjectionShape
@@ -23,8 +25,10 @@ function validProjection(overrides = {}) {
 
 test("projection source uses default fixture without query param", () => {
   const url = projectionUrlFromLocation({ search: "" });
+  const historyUrl = historyUrlFromLocation({ search: "" });
 
   assert.equal(url, DEFAULT_PROJECTION_URL);
+  assert.equal(historyUrl, DEFAULT_HISTORY_URL);
 });
 
 test("projection source accepts safe service and relative URLs", () => {
@@ -52,6 +56,28 @@ test("projection source can load from injected fetch", async () => {
 
   assert.equal(source.url, "/api/workbench/projection");
   assert.equal(projection.status, "pass");
+});
+
+test("projection source can load projection history", async () => {
+  const source = createProjectionSource({
+    url: "/api/workbench/projection",
+    historyUrl: "/api/workbench/projections",
+    fetch: async (url) => ({
+      ok: true,
+      url,
+      async json() {
+        return url.includes("projections")
+          ? { version: "projection-history.v1", latest: "current", items: [{ id: "current" }] }
+          : validProjection();
+      }
+    })
+  });
+
+  const history = await source.loadHistory();
+
+  assert.equal(source.historyUrl, "/api/workbench/projections");
+  assert.equal(history.latest, "current");
+  assert.equal(history.items.length, 1);
 });
 
 test("projection source rejects malformed projection", async () => {

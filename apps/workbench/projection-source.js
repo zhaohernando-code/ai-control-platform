@@ -1,4 +1,5 @@
 const DEFAULT_PROJECTION_URL = "../../docs/examples/current-session-workbench-projection.json";
+const DEFAULT_HISTORY_URL = "../../docs/examples/projection-history.json";
 
 function isSafeProjectionUrl(value) {
   if (!value) return false;
@@ -12,6 +13,12 @@ function projectionUrlFromLocation(locationLike = globalThis.location) {
   const params = new URLSearchParams(locationLike?.search || "");
   const requested = params.get("projection");
   return isSafeProjectionUrl(requested) ? requested : DEFAULT_PROJECTION_URL;
+}
+
+function historyUrlFromLocation(locationLike = globalThis.location) {
+  const params = new URLSearchParams(locationLike?.search || "");
+  const requested = params.get("history");
+  return isSafeProjectionUrl(requested) ? requested : DEFAULT_HISTORY_URL;
 }
 
 function validateProjectionShape(projection) {
@@ -36,10 +43,12 @@ function validateProjectionShape(projection) {
 
 export function createProjectionSource(options = {}) {
   const url = options.url || projectionUrlFromLocation(options.location);
+  const historyUrl = options.historyUrl || historyUrlFromLocation(options.location);
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
     url,
+    historyUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -59,8 +68,25 @@ export function createProjectionSource(options = {}) {
       }
 
       return projection;
+    },
+    async loadHistory() {
+      if (!fetchImpl) {
+        throw new Error("fetch is not available for projection source");
+      }
+
+      const response = await fetchImpl(historyUrl, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Projection history fetch failed: ${response.status}`);
+      }
+
+      const history = await response.json();
+      if (!history || !Array.isArray(history.items)) {
+        throw new Error("Projection history shape validation failed");
+      }
+
+      return history;
     }
   };
 }
 
-export { DEFAULT_PROJECTION_URL, isSafeProjectionUrl, projectionUrlFromLocation, validateProjectionShape };
+export { DEFAULT_HISTORY_URL, DEFAULT_PROJECTION_URL, historyUrlFromLocation, isSafeProjectionUrl, projectionUrlFromLocation, validateProjectionShape };
