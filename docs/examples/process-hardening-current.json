@@ -15,6 +15,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Operator events without action, run_id, or cycle_id cannot be reliably ingested into run manifest or artifact ledger."
+    },
+    {
+      "id": "operator-ingestion-partial-apply",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Workflow state ingestion must not return a failed result with partially applied manifest events or artifact entries."
     }
   ],
   "hardening_items": [
@@ -32,6 +39,14 @@
       "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js",
       "regression_test": "workbench server rejects operator events without ownership fields",
       "verification": "npm test; npm run check:workbench:browser-events",
+      "status": "completed"
+    },
+    {
+      "finding_id": "operator-ingestion-partial-apply",
+      "invariant": "Operator event workflow-state application must be atomic: if manifest and artifact ledger targets disagree, neither side is mutated.",
+      "enforcement_target": "src/workflow/operator-events.js; test/operator-events.test.js",
+      "regression_test": "workflow state apply fails closed before partial mutation on manifest and ledger mismatch",
+      "verification": "node --test test/operator-events.test.js test/run-manifest.test.js test/artifact-ledger.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

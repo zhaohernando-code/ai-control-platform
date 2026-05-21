@@ -135,3 +135,21 @@
 - 新增 `tools/check-closeout.mjs`，避免 closeout 依赖外部 npm CLI 路径。
 - `npm run check:workbench:browser-events` 和 `npm run check:closeout` 都通过 runtime wrapper 执行。
 - 当前环境下普通 `npm run check:closeout` 已可自动切到 Codex bundled Node 24 并通过。
+
+[2026-05-21T17:24:45+08:00] Operator events must be ingested into manifest and ledger:
+工作台事件账本本身仍是旁路数据；只有进入 Run Manifest events 和 Artifact Ledger artifacts 后，operator action 才能被 autonomous run、projection 和后续恢复逻辑消费。
+
+决策：
+- 新增 `src/workflow/operator-events.js`，负责校验 `operator-events.v1` ledger，并转换为 manifest events / ledger artifacts。
+- Operator event 必须具备 `action`、`run_id`、`cycle_id`，目标 run/cycle 已知时必须匹配。
+- 摄入到 manifest 和 artifact ledger 必须幂等，重复事件进入 skipped 列表，不能重复计数。
+- 默认 operator artifact 类型为 `evaluation`，不扩展 Artifact Ledger 类型集，保持现有 ledger gate 约束。
+
+[2026-05-21T17:29:26+08:00] Workflow-state ingestion must be atomic:
+隔离 reviewer 发现 operator event workflow-state apply 可能返回失败结果但已经改写 manifest events。这类半写入状态会让中台在错误状态下继续运行，必须作为流程不变量固定。
+
+决策：
+- `applyOperatorEventsToWorkflowState` 必须先校验 manifest 与 artifact ledger 的 run/cycle 一致性。
+- preflight 不通过时，不能调用 manifest apply 或 artifact ledger apply。
+- 失败结果必须返回原 manifest 和原 artifact ledger，并且 applied lists 必须为空。
+- 该约束已进入 `process-hardening-current.json`。

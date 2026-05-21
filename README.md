@@ -63,6 +63,8 @@ node tools/workbench-server.mjs 4180
 - `GET /api/workbench/events`
 - `POST /api/workbench/events`
 
+Operator events 可以通过 `src/workflow/operator-events.js` 摄入为 Run Manifest events 和 Artifact Ledger artifacts，避免工作台操作停留在 UI 临时状态。
+
 ## 迁移区
 
 - `docs/migrations/` 保存当前会话迁入的新中台历史材料和 Trial 证据。
