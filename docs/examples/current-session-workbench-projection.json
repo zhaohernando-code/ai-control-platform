@@ -22,16 +22,26 @@
     "status": "pass",
     "issues": [],
     "work_package_count": 3,
-    "event_count": 2
+    "event_count": 3
+  },
+  "operator_events": {
+    "status": "pass",
+    "event_count": 1,
+    "applied_run_events": 1,
+    "applied_artifacts": 1,
+    "skipped_run_events": 0,
+    "skipped_artifacts": 0,
+    "issues": []
   },
   "artifacts": {
-    "total": 2,
+    "total": 3,
     "by_type": {
       "test": 1,
-      "review": 1
+      "review": 1,
+      "evaluation": 1
     },
     "by_status": {
-      "pass": 1,
+      "pass": 2,
       "fail": 1
     }
   },
@@ -81,8 +91,8 @@
         "unknown": 0
       },
       "artifacts": {
-        "total": 2,
-        "passed": 1,
+        "total": 3,
+        "passed": 2,
         "failed": 1,
         "unknown": 0
       },
@@ -158,7 +168,7 @@
     ],
     "counters": {
       "work_packages": 3,
-      "artifacts": 2,
+      "artifacts": 3,
       "reviewer_findings": 1,
       "dispatchable_tasks": 0
     }

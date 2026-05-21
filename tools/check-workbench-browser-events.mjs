@@ -104,10 +104,39 @@ async function verifyFailedClickDoesNotShowSuccess(browser) {
   });
 }
 
+async function verifyMobileProjectionLoad(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/mobile.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.waitForFunction(() => document.querySelector('[data-bind="cycle_id"]')?.textContent.includes("cycle-"));
+
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    const cycleId = await page.textContent('[data-bind="cycle_id"]');
+    const status = await page.textContent('[data-bind="status"]');
+    await page.close();
+
+    assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
+
+    console.log(JSON.stringify({
+      scenario: "mobile_projection",
+      cycle_id: cycleId,
+      status,
+      dimensions
+    }, null, 2));
+  });
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   await verifySuccessfulClick(browser);
   await verifyFailedClickDoesNotShowSuccess(browser);
+  await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();
 }

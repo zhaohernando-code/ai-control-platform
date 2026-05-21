@@ -3,6 +3,7 @@ import { summarizeArtifactLedger } from "./artifact-ledger.js";
 import { buildRunResultFromManifest, validateRunManifest } from "./run-manifest.js";
 import { summarizeReviewerGate } from "./llm-reviewer-gate.js";
 import { summarizeModelRouting } from "./model-router.js";
+import { applyOperatorEventsToWorkflowState } from "./operator-events.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 
 function asArray(value) {
@@ -65,6 +66,30 @@ function summarizeManifest(manifest) {
   };
 }
 
+function summarizeOperatorEvents(application = null, ledger = null) {
+  if (!ledger) {
+    return {
+      status: "not_configured",
+      event_count: 0,
+      applied_run_events: 0,
+      applied_artifacts: 0,
+      skipped_run_events: 0,
+      skipped_artifacts: 0,
+      issues: []
+    };
+  }
+
+  return {
+    status: application?.status || "fail",
+    event_count: asArray(ledger?.events).length,
+    applied_run_events: asArray(application?.applied_run_events).length,
+    applied_artifacts: asArray(application?.applied_artifacts).length,
+    skipped_run_events: asArray(application?.skipped_run_event_ids).length,
+    skipped_artifacts: asArray(application?.skipped_artifact_ids).length,
+    issues: application?.issues || []
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -95,21 +120,43 @@ export function validateWorkbenchProjectionInput(input = {}) {
 
 export function createWorkbenchProjection(input = {}) {
   const inputValidation = validateWorkbenchProjectionInput(input);
-  const manifest = input.manifest || null;
-  const artifactLedger = input.artifact_ledger || input.artifactLedger || {};
+  const operatorEventLedger = input.operator_event_ledger || input.operatorEventLedger || null;
+  const baseManifest = input.manifest || null;
+  const baseArtifactLedger = input.artifact_ledger || input.artifactLedger || {};
+  const operatorApplication = operatorEventLedger
+    ? applyOperatorEventsToWorkflowState({
+      manifest: baseManifest,
+      artifact_ledger: baseArtifactLedger,
+      operator_event_ledger: operatorEventLedger
+    })
+    : null;
+  const manifest = operatorApplication?.status === "pass" ? operatorApplication.manifest : baseManifest;
+  const artifactLedger = operatorApplication?.status === "pass" ? operatorApplication.artifact_ledger : baseArtifactLedger;
   const modelPlan = input.model_plan || input.modelPlan || {};
   const reviewerGate = input.reviewer_gate || input.reviewerGate || {};
   const dagInput = input.task_dag || input.taskDag || manifest?.work_packages || [];
-  const runResult = input.run_result || input.runResult || (manifest ? buildRunResultFromManifest(manifest) : {});
-  const runEvaluation = input.run_evaluation || input.runEvaluation || evaluateRunResult(runResult);
+  const manifestRunResult = manifest ? buildRunResultFromManifest(manifest) : {};
+  const derivedRunResult = {
+    ...manifestRunResult,
+    artifacts: asArray(artifactLedger?.artifacts).map((artifact) => ({
+      id: artifact.id,
+      status: artifact.status,
+      type: artifact.type,
+      producer: artifact.producer
+    }))
+  };
+  const runResult = operatorEventLedger ? derivedRunResult : (input.run_result || input.runResult || derivedRunResult);
+  const runEvaluation = operatorEventLedger ? evaluateRunResult(runResult) : (input.run_evaluation || input.runEvaluation || evaluateRunResult(runResult));
   const manifestSummary = manifest ? summarizeManifest(manifest) : { status: "fail", issues: [] };
   const artifactSummary = summarizeArtifactLedger(artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
+  const operatorEventSummary = summarizeOperatorEvents(operatorApplication, operatorEventLedger);
   const status = maxStatus([
     inputValidation.status === "pass" ? "pass" : "human_intervention",
     manifestSummary.status === "pass" ? "pass" : "human_intervention",
+    operatorEventSummary.status === "fail" ? "human_intervention" : "pass",
     runEvaluation.status,
     reviewerSummary.recommended_decision_signal || reviewerSummary.status,
     dagSummary.status === "pass" ? "pass" : "human_intervention"
@@ -127,6 +174,7 @@ export function createWorkbenchProjection(input = {}) {
     blockers: runEvaluation.projection?.blockers || [],
     input_validation: inputValidation,
     manifest: manifestSummary,
+    operator_events: operatorEventSummary,
     artifacts: artifactSummary,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,

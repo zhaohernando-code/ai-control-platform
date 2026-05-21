@@ -153,3 +153,21 @@
 - preflight 不通过时，不能调用 manifest apply 或 artifact ledger apply。
 - 失败结果必须返回原 manifest 和原 artifact ledger，并且 applied lists 必须为空。
 - 该约束已进入 `process-hardening-current.json`。
+
+[2026-05-21T17:34:24+08:00] Projection generation must apply operator event ingestion first:
+工作台 projection 不能只展示原始 manifest 和 artifact ledger；如果 input 中存在 `operator_event_ledger`，必须先把它原子摄入 workflow state，再计算 manifest event count、artifact counters 和 autonomous_run artifact summary。
+
+决策：
+- `createWorkbenchProjection` 在汇总前调用 `applyOperatorEventsToWorkflowState`。
+- 失败的 operator ingestion 会把 projection 状态提升为 `human_intervention`，且不使用半写入状态。
+- 当前会话 projection fixture 已加入 operator event ledger，artifact counter 从 2 变为 3，manifest event count 从 2 变为 3。
+- `check:workbench:browser-events` 增加 mobile projection 渲染与无横向溢出验证。
+
+[2026-05-21T17:38:50+08:00] Operator-event projection must ignore stale run summaries:
+隔离 reviewer 发现：如果调用者传入旧 `run_result` 或 `run_evaluation`，projection 的 artifacts counter 可能已经包含 operator artifact，但 autonomous_run summary 仍使用旧数据。存在 operator event ledger 时，projection 必须以摄入后的 workflow state 为唯一事实源。
+
+决策：
+- 当 `operator_event_ledger` 存在时，`createWorkbenchProjection` 忽略外部 `run_result` / `run_evaluation`。
+- autonomous_run 必须从摄入后的 manifest 和 artifact ledger 重新计算。
+- 没有 operator events 时，仍允许使用显式 run evaluation。
+- 该约束已进入 process-hardening gate。
