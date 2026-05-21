@@ -82,6 +82,15 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 `tools/run-autonomous-closeout-loop.mjs --output <path>` 会写出 `autonomous-closeout-loop-run.v1` envelope，包含原始 input 和结构化 result。该文件是后续重放、审计和工作台问题定位的 durable artifact。
 
+在任何调度器、恢复器或后续会话复用该 artifact 之前，必须先通过 `tools/check-autonomous-closeout-loop-run.mjs <path>`。该 gate 校验：
+
+- artifact version、`run_id`、`cycle_id`、`phase`、`created_at` 和宿主项目身份。
+- 原始 input 必须仍是 `ai-control-platform` workflow state。
+- artifact 顶层 `status/phase` 必须与 `result.status/result.phase` 一致。
+- pass artifact 必须包含 created closeout、created evidence snapshot、通过 schema 的 workbench projection、`projection.closeout.status=pass` 和继续状态的 `next_decision.snapshot_publish_plan`。
+
+校验失败时必须 fail closed，不能把损坏、串线或半完成的 orchestration output 当作下一轮 Context Pack 输入。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。
