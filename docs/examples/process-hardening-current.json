@@ -43,6 +43,48 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Snapshot ids must remain strings so history latest and URL lookup use the same identity type."
+    },
+    {
+      "id": "snapshot-publish-invalid-projection",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Snapshot publishers must not update projection history when workflow_state cannot produce a projection-ready workbench state."
+    },
+    {
+      "id": "closeout-runner-root-drift",
+      "status": "fail",
+      "category": "host_boundary",
+      "severity": "p1",
+      "message": "Local closeout runners must refuse to publish snapshots when invoked from a managed project or any non-platform repository root."
+    },
+    {
+      "id": "continuation-nonready-snapshot-plan",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Autonomous continuation must not emit executable snapshot publish plans for workflow_state that cannot pass snapshot publish readiness checks."
+    },
+    {
+      "id": "closeout-output-path-escape",
+      "status": "fail",
+      "category": "host_boundary",
+      "severity": "p1",
+      "message": "Local closeout runner output paths must stay under the platform repository even when root validation passes."
+    },
+    {
+      "id": "closeout-http-false-success",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "HTTP closeout runner must not treat arbitrary 2xx responses as successful snapshot publication."
+    },
+    {
+      "id": "closeout-http-projection-drift",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "HTTP closeout runner must not accept a snapshot API response whose projection does not validate or does not match the submitted workflow state."
     }
   ],
   "hardening_items": [
@@ -92,6 +134,54 @@
       "enforcement_target": "src/workflow/workbench-snapshots.js; test/workbench-snapshots.test.js; test/workbench-server.test.js",
       "regression_test": "snapshot request validation rejects unsafe ids; workbench server rejects non-string workflow state snapshot ids",
       "verification": "node --test test/workbench-snapshots.test.js test/workbench-server.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "snapshot-publish-invalid-projection",
+      "invariant": "Workbench snapshot publish cannot write snapshot input or update projection history unless the generated projection passes schema, input, manifest, and operator-event readiness checks.",
+      "enforcement_target": "src/workflow/workbench-snapshots.js; tools/workbench-server.mjs; test/workbench-snapshots.test.js; test/workbench-server.test.js; test/closeout-runner.test.js",
+      "regression_test": "publishWorkbenchSnapshot rejects workflow state that is not projection-ready; workbench server rejects workflow state snapshots that are not projection-ready",
+      "verification": "node --test test/closeout-runner.test.js test/workbench-snapshots.test.js test/workbench-server.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-runner-root-drift",
+      "invariant": "Local closeout publishing must validate that the execution root is the ai-control-platform platform repo before defaulting history or snapshot paths.",
+      "enforcement_target": "src/workflow/closeout-runner.js; test/closeout-runner.test.js",
+      "regression_test": "runCloseoutPlan refuses local publishing outside the platform repo",
+      "verification": "node --test test/closeout-runner.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "continuation-nonready-snapshot-plan",
+      "invariant": "Autonomous continuation may only emit snapshot_publish_plan when the plan and generated projection pass the same readiness checks used by the publisher.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; test/autonomous-continuation.test.js",
+      "regression_test": "continuation does not emit a snapshot publish plan when workflow state is not projection-ready",
+      "verification": "node --test test/autonomous-continuation.test.js test/workbench-snapshots.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-output-path-escape",
+      "invariant": "Local closeout runner history and snapshot output paths must resolve under the ai-control-platform repository root.",
+      "enforcement_target": "src/workflow/closeout-runner.js; test/closeout-runner.test.js",
+      "regression_test": "runCloseoutPlan refuses output paths outside the platform repo",
+      "verification": "node --test test/closeout-runner.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-http-false-success",
+      "invariant": "HTTP closeout runner can only report success when the snapshot API returns created status, matching item id, and projection body.",
+      "enforcement_target": "src/workflow/closeout-runner.js; test/closeout-runner.test.js",
+      "regression_test": "executeSnapshotPublishPlan rejects malformed successful http responses",
+      "verification": "node --test test/closeout-runner.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-http-projection-drift",
+      "invariant": "HTTP closeout runner must validate response projection schema and match run identity/status against the projection generated from the submitted workflow state.",
+      "enforcement_target": "src/workflow/closeout-runner.js; test/closeout-runner.test.js",
+      "regression_test": "executeSnapshotPublishPlan rejects http projections that do not match submitted state",
+      "verification": "node --test test/closeout-runner.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

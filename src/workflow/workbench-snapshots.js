@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 
 import { createWorkbenchProjection } from "./workbench-projection.js";
+import { validateWorkbenchProjectionSchema } from "./workbench-projection-schema.js";
 
 function normalizeString(value) {
   return String(value || "").trim();
@@ -53,6 +54,24 @@ function snapshotPath(snapshotsRoot, id) {
   return filePath;
 }
 
+function projectionPublishIssues(projection) {
+  const schemaValidation = validateWorkbenchProjectionSchema(projection);
+  const issues = [];
+  if (schemaValidation.status !== "pass") {
+    issues.push(...schemaValidation.issues.map((item) => `projection schema invalid: ${item.message}`));
+  }
+  if (projection?.input_validation?.status !== "pass") {
+    issues.push("projection input validation must pass before snapshot publish");
+  }
+  if (projection?.manifest?.status !== "pass") {
+    issues.push("projection manifest validation must pass before snapshot publish");
+  }
+  if (projection?.operator_events?.status !== "pass") {
+    issues.push("operator events must apply before snapshot publish");
+  }
+  return issues;
+}
+
 export function publishWorkbenchSnapshot(input = {}, options = {}) {
   const issues = snapshotIssues(input);
   if (issues.length > 0) {
@@ -69,11 +88,22 @@ export function publishWorkbenchSnapshot(input = {}, options = {}) {
   const snapshotsRoot = resolve(options.snapshotsRoot);
   const workflowState = input.input || input.workflow_state || input.workflowState;
   const projection = createWorkbenchProjection(workflowState);
-  const filePath = snapshotPath(snapshotsRoot, input.id);
+  const id = input.id.trim();
+  const publishIssues = projectionPublishIssues(projection);
+  if (publishIssues.length > 0) {
+    return {
+      status: "fail",
+      issues: publishIssues,
+      item: null,
+      projection
+    };
+  }
+
+  const filePath = snapshotPath(snapshotsRoot, id);
   const history = readJson(historyPath);
   const item = {
-    id: input.id,
-    label: input.label || input.id,
+    id,
+    label: input.label || id,
     input_path: relative(root, filePath),
     projection_path: null,
     created_at: input.created_at || new Date().toISOString(),
@@ -95,4 +125,4 @@ export function publishWorkbenchSnapshot(input = {}, options = {}) {
   };
 }
 
-export { historyWithSnapshot, safeSnapshotId, snapshotIssues, snapshotPath };
+export { historyWithSnapshot, projectionPublishIssues, safeSnapshotId, snapshotIssues, snapshotPath };

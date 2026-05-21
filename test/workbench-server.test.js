@@ -222,6 +222,59 @@ test("workbench server rejects non-string workflow state snapshot ids", async ()
   }, { historyPath });
 });
 
+test("workbench server rejects workflow state snapshots that are not projection-ready", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/snapshots`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "not-ready",
+        input: {
+          manifest: { run_id: "not-ready", cycle_id: "cycle-not-ready" },
+          artifact_ledger: { artifacts: [] }
+        }
+      })
+    });
+    const rejected = response.json();
+    const history = (await request(`${baseUrl}/api/workbench/projections`)).json();
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "workflow state snapshot publish failed");
+    assert.ok(rejected.issues.includes("projection input validation must pass before snapshot publish"));
+    assert.equal(history.latest, null);
+  }, { historyPath });
+});
+
+test("workbench server rejects workflow state snapshots without operator event facts", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  delete workflowState.operator_event_ledger;
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/snapshots`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "missing-operator-events",
+        input: workflowState
+      })
+    });
+    const rejected = response.json();
+    const history = (await request(`${baseUrl}/api/workbench/projections`)).json();
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "workflow state snapshot publish failed");
+    assert.ok(rejected.issues.includes("operator events must apply before snapshot publish"));
+    assert.equal(history.latest, null);
+  }, { historyPath });
+});
+
 test("workbench server serves desktop app shell", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/apps/workbench/desktop.html`);

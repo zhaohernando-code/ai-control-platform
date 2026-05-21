@@ -205,3 +205,45 @@
 - `decideContinuation` 在非 `stop_for_human` 且存在 `workflow_state` 时输出 `snapshot_publish_plan`。
 - publish plan 固定指向 `/api/workbench/snapshots`，携带 snapshot id、label 和 workflow state input。
 - 新增 `workbench-snapshots` 模块，server API 和本地 closeout 都复用同一套 snapshot 发布逻辑。
+
+[2026-05-21T18:05:43+08:00] Closeout publish plans need an executable runner:
+如果 `snapshot_publish_plan` 只停留在 decision JSON，系统仍会在“需要人工执行下一步”处停住。closeout 必须有可由调度器调用的 runner，把计划转换成工作台可检索状态。
+
+决策：
+- 新增 `closeout-runner` 模块，支持从 continuation decision 或 raw plan 提取并执行 `snapshot_publish_plan`。
+- local 模式复用 `publishWorkbenchSnapshot`；http 模式 POST 到工作台 snapshot API。
+- 缺少 publish plan 时 fail closed，防止 autonomous closeout 假成功。
+
+[2026-05-21T18:07:12+08:00] Snapshot publishing must reject non-ready projections:
+runner smoke 暴露出一个假成功路径：不完整 workflow state 也能被写入 snapshot 并更新 projection history。工作台 latest 一旦指向不可渲染或缺关键事实的状态，后续流程会在错误事实上继续。
+
+决策：
+- `publishWorkbenchSnapshot` 在写盘前必须生成 projection 并校验 schema、input_validation、manifest 和 operator events。
+- 发布失败不得写 snapshot，也不得更新 projection history。
+- Workbench server 对发布失败返回 400，而不是 201。
+- 该问题进入 process-hardening gate，后续同类假成功必须先固化门禁再修实现。
+
+[2026-05-21T18:15:56+08:00] Closeout runner and continuation must share publish readiness:
+只在 publisher 层 fail closed 还不够。子进程审查发现：runner 可以从错误 cwd 发布，continuation 可以为不可发布状态生成 plan，operator events 缺失也可能被当成可发布状态。这些都会让自动流程继续在错误事实或错误宿主上运行。
+
+决策：
+- local closeout runner 必须验证 root 是 `ai-control-platform` 平台仓。
+- `publishWorkbenchSnapshot` 要求 operator events 状态为 `pass`，`not_configured` 不能发布为 latest。
+- `decideContinuation` 生成 `snapshot_publish_plan` 前复用 snapshot publish readiness；不可发布时返回 `snapshot_publish_issues`。
+- 未知 closeout runner mode 必须失败，不能静默回落到 local。
+
+[2026-05-21T18:21:17+08:00] Closeout outputs and HTTP acknowledgements must be bounded:
+第二轮复审发现 root 校验仍不足以防止显式输出路径越界，HTTP closeout 也可能把错误服务的空 2xx 响应当成成功。自动流程的“发布完成”必须来自受控路径和结构化 API ack。
+
+决策：
+- local closeout 的 history path 与 snapshots root 必须都在平台仓内。
+- HTTP closeout 只有在响应包含 `status=created`、匹配 plan id 的 item 和 projection 对象时才算成功。
+- snapshot id 写入 history 和文件名前统一使用 trim 后的安全 id。
+
+[2026-05-21T18:25:10+08:00] HTTP closeout projection acknowledgements must match submitted state:
+第三轮复审发现：即使 HTTP ack 包含 projection 对象，也可能是错误 run 的 projection。closeout 成功必须绑定到本次提交的 workflow state，而不是信任远端任意对象。
+
+决策：
+- HTTP closeout 对返回 projection 运行 workbench projection schema 校验。
+- HTTP closeout 本地用 plan input 生成 expected projection，并比对 run_id、cycle_id 和 status。
+- HTTP item id 与 plan id 比对时使用 trim 后的规范 id，避免 server 规范化后误判。

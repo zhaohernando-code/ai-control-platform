@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -17,6 +18,10 @@ function projectStatus(overrides = {}) {
     next_step: "Start the PC/mobile workbench frontend shell against validated projection JSON.",
     ...overrides
   };
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
 }
 
 test("continues when a completed run has a durable next step and no blockers", () => {
@@ -113,7 +118,25 @@ test("stops when continuation points at the wrong host", () => {
   assert.ok(decision.validation.issues.some((issue) => issue.code === "project_mismatch"));
 });
 
-test("continuation emits a workbench snapshot publish plan when workflow state is available", () => {
+test("continuation emits a workbench snapshot publish plan when workflow state is projection-ready", () => {
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "Continue after publishing the latest workflow state."
+    }),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  });
+
+  assert.equal(decision.should_continue, true);
+  assert.equal(decision.snapshot_publish_plan.action, "publish_workbench_snapshot");
+  assert.equal(decision.snapshot_publish_plan.endpoint, "/api/workbench/snapshots");
+  assert.equal(decision.snapshot_publish_plan.id, "run-20260521-platform-self-trial");
+  assert.equal(decision.snapshot_publish_plan.input, workflowState);
+  assert.deepEqual(decision.snapshot_publish_issues, []);
+});
+
+test("continuation does not emit a snapshot publish plan when workflow state is not projection-ready", () => {
   const workflowState = {
     manifest: {
       run_id: "run-closeout",
@@ -132,8 +155,22 @@ test("continuation emits a workbench snapshot publish plan when workflow state i
   });
 
   assert.equal(decision.should_continue, true);
-  assert.equal(decision.snapshot_publish_plan.action, "publish_workbench_snapshot");
-  assert.equal(decision.snapshot_publish_plan.endpoint, "/api/workbench/snapshots");
-  assert.equal(decision.snapshot_publish_plan.id, "run-closeout");
-  assert.equal(decision.snapshot_publish_plan.input, workflowState);
+  assert.equal(decision.snapshot_publish_plan, null);
+  assert.ok(decision.snapshot_publish_issues.includes("projection input validation must pass before snapshot publish"));
+});
+
+test("continuation does not emit a snapshot publish plan without operator event facts", () => {
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+  delete workflowState.operator_event_ledger;
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "Continue after publishing the latest workflow state."
+    }),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  });
+
+  assert.equal(decision.should_continue, true);
+  assert.equal(decision.snapshot_publish_plan, null);
+  assert.ok(decision.snapshot_publish_issues.includes("operator events must apply before snapshot publish"));
 });

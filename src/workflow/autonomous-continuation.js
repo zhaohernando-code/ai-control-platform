@@ -1,3 +1,6 @@
+import { projectionPublishIssues, snapshotIssues } from "./workbench-snapshots.js";
+import { createWorkbenchProjection } from "./workbench-projection.js";
+
 const CONTINUE = "continue";
 const RERUN = "rerun";
 const ROLLBACK = "rollback";
@@ -143,15 +146,25 @@ function workflowStateFrom(input) {
 
 function createSnapshotPublishPlan(input) {
   const workflowState = workflowStateFrom(input);
-  if (!workflowState) return null;
+  if (!workflowState) return { plan: null, issues: [] };
 
-  return {
+  const plan = {
     action: "publish_workbench_snapshot",
     endpoint: "/api/workbench/snapshots",
     id: snapshotIdFrom({ ...input, ...workflowState }),
     label: normalizeString(input?.snapshot_label || input?.snapshotLabel) || "Autonomous run closeout snapshot",
     input: workflowState
   };
+  const issues = [
+    ...snapshotIssues(plan),
+    ...projectionPublishIssues(createWorkbenchProjection(workflowState))
+  ];
+
+  if (issues.length > 0) {
+    return { plan: null, issues };
+  }
+
+  return { plan, issues: [] };
 }
 
 export function validateContinuationInput(input = {}) {
@@ -194,6 +207,7 @@ export function decideContinuation(input = {}) {
   } else if (nextStep) {
     action = CONTINUE;
   }
+  const snapshotPlan = action === STOP_FOR_HUMAN ? { plan: null, issues: [] } : createSnapshotPublishPlan(input);
 
   return {
     status: validation.status === "pass" ? "pass" : "fail",
@@ -204,7 +218,8 @@ export function decideContinuation(input = {}) {
     next_step: nextStep || null,
     next_work_packages: nextWorkPackages,
     context_pack_seed: action === STOP_FOR_HUMAN ? null : createContextPackSeed(input, action),
-    snapshot_publish_plan: action === STOP_FOR_HUMAN ? null : createSnapshotPublishPlan(input),
+    snapshot_publish_plan: snapshotPlan.plan,
+    snapshot_publish_issues: snapshotPlan.issues,
     validation
   };
 }

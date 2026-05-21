@@ -192,6 +192,10 @@ export function createWorkbenchServer(options = {}) {
           historyPath: serverHistoryPath,
           snapshotsRoot
         });
+        if (result.status === "fail") {
+          jsonResponse(res, 400, { error: "workflow state snapshot publish failed", issues: result.issues });
+          return;
+        }
         jsonResponse(res, 201, { status: result.status, item: result.item, projection: result.projection });
         return;
       }
