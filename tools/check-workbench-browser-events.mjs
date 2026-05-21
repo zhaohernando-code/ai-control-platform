@@ -49,6 +49,7 @@ async function verifySuccessfulClick(browser) {
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
     }));
+    const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     await page.close();
 
     const ledger = readLedger(eventsPath);
@@ -57,12 +58,14 @@ async function verifySuccessfulClick(browser) {
     assert(ledger.events[0].run_id, "successful click must persist run_id");
     assert(ledger.events[0].cycle_id, "successful click must persist cycle_id");
     assert(dimensions.scrollWidth <= dimensions.width, "desktop workbench must not overflow horizontally");
+    assert(closeoutStatus, "desktop workbench must render closeout status");
 
     console.log(JSON.stringify({
       scenario: "success",
       event_count: ledger.events.length,
       action: ledger.events[0].action,
       run_id: ledger.events[0].run_id,
+      closeout_status: closeoutStatus,
       dimensions
     }, null, 2));
   });
@@ -119,14 +122,17 @@ async function verifyMobileProjectionLoad(browser) {
     }));
     const cycleId = await page.textContent('[data-bind="cycle_id"]');
     const status = await page.textContent('[data-bind="status"]');
+    const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
+    assert(closeoutStatus, "mobile workbench must render closeout status");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
       cycle_id: cycleId,
       status,
+      closeout_status: closeoutStatus,
       dimensions
     }, null, 2));
   });

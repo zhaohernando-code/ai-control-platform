@@ -66,6 +66,7 @@ function renderProjection(projection) {
   const counters = projection.one_screen?.counters || projection.counters || {};
   const reviewer = projection.reviewer_gate || projection.reviewer || {};
   const model = projection.model_routing || projection.model || {};
+  const closeout = projection.closeout || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -86,6 +87,10 @@ function renderProjection(projection) {
   setText("counter_artifacts", counters.artifacts ?? 0);
   setText("counter_reviewer_findings", counters.reviewer_findings ?? 0);
   setText("counter_dispatchable_tasks", counters.dispatchable_tasks ?? 0);
+  setText("closeout_status", closeout.status);
+  setText("closeout_publish_status", closeout.publish_status);
+  setText("closeout_snapshot", closeout.snapshot_id);
+  setText("closeout_artifact", closeout.artifact_id || closeout.path || closeout.uri);
 
   renderNextActions(projection);
   renderModelRoles(projection);

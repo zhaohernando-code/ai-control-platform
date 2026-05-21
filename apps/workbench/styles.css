@@ -127,6 +127,7 @@ select {
 .mobile-section-title span,
 .metric span,
 .review-grid span,
+.closeout-grid span,
 .mobile-review span {
   color: var(--muted);
   font-size: 12px;
@@ -314,24 +315,32 @@ h2 {
   font-size: 12px;
 }
 
-.review-grid {
+.review-grid,
+.closeout-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .review-grid div,
+.closeout-grid div,
 .mobile-review div {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
 }
 
+.closeout-grid .full {
+  grid-column: 1 / -1;
+}
+
 .review-grid strong,
+.closeout-grid strong,
 .mobile-review strong {
   display: block;
   margin-top: 5px;
   font-size: 18px;
+  overflow-wrap: anywhere;
 }
 
 .mobile-shell {

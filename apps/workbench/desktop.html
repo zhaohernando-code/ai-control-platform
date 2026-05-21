@@ -98,6 +98,18 @@
 
           <section class="panel">
             <div class="section-title">
+              <h2>Closeout</h2>
+              <span data-bind="closeout_publish_status">--</span>
+            </div>
+            <div class="closeout-grid">
+              <div><span>状态</span><strong data-bind="closeout_status">--</strong></div>
+              <div><span>Snapshot</span><strong data-bind="closeout_snapshot">--</strong></div>
+              <div class="full"><span>Evidence</span><strong data-bind="closeout_artifact">--</strong></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
               <h2>模型路由</h2>
               <span data-bind="model_summary">--</span>
             </div>
