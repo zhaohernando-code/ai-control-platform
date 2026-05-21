@@ -116,6 +116,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 未完成 shard -> `run_reviewer_scope_shard` work package。
 - work package 的 `owned_files` 来自 shard.files，reviewer 元数据保留 provider、model、profile、allowed_tools 和 dispatch_mode。
 - 已有 concrete shards 时，不再重复生成抽象 `reviewer-provider-split-scope`。
+- 已有 `reviewer_shard_result` 的 shard 视为完成，不再重复派发。
 
 这保证 smoke 通过但 DS tool review 超时时，下一轮会沿着“生成 split plan -> 分片复审 -> 汇总 findings”继续，而不是原样重跑同一个会超时的工具请求。
 

@@ -244,6 +244,80 @@ test("workbench server rejects provider health recording without workflow state 
   });
 });
 
+test("workbench server records reviewer shard results into workflow state input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-shard-result-"));
+  const inputPath = join(snapshotsRoot, "shard-result-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "shard-result",
+    items: [
+      {
+        id: "shard-result",
+        label: "Shard result",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const first = await request(`${baseUrl}/api/workbench/reviewer-shard-result`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        shard_id: "reviewer-scope-shard-001",
+        status: "pass",
+        created_at: "2026-05-21T12:30:00.000Z"
+      })
+    });
+    const second = await request(`${baseUrl}/api/workbench/reviewer-shard-result`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        shard_id: "reviewer-scope-shard-002",
+        findings: [
+          {
+            id: "api-shard-finding",
+            status: "fail",
+            severity: "medium",
+            category: "reviewer",
+            message: "api shard finding"
+          }
+        ],
+        aggregate: true,
+        created_at: "2026-05-21T12:31:00.000Z"
+      })
+    });
+    const created = second.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(first.status, 201);
+    assert.equal(second.status, 201);
+    assert.equal(created.aggregate.status, "fail");
+    assert.equal(created.projection.reviewer_shard_review.completed_shards, 2);
+    assert.equal(created.projection.reviewer_shard_review.failed_finding_count, 1);
+    assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_aggregate");
+    assert.ok(state.manifest.review_findings.some((finding) => finding.finding_id === "api-shard-finding"));
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects reviewer shard results without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/reviewer-shard-result?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ shard_id: "reviewer-scope-shard-001" })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
+});
+
 test("workbench server rejects unsafe workflow state snapshot ids", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
   const historyPath = join(dir, "projection-history.json");

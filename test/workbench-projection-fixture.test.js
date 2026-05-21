@@ -26,4 +26,6 @@ test("current session workbench fixture is generated from durable input", () => 
   assert.equal(projection.reviewer_provider_health.next_action, "rerun_without_tools");
   assert.equal(projection.reviewer_scope_split.shard_count, 2);
   assert.equal(projection.reviewer_scope_split.next_shard, "reviewer-scope-shard-001");
+  assert.equal(projection.reviewer_shard_review.pending_shards, 2);
+  assert.equal(projection.reviewer_shard_review.completed_shards, 0);
 });

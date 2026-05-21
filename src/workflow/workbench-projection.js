@@ -246,6 +246,52 @@ function summarizeReviewerScopeSplit(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
+  const split = summarizeReviewerScopeSplit(manifest, artifactLedger);
+  const resultEvents = asArray(manifest?.events).filter((event) => event?.type === "reviewer_shard_result");
+  const aggregateEvents = asArray(manifest?.events).filter((event) => event?.type === "reviewer_shard_aggregate");
+  const latestAggregate = aggregateEvents.at(-1) || null;
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const aggregateArtifact = latestAggregate
+    ? artifacts.find((entry) => entry.id === latestAggregate.artifact_id) || null
+    : null;
+  const aggregate = aggregateArtifact?.metadata || latestAggregate?.metadata || null;
+
+  if (!aggregate && resultEvents.length === 0) {
+    return {
+      status: "not_configured",
+      total_shards: split.shard_count || 0,
+      completed_shards: 0,
+      pending_shards: split.pending_shards || split.shard_count || 0,
+      failed_finding_count: 0,
+      finding_count: 0,
+      next_shard: split.next_shard || null,
+      event_id: null,
+      artifact_id: null,
+      created_at: null
+    };
+  }
+
+  const completedIds = new Set(resultEvents.map((event) => normalizeString(event?.metadata?.shard_id)).filter(Boolean));
+  const pendingFromSplit = Math.max(0, (split.shard_count || 0) - completedIds.size);
+
+  return {
+    status: aggregate?.status || (pendingFromSplit > 0 ? "pending" : "pass"),
+    total_shards: aggregate?.total_shards || split.shard_count || completedIds.size,
+    completed_shards: aggregate?.completed_shards || completedIds.size,
+    pending_shards: aggregate?.pending_shards ?? pendingFromSplit,
+    failed_finding_count: aggregate?.failed_finding_count || 0,
+    finding_count: aggregate?.finding_count || 0,
+    next_shard: aggregate?.pending_shard_ids?.[0] || (pendingFromSplit > 0 ? split.next_shard : null),
+    event_id: latestAggregate?.id || null,
+    artifact_id: latestAggregate?.artifact_id || aggregateArtifact?.id || null,
+    created_at: latestAggregate?.created_at || aggregateArtifact?.created_at || null
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -309,6 +355,7 @@ export function createWorkbenchProjection(input = {}) {
   const resumeHealth = summarizeResumeHealth(manifest, artifactLedger);
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
+  const reviewerShardReview = summarizeReviewerShardReview(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -340,6 +387,7 @@ export function createWorkbenchProjection(input = {}) {
     resume_health: resumeHealth,
     reviewer_provider_health: reviewerProviderHealth,
     reviewer_scope_split: reviewerScopeSplit,
+    reviewer_shard_review: reviewerShardReview,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -367,7 +415,8 @@ export function createWorkbenchProjection(input = {}) {
         closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1,
         resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
-        reviewer_scope_shards: reviewerScopeSplit.shard_count || 0
+        reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
+        reviewer_shards_completed: reviewerShardReview.completed_shards || 0
       }
     }
   };
@@ -411,6 +460,13 @@ export function createMobileWorkbenchProjection(input = {}) {
       pending_shards: projection.reviewer_scope_split.pending_shards,
       next_shard: projection.reviewer_scope_split.next_shard
     },
+    shard_review: {
+      status: projection.reviewer_shard_review.status,
+      total_shards: projection.reviewer_shard_review.total_shards,
+      completed_shards: projection.reviewer_shard_review.completed_shards,
+      pending_shards: projection.reviewer_shard_review.pending_shards,
+      failed_finding_count: projection.reviewer_shard_review.failed_finding_count
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -423,4 +479,10 @@ export function createMobileWorkbenchProjection(input = {}) {
   };
 }
 
-export { summarizeCloseoutEvidence, summarizeResumeHealth, summarizeReviewerProviderHealth, summarizeReviewerScopeSplit };
+export {
+  summarizeCloseoutEvidence,
+  summarizeResumeHealth,
+  summarizeReviewerProviderHealth,
+  summarizeReviewerScopeSplit,
+  summarizeReviewerShardReview
+};

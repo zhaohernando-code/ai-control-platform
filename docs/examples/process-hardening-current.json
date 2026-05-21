@@ -162,6 +162,20 @@
       "category": "reviewer_timeout",
       "severity": "p1",
       "message": "Smoke-pass DeepSeek tool review timeouts must not reschedule the same broad tool request; they need a bounded reviewer scope split plan with concrete shards."
+    },
+    {
+      "id": "reviewer-shard-results-side-channel",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Reviewer shard execution results must not remain transient command output; they need durable shard result and aggregate facts that feed manifest review_findings."
+    },
+    {
+      "id": "reviewer-shard-results-manual-recording",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Reviewer shard outputs need reusable CLI/API recording paths; otherwise real DS shard reviews require manual JSON edits and can drift from workflow state."
     }
   ],
   "hardening_items": [
@@ -347,6 +361,22 @@
       "enforcement_target": "src/workflow/reviewer-scope-splitter.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; test/reviewer-scope-splitter.test.js; test/autonomous-continuation.test.js; test/workbench-projection.test.js",
       "regression_test": "reviewer scope split creates bounded shards for oversized requests; reviewer scope split can produce no-tool shards after tool-path timeout; reviewer scope split facts generate concrete shard work packages; workbench projection exposes reviewer scope split shard status",
       "verification": "node --test test/reviewer-scope-splitter.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-results-side-channel",
+      "invariant": "Each reviewer shard result must persist as manifest/artifact evidence, aggregate only known split shards, append merged findings into manifest.review_findings after completion, and prevent continuation from rerunning completed shards.",
+      "enforcement_target": "src/workflow/reviewer-shard-results.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; test/reviewer-shard-results.test.js; test/autonomous-continuation.test.js; test/workbench-projection.test.js",
+      "regression_test": "reviewer shard result and aggregate persistence write durable review state; reviewer scope split continuation skips shards with recorded results; workbench projection exposes reviewer shard aggregate status",
+      "verification": "node --test test/reviewer-shard-results.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-results-manual-recording",
+      "invariant": "Reviewer shard results must be recordable through reusable CLI and workbench API paths that fail closed and update projection-visible workflow state.",
+      "enforcement_target": "tools/record-reviewer-shard-result.mjs; tools/workbench-server.mjs; apps/workbench/projection-source.js; package.json; test/reviewer-shard-results.test.js; test/workbench-server.test.js; test/workbench-projection-source.test.js",
+      "regression_test": "record-reviewer-shard-result CLI writes shard results and aggregate facts; workbench server records reviewer shard results into workflow state input; projection source records reviewer shard results",
+      "verification": "node --test test/reviewer-shard-results.test.js test/workbench-server.test.js test/workbench-projection-source.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

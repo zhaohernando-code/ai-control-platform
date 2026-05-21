@@ -89,6 +89,18 @@
     "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
     "created_at": "2026-05-21T20:20:30.000Z"
   },
+  "reviewer_shard_review": {
+    "status": "not_configured",
+    "total_shards": 2,
+    "completed_shards": 0,
+    "pending_shards": 2,
+    "failed_finding_count": 0,
+    "finding_count": 0,
+    "next_shard": "reviewer-scope-shard-001",
+    "event_id": null,
+    "artifact_id": null,
+    "created_at": null
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -219,7 +231,8 @@
       "closeout_publishes": 0,
       "resume_blockers": 0,
       "provider_health_events": 1,
-      "reviewer_scope_shards": 2
+      "reviewer_scope_shards": 2,
+      "reviewer_shards_completed": 0
     }
   }
 }

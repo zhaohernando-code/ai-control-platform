@@ -131,6 +131,39 @@ test("reviewer scope split facts generate concrete shard work packages", () => {
   assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-scope-shard-002"));
 });
 
+test("reviewer scope split continuation skips shards with recorded results", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass" },
+    workflow_state: {
+      manifest: {
+        events: [
+          {
+            type: "reviewer_scope_split",
+            metadata: {
+              status: "pass",
+              shards: [
+                { id: "reviewer-scope-shard-001", status: "pending", files: ["src/a.js"] },
+                { id: "reviewer-scope-shard-002", status: "pending", files: ["src/b.js"] }
+              ]
+            }
+          },
+          {
+            type: "reviewer_shard_result",
+            metadata: {
+              shard_id: "reviewer-scope-shard-001",
+              status: "pass"
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-001"));
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-002"));
+});
+
 test("provider health fallback schedules model fallback work package", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),

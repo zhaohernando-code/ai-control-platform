@@ -70,6 +70,7 @@ function renderProjection(projection) {
   const resumeHealth = projection.resume_health || {};
   const providerHealth = projection.reviewer_provider_health || projection.provider_health || {};
   const scopeSplit = projection.reviewer_scope_split || projection.scope_split || {};
+  const shardReview = projection.reviewer_shard_review || projection.shard_review || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -107,6 +108,9 @@ function renderProjection(projection) {
   setText("scope_split_shards", scopeSplit.shard_count ?? 0);
   setText("scope_split_pending", scopeSplit.pending_shards ?? 0);
   setText("scope_split_next", scopeSplit.next_shard);
+  setText("shard_review_status", shardReview.status);
+  setText("shard_review_completed", shardReview.completed_shards ?? 0);
+  setText("shard_review_failed", shardReview.failed_finding_count ?? 0);
 
   renderNextActions(projection);
   renderModelRoles(projection);

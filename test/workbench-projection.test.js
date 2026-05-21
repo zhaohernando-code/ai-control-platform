@@ -321,6 +321,96 @@ test("workbench projection exposes reviewer scope split shard status", () => {
   assert.equal(mobile.scope_split.next_shard, "reviewer-scope-shard-001");
 });
 
+test("workbench projection exposes reviewer shard aggregate status", () => {
+  const input = baseInput();
+  const splitArtifact = {
+    id: "reviewer-scope-split-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://reviewer-scope-split/run-projection/cycle-20260521/reviewer-scope-split-run-projection-cycle-20260521-001",
+    producer: "reviewer-scope-splitter",
+    created_at: "2026-05-21T12:08:00.000Z",
+    metadata: {
+      type: "reviewer_scope_split",
+      status: "pass",
+      shard_count: 2,
+      pending_shards: 2,
+      shards: [
+        { id: "reviewer-scope-shard-001", status: "pending" },
+        { id: "reviewer-scope-shard-002", status: "pending" }
+      ]
+    }
+  };
+  const aggregateArtifact = {
+    id: "reviewer-shard-aggregate-run-projection-cycle-20260521-001",
+    type: "review",
+    status: "fail",
+    uri: "codex://reviewer-shard-aggregate/run-projection/cycle-20260521/reviewer-shard-aggregate-run-projection-cycle-20260521-001",
+    producer: "reviewer-shard-aggregate",
+    created_at: "2026-05-21T12:12:00.000Z",
+    metadata: {
+      type: "reviewer_shard_aggregate",
+      status: "fail",
+      total_shards: 2,
+      completed_shards: 2,
+      pending_shards: 0,
+      finding_count: 1,
+      failed_finding_count: 1
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${splitArtifact.id}`,
+        type: "reviewer_scope_split",
+        status: "planned",
+        artifact_id: splitArtifact.id,
+        created_at: splitArtifact.created_at,
+        metadata: splitArtifact.metadata
+      },
+      {
+        id: "event-reviewer-scope-shard-001",
+        type: "reviewer_shard_result",
+        status: "pass",
+        created_at: "2026-05-21T12:10:00.000Z",
+        metadata: { shard_id: "reviewer-scope-shard-001", status: "pass" }
+      },
+      {
+        id: "event-reviewer-scope-shard-002",
+        type: "reviewer_shard_result",
+        status: "fail",
+        created_at: "2026-05-21T12:11:00.000Z",
+        metadata: { shard_id: "reviewer-scope-shard-002", status: "fail" }
+      },
+      {
+        id: `event-${aggregateArtifact.id}`,
+        type: "reviewer_shard_aggregate",
+        status: "fail",
+        artifact_id: aggregateArtifact.id,
+        created_at: aggregateArtifact.created_at,
+        metadata: aggregateArtifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, splitArtifact, aggregateArtifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, splitArtifact, aggregateArtifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.reviewer_shard_review.status, "fail");
+  assert.equal(projection.reviewer_shard_review.completed_shards, 2);
+  assert.equal(projection.reviewer_shard_review.pending_shards, 0);
+  assert.equal(projection.reviewer_shard_review.failed_finding_count, 1);
+  assert.equal(projection.one_screen.counters.reviewer_shards_completed, 2);
+  assert.equal(mobile.shard_review.failed_finding_count, 1);
+});
+
 test("workbench projection ingests operator events before summarizing run state", () => {
   const input = baseInput({
     operator_event_ledger: {

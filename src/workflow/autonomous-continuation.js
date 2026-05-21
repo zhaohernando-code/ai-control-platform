@@ -99,6 +99,13 @@ function latestReviewerScopeSplit(input = {}) {
   return events.at(-1)?.metadata || null;
 }
 
+function reviewerShardResultIds(input = {}) {
+  return new Set(asArray(input?.workflow_state?.manifest?.events)
+    .filter((event) => event?.type === "reviewer_shard_result")
+    .map((event) => normalizeString(event?.metadata?.shard_id || event?.metadata?.shardId))
+    .filter(Boolean));
+}
+
 function providerHealthActionTitle(action) {
   return {
     provider_smoke_check: "Run reviewer provider smoke check",
@@ -136,10 +143,12 @@ function reviewerProviderWorkPackagesFrom(input = {}) {
 
 function reviewerScopeSplitWorkPackagesFrom(input = {}) {
   const splitPlan = latestReviewerScopeSplit(input);
+  const completedShardIds = reviewerShardResultIds(input);
   if (!splitPlan || splitPlan.status === "fail") return [];
 
   return asArray(splitPlan.shards)
     .filter((shard) => statusOf(shard) !== "completed" && statusOf(shard) !== "pass")
+    .filter((shard) => !completedShardIds.has(normalizeString(shard.id)))
     .map((shard) => ({
       id: normalizeString(shard.id),
       title: `Run bounded reviewer shard ${normalizeString(shard.id).replace(/^reviewer-scope-shard-/, "")}`,

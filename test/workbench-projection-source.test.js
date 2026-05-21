@@ -127,6 +127,32 @@ test("projection source records reviewer provider health", async () => {
   assert.match(calls[0].options.body, /smoke_status/);
 });
 
+test("projection source records reviewer shard results", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    shardResultUrl: "/api/workbench/reviewer-shard-result",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", fact: { shard_id: "reviewer-scope-shard-001" } };
+        }
+      };
+    }
+  });
+
+  const result = await source.recordReviewerShardResult({
+    shard_id: "reviewer-scope-shard-001",
+    status: "pass"
+  });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.shardResultUrl, "/api/workbench/reviewer-shard-result");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /reviewer-scope-shard-001/);
+});
+
 test("projection source rejects failed provider health writes", async () => {
   const source = createProjectionSource({
     providerHealthUrl: "/api/workbench/reviewer-provider-health",
@@ -142,6 +168,24 @@ test("projection source rejects failed provider health writes", async () => {
   await assert.rejects(
     source.recordProviderHealth({ smoke_status: "timeout" }),
     /Provider health write failed: 400/
+  );
+});
+
+test("projection source rejects failed reviewer shard result writes", async () => {
+  const source = createProjectionSource({
+    shardResultUrl: "/api/workbench/reviewer-shard-result",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "reviewer shard failed" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.recordReviewerShardResult({ shard_id: "reviewer-scope-shard-001" }),
+    /Reviewer shard result write failed: 400/
   );
 });
 

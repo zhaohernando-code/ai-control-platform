@@ -6,6 +6,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
 import { recordReviewerProviderHealthFact } from "../src/workflow/reviewer-provider-health.js";
+import {
+  recordReviewerShardAggregate,
+  recordReviewerShardResult
+} from "../src/workflow/reviewer-shard-results.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -238,6 +242,61 @@ export function createWorkbenchServer(options = {}) {
           item,
           fact: result.fact,
           projection: createWorkbenchProjection(result.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/reviewer-shard-result" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const result = recordReviewerShardResult(workflowState, {
+          shard_id: input.shard_id || input.shardId,
+          status: input.status,
+          findings: input.findings || input.review_findings || [],
+          created_at: input.created_at
+        });
+        if (result.status !== "pass") {
+          jsonResponse(res, 400, { error: "reviewer shard result record failed", issues: result.issues });
+          return;
+        }
+
+        let nextState = result.workflow_state;
+        let aggregate = null;
+        if (input.aggregate === true) {
+          aggregate = recordReviewerShardAggregate(nextState, {
+            created_at: input.aggregate_created_at || input.created_at
+          });
+          if (aggregate.status !== "pass") {
+            jsonResponse(res, 400, { error: "reviewer shard aggregate record failed", issues: aggregate.issues });
+            return;
+          }
+          nextState = aggregate.workflow_state;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...nextState }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          fact: result.fact,
+          aggregate: aggregate?.fact || null,
+          projection: createWorkbenchProjection(nextState)
         });
         return;
       }

@@ -414,3 +414,25 @@ API 存在但 UI 无入口，仍然会让 operator 回到手动 CLI 或聊天指
 - split plan 必须写入 `reviewer_scope_split` manifest event 和 artifact ledger evaluation artifact。
 - continuation 已有 concrete shards 时，生成 `run_reviewer_scope_shard` work packages，不再重复排抽象 `split_scope`。
 - PC/mobile projection 展示 shard_count、pending_shards、next_shard，让工作台能看到 DS reviewer 是否正在按分片推进。
+
+[2026-05-21T20:33:37+08:00] Reviewer shards need durable results and aggregation:
+拆分层只解决“怎么避免 DS 工具复审超时”，但如果 shard 执行结果只停留在命令输出，自动流程仍不能判断下一步，也可能重复派发已经跑完的 shard。
+
+决策：
+- 新增 `reviewer-shard-results`，分别记录 `reviewer_shard_result` 和 `reviewer_shard_aggregate`。
+- 每个 shard result 写入 manifest event 和 review artifact，包含 shard_id、files、questions、findings 和失败 finding 数。
+- aggregate 只能汇总当前 split plan 内的已知 shard；未知 shard 失败闭合。
+- pending shard 存在时 aggregate 不把 findings 写入 `manifest.review_findings`。
+- 全部 shard 完成后，aggregate 的 merged_findings 追加到 `manifest.review_findings`，复用 `evaluateRunResult` 的 pass/rerun/rollback/human_intervention 判断。
+- continuation 会跳过已有 shard result 的 shard，避免重复派发。
+- 工作台 projection 增加 `reviewer_shard_review`，PC/mobile 展示 shard review 状态、完成数和失败 finding 数。
+
+[2026-05-21T20:54:34+08:00] Reviewer shard outputs need reusable recording paths:
+如果 shard result 只能通过人工改 workflow JSON 写入，真实 DS shard review 仍然会卡在人工介入点，且容易和 projection history 脱节。
+
+决策：
+- 新增 `tools/record-reviewer-shard-result.mjs` 和 `npm run record:reviewer-shard-result`。
+- CLI 支持 `--findings-json`、`--findings-file`、`--aggregate` 和 `--in-place`。
+- 新增 `POST /api/workbench/reviewer-shard-result`，复用同一套 `recordReviewerShardResult` / `recordReviewerShardAggregate` 语义。
+- API 只允许写入 history item 的 `input_path` workflow state；静态 projection 失败闭合。
+- `projection-source` 增加 `recordReviewerShardResult`，后续 UI/operator action 不需要手写 API 调用。

@@ -118,6 +118,14 @@
               <span>Pending</span>
               <strong data-bind="scope_split_pending">0</strong>
             </div>
+            <div>
+              <span>Review</span>
+              <strong data-bind="shard_review_status">--</strong>
+            </div>
+            <div>
+              <span>Failed</span>
+              <strong data-bind="shard_review_failed">0</strong>
+            </div>
           </div>
           <div class="provider-actions">
             <button type="button" data-provider-health="pass">Smoke OK</button>
