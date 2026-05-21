@@ -491,3 +491,13 @@ runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚
 - `tools/run-reviewer-shard.mjs --all` 暴露同一语义，供 scheduler/closeout 直接调用。
 - 显式传入 `--shard-id` 时，即使使用 `--all` 也只执行该 shard，避免指定范围被自动扩大。
 - 确定性 mock 测试覆盖 aggregate loop 与 timeout recovery stop。
+
+[2026-05-21T22:13:41+08:00] Continuation must re-evaluate completed reviewer shard aggregates:
+runner 已经能生成 `reviewer_shard_aggregate`，但如果 continuation 继续相信旧的 `run_evaluation=pass`，失败 findings 会被工作台看到却不会进入下一轮调度，这会形成新的跑偏。
+
+决策：
+- `decideContinuation` 在发现完成态 reviewer shard aggregate 后，用 aggregate 的 `merged_findings` 重新调用 `evaluateRunResult`。
+- pending aggregate 不参与最终决策，仍交给 shard work packages 继续推进。
+- aggregate fail 可以覆盖旧 pass，进入统一 rerun/rollback/human decision。
+- aggregate pass 可以覆盖旧 reviewer timeout rerun，避免已经恢复的问题继续重复调度。
+- 显式 human/rollback evaluation 不被 aggregate 覆盖。

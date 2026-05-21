@@ -164,6 +164,83 @@ test("reviewer scope split continuation skips shards with recorded results", () 
   assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-002"));
 });
 
+test("reviewer shard aggregate failure overrides stale pass evaluation", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    workflow_state: {
+      manifest: {
+        run_id: "run-shard-aggregate",
+        cycle_id: "cycle-shard-aggregate",
+        work_packages: [{ id: "reviewer-shard-loop", status: "pass" }],
+        artifacts: [],
+        gate_results: [],
+        recovery_attempts: [],
+        review_findings: [],
+        events: [
+          {
+            type: "reviewer_shard_aggregate",
+            metadata: {
+              status: "fail",
+              pending_shards: 0,
+              merged_findings: [
+                {
+                  finding_id: "aggregate-review-finding",
+                  status: "fail",
+                  severity: "medium",
+                  category: "reviewer",
+                  message: "aggregate finding requires rerun"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  assert.equal(decision.action, RERUN);
+  assert.equal(decision.should_continue, true);
+  assert.ok(decision.reasons.some((reason) => reason.includes("run_status=rerun")));
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.action === "rerun"));
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id.includes("rerun")));
+});
+
+test("reviewer shard aggregate pass clears stale rerun evaluation", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: {
+      status: "rerun",
+      next_work_packages: [{ id: "stale-timeout-rerun", title: "Stale timeout rerun" }]
+    },
+    workflow_state: {
+      manifest: {
+        run_id: "run-shard-aggregate-pass",
+        cycle_id: "cycle-shard-aggregate-pass",
+        work_packages: [{ id: "reviewer-shard-loop", status: "pass" }],
+        artifacts: [],
+        gate_results: [],
+        recovery_attempts: [],
+        review_findings: [],
+        events: [
+          {
+            type: "reviewer_shard_aggregate",
+            metadata: {
+              status: "pass",
+              pending_shards: 0,
+              merged_findings: []
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.should_continue, true);
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "stale-timeout-rerun"));
+});
+
 test("provider health fallback schedules model fallback work package", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),

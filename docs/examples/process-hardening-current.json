@@ -453,6 +453,14 @@
       "regression_test": "reviewer shard loop runs pending shards until aggregate; reviewer shard loop stops after provider health recovery fact; run-reviewer-shard CLI can execute all pending shards with mock executor",
       "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-aggregate-stale-evaluation",
+      "invariant": "Autonomous continuation must re-evaluate completed reviewer shard aggregates from merged findings so stale pass/rerun evaluations cannot hide failed reviewer results or repeat already-recovered timeouts.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; test/autonomous-continuation.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "reviewer shard aggregate failure overrides stale pass evaluation; reviewer shard aggregate pass clears stale rerun evaluation",
+      "verification": "node --test test/autonomous-continuation.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { projectionPublishIssues, snapshotIssues } from "./workbench-snapshots.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
+import { evaluateRunResult } from "./autonomous-run.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -35,11 +36,12 @@ function statusOf(value) {
 }
 
 function blockersFrom(input) {
+  const runEvaluation = runEvaluationFrom(input);
   return [
     ...asArray(input?.blockers),
     ...asArray(input?.project_status?.blockers),
-    ...asArray(input?.run_evaluation?.blockers),
-    ...asArray(input?.run_evaluation?.projection?.blockers)
+    ...asArray(runEvaluation?.blockers),
+    ...asArray(runEvaluation?.projection?.blockers)
   ].filter(Boolean);
 }
 
@@ -59,26 +61,64 @@ function hasHumanBlocker(input) {
 }
 
 function nextStepFrom(input) {
+  const runEvaluation = runEvaluationFrom(input);
   return normalizeString(
     input?.next_step ||
       input?.nextStep ||
       input?.project_status?.next_step ||
       input?.projectStatus?.next_step ||
-      input?.run_evaluation?.next_step
+      runEvaluation?.next_step
   );
 }
 
 function nextWorkPackagesFrom(input) {
+  const runEvaluation = runEvaluationFrom(input);
   const providerPackages = reviewerProviderWorkPackagesFrom(input);
   const scopeSplitPackages = reviewerScopeSplitWorkPackagesFrom(input);
   return [
     ...asArray(input?.next_work_packages),
     ...asArray(input?.nextWorkPackages),
-    ...asArray(input?.run_evaluation?.next_work_packages),
-    ...asArray(input?.run_evaluation?.projection?.next_work_packages),
+    ...asArray(runEvaluation?.next_work_packages),
+    ...asArray(runEvaluation?.projection?.next_work_packages),
     ...providerPackages,
     ...scopeSplitPackages
   ];
+}
+
+function explicitRunEvaluation(input = {}) {
+  return input?.run_evaluation || input?.runEvaluation || null;
+}
+
+function latestReviewerShardAggregate(input = {}) {
+  const explicit = input?.reviewer_shard_aggregate || input?.reviewerShardAggregate;
+  if (explicit) return explicit;
+
+  const events = asArray(input?.workflow_state?.manifest?.events)
+    .filter((event) => event?.type === "reviewer_shard_aggregate");
+  return events.at(-1)?.metadata || null;
+}
+
+function reviewerShardAggregateEvaluation(input = {}) {
+  const aggregate = latestReviewerShardAggregate(input);
+  const workflowState = workflowStateFrom(input);
+  const manifest = workflowState?.manifest;
+  if (!aggregate || !manifest) return null;
+  if (normalizeToken(aggregate.status) === "pending" || Number(aggregate.pending_shards || 0) > 0) return null;
+
+  return evaluateRunResult({
+    ...manifest,
+    review_findings: asArray(aggregate.merged_findings)
+  });
+}
+
+function runEvaluationFrom(input = {}) {
+  const explicit = explicitRunEvaluation(input);
+  const explicitStatus = statusOf(explicit);
+  if (STOP_STATUSES.has(explicitStatus) || ROLLBACK_STATUSES.has(explicitStatus)) {
+    return explicit;
+  }
+
+  return reviewerShardAggregateEvaluation(input) || explicit;
 }
 
 function latestReviewerProviderHealth(input = {}) {
@@ -175,7 +215,7 @@ function continuationReasons(input, action) {
   const reasons = [];
   const nextStep = nextStepFrom(input);
   const nextWorkPackages = nextWorkPackagesFrom(input);
-  const runStatus = statusOf(input?.run_evaluation || input?.decision || input?.status);
+  const runStatus = statusOf(runEvaluationFrom(input) || input?.decision || input?.status);
 
   if (runStatus) reasons.push(`run_status=${runStatus}`);
   if (nextStep) reasons.push("project_status.next_step is present");
@@ -280,7 +320,8 @@ export function validateContinuationInput(input = {}) {
 
 export function decideContinuation(input = {}) {
   const validation = validateContinuationInput(input);
-  const runStatus = statusOf(input.run_evaluation || input.decision || input.status);
+  const runEvaluation = runEvaluationFrom(input);
+  const runStatus = statusOf(runEvaluation || input.decision || input.status);
   const hasBlocker = hasHumanBlocker(input);
   const nextStep = nextStepFrom(input);
   const nextWorkPackages = nextWorkPackagesFrom(input);

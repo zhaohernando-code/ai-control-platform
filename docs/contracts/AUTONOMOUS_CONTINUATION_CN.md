@@ -118,6 +118,13 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 已有 concrete shards 时，不再重复生成抽象 `reviewer-provider-split-scope`。
 - 已有 `reviewer_shard_result` 的 shard 视为完成，不再重复派发。
 
+如果 workflow state 中已经存在完成态 `reviewer_shard_aggregate` fact，continuation 必须以 aggregate 的 `merged_findings` 重新计算 run evaluation：
+
+- `pending_shards > 0` 或 `status=pending` 时，不得把 aggregate 当成最终决策。
+- `status=fail` 且存在失败 finding 时，必须覆盖旧的 pass evaluation，进入 `rerun`、`rollback` 或 `human_intervention` 的统一决策路径。
+- `status=pass` 时，可以覆盖旧的 reviewer timeout rerun，避免已经被 split/shard 恢复的问题继续制造无效重试。
+- 显式 human/rollback evaluation 优先级仍然高于 aggregate，避免人工阻塞和边界回退被误清除。
+
 这保证 smoke 通过但 DS tool review 超时时，下一轮会沿着“生成 split plan -> 分片复审 -> 汇总 findings”继续，而不是原样重跑同一个会超时的工具请求。
 
 ## 5. 与工作台关系
