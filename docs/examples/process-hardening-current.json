@@ -183,6 +183,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Reviewer shard split and recording primitives still need a provider-neutral runner so pending shards can be selected, executed, recorded, and aggregated without manual orchestration."
+    },
+    {
+      "id": "deepseek-shard-executor-not-wired",
+      "status": "fail",
+      "category": "reviewer_timeout",
+      "severity": "p1",
+      "message": "Reviewer shard runner needs a DeepSeek/Claude Code executor adapter that uses the canonical no-proxy launcher path and converts timeout/error output into structured shard findings."
     }
   ],
   "hardening_items": [
@@ -392,6 +399,14 @@
       "enforcement_target": "src/workflow/reviewer-shard-runner.js; test/reviewer-shard-runner.test.js",
       "regression_test": "reviewer shard runner lists pending shards and builds read-only prompts; reviewer shard runner records one shard and leaves remaining shard pending; reviewer shard runner aggregates automatically after the last shard; reviewer shard runner fails closed without executor or pending shard",
       "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "deepseek-shard-executor-not-wired",
+      "invariant": "DeepSeek shard execution must go through the canonical claude-deepseek skill wrapper, keep shard prompts bounded, parse structured findings, and convert timeout or wrapper failure into reviewer findings instead of hanging the scheduler.",
+      "enforcement_target": "src/workflow/claude-deepseek-shard-executor.js; test/claude-deepseek-shard-executor.test.js; docs/contracts/LLM_REVIEWER_GATE_CN.md",
+      "regression_test": "claude deepseek shard command uses canonical wrapper script and shard limits; claude deepseek shard executor returns structured findings from stdout; claude deepseek shard executor converts timeouts into reviewer timeout findings",
+      "verification": "node --test test/claude-deepseek-shard-executor.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

@@ -447,3 +447,14 @@ API 存在但 UI 无入口，仍然会让 operator 回到手动 CLI 或聊天指
 - executor 返回后复用 `recordReviewerShardResult`。
 - 最后一个 shard 完成后自动调用 `recordReviewerShardAggregate`。
 - 缺少 executor 或 shard 不在 pending 集合中时失败闭合。
+
+[2026-05-21T21:43:51+08:00] DeepSeek shard execution must use the canonical launcher wrapper:
+用户之前确认手动 `./start-claude-deepseek-no-proxy.sh` 可工作，历史 timeout 很可能来自非交互 wrapper 路径、工具范围或大 prompt。平台不能再各处拼不同启动命令。
+
+决策：
+- 新增 `claude-deepseek-shard-executor`。
+- 适配器通过 skill wrapper `/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py` 调用 canonical launcher。
+- 默认模型 `deepseek-v4-pro[1m]`，timeout 继承 shard/profile。
+- allowed_tools 直接来自 shard；no-tools shard 传空 tools。
+- stdout 支持 JSON array 和 `{ findings: [...] }` 两种结构化输出。
+- timeout 和 wrapper 非零退出转为结构化 reviewer finding，由 shard result/aggregate 进入统一恢复流程。
