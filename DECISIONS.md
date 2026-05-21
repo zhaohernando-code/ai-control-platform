@@ -98,3 +98,40 @@
 - `workbench-server` 支持按 `id` 读取历史 projection。
 - PC/mobile 都提供 `data-history-select`，切换后重新读取对应 projection。
 - 浏览器回归必须验证从 current `rerun` 切换到 bootstrap `pass`。
+
+[2026-05-21T17:00:06+08:00] Workbench operator actions must become durable events:
+工作台按钮不能只修改页面文案，否则平台会出现“看起来继续了，但状态没有进入流程”的假进展。操作员点击 validate、next 等控制项时，必须写入事件账本，后续再由 run manifest、artifact ledger 和 evaluation 读取。
+
+决策：
+- `docs/examples/operator-events.json` 是当前本地 operator event ledger。
+- `workbench-server` 提供 `GET /api/workbench/events` 与 `POST /api/workbench/events`。
+- `apps/workbench/projection-source.js` 负责把 UI action 写入事件 API。
+- 浏览器回归必须覆盖真实页面点击，并验证事件确实落盘。
+- 下一步把 operator events 摄入 run manifest / artifact ledger，进入自主继续判断。
+
+[2026-05-21T17:05:55+08:00] Blocking review findings must harden the process before implementation is accepted:
+本轮 reviewer 发现“事件写入失败但 UI 仍显示成功”的问题后，暴露出一个流程缺口：只修按钮逻辑会让同类问题在下个模块复发。阻塞级审查意见必须先升级为流程级不变量和可执行门禁，再判断实现是否可合入。
+
+决策：
+- 新增 `process-hardening` gate。
+- P0/P1、假成功态、状态持久化缺口、流程停滞、宿主边界、owned files、质量门禁缺口默认要求 process hardening。
+- 每条阻塞 finding 必须具备 invariant、enforcement target、regression test、verification、completed status。
+- 缺少 hardening 证据时，即使当前代码修复和测试通过，也不得提交。
+
+[2026-05-21T17:14:02+08:00] Closeout must execute process hardening and browser event gates:
+`process-hardening` 不能只作为库函数存在，必须进入合入前的可执行路径。工作台事件持久化也不能只靠单元测试，必须有真实页面点击验证。
+
+决策：
+- `npm run check:process-hardening` 读取 `docs/examples/process-hardening-current.json` 并执行 gate。
+- `npm run check:workbench:browser-events` 启动本地 workbench server，用 Playwright 验证成功点击落盘、失败点击不显示成功态。
+- `npm run check:closeout` 串联单测、onboarding、process hardening 和浏览器事件验证。
+- 仓库要求 Node.js 18+，因为浏览器 closeout gate 依赖现代 Playwright。
+
+[2026-05-21T17:18:00+08:00] Runtime prerequisites must self-heal when possible:
+第三轮 reviewer 发现默认 shell 仍是 Node 16，导致 Playwright gate 在普通 `npm run check:closeout` 下不可执行。环境前置条件不能只写在 README 里，否则平台会在可自动恢复的问题上停住。
+
+决策：
+- 新增 `tools/run-with-node18.mjs`，当当前 Node 低于 18 时自动寻找可用 Node 18+ runtime。
+- 新增 `tools/check-closeout.mjs`，避免 closeout 依赖外部 npm CLI 路径。
+- `npm run check:workbench:browser-events` 和 `npm run check:closeout` 都通过 runtime wrapper 执行。
+- 当前环境下普通 `npm run check:closeout` 已可自动切到 Codex bundled Node 24 并通过。

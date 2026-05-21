@@ -80,6 +80,48 @@ test("projection source can load projection history", async () => {
   assert.equal(history.items.length, 1);
 });
 
+test("projection source records operator events", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    url: "/api/workbench/projection",
+    eventsUrl: "/api/workbench/events",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", count: 1 };
+        }
+      };
+    }
+  });
+
+  const result = await source.recordEvent({ action: "validate", run_id: "run" });
+
+  assert.equal(result.status, "created");
+  assert.equal(calls[0].url, "/api/workbench/events");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /validate/);
+});
+
+test("projection source rejects failed operator event writes", async () => {
+  const source = createProjectionSource({
+    eventsUrl: "/api/workbench/events",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "invalid operator event" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.recordEvent({ action: "validate" }),
+    /Operator event write failed: 400/
+  );
+});
+
 test("projection source rejects malformed projection", async () => {
   const source = createProjectionSource({
     url: "/api/workbench/projection",

@@ -1,6 +1,7 @@
 import { createProjectionSource } from "./projection-source.js";
 
 const source = createProjectionSource();
+let currentProjection = null;
 
 function text(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
@@ -129,6 +130,7 @@ async function renderHistorySelect() {
 async function main(url = null) {
   try {
     const projection = url ? await createProjectionSource({ url }).load() : await source.load();
+    currentProjection = projection;
     renderProjection(projection);
   } catch (error) {
     renderProjection({
@@ -146,7 +148,34 @@ async function main(url = null) {
 }
 
 qsa("[data-action]").forEach((button) => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
+    const action = button.dataset.action;
+    const runId = currentProjection?.run_id;
+    const cycleId = currentProjection?.cycle_id;
+
+    if (!action || !runId || !cycleId) {
+      button.dataset.eventState = "failed";
+      button.textContent = "事件未写入";
+      return;
+    }
+
+    try {
+      await source.recordEvent({
+        action,
+        run_id: runId,
+        cycle_id: cycleId,
+        metadata: {
+          status: currentProjection?.status || null,
+          decision: currentProjection?.decision || null
+        }
+      });
+      button.dataset.eventState = "recorded";
+    } catch {
+      button.dataset.eventState = "failed";
+      button.textContent = "事件写入失败";
+      return;
+    }
+
     if (button.dataset.action === "validate") {
       button.textContent = "Projection 已校验";
       main();

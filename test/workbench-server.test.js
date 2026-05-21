@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { get } from "node:http";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { request as httpRequest } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
-async function withServer(fn) {
-  const server = createWorkbenchServer();
+async function withServer(fn, options = {}) {
+  const server = createWorkbenchServer(options);
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const { port } = server.address();
@@ -19,9 +22,12 @@ async function withServer(fn) {
   }
 }
 
-function request(url) {
+function request(url, options = {}) {
   return new Promise((resolve, reject) => {
-    get(url, (res) => {
+    const req = httpRequest(url, {
+      method: options.method || "GET",
+      headers: options.headers || {}
+    }, (res) => {
       let body = "";
       res.setEncoding("utf8");
       res.on("data", (chunk) => {
@@ -35,7 +41,10 @@ function request(url) {
           json: () => JSON.parse(body)
         });
       });
-    }).on("error", reject);
+    });
+    req.on("error", reject);
+    if (options.body) req.write(options.body);
+    req.end();
   });
 }
 
@@ -92,4 +101,66 @@ test("workbench server rejects unknown projection ids", async () => {
     assert.equal(response.status, 404);
     assert.match(body.error, /projection not found/);
   });
+});
+
+test("workbench server persists operator events", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-events-"));
+  const eventsPath = join(dir, "operator-events.json");
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+
+  await withServer(async (baseUrl) => {
+    const createResponse = await request(`${baseUrl}/api/workbench/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "validate", run_id: "run-1", cycle_id: "cycle-1" })
+    });
+    const created = createResponse.json();
+    const listResponse = await request(`${baseUrl}/api/workbench/events`);
+    const ledger = listResponse.json();
+
+    assert.equal(createResponse.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(ledger.events.length, 1);
+    assert.equal(ledger.events[0].action, "validate");
+    assert.equal(ledger.events[0].run_id, "run-1");
+  }, { eventsPath });
+});
+
+test("workbench server rejects operator events without ownership fields", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-events-"));
+  const eventsPath = join(dir, "operator-events.json");
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+
+  await withServer(async (baseUrl) => {
+    const createResponse = await request(`${baseUrl}/api/workbench/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "validate" })
+    });
+    const rejected = createResponse.json();
+    const listResponse = await request(`${baseUrl}/api/workbench/events`);
+    const ledger = listResponse.json();
+
+    assert.equal(createResponse.status, 400);
+    assert.equal(rejected.error, "invalid operator event");
+    assert.deepEqual(rejected.issues, ["run_id is required", "cycle_id is required"]);
+    assert.equal(ledger.events.length, 0);
+  }, { eventsPath });
+});
+
+test("workbench server rejects malformed operator event json", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-events-"));
+  const eventsPath = join(dir, "operator-events.json");
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{"
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.json().error, "invalid json");
+  }, { eventsPath });
 });

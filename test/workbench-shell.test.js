@@ -48,3 +48,12 @@ test("workbench files avoid legacy and managed project references", () => {
 
   assert.doesNotMatch(combined, /stock_dashboard|legacy\/|local-control-server|dashboard-ui/);
 });
+
+test("workbench controls do not show success when operator event persistence fails", () => {
+  const script = read("apps/workbench/workbench.js");
+
+  assert.match(script, /事件写入失败/);
+  assert.match(script, /事件未写入/);
+  assert.match(script, /button\.dataset\.eventState = "recorded"/);
+  assert.match(script, /catch \{[\s\S]*button\.dataset\.eventState = "failed";[\s\S]*return;[\s\S]*\}/);
+});

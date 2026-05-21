@@ -22,8 +22,10 @@
 - **子进程必须有 owned files**：每个子进程只允许写入明确文件集合，避免多个 agent 在同一模块里互相覆盖。
 - **主进程负责最终质量**：子进程完成后，主进程检查宿主、边界、代码设计、测试、文档和是否满足“平台本体”目标。
 - **失败不靠口头提醒修复**：如果发现跑偏，先把失败升级成可执行 gate 或测试，再重跑同类任务。
+- **阻塞审查先升级流程再修代码**：当 reviewer 或主进程发现 P0/P1、假成功态、状态持久化缺口、流程停滞、宿主边界或 owned files 问题时，不允许只修实现。必须先生成流程不变量、自动化门禁/测试和验证证据，再进入实现重跑。
 - **本轮最小验收**：新增能力必须能从机器可读输入中判断：需求属于哪个宿主、子任务是否允许执行、执行结果是否需要重跑，以及哪些证据要进入工作台状态。
 - **多模型协同要先路由再调用**：GPT、DeepSeek V4 Pro、DeepSeek V4 Flash 不是固定替代关系。每次使用前必须根据 stage、risk、budget、host 和 tags 生成 model routing plan；高风险平台任务需要独立 reviewer，低风险分类和摘要优先低成本模型。
 - **外部 reviewer 是 gate，不是临时 skill**：Claude Code + DeepSeek V4 Pro 这类审查方式必须进入 reviewer gate request、review findings、run manifest 和工作台 projection。只读审查是默认约束，写入型工具必须被 gate 拦截。
 - **工作台只消费 projection，不解析零散日志**：PC 和 mobile 工作台必须以 Workbench Projection 为一屏状态输入。任务、模型、reviewer、artifact 和 DAG 状态先汇总成 projection，再进入 UI。
 - **完成一轮后必须运行 continuation gate**：提交、推送、测试通过或输出总结都不是停止条件。只要 `PROJECT_STATUS.next_step` 或 `next_work_packages` 存在且没有人工阻塞，系统必须生成下一轮 Context Pack seed 并继续执行。
+- **Process Hardening Gate**：阻塞级 reviewer finding 必须进入 `process-hardening` gate。该 gate 要求每条阻塞 finding 都有 invariant、enforcement target、regression test、verification 和 completed 状态；缺任一项则当前实现不能合入。

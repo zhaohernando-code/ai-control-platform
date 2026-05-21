@@ -1,0 +1,38 @@
+{
+  "run_id": "run-20260521-platform-self-trial",
+  "cycle_id": "cycle-operator-events",
+  "review_findings": [
+    {
+      "id": "event-write-false-success",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Workbench controls showed success even when operator event persistence failed."
+    },
+    {
+      "id": "event-without-ownership",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Operator events without action, run_id, or cycle_id cannot be reliably ingested into run manifest or artifact ledger."
+    }
+  ],
+  "hardening_items": [
+    {
+      "finding_id": "event-write-false-success",
+      "invariant": "Operator controls cannot show success unless their event has been persisted.",
+      "enforcement_target": "src/workflow/process-hardening.js; test/workbench-shell.test.js; tools/check-workbench-browser-events.mjs",
+      "regression_test": "workbench controls do not show success when operator event persistence fails",
+      "verification": "npm run check:process-hardening; npm run check:workbench:browser-events",
+      "status": "completed"
+    },
+    {
+      "finding_id": "event-without-ownership",
+      "invariant": "Operator events must include action, run_id, and cycle_id before they can be persisted.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js",
+      "regression_test": "workbench server rejects operator events without ownership fields",
+      "verification": "npm test; npm run check:workbench:browser-events",
+      "status": "completed"
+    }
+  ]
+}

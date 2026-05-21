@@ -44,11 +44,13 @@ function validateProjectionShape(projection) {
 export function createProjectionSource(options = {}) {
   const url = options.url || projectionUrlFromLocation(options.location);
   const historyUrl = options.historyUrl || historyUrlFromLocation(options.location);
+  const eventsUrl = options.eventsUrl || "/api/workbench/events";
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
     url,
     historyUrl,
+    eventsUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -85,6 +87,21 @@ export function createProjectionSource(options = {}) {
       }
 
       return history;
+    },
+    async recordEvent(event) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(eventsUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(event)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Operator event write failed: ${response.status}`);
+      }
+
+      return response.json();
     }
   };
 }

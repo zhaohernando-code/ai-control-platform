@@ -17,5 +17,7 @@ node tools/workbench-server.mjs 4180
 
 - `GET /api/workbench/projection`
 - `GET /api/workbench/projections`
+- `GET /api/workbench/events`
+- `POST /api/workbench/events`
 - `GET /apps/workbench/desktop.html?projection=/api/workbench/projection`
 - `GET /apps/workbench/mobile.html?projection=/api/workbench/projection`
