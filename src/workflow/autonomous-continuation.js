@@ -129,6 +129,31 @@ function createContextPackSeed(input, action) {
   };
 }
 
+function snapshotIdFrom(input) {
+  return normalizeString(input?.snapshot_id || input?.snapshotId) ||
+    normalizeString(input?.manifest?.run_id) ||
+    normalizeString(input?.run_id) ||
+    normalizeString(input?.run_evaluation?.run_id) ||
+    "latest-autonomous-run";
+}
+
+function workflowStateFrom(input) {
+  return input?.workflow_state || input?.workflowState || null;
+}
+
+function createSnapshotPublishPlan(input) {
+  const workflowState = workflowStateFrom(input);
+  if (!workflowState) return null;
+
+  return {
+    action: "publish_workbench_snapshot",
+    endpoint: "/api/workbench/snapshots",
+    id: snapshotIdFrom({ ...input, ...workflowState }),
+    label: normalizeString(input?.snapshot_label || input?.snapshotLabel) || "Autonomous run closeout snapshot",
+    input: workflowState
+  };
+}
+
 export function validateContinuationInput(input = {}) {
   const issues = [];
 
@@ -179,6 +204,7 @@ export function decideContinuation(input = {}) {
     next_step: nextStep || null,
     next_work_packages: nextWorkPackages,
     context_pack_seed: action === STOP_FOR_HUMAN ? null : createContextPackSeed(input, action),
+    snapshot_publish_plan: action === STOP_FOR_HUMAN ? null : createSnapshotPublishPlan(input),
     validation
   };
 }

@@ -36,6 +36,13 @@
       "category": "security",
       "severity": "p1",
       "message": "Projection history input_path and projection_path must not read files outside docs/examples."
+    },
+    {
+      "id": "snapshot-id-type-drift",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Snapshot ids must remain strings so history latest and URL lookup use the same identity type."
     }
   ],
   "hardening_items": [
@@ -77,6 +84,14 @@
       "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js",
       "regression_test": "workbench server rejects projection history paths outside examples",
       "verification": "node --test test/workbench-server.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "snapshot-id-type-drift",
+      "invariant": "Workbench snapshot ids must be strings that pass the safe snapshot id pattern.",
+      "enforcement_target": "src/workflow/workbench-snapshots.js; test/workbench-snapshots.test.js; test/workbench-server.test.js",
+      "regression_test": "snapshot request validation rejects unsafe ids; workbench server rejects non-string workflow state snapshot ids",
+      "verification": "node --test test/workbench-snapshots.test.js test/workbench-server.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

@@ -203,6 +203,25 @@ test("workbench server rejects unsafe workflow state snapshot ids", async () => 
   }, { historyPath });
 });
 
+test("workbench server rejects non-string workflow state snapshot ids", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/snapshots`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: 123, input: {} })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "invalid workflow state snapshot");
+    assert.ok(rejected.issues.includes("id must be a safe snapshot id"));
+  }, { historyPath });
+});
+
 test("workbench server serves desktop app shell", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/apps/workbench/desktop.html`);

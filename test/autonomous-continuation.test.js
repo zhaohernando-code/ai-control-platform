@@ -112,3 +112,28 @@ test("stops when continuation points at the wrong host", () => {
   assert.equal(decision.should_continue, false);
   assert.ok(decision.validation.issues.some((issue) => issue.code === "project_mismatch"));
 });
+
+test("continuation emits a workbench snapshot publish plan when workflow state is available", () => {
+  const workflowState = {
+    manifest: {
+      run_id: "run-closeout",
+      cycle_id: "cycle-closeout"
+    },
+    artifact_ledger: {
+      artifacts: []
+    }
+  };
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "Continue after publishing the latest workflow state."
+    }),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  });
+
+  assert.equal(decision.should_continue, true);
+  assert.equal(decision.snapshot_publish_plan.action, "publish_workbench_snapshot");
+  assert.equal(decision.snapshot_publish_plan.endpoint, "/api/workbench/snapshots");
+  assert.equal(decision.snapshot_publish_plan.id, "run-closeout");
+  assert.equal(decision.snapshot_publish_plan.input, workflowState);
+});

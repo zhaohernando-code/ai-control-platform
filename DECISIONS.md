@@ -197,3 +197,11 @@
 - 新增 `GET /api/workbench/snapshot?id=<id>`，读取 history item 对应 input snapshot。
 - Snapshot id 必须是安全 slug，snapshot 文件写入受控 snapshot root。
 - Projection API 继续通过 history item 动态生成 projection。
+
+[2026-05-21T17:53:21+08:00] Continuation closeout should emit snapshot publish plans:
+自主继续不能只生成下一轮 Context Pack seed。只要 closeout 已有 projection-ready `workflow_state`，就应该生成可执行的 `snapshot_publish_plan`，让工作台状态发布进入流程。
+
+决策：
+- `decideContinuation` 在非 `stop_for_human` 且存在 `workflow_state` 时输出 `snapshot_publish_plan`。
+- publish plan 固定指向 `/api/workbench/snapshots`，携带 snapshot id、label 和 workflow state input。
+- 新增 `workbench-snapshots` 模块，server API 和本地 closeout 都复用同一套 snapshot 发布逻辑。

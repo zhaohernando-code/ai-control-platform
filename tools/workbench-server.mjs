@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { extname, isAbsolute, normalize, relative, resolve } from "node:path";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { extname, isAbsolute, normalize, resolve } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
+import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -127,44 +128,6 @@ function appendEvent(eventsPath, event) {
   return nextLedger;
 }
 
-function snapshotIssues(input = {}) {
-  const issues = [];
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return ["snapshot request must be an object"];
-  }
-  if (typeof input.id !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,80}$/.test(input.id)) {
-    issues.push("id must be a safe snapshot id");
-  }
-  const workflowState = input.input || input.workflow_state || input.workflowState;
-  if (!workflowState || typeof workflowState !== "object" || Array.isArray(workflowState)) {
-    issues.push("input must be a workflow state object");
-  }
-  return issues;
-}
-
-function historyWithSnapshot(history, item) {
-  const items = Array.isArray(history.items) ? history.items.filter((entry) => entry.id !== item.id) : [];
-  return {
-    version: history.version || "projection-history.v1",
-    latest: item.id,
-    items: [item, ...items]
-  };
-}
-
-function relativeHistoryPath(filePath) {
-  return relative(root, filePath);
-}
-
-function snapshotPath(snapshotsRoot, id) {
-  const filePath = resolve(snapshotsRoot, `${id}.workbench-input.json`);
-  if (!isWithinPath(snapshotsRoot, filePath)) {
-    const error = new Error("snapshot path must stay under snapshot root");
-    error.code = "INVALID_HISTORY_PATH";
-    throw error;
-  }
-  return filePath;
-}
-
 function safeStaticPath(pathname) {
   const normalized = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
   const filePath = resolve(root, normalized.replace(/^[/\\]/, ""));
@@ -224,22 +187,12 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid workflow state snapshot", issues });
           return;
         }
-        const workflowState = input.input || input.workflow_state || input.workflowState;
-        const projection = createWorkbenchProjection(workflowState);
-        mkdirSync(snapshotsRoot, { recursive: true });
-        const filePath = snapshotPath(snapshotsRoot, input.id);
-        writeFileSync(filePath, `${JSON.stringify(workflowState, null, 2)}\n`);
-        const history = readJson(serverHistoryPath);
-        const item = {
-          id: input.id,
-          label: input.label || input.id,
-          input_path: relativeHistoryPath(filePath),
-          projection_path: null,
-          created_at: input.created_at || new Date().toISOString(),
-          status: projection.status
-        };
-        writeFileSync(serverHistoryPath, `${JSON.stringify(historyWithSnapshot(history, item), null, 2)}\n`);
-        jsonResponse(res, 201, { status: "created", item, projection });
+        const result = publishWorkbenchSnapshot(input, {
+          root,
+          historyPath: serverHistoryPath,
+          snapshotsRoot
+        });
+        jsonResponse(res, 201, { status: result.status, item: result.item, projection: result.projection });
         return;
       }
 
