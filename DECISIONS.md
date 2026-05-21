@@ -247,3 +247,11 @@ runner smoke 暴露出一个假成功路径：不完整 workflow state 也能被
 - HTTP closeout 对返回 projection 运行 workbench projection schema 校验。
 - HTTP closeout 本地用 plan input 生成 expected projection，并比对 run_id、cycle_id 和 status。
 - HTTP item id 与 plan id 比对时使用 trim 后的规范 id，避免 server 规范化后误判。
+
+[2026-05-21T18:31:24+08:00] Closeout runner results must become workflow evidence:
+closeout runner 不能只把发布结果打印到 CLI。无人值守流程的下一轮调度需要从 workflow state 读取“发布成功/失败”事实，否则又会退回日志解析和人工判断。
+
+决策：
+- `runCloseoutPlan` 返回的 `workflow_state` 会追加 `closeout_snapshot_publish` manifest event。
+- 同一结果会记录到 `artifact_ledger`，artifact 类型为 `evaluation`，成功为 `pass`，失败为 `fail`。
+- 失败 closeout 也必须生成证据，供下一轮 recovery / rerun 使用。

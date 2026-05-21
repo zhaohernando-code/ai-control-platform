@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 
+import { recordArtifact } from "./artifact-ledger.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "./workbench-snapshots.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { validateWorkbenchProjectionSchema } from "./workbench-projection-schema.js";
+import { appendRunEvent } from "./run-manifest.js";
 
 function isObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -76,6 +78,69 @@ function snapshotPlanIssues(plan = {}) {
 
 function normalizedSnapshotId(plan) {
   return normalizeString(plan?.id);
+}
+
+function evidencePath(result = {}, options = {}) {
+  if (!result.snapshot_path) return "";
+  const root = resolve(options.root || process.cwd());
+  const snapshotPath = resolve(result.snapshot_path);
+  return isWithinPath(root, snapshotPath) ? relative(root, snapshotPath) : "";
+}
+
+function closeoutArtifact(plan = {}, result = {}, options = {}) {
+  const id = normalizedSnapshotId(plan) || normalizeString(result.item?.id) || "unknown";
+  const status = result.status === "created" ? "pass" : "fail";
+  const path = evidencePath(result, options);
+  return {
+    id: `closeout-snapshot-${id}`,
+    type: "evaluation",
+    status,
+    path: path || undefined,
+    uri: path ? undefined : `workbench://snapshot/${id}`,
+    producer: "closeout-runner",
+    created_at: options.created_at || new Date().toISOString(),
+    metadata: {
+      snapshot_id: id,
+      mode: result.mode || options.mode || "unknown",
+      closeout_status: result.status,
+      response_status: result.response_status,
+      projection_status: result.projection?.status,
+      issues: result.issues || []
+    }
+  };
+}
+
+function recordCloseoutEvidence(workflowState = {}, result = {}, options = {}) {
+  if (!isObject(workflowState)) return workflowState;
+  const plan = options.plan || {};
+  const artifact = closeoutArtifact(plan, result, options);
+  const manifest = appendRunEvent(workflowState.manifest || {}, {
+    id: `event-${artifact.id}`,
+    type: "closeout_snapshot_publish",
+    status: result.status,
+    artifact_id: artifact.id,
+    snapshot_id: artifact.metadata.snapshot_id,
+    message: result.status === "created" ? "workbench snapshot published" : "workbench snapshot publish failed",
+    created_at: artifact.created_at,
+    metadata: artifact.metadata
+  });
+  const manifestArtifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts)
+      ? baseLedger.artifacts.filter((item) => item.id !== artifact.id)
+      : []
+  }, artifact);
+
+  return {
+    ...workflowState,
+    manifest: {
+      ...manifest,
+      artifacts: [...manifestArtifacts.filter((item) => item.id !== artifact.id), artifact]
+    },
+    artifact_ledger: artifactLedger
+  };
 }
 
 function modeIssues(mode) {
@@ -192,7 +257,14 @@ async function runCloseoutPlan(input = {}, options = {}) {
       issues: ["snapshot_publish_plan is required for autonomous closeout publishing"]
     };
   }
-  return executeSnapshotPublishPlan(plan, options);
+  const result = await executeSnapshotPublishPlan(plan, options);
+  return {
+    ...result,
+    workflow_state: recordCloseoutEvidence(plan.input || plan.workflow_state || plan.workflowState, result, {
+      ...options,
+      plan
+    })
+  };
 }
 
 function readCloseoutInput(path) {
@@ -203,6 +275,7 @@ export {
   executeSnapshotPublishPlan,
   extractSnapshotPublishPlan,
   readCloseoutInput,
+  recordCloseoutEvidence,
   runCloseoutPlan,
   localOutputPathIssues,
   platformRootIssues,

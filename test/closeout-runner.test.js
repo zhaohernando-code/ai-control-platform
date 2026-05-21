@@ -7,9 +7,11 @@ import test from "node:test";
 import {
   executeSnapshotPublishPlan,
   extractSnapshotPublishPlan,
+  recordCloseoutEvidence,
   runCloseoutPlan,
   snapshotPlanIssues
 } from "../src/workflow/closeout-runner.js";
+import { validateArtifactLedger } from "../src/workflow/artifact-ledger.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
 function readJson(path) {
@@ -70,6 +72,8 @@ test("runCloseoutPlan publishes local workbench snapshot from continuation decis
   assert.equal(history.latest, "run-closeout-runner");
   assert.match(history.items[0].input_path, /^tmp\/ai-control-platform-closeout-/);
   assert.equal(snapshot.manifest.run_id, "run-20260521-platform-self-trial");
+  assert.equal(result.workflow_state.manifest.events.at(-1).type, "closeout_snapshot_publish");
+  assert.equal(result.workflow_state.artifact_ledger.artifacts.at(-1).id, "closeout-snapshot-run-closeout-runner");
 });
 
 test("runCloseoutPlan refuses local publishing outside the platform repo", async () => {
@@ -272,4 +276,48 @@ test("executeSnapshotPublishPlan rejects unknown modes instead of defaulting to 
 
   assert.equal(result.status, "fail");
   assert.deepEqual(result.issues, ["closeout runner mode must be local or http"]);
+});
+
+test("recordCloseoutEvidence writes closeout event and ledger artifact", () => {
+  const workflowStateInput = workflowState();
+  const updated = recordCloseoutEvidence(workflowStateInput, {
+    mode: "local",
+    status: "created",
+    item: { id: "closeout-evidence" },
+    projection: { status: "rerun" },
+    snapshot_path: `${process.cwd()}/tmp/closeout-evidence/input.json`
+  }, {
+    root: process.cwd(),
+    plan: snapshotPlan({ id: "closeout-evidence" }),
+    created_at: "2026-05-21T10:30:00.000Z"
+  });
+  const event = updated.manifest.events.at(-1);
+  const artifact = updated.artifact_ledger.artifacts.at(-1);
+
+  assert.equal(event.type, "closeout_snapshot_publish");
+  assert.equal(event.artifact_id, "closeout-snapshot-closeout-evidence");
+  assert.equal(artifact.type, "evaluation");
+  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.path, "tmp/closeout-evidence/input.json");
+  assert.equal(validateArtifactLedger(updated.artifact_ledger).status, "pass");
+});
+
+test("recordCloseoutEvidence records failed closeout as failed evidence", () => {
+  const updated = recordCloseoutEvidence(workflowState(), {
+    mode: "http",
+    status: "fail",
+    issues: ["snapshot API response projection must match the submitted workflow state"],
+    response_status: 201
+  }, {
+    plan: snapshotPlan({ id: "closeout-failed" }),
+    created_at: "2026-05-21T10:31:00.000Z"
+  });
+  const event = updated.manifest.events.at(-1);
+  const artifact = updated.artifact_ledger.artifacts.at(-1);
+
+  assert.equal(event.status, "fail");
+  assert.equal(artifact.status, "fail");
+  assert.equal(artifact.uri, "workbench://snapshot/closeout-failed");
+  assert.deepEqual(artifact.metadata.issues, ["snapshot API response projection must match the submitted workflow state"]);
+  assert.equal(validateArtifactLedger(updated.artifact_ledger).status, "pass");
 });
