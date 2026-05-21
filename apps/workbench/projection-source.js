@@ -50,6 +50,7 @@ export function createProjectionSource(options = {}) {
   const schedulerDispatchPlanUrl = options.schedulerDispatchPlanUrl || "/api/workbench/scheduler-dispatch-plan";
   const schedulerDispatchUrl = options.schedulerDispatchUrl || "/api/workbench/scheduler-dispatch";
   const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || "/api/workbench/scheduler-dispatch-run";
+  const schedulerNextCycleUrl = options.schedulerNextCycleUrl || "/api/workbench/scheduler-next-cycle";
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
@@ -61,6 +62,7 @@ export function createProjectionSource(options = {}) {
     schedulerDispatchPlanUrl,
     schedulerDispatchUrl,
     schedulerDispatchRunUrl,
+    schedulerNextCycleUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -188,6 +190,21 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         throw new Error(`Scheduler dispatch run write failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    async enqueueSchedulerNextCycle(input = {}) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(schedulerNextCycleUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Scheduler next cycle enqueue failed: ${response.status}`);
       }
 
       return response.json();

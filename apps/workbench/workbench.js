@@ -72,6 +72,7 @@ function renderProjection(projection) {
   const scopeSplit = projection.reviewer_scope_split || projection.scope_split || {};
   const shardReview = projection.reviewer_shard_review || projection.shard_review || {};
   const schedulerDispatch = projection.scheduler_dispatch || {};
+  const schedulerContinuation = projection.scheduler_continuation || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -126,6 +127,10 @@ function renderProjection(projection) {
   setText("scheduler_next_status", schedulerDispatch.next_continuation_status);
   setText("scheduler_next_packages", schedulerDispatch.next_work_package_count ?? 0);
   setText("scheduler_next_action", schedulerDispatch.next_continuation_action);
+  setText("scheduler_continuation_status", schedulerContinuation.continuation_status || schedulerContinuation.status);
+  setText("scheduler_continuation_ready", schedulerContinuation.ready === true ? "ready" : "not ready");
+  setText("scheduler_continuation_enqueue", schedulerContinuation.enqueue_status);
+  setText("scheduler_continuation_path", schedulerContinuation.continuation_input_path);
 
   renderNextActions(projection);
   renderModelRoles(projection);

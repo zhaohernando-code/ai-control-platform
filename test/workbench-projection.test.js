@@ -114,9 +114,11 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.resume_health.status, "not_configured");
   assert.equal(projection.reviewer_provider_health.status, "not_configured");
   assert.equal(projection.scheduler_dispatch.status, "not_configured");
+  assert.equal(projection.scheduler_continuation.status, "not_configured");
   assert.equal(projection.one_screen.counters.resume_blockers, 0);
   assert.equal(projection.one_screen.counters.provider_health_events, 0);
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 0);
+  assert.equal(projection.one_screen.counters.scheduler_continuation_ready, 0);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
@@ -483,6 +485,85 @@ test("workbench projection exposes scheduler dispatch run status", () => {
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 3);
   assert.equal(mobile.scheduler_dispatch.step_count, 3);
   assert.equal(mobile.scheduler_dispatch.next_work_package_count, 2);
+});
+
+test("workbench projection exposes scheduler dispatch continuation readiness", () => {
+  const input = baseInput();
+  const continuationArtifact = {
+    id: "scheduler-dispatch-continuation-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-dispatch://continuation/run-projection/cycle-20260521/scheduler-dispatch-continuation-run-projection-cycle-20260521-001",
+    producer: "scheduler-dispatch-continuation",
+    created_at: "2026-05-22T00:05:00.000Z",
+    metadata: {
+      type: "scheduler_dispatch_continuation",
+      version: "scheduler-dispatch-continuation.v1",
+      status: "ready",
+      phase: "scheduler_dispatch_continuation",
+      continuation_input_path: "tmp/scheduler/run-projection/scheduler-dispatch-continuation-input.json",
+      next_step: "Continue next cycle.",
+      next_work_package_count: 2,
+      should_continue: true
+    }
+  };
+  const enqueueArtifact = {
+    id: "scheduler-next-cycle-enqueue-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-dispatch://next-cycle/run-projection/cycle-20260521/scheduler-next-cycle-enqueue-run-projection-cycle-20260521-001",
+    producer: "workbench-server",
+    created_at: "2026-05-22T00:06:00.000Z",
+    metadata: {
+      type: "scheduler_next_cycle_enqueue",
+      version: "scheduler-next-cycle-enqueue.v1",
+      status: "queued",
+      continuation_input_path: "tmp/scheduler/run-projection/scheduler-dispatch-continuation-input.json",
+      snapshot_id: "scheduler-next",
+      next_step: "Continue next cycle.",
+      next_work_package_count: 2,
+      should_continue: true
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${continuationArtifact.id}`,
+        type: "scheduler_dispatch_continuation",
+        status: "ready",
+        artifact_id: continuationArtifact.id,
+        created_at: continuationArtifact.created_at,
+        metadata: continuationArtifact.metadata
+      },
+      {
+        id: `event-${enqueueArtifact.id}`,
+        type: "scheduler_next_cycle_enqueue",
+        status: "queued",
+        artifact_id: enqueueArtifact.id,
+        created_at: enqueueArtifact.created_at,
+        metadata: enqueueArtifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, continuationArtifact, enqueueArtifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, continuationArtifact, enqueueArtifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.scheduler_continuation.status, "queued");
+  assert.equal(projection.scheduler_continuation.continuation_status, "ready");
+  assert.equal(projection.scheduler_continuation.ready, true);
+  assert.equal(projection.scheduler_continuation.enqueue_status, "queued");
+  assert.equal(projection.scheduler_continuation.next_work_package_count, 2);
+  assert.equal(projection.one_screen.counters.scheduler_continuation_ready, 1);
+  assert.equal(mobile.scheduler_continuation.ready, true);
+  assert.equal(mobile.scheduler_continuation.enqueue_status, "queued");
 });
 
 test("workbench projection exposes scheduler dispatch policy blockers", () => {

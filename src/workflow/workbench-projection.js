@@ -365,6 +365,60 @@ function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeSchedulerDispatchContinuation(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "scheduler_dispatch_continuation");
+  const latestEvent = events.at(-1) || null;
+  const enqueueEvents = asArray(manifest?.events).filter((event) => event?.type === "scheduler_next_cycle_enqueue");
+  const latestEnqueueEvent = enqueueEvents.at(-1) || null;
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = latestEvent
+    ? artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null
+    : null;
+  const enqueueArtifact = latestEnqueueEvent
+    ? artifacts.find((entry) => entry.id === latestEnqueueEvent.artifact_id) || null
+    : null;
+  const metadata = artifact?.metadata || latestEvent?.metadata || {};
+  const enqueueMetadata = enqueueArtifact?.metadata || latestEnqueueEvent?.metadata || {};
+  const issues = asArray(metadata.issues);
+
+  if (!latestEvent && !latestEnqueueEvent) {
+    return {
+      status: "not_configured",
+      continuation_status: null,
+      ready: false,
+      enqueue_status: null,
+      enqueue_available: false,
+      continuation_input_path: null,
+      source_artifact_id: null,
+      artifact_id: null,
+      enqueue_artifact_id: null,
+      next_work_package_count: 0,
+      next_step: null,
+      latest_issue: null,
+      created_at: null
+    };
+  }
+
+  return {
+    status: latestEnqueueEvent?.status || latestEvent?.status || metadata.status || "unknown",
+    continuation_status: metadata.status || latestEvent?.status || null,
+    ready: latestEvent?.status === "ready" || metadata.status === "ready",
+    enqueue_status: latestEnqueueEvent?.status || enqueueMetadata.status || null,
+    enqueue_available: latestEvent?.status === "ready" || metadata.status === "ready",
+    continuation_input_path: enqueueMetadata.continuation_input_path || metadata.continuation_input_path || null,
+    source_artifact_id: metadata.source_artifact_id || enqueueMetadata.source_artifact_id || null,
+    artifact_id: latestEvent?.artifact_id || artifact?.id || null,
+    enqueue_artifact_id: latestEnqueueEvent?.artifact_id || enqueueArtifact?.id || null,
+    next_work_package_count: enqueueMetadata.next_work_package_count ?? metadata.next_work_package_count ?? 0,
+    next_step: enqueueMetadata.next_step || metadata.next_step || null,
+    latest_issue: issues[0]?.message || issues[0]?.code || null,
+    created_at: latestEnqueueEvent?.created_at || enqueueArtifact?.created_at || latestEvent?.created_at || artifact?.created_at || null
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -430,6 +484,7 @@ export function createWorkbenchProjection(input = {}) {
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
   const reviewerShardReview = summarizeReviewerShardReview(manifest, artifactLedger);
   const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
+  const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -463,6 +518,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewer_scope_split: reviewerScopeSplit,
     reviewer_shard_review: reviewerShardReview,
     scheduler_dispatch: schedulerDispatch,
+    scheduler_continuation: schedulerContinuation,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -492,7 +548,8 @@ export function createWorkbenchProjection(input = {}) {
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
         reviewer_shards_completed: reviewerShardReview.completed_shards || 0,
-        scheduler_dispatch_steps: schedulerDispatch.step_count || 0
+        scheduler_dispatch_steps: schedulerDispatch.step_count || 0,
+        scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0
       }
     }
   };
@@ -557,6 +614,14 @@ export function createMobileWorkbenchProjection(input = {}) {
       next_continuation_action: projection.scheduler_dispatch.next_continuation_action,
       next_work_package_count: projection.scheduler_dispatch.next_work_package_count
     },
+    scheduler_continuation: {
+      status: projection.scheduler_continuation.status,
+      continuation_status: projection.scheduler_continuation.continuation_status,
+      ready: projection.scheduler_continuation.ready,
+      enqueue_status: projection.scheduler_continuation.enqueue_status,
+      enqueue_available: projection.scheduler_continuation.enqueue_available,
+      next_work_package_count: projection.scheduler_continuation.next_work_package_count
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -575,5 +640,6 @@ export {
   summarizeReviewerProviderHealth,
   summarizeReviewerScopeSplit,
   summarizeReviewerShardReview,
+  summarizeSchedulerDispatchContinuation,
   summarizeSchedulerDispatch
 };

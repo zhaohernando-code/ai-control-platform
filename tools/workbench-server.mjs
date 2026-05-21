@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { extname, isAbsolute, normalize, resolve } from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, extname, isAbsolute, normalize, relative, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
@@ -21,6 +21,11 @@ import {
   recordSchedulerDispatchRunArtifact,
   runSchedulerDispatchPlan
 } from "../src/workflow/scheduler-dispatch-runner.js";
+import {
+  prepareSchedulerDispatchContinuationFromRunArtifact,
+  recordSchedulerDispatchContinuationPrepared,
+  recordSchedulerNextCycleEnqueue
+} from "../src/workflow/scheduler-dispatch-continuation.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -86,6 +91,138 @@ function projectionById(id = null, history = readJson(historyPath), allowedRoots
       ? createWorkbenchProjection(readJson(historyItemPath(item.input_path, "input_path", allowedRoots)))
       : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))
   };
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeString(value) {
+  return String(value || "").trim();
+}
+
+function artifactsOf(workflowState = {}) {
+  return [
+    ...asArray(workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts),
+    ...asArray(workflowState?.manifest?.artifacts)
+  ];
+}
+
+function latestArtifactForEvent(workflowState = {}, eventType) {
+  const event = asArray(workflowState?.manifest?.events)
+    .filter((entry) => entry?.type === eventType)
+    .at(-1) || null;
+  if (!event) return { event: null, artifact: null, metadata: null };
+
+  const artifact = artifactsOf(workflowState).find((entry) => entry?.id === event.artifact_id) || null;
+  return {
+    event,
+    artifact,
+    metadata: artifact?.metadata || event.metadata || null
+  };
+}
+
+function latestSchedulerDispatchRun(workflowState = {}) {
+  return latestArtifactForEvent(workflowState, "scheduler_dispatch_run");
+}
+
+function schedulerContinuationOutputPath(runArtifact = {}) {
+  return normalizeString(runArtifact?.input?.plan?.continuation_output?.path);
+}
+
+function safeGeneratedContinuationPath(itemPath, allowedRoots) {
+  if (!itemPath) {
+    const error = new Error("scheduler dispatch continuation output path is required");
+    error.code = "INVALID_CONTINUATION_PATH";
+    throw error;
+  }
+  if (typeof itemPath !== "string") {
+    const error = new Error("scheduler dispatch continuation output path must be a string");
+    error.code = "INVALID_CONTINUATION_PATH";
+    throw error;
+  }
+  const filePath = isAbsolute(itemPath) ? resolve(itemPath) : resolve(root, itemPath);
+  if (!allowedRoots.some((allowedRoot) => isWithinPath(allowedRoot, filePath))) {
+    const error = new Error("scheduler dispatch continuation output path must stay under controlled roots");
+    error.code = "INVALID_CONTINUATION_PATH";
+    throw error;
+  }
+  return filePath;
+}
+
+function generatedContinuationInputIssues(generated = {}, prepared = {}) {
+  const issues = [];
+  if (!generated || typeof generated !== "object" || Array.isArray(generated)) {
+    return ["generated continuation input must be an object"];
+  }
+  if (generated.project_status?.project !== "ai-control-platform") {
+    issues.push("generated continuation input must target ai-control-platform");
+  }
+  const generatedManifest = generated.workflow_state?.manifest || {};
+  const expectedRunId = prepared.scheduler_dispatch?.run_id;
+  const expectedCycleId = prepared.scheduler_dispatch?.cycle_id;
+  if (expectedRunId && generatedManifest.run_id !== expectedRunId) {
+    issues.push("generated continuation input run_id must match scheduler dispatch run");
+  }
+  if (expectedCycleId && generatedManifest.cycle_id !== expectedCycleId) {
+    issues.push("generated continuation input cycle_id must match scheduler dispatch run");
+  }
+  const expectedWorkPackages = asArray(prepared.next_decision?.next_work_packages).length;
+  const generatedWorkPackages = asArray(generated.workflow_state?.manifest?.work_packages).length;
+  if (expectedWorkPackages !== generatedWorkPackages) {
+    issues.push("generated continuation input work package count must match replay-validated continuation");
+  }
+  return issues;
+}
+
+function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot]) {
+  return {
+    ...history,
+    items: asArray(history.items).map((item) => {
+      if (!item?.input_path) return item;
+      try {
+        const workflowState = readJson(historyItemPath(item.input_path, "input_path", allowedRoots));
+        const projection = createWorkbenchProjection(workflowState);
+        return {
+          ...item,
+          scheduler_dispatch: {
+            status: projection.scheduler_dispatch.status,
+            phase: projection.scheduler_dispatch.phase,
+            artifact_id: projection.scheduler_dispatch.artifact_id,
+            continuation_status: projection.scheduler_continuation.continuation_status || projection.scheduler_dispatch.next_continuation_status,
+            continuation_ready: projection.scheduler_continuation.ready,
+            enqueue_status: projection.scheduler_continuation.enqueue_status,
+            enqueue_available: projection.scheduler_continuation.enqueue_available,
+            continuation_input_path: projection.scheduler_continuation.continuation_input_path,
+            next_continuation_action: projection.scheduler_dispatch.next_continuation_action,
+            next_work_package_count: projection.scheduler_continuation.next_work_package_count || projection.scheduler_dispatch.next_work_package_count,
+            latest_issue: projection.scheduler_continuation.latest_issue
+          }
+        };
+      } catch (error) {
+        return {
+          ...item,
+          scheduler_dispatch: {
+            status: "history_read_failed",
+            continuation_ready: false,
+            enqueue_available: false,
+            latest_issue: error.message
+          }
+        };
+      }
+    })
+  };
+}
+
+function metadataPath(filePath) {
+  return isWithinPath(root, filePath) ? relative(root, filePath) : filePath;
+}
+
+function writePreparedSchedulerContinuation(runArtifact, prepared, allowedOutputRoots) {
+  const outputPath = safeGeneratedContinuationPath(schedulerContinuationOutputPath(runArtifact), allowedOutputRoots);
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, `${JSON.stringify(prepared.continuation_input, null, 2)}\n`);
+  return outputPath;
 }
 
 function readBody(req) {
@@ -234,7 +371,7 @@ export function createWorkbenchServer(options = {}) {
 
       if (url.pathname === "/api/workbench/projections") {
         const history = readJson(serverHistoryPath);
-        jsonResponse(res, 200, history);
+        jsonResponse(res, 200, projectionHistoryWithReadiness(history, allowedHistoryRoots));
         return;
       }
 
@@ -479,7 +616,36 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        let nextWorkflowState = recorded.workflow_state;
+        let continuation = null;
+        if (policy.execution_mode !== "dry_run") {
+          continuation = prepareSchedulerDispatchContinuationFromRunArtifact(runArtifact);
+          if (continuation.status !== "ready") {
+            jsonResponse(res, 400, {
+              error: "scheduler dispatch continuation preparation failed",
+              issues: continuation.issues || [],
+              continuation,
+              projection: createWorkbenchProjection(nextWorkflowState)
+            });
+            return;
+          }
+          const continuationOutputPath = writePreparedSchedulerContinuation(runArtifact, continuation, [
+            resolve(root, "tmp"),
+            snapshotsRoot
+          ]);
+          const continuationRecorded = recordSchedulerDispatchContinuationPrepared(nextWorkflowState, continuation, {
+            created_at: controlInput.created_at || controlInput.createdAt,
+            source_artifact_id: recorded.artifact.id,
+            continuation_input_path: metadataPath(continuationOutputPath)
+          });
+          if (continuationRecorded.status !== "pass") {
+            jsonResponse(res, 400, { error: "scheduler dispatch continuation record failed", issues: continuationRecorded.issues });
+            return;
+          }
+          nextWorkflowState = continuationRecorded.workflow_state;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...nextWorkflowState }, null, 2)}\n`);
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -488,7 +654,132 @@ export function createWorkbenchServer(options = {}) {
           control: normalizedControl,
           result: runResult,
           artifact: recorded.artifact,
-          projection: createWorkbenchProjection(recorded.workflow_state)
+          continuation,
+          projection: createWorkbenchProjection(nextWorkflowState)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/scheduler-next-cycle" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const latestRun = latestSchedulerDispatchRun(workflowState);
+        if (!latestRun.metadata) {
+          jsonResponse(res, 400, { error: "scheduler dispatch run artifact not found" });
+          return;
+        }
+
+        const continuation = prepareSchedulerDispatchContinuationFromRunArtifact(latestRun.metadata);
+        if (continuation.status !== "ready") {
+          jsonResponse(res, 400, {
+            error: "scheduler dispatch continuation preparation failed",
+            issues: continuation.issues || [],
+            continuation
+          });
+          return;
+        }
+
+        let continuationOutputPath;
+        let generatedInput;
+        try {
+          continuationOutputPath = safeGeneratedContinuationPath(
+            schedulerContinuationOutputPath(latestRun.metadata),
+            [resolve(root, "tmp"), snapshotsRoot]
+          );
+          generatedInput = readJson(continuationOutputPath);
+        } catch (error) {
+          if (error.code === "ENOENT") {
+            jsonResponse(res, 400, { error: "scheduler dispatch generated continuation input not found" });
+            return;
+          }
+          throw error;
+        }
+        const generatedIssues = generatedContinuationInputIssues(generatedInput, continuation);
+        if (generatedIssues.length > 0) {
+          jsonResponse(res, 400, { error: "generated continuation input validation failed", issues: generatedIssues });
+          return;
+        }
+
+        const createdAt = input.created_at || input.createdAt;
+        const sourceArtifactId = latestRun.artifact?.id || latestRun.event?.artifact_id;
+        const continuationInputPath = metadataPath(continuationOutputPath);
+        const existingContinuation = latestArtifactForEvent(workflowState, "scheduler_dispatch_continuation");
+        const existingContinuationMatchesRun = existingContinuation.metadata?.status === "ready" &&
+          existingContinuation.metadata?.source_artifact_id === sourceArtifactId &&
+          existingContinuation.metadata?.continuation_input_path === continuationInputPath;
+        const continuationRecorded = existingContinuationMatchesRun
+          ? {
+            status: "pass",
+            artifact: existingContinuation.artifact,
+            workflow_state: workflowState
+          }
+          : recordSchedulerDispatchContinuationPrepared(workflowState, continuation, {
+            created_at: createdAt,
+            source_artifact_id: sourceArtifactId,
+            continuation_input_path: continuationInputPath
+          });
+        if (continuationRecorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch continuation record failed", issues: continuationRecorded.issues });
+          return;
+        }
+
+        const requestedSnapshotId = normalizeString(input.snapshot_id || input.snapshotId);
+        const snapshotId = requestedSnapshotId || `next-cycle-${selectedId}-${Date.now()}`;
+        const enqueued = recordSchedulerNextCycleEnqueue(continuationRecorded.workflow_state, continuation, {
+          created_at: createdAt,
+          source_artifact_id: sourceArtifactId,
+          continuation_artifact_id: continuationRecorded.artifact.id,
+          continuation_input_path: continuationInputPath,
+          snapshot_id: snapshotId
+        });
+        if (enqueued.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler next cycle enqueue record failed", issues: enqueued.issues });
+          return;
+        }
+
+        const published = publishWorkbenchSnapshot({
+          id: snapshotId,
+          label: input.label || `Next cycle from ${selectedId}`,
+          input: generatedInput.workflow_state,
+          created_at: createdAt
+        }, {
+          root,
+          historyPath: serverHistoryPath,
+          snapshotsRoot
+        });
+        if (published.status === "fail") {
+          jsonResponse(res, 400, { error: "scheduler next cycle snapshot publish failed", issues: published.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...enqueued.workflow_state }, null, 2)}\n`);
+
+        jsonResponse(res, 201, {
+          status: "queued",
+          item,
+          continuation,
+          continuation_artifact: continuationRecorded.artifact,
+          enqueue_artifact: enqueued.artifact,
+          next_item: published.item,
+          projection: published.projection,
+          current_projection: createWorkbenchProjection(enqueued.workflow_state)
         });
         return;
       }
@@ -588,6 +879,11 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (error.code === "INVALID_WORKBENCH_HOST") {
+        jsonResponse(res, 400, { error: error.message });
+        return;
+      }
+
+      if (error.code === "INVALID_CONTINUATION_PATH") {
         jsonResponse(res, 400, { error: error.message });
         return;
       }

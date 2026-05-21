@@ -699,3 +699,13 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - `createSchedulerDispatchPlan` 增加 `continuation_output`，默认写入 scheduler run 目录。
 - `run-scheduler-dispatch-plan` 在非 dry-run 且未显式传 `--continuation-output` 时读取 plan 内的 continuation output。
 - dry-run 不自动生成 continuation input，避免把结构验证伪装成可复用下一轮。
+
+[2026-05-22T00:18:00+08:00] Scheduler continuation readiness must lead to a next-cycle enqueue:
+只在 scheduler dispatch artifact 中展示 next continuation 还不够；如果工作台 history 看不到“下一轮输入已准备好”，或者没有服务端入口消费这个输入，长任务仍可能停在“看起来可继续但无人接手”的状态。
+
+决策：
+- 受控非 dry-run scheduler dispatch 成功后，Workbench server 必须生成 plan 声明的 scheduler continuation input，并写入 `scheduler_dispatch_continuation` event/artifact。
+- Projection 和 projection history 必须展示 continuation readiness、enqueue availability、continuation input path 和 next work package count。
+- 新增 `POST /api/workbench/scheduler-next-cycle`，只从 history `input_path` 的最新 scheduler dispatch run artifact 出发，重新运行 replay-validating adapter，读取并校验已生成的 continuation input。
+- next-cycle enqueue 成功后写入 `scheduler_next_cycle_enqueue` event/artifact，并发布下一轮 workflow snapshot 到 projection history。
+- 该入口不触发新的外部执行；缺少 input_path、缺少 dispatch run、continuation path 越界、adapter blocked 或 generated input 身份不一致都必须失败闭合。

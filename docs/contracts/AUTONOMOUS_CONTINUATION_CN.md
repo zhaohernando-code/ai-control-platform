@@ -159,6 +159,8 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Scheduler dispatch 产出的下一轮 continuation input 必须通过 `prepare:scheduler-dispatch-continuation` 或等价 adapter 生成。该 adapter 只能读取 `scheduler-dispatch-run.v1` 中声明的 closeout loop artifact 路径，并必须复用 autonomous closeout loop replay validator；blocked 时不得生成 continuation input。
 - `run-scheduler-dispatch-plan` 可以通过 `--continuation-output` 在同一次执行中生成下一轮 continuation input。该输出仍必须走 scheduler dispatch continuation adapter；adapter blocked 时整个 runner 必须失败。
 - Scheduler dispatch plan 必须携带 `continuation_output` 文件目标；非 dry-run runner 在没有显式 CLI flag 时使用 plan 内目标，dry-run 不生成 continuation input。
+- 工作台服务执行受控非 dry-run scheduler dispatch 后，必须同步生成 plan 声明的 continuation input，并把 `scheduler_dispatch_continuation` 作为 durable workflow fact 写回 manifest 和 artifact ledger；projection history 必须能展示 `continuation_ready`、`enqueue_available`、continuation input path 和 next work package count。
+- 工作台服务必须提供 `POST /api/workbench/scheduler-next-cycle`：它只能消费 projection history `input_path` 中最新的 scheduler dispatch run artifact，重新运行 scheduler dispatch continuation adapter，读取并校验已生成的 continuation input，然后写入 `scheduler_next_cycle_enqueue` fact 并发布下一轮 workflow snapshot。没有 `input_path`、没有 dispatch run、adapter blocked、continuation path 越界或 generated input 身份不一致时必须失败闭合，不得写入半状态。
 
 ## 5. 与工作台关系
 

@@ -9,7 +9,11 @@ import {
   runAutonomousCloseoutLoop
 } from "../src/workflow/autonomous-orchestrator.js";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
-import { prepareSchedulerDispatchContinuationFromRunArtifact } from "../src/workflow/scheduler-dispatch-continuation.js";
+import {
+  prepareSchedulerDispatchContinuationFromRunArtifact,
+  recordSchedulerDispatchContinuationPrepared,
+  recordSchedulerNextCycleEnqueue
+} from "../src/workflow/scheduler-dispatch-continuation.js";
 
 function workflowInput() {
   return JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
@@ -83,6 +87,33 @@ test("scheduler dispatch continuation prepares next input from closeout output",
   assert.equal(prepared.scheduler_dispatch.next_work_package_count, 3);
   assert.equal(prepared.continuation_input.project_status.project, "ai-control-platform");
   assert.equal(prepared.next_decision.next_work_packages.length, 3);
+});
+
+test("scheduler dispatch continuation readiness and enqueue are durable workflow facts", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/scheduler-dispatch-continuation-fact-"));
+  const runArtifact = await createSchedulerRunArtifact(dir);
+  const prepared = prepareSchedulerDispatchContinuationFromRunArtifact(runArtifact);
+  const recorded = recordSchedulerDispatchContinuationPrepared(workflowInput(), prepared, {
+    source_artifact_id: "scheduler-dispatch-run-001",
+    continuation_input_path: "tmp/scheduler/next/continuation-input.json",
+    created_at: "2026-05-22T00:02:00.000Z"
+  });
+  const enqueued = recordSchedulerNextCycleEnqueue(recorded.workflow_state, prepared, {
+    source_artifact_id: "scheduler-dispatch-run-001",
+    continuation_artifact_id: recorded.artifact.id,
+    continuation_input_path: "tmp/scheduler/next/continuation-input.json",
+    snapshot_id: "scheduler-next",
+    created_at: "2026-05-22T00:03:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.fact.status, "ready");
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "scheduler_dispatch_continuation");
+  assert.equal(enqueued.status, "pass");
+  assert.equal(enqueued.fact.status, "queued");
+  assert.equal(enqueued.workflow_state.manifest.events.at(-1).type, "scheduler_next_cycle_enqueue");
+  assert.equal(enqueued.workflow_state.artifact_ledger.artifacts.at(-1).metadata.snapshot_id, "scheduler-next");
 });
 
 test("scheduler dispatch continuation blocks missing closeout output", () => {

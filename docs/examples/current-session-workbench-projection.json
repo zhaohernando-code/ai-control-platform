@@ -116,6 +116,21 @@
     "policy_latest_issue": null,
     "policy_artifact_id": null
   },
+  "scheduler_continuation": {
+    "status": "not_configured",
+    "continuation_status": null,
+    "ready": false,
+    "enqueue_status": null,
+    "enqueue_available": false,
+    "continuation_input_path": null,
+    "source_artifact_id": null,
+    "artifact_id": null,
+    "enqueue_artifact_id": null,
+    "next_work_package_count": 0,
+    "next_step": null,
+    "latest_issue": null,
+    "created_at": null
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -248,7 +263,8 @@
       "provider_health_events": 1,
       "reviewer_scope_shards": 2,
       "reviewer_shards_completed": 0,
-      "scheduler_dispatch_steps": 0
+      "scheduler_dispatch_steps": 0,
+      "scheduler_continuation_ready": 0
     }
   }
 }

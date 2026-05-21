@@ -228,6 +228,29 @@ test("projection source runs guarded scheduler dispatch", async () => {
   assert.match(calls[0].options.body, /dry_run/);
 });
 
+test("projection source enqueues scheduler next cycle", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    schedulerNextCycleUrl: "/api/workbench/scheduler-next-cycle",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "queued", next_item: { id: "next" } };
+        }
+      };
+    }
+  });
+
+  const result = await source.enqueueSchedulerNextCycle({ snapshot_id: "next" });
+
+  assert.equal(result.status, "queued");
+  assert.equal(source.schedulerNextCycleUrl, "/api/workbench/scheduler-next-cycle");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /snapshot_id/);
+});
+
 test("projection source rejects failed scheduler dispatch", async () => {
   const projection = validProjection();
   const source = createProjectionSource({
@@ -246,6 +269,24 @@ test("projection source rejects failed scheduler dispatch", async () => {
     assert.equal(error.projection, projection);
     return true;
   });
+});
+
+test("projection source rejects failed scheduler next-cycle enqueue", async () => {
+  const source = createProjectionSource({
+    schedulerNextCycleUrl: "/api/workbench/scheduler-next-cycle",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "next cycle failed" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.enqueueSchedulerNextCycle({}),
+    /Scheduler next cycle enqueue failed: 400/
+  );
 });
 
 test("projection source rejects failed scheduler dispatch plan creation", async () => {

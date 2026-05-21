@@ -435,9 +435,25 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
     const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch?id=scheduler-approved-mock`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ execution_profile: "approved_mock_non_dry_run" })
+      body: JSON.stringify({
+        execution_profile: "approved_mock_non_dry_run",
+        created_at: "2026-05-22T00:10:00.000Z"
+      })
     });
     const created = response.json();
+    const historyReady = (await request(`${baseUrl}/api/workbench/projections`)).json();
+    const readyItem = historyReady.items.find((entry) => entry.id === "scheduler-approved-mock");
+    const nextCycle = await request(`${baseUrl}/api/workbench/scheduler-next-cycle?id=scheduler-approved-mock`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        snapshot_id: "scheduler-approved-mock-next",
+        label: "Scheduler approved mock next",
+        created_at: "2026-05-22T00:11:00.000Z"
+      })
+    });
+    const queued = nextCycle.json();
+    const historyQueued = (await request(`${baseUrl}/api/workbench/projections`)).json();
     const state = JSON.parse(readFileSync(inputPath, "utf8"));
 
     assert.equal(response.status, 201);
@@ -449,8 +465,69 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
     assert.equal(created.projection.scheduler_dispatch.policy_execution_mode, "execute");
     assert.equal(created.projection.scheduler_dispatch.next_continuation_action, "rerun");
     assert.equal(created.projection.scheduler_dispatch.next_work_package_count, 3);
-    assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_policy");
-    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+    assert.equal(created.projection.scheduler_continuation.ready, true);
+    assert.equal(created.projection.scheduler_continuation.next_work_package_count, 3);
+    assert.equal(readyItem.scheduler_dispatch.continuation_ready, true);
+    assert.equal(readyItem.scheduler_dispatch.enqueue_available, true);
+    assert.equal(readyItem.scheduler_dispatch.next_work_package_count, 3);
+    assert.equal(nextCycle.status, 201);
+    assert.equal(queued.status, "queued");
+    assert.equal(queued.next_item.id, "scheduler-approved-mock-next");
+    assert.equal(queued.projection.scheduler_continuation.status, "not_configured");
+    assert.equal(queued.current_projection.scheduler_continuation.enqueue_status, "queued");
+    assert.equal(historyQueued.latest, "scheduler-approved-mock-next");
+    assert.equal(state.manifest.events.at(-4).type, "scheduler_dispatch_policy");
+    assert.equal(state.manifest.events.at(-3).type, "scheduler_dispatch_run");
+    assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_continuation");
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_next_cycle_enqueue");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects scheduler next-cycle without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-next-cycle?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
+});
+
+test("workbench server rejects scheduler next-cycle without dispatch run artifact", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-cycle-missing-"));
+  const inputPath = join(snapshotsRoot, "next-cycle-missing-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "next-cycle-missing",
+    items: [
+      {
+        id: "next-cycle-missing",
+        label: "Next cycle missing",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-next-cycle?id=next-cycle-missing`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ snapshot_id: "next-cycle-missing-output" })
+    });
+    const rejected = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "scheduler dispatch run artifact not found");
+    assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
   }, { historyPath, snapshotsRoot });
 });
 
