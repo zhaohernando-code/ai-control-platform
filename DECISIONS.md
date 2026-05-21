@@ -541,3 +541,12 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - 任一步失败立即停止，输出结构化 issue。
 - 新增 `scheduler-dispatch-run.v1` artifact，保存 step 结果和 dry-run 标记。
 - CLI `tools/run-scheduler-dispatch-plan.mjs` 支持 `--dry-run`，用于在真实执行前验证计划。
+
+[2026-05-21T22:37:14+08:00] Deterministic scheduler trials need explicit reviewer mock options:
+要真实运行完整 scheduler dispatch chain，但不能每次都消耗 DS。mock reviewer 不能在执行器阶段偷偷注入，否则 replay artifact 无法解释为什么没有调用外部模型。
+
+决策：
+- dispatch planner 支持 `reviewer_mock_status` 和 `reviewer_mock_findings_json`。
+- CLI 暴露 `--reviewer-mock-status` / `--reviewer-mock-findings-json`。
+- mock 参数写入计划的 reviewer shard loop step。
+- runner 仍只执行计划，不在执行阶段隐式改命令。

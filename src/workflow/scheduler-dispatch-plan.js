@@ -29,6 +29,15 @@ function pathOrDefault(options = {}, key, fallback) {
   return normalizeString(options[key]) || fallback;
 }
 
+function reviewerMockArgs(options = {}) {
+  const args = [];
+  const mockStatus = normalizeString(options.reviewer_mock_status || options.reviewerMockStatus);
+  const mockFindingsJson = normalizeString(options.reviewer_mock_findings_json || options.reviewerMockFindingsJson);
+  if (mockStatus) args.push("--mock-status", mockStatus);
+  if (mockFindingsJson) args.push("--mock-findings-json", mockFindingsJson);
+  return args;
+}
+
 export function createSchedulerDispatchPlan(input = {}, options = {}) {
   const decision = input?.next_work_packages ? input : decideContinuation(input);
   const shardPackages = reviewerShardWorkPackages(decision);
@@ -73,6 +82,7 @@ export function createSchedulerDispatchPlan(input = {}, options = {}) {
       outputPath,
       "--all",
       "--record-provider-health",
+      ...reviewerMockArgs(options),
       "--run-artifact-output",
       runArtifactPath
     ],

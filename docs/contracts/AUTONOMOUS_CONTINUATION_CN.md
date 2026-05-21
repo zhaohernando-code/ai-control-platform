@@ -136,6 +136,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
   - `run-autonomous-closeout-loop`
 - 缺少 `workflow_state_input_path` 时必须失败闭合，因为 reviewer shard runner 需要明确输入/输出文件。
 - dispatch plan 只生成可审计命令，不直接绕过 artifact validation 或 closeout validation。
+- deterministic trial 可以显式传 `--reviewer-mock-status` / `--reviewer-mock-findings-json`，但这必须出现在 dispatch plan 中，不能在执行阶段临时篡改命令。
 
 `tools/run-scheduler-dispatch-plan.mjs` / `npm run run:scheduler-dispatch` 是当前受限执行器：
 

@@ -493,6 +493,14 @@
       "regression_test": "scheduler dispatch runner validates allowed npm scripts; scheduler dispatch runner executes steps with injected executor; scheduler dispatch runner stops on step failure; run-scheduler-dispatch-plan CLI writes dry-run artifact",
       "verification": "node --test test/scheduler-dispatch-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-dispatch-mock-hidden-at-execution",
+      "invariant": "Deterministic reviewer mock behavior must be encoded in the scheduler dispatch plan, not injected secretly by the executor, so replay artifacts explain why external reviewers were bypassed.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-plan.js; tools/create-scheduler-dispatch-plan.mjs; test/scheduler-dispatch-plan.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands; scheduler dispatch plan CLI writes reviewer shard dispatch plan",
+      "verification": "node --test test/scheduler-dispatch-plan.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

@@ -32,6 +32,7 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
     history_path: "tmp/scheduler/projection-history.json",
     snapshots_root: "tmp/scheduler/snapshots",
     closeout_loop_artifact_path: "tmp/scheduler/autonomous-closeout-loop-run.json",
+    reviewer_mock_status: "pass",
     next_step: "Continue after scheduler dispatch."
   });
 
@@ -41,6 +42,7 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
   assert.equal(plan.steps[0].action, "run_reviewer_shard_loop");
   assert.ok(plan.steps[0].args.includes("--all"));
   assert.ok(plan.steps[0].args.includes("--record-provider-health"));
+  assert.ok(plan.steps[0].args.includes("--mock-status"));
   assert.ok(plan.steps[0].work_package_ids.includes("reviewer-scope-shard-001"));
   assert.equal(plan.steps[1].action, "prepare_reviewer_shard_loop_continuation");
   assert.equal(plan.steps[1].depends_on[0], "run-reviewer-shard-loop");
@@ -67,6 +69,8 @@ test("scheduler dispatch plan CLI writes reviewer shard dispatch plan", () => {
     inputPath,
     "--workflow-state-input",
     "tmp/scheduler/input.json",
+    "--reviewer-mock-status",
+    "pass",
     "--output",
     outputPath
   ], { encoding: "utf8" });
@@ -77,4 +81,5 @@ test("scheduler dispatch plan CLI writes reviewer shard dispatch plan", () => {
   assert.equal(summary.status, "pass");
   assert.equal(summary.step_count, 3);
   assert.equal(plan.steps[0].action, "run_reviewer_shard_loop");
+  assert.ok(plan.steps[0].args.includes("--mock-status"));
 });

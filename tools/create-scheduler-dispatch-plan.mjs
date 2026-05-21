@@ -20,7 +20,9 @@ function usage() {
     "  --continuation-input-output <path>",
     "  --history-path <path>",
     "  --snapshots-root <path>",
-    "  --closeout-loop-artifact <path>"
+    "  --closeout-loop-artifact <path>",
+    "  --reviewer-mock-status <pass|fail>",
+    "  --reviewer-mock-findings-json <json>"
   ].join("\n");
 }
 
@@ -48,6 +50,8 @@ try {
     history_path: valueAfter("--history-path", args),
     snapshots_root: valueAfter("--snapshots-root", args),
     closeout_loop_artifact_path: valueAfter("--closeout-loop-artifact", args),
+    reviewer_mock_status: valueAfter("--reviewer-mock-status", args),
+    reviewer_mock_findings_json: valueAfter("--reviewer-mock-findings-json", args),
     next_step: valueAfter("--next-step", args)
   });
 } catch (error) {
