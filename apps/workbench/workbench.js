@@ -160,6 +160,7 @@ function renderProjection(projection) {
   setText("scheduler_loop_latest", schedulerLoop.latest_projection_id);
   setText("scheduler_loop_recovery", schedulerLoop.recovery_status);
   setText("scheduler_loop_action", schedulerLoop.terminal_action || schedulerLoop.recovery_action);
+  setText("scheduler_loop_strategy", schedulerLoop.execution_strategy || schedulerLoop.execution_profile);
   setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
   setText("next_action_readout_status", nextActionReadout.status);
   setText("next_action_readout_action", nextActionReadout.action || projection.one_screen?.recommended_action);

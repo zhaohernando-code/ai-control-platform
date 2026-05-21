@@ -302,6 +302,13 @@
       "category": "observability",
       "severity": "p1",
       "message": "Projected loops that stop on inspect_* recommendations must record the terminal action and reason in the loop artifact/projection; otherwise autonomous stopping still depends on reading transient phase strings."
+    },
+    {
+      "id": "loop-profile-hidden-in-button-text",
+      "status": "fail",
+      "category": "observability",
+      "severity": "p1",
+      "message": "Workbench must render the active autonomous loop execution strategy/profile from projection data; otherwise operators have to infer whether a run used scheduler_dispatch_chain or projected_next_action from button labels."
     }
   ],
   "hardening_items": [
@@ -823,6 +830,14 @@
       "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; apps/workbench/workbench.js; test/autonomous-scheduler-loop.test.js",
       "regression_test": "scheduler loop can follow projected next-action recommendations and records terminal_action/terminal_reason",
       "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-shell.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "loop-profile-hidden-in-button-text",
+      "invariant": "Autonomous loop execution strategy and profile must be persisted in loop artifacts, exposed through PC/mobile projection summaries and history readout, and rendered by both workbench shells so operators do not infer execution mode from control labels.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-shell.test.js",
+      "regression_test": "workbench projection exposes autonomous scheduler loop execution strategy/profile; workbench shell renders scheduler_loop_strategy; projected_mock_loop_click browser scenario renders projected_next_action",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

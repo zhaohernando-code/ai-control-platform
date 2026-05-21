@@ -642,10 +642,14 @@ test("workbench projection exposes autonomous scheduler loop runs", () => {
   assert.equal(projection.scheduler_loop.recovery_action, "resume_from_latest_projection");
   assert.equal(projection.scheduler_loop.resumable, true);
   assert.equal(projection.scheduler_loop.resume_projection_id, "workbench-loop-current-01");
+  assert.equal(projection.scheduler_loop.execution_strategy, "scheduler_dispatch_chain");
+  assert.equal(projection.scheduler_loop.execution_profile, "approved_mock_non_dry_run");
   assert.equal(projection.one_screen.counters.scheduler_loop_iterations, 1);
   assert.equal(mobile.scheduler_loop.status, "pass");
   assert.equal(mobile.scheduler_loop.latest_projection_id, "workbench-loop-current-01");
   assert.equal(mobile.scheduler_loop.recovery_status, "ready");
+  assert.equal(mobile.scheduler_loop.execution_strategy, "scheduler_dispatch_chain");
+  assert.equal(mobile.scheduler_loop.execution_profile, "approved_mock_non_dry_run");
 });
 
 test("workbench projection blocks invalid autonomous scheduler loop history", () => {

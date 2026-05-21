@@ -218,6 +218,8 @@ function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRo
             recovery_action: projection.scheduler_loop.recovery_action,
             resumable: projection.scheduler_loop.resumable,
             resume_projection_id: projection.scheduler_loop.resume_projection_id,
+            execution_strategy: projection.scheduler_loop.execution_strategy,
+            execution_profile: projection.scheduler_loop.execution_profile,
             latest_projection_id: projection.scheduler_loop.latest_projection_id,
             latest_issue: projection.scheduler_loop.latest_issue
           }

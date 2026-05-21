@@ -859,3 +859,12 @@ Projected loop 遇到 `inspect_*` 时，停止是合理的，但如果只返回 
 - 同时记录 `terminal_reason`，优先使用 projection readout reason。
 - scheduler loop registry/readout 保留 terminal 字段。
 - Workbench projection 的 `scheduler_loop.latest_issue` 可展示 terminal reason，`Loop action` 优先展示 terminal action。
+
+[2026-05-22T04:28:00+08:00] Loop execution mode cannot live only in control labels:
+Projected mock loop 暴露在工作台后，操作者仍需要知道当前读数来自哪种执行策略和执行档位。如果这只藏在按钮文案里，后续真实 reviewer profile 接入时会再次变成口头约定。
+
+决策：
+- `autonomous-scheduler-loop-run.v1` readout 保留 `execution_strategy` 和 `execution_profile`。
+- Workbench projection 的 `scheduler_loop` 摘要在 PC/mobile 版本都暴露 strategy/profile。
+- Projection history readout 同步暴露 strategy/profile，供列表级状态和恢复选择使用。
+- PC/mobile 工作台显示 `Loop profile`，浏览器门禁验证 projected mock trial 渲染为 `projected_next_action`。

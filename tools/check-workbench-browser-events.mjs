@@ -298,6 +298,7 @@ async function verifyProjectedMockLoopClick(browser) {
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
+    const schedulerLoopStrategy = await page.textContent('[data-bind="scheduler_loop_strategy"]');
     const shardReviewCompleted = await page.textContent('[data-bind="shard_review_completed"]');
     const shardReviewStatus = await page.textContent('[data-bind="shard_review_status"]');
     const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
@@ -309,6 +310,7 @@ async function verifyProjectedMockLoopClick(browser) {
 
     assert(schedulerLoopStatus === "pass", "projected mock loop must render loop pass");
     assert(schedulerLoopIterations === "2", "projected mock loop must run two reviewer shard iterations");
+    assert(schedulerLoopStrategy === "projected_next_action", "projected mock loop must render projected strategy");
     assert(shardReviewCompleted === "2", "projected mock loop must render completed reviewer shards");
     assert(shardReviewStatus === "pass", "projected mock loop must aggregate reviewer shard status");
     assert(nextActionReadout, "projected mock loop must render a follow-up next-action readout");
@@ -318,6 +320,7 @@ async function verifyProjectedMockLoopClick(browser) {
       scenario: "projected_mock_loop_click",
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_iterations: schedulerLoopIterations,
+      scheduler_loop_strategy: schedulerLoopStrategy,
       shard_review_completed: shardReviewCompleted,
       shard_review_status: shardReviewStatus,
       next_action_readout: nextActionReadout,

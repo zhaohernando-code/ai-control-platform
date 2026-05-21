@@ -174,6 +174,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Autonomous scheduler loop 必须支持两种策略：默认 `scheduler_dispatch_chain` 保留现有稳定路径；`projected_next_action` 先读取 projection 的 `next_action_readout`，再通过 `/api/workbench/next-action` 执行推荐动作。Projected strategy 用于验证平台是否能从看板状态直接推进，而不是只靠写死的 scheduler-only step sequence。
 - PC/mobile 工作台必须提供 bounded projected mock loop 试运行入口，用于可视化验证 projection-driven execution 能推进 reviewer shards。该入口必须显式传 `execution_strategy=projected_next_action` 和 mock reviewer 参数，不能让 mock 行为伪装成真实 provider 成功。
 - Projected loop 遇到 `inspect_*`、`wait_for_driver_event` 或非 ready 推荐动作时，必须把 `terminal_action` 和 `terminal_reason` 写入 loop iteration，并由 workbench projection 的 `scheduler_loop` 摘要暴露。停止原因不能只存在于 transient phase 字符串。
+- `autonomous-scheduler-loop-run.v1`、PC/mobile workbench projection 和 projection history readout 都必须暴露 `execution_strategy` 与 `execution_profile`。工作台不能只通过按钮文案暗示当前运行是 `scheduler_dispatch_chain`、`projected_next_action`、mock profile 还是未来真实 reviewer profile。
 
 ## 5. 与工作台关系
 

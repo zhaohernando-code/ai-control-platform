@@ -374,6 +374,8 @@ function runReadoutFromEvent(event = {}, artifact = {}) {
     phase: validation.status === "pass" ? artifact.phase : "replay_validation",
     created_at: event.created_at || artifact.created_at || null,
     validation_status: validation.status,
+    execution_strategy: artifact.input?.execution_strategy || "scheduler_dispatch_chain",
+    execution_profile: artifact.input?.execution_profile || "approved_mock_non_dry_run",
     issue_count: issues.length,
     latest_issue: issues[0]?.message || issues[0]?.code || null,
     iteration_count: iterations.length,
