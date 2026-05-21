@@ -127,6 +127,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Reviewer provider health, smoke results, tool-path timeouts, split reruns, and fallback decisions must become durable scheduler facts instead of transient command output."
+    },
+    {
+      "id": "reviewer-provider-health-not-actionable",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Reviewer provider health facts must generate continuation work packages; showing retry/fallback state without scheduling follow-up leaves autonomous development stuck."
     }
   ],
   "hardening_items": [
@@ -272,6 +279,14 @@
       "enforcement_target": "src/workflow/reviewer-provider-health.js; src/workflow/workbench-projection.js; apps/workbench; test/reviewer-provider-health.test.js; test/workbench-projection.test.js",
       "regression_test": "provider health facts persist into manifest events and artifact ledger; workbench projection exposes reviewer provider health scheduler facts",
       "verification": "node --test test/reviewer-provider-health.test.js test/workbench-projection.test.js; npm run check:workbench:browser-events; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-provider-health-not-actionable",
+      "invariant": "Autonomous continuation must turn reviewer_provider_health scheduled_actions into next_work_packages and context_pack_seed subtasks.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; test/autonomous-continuation.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "reviewer provider health facts generate scheduler follow-up work packages; provider health fallback schedules model fallback work package",
+      "verification": "node --test test/autonomous-continuation.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

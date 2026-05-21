@@ -69,12 +69,54 @@ function nextStepFrom(input) {
 }
 
 function nextWorkPackagesFrom(input) {
+  const providerPackages = reviewerProviderWorkPackagesFrom(input);
   return [
     ...asArray(input?.next_work_packages),
     ...asArray(input?.nextWorkPackages),
     ...asArray(input?.run_evaluation?.next_work_packages),
-    ...asArray(input?.run_evaluation?.projection?.next_work_packages)
+    ...asArray(input?.run_evaluation?.projection?.next_work_packages),
+    ...providerPackages
   ];
+}
+
+function latestReviewerProviderHealth(input = {}) {
+  const explicit = input?.reviewer_provider_health || input?.provider_health || input?.workflow_state?.reviewer_provider_health;
+  if (explicit) return explicit;
+
+  const events = asArray(input?.workflow_state?.manifest?.events)
+    .filter((event) => event?.type === "reviewer_provider_health");
+  return events.at(-1)?.metadata || null;
+}
+
+function providerHealthActionTitle(action) {
+  return {
+    provider_smoke_check: "Run reviewer provider smoke check",
+    rerun_without_tools: "Rerun DeepSeek reviewer without tools",
+    split_scope: "Split reviewer scope into smaller checks",
+    fallback_model_or_defer_external_review: "Fallback reviewer model or defer external review"
+  }[action] || `Handle reviewer provider action ${action}`;
+}
+
+function providerHealthOwnedFiles(action) {
+  if (action === "fallback_model_or_defer_external_review") {
+    return ["src/workflow/model-router.js", "src/workflow/reviewer-provider-health.js"];
+  }
+  return ["src/workflow/llm-reviewer-gate.js", "src/workflow/reviewer-provider-health.js"];
+}
+
+function reviewerProviderWorkPackagesFrom(input = {}) {
+  const health = latestReviewerProviderHealth(input);
+  const actions = asArray(health?.scheduled_actions || health?.scheduledActions);
+  const nextAction = normalizeString(health?.next_action || health?.nextAction);
+  const scheduledActions = actions.length > 0 ? actions : (nextAction ? [nextAction] : []);
+
+  return scheduledActions.map((action) => ({
+    id: `reviewer-provider-${normalizeString(action).replace(/_/g, "-")}`,
+    title: providerHealthActionTitle(action),
+    action,
+    owned_files: providerHealthOwnedFiles(action),
+    reason: health?.reason || health?.retry_strategy || "reviewer provider health requires scheduler follow-up"
+  }));
 }
 
 function projectStatus(input) {

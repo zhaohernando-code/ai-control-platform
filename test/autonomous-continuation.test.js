@@ -73,6 +73,37 @@ test("reruns when autonomous run returns recoverable next work packages", () => 
   assert.equal(decision.context_pack_seed.subtasks[0].id, "rerun-reviewer");
 });
 
+test("reviewer provider health facts generate scheduler follow-up work packages", () => {
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-rerun-without-tools"));
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-split-scope"));
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-provider-rerun-without-tools"));
+});
+
+test("provider health fallback schedules model fallback work package", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass" },
+    reviewer_provider_health: {
+      recovery_status: "blocked",
+      provider_health: "unhealthy",
+      scheduled_actions: ["fallback_model_or_defer_external_review"],
+      retry_strategy: "fallback_model_or_defer_external_review"
+    }
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.next_work_packages[0].id, "reviewer-provider-fallback-model-or-defer-external-review");
+  assert.deepEqual(decision.next_work_packages[0].owned_files, ["src/workflow/model-router.js", "src/workflow/reviewer-provider-health.js"]);
+});
+
 test("rolls back without asking human when rollback is automatic", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),

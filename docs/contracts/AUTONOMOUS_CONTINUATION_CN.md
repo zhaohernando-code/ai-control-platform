@@ -102,6 +102,15 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - replay blocker evidence 必须使用不覆盖历史的唯一 artifact/event id；如果 manifest 与 artifact ledger 的 run/cycle 身份不一致，不得写入半状态。
 - `--resume-from` 在写入 blocker evidence 后必须发布 workflow state snapshot 并更新 projection history；发布失败要进入 `snapshot_publish` 结果，不能声称工作台已可见。
 
+如果 workflow state 或 projection 中存在 `reviewer_provider_health` fact，continuation 必须把其中的 `scheduled_actions` 转成下一轮 work packages：
+
+- `provider_smoke_check` -> 运行最小 provider smoke。
+- `rerun_without_tools` -> 用无工具模式重跑 reviewer。
+- `split_scope` -> 把 reviewer 文件/问题拆成更小批次。
+- `fallback_model_or_defer_external_review` -> 切换模型或延后外部 reviewer，不继续排 unhealthy provider。
+
+这些 work packages 必须进入 `next_work_packages` 和 `context_pack_seed.subtasks`，不能只展示在工作台上。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。
