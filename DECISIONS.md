@@ -458,3 +458,14 @@ API 存在但 UI 无入口，仍然会让 operator 回到手动 CLI 或聊天指
 - allowed_tools 直接来自 shard；no-tools shard 传空 tools。
 - stdout 支持 JSON array 和 `{ findings: [...] }` 两种结构化输出。
 - timeout 和 wrapper 非零退出转为结构化 reviewer finding，由 shard result/aggregate 进入统一恢复流程。
+
+[2026-05-21T21:47:54+08:00] Reviewer shard runner needs a scheduler CLI:
+runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚本需要一个稳定 CLI 从 workflow state 读取 pending shard、执行、写回状态。
+
+决策：
+- 新增 `tools/run-reviewer-shard.mjs` 和 `npm run run:reviewer-shard`。
+- CLI 默认执行第一个 pending shard，也支持 `--shard-id`。
+- 默认 executor 是 Claude+DeepSeek adapter。
+- 支持 mock findings/status 以便 deterministic tests 不触发真实模型。
+- 成功写回 workflow state；最后一个 shard 自动 aggregate。
+- 输入不可读或 shard 不可执行时非零退出。

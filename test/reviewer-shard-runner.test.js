@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { createArtifactLedger } from "../src/workflow/artifact-ledger.js";
@@ -136,4 +140,66 @@ test("reviewer shard runner fails closed without executor or pending shard", asy
   });
   assert.equal(unknownShard.status, "fail");
   assert.ok(unknownShard.issues.some((item) => item.code === "reviewer_shard_not_pending"));
+});
+
+test("run-reviewer-shard CLI executes pending shards with mock executor", () => {
+  const dir = mkdtempSync(join(tmpdir(), "reviewer-shard-runner-cli-"));
+  const inputPath = join(dir, "input.json");
+  const outputPath = join(dir, "output.json");
+  writeFileSync(inputPath, JSON.stringify(workflowState(), null, 2));
+
+  const first = execFileSync(process.execPath, [
+    "tools/run-reviewer-shard.mjs",
+    "--input",
+    inputPath,
+    "--output",
+    outputPath,
+    "--shard-id",
+    "reviewer-scope-shard-001",
+    "--mock-status",
+    "pass",
+    "--created-at",
+    "2026-05-21T21:10:00.000Z"
+  ], { encoding: "utf8" });
+  const firstSummary = JSON.parse(first);
+
+  assert.equal(firstSummary.status, "pass");
+  assert.equal(firstSummary.phase, "shard_recorded");
+  assert.equal(firstSummary.pending_shards, 1);
+
+  const second = execFileSync(process.execPath, [
+    "tools/run-reviewer-shard.mjs",
+    "--input",
+    outputPath,
+    "--output",
+    outputPath,
+    "--shard-id",
+    "reviewer-scope-shard-002",
+    "--mock-findings-json",
+    JSON.stringify([{ id: "runner-cli-finding", status: "fail", severity: "medium", category: "reviewer", message: "cli finding" }]),
+    "--mock-status",
+    "fail",
+    "--created-at",
+    "2026-05-21T21:11:00.000Z"
+  ], { encoding: "utf8" });
+  const secondSummary = JSON.parse(second);
+  const state = JSON.parse(readFileSync(outputPath, "utf8"));
+
+  assert.equal(secondSummary.status, "pass");
+  assert.equal(secondSummary.phase, "aggregated");
+  assert.equal(secondSummary.aggregate.failed_finding_count, 1);
+  assert.ok(state.manifest.review_findings.some((finding) => finding.finding_id === "runner-cli-finding"));
+});
+
+test("run-reviewer-shard CLI fails closed on unreadable input", () => {
+  const result = spawnSync(process.execPath, [
+    "tools/run-reviewer-shard.mjs",
+    "--input",
+    "/no/such/file.json",
+    "--output",
+    "/tmp/unused.json"
+  ], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /reviewer_shard_run_input_failed/);
 });

@@ -190,6 +190,13 @@
       "category": "reviewer_timeout",
       "severity": "p1",
       "message": "Reviewer shard runner needs a DeepSeek/Claude Code executor adapter that uses the canonical no-proxy launcher path and converts timeout/error output into structured shard findings."
+    },
+    {
+      "id": "reviewer-shard-runner-no-cli",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Reviewer shard runner needs a scheduler CLI entrypoint; otherwise pending shard execution still depends on ad hoc scripts."
     }
   ],
   "hardening_items": [
@@ -407,6 +414,14 @@
       "enforcement_target": "src/workflow/claude-deepseek-shard-executor.js; test/claude-deepseek-shard-executor.test.js; docs/contracts/LLM_REVIEWER_GATE_CN.md",
       "regression_test": "claude deepseek shard command uses canonical wrapper script and shard limits; claude deepseek shard executor returns structured findings from stdout; claude deepseek shard executor converts timeouts into reviewer timeout findings",
       "verification": "node --test test/claude-deepseek-shard-executor.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-runner-no-cli",
+      "invariant": "Pending reviewer shards must be executable through a reusable CLI that writes workflow state, supports mock execution for deterministic tests, and fails closed on unreadable input.",
+      "enforcement_target": "tools/run-reviewer-shard.mjs; package.json; test/reviewer-shard-runner.test.js",
+      "regression_test": "run-reviewer-shard CLI executes pending shards with mock executor; run-reviewer-shard CLI fails closed on unreadable input",
+      "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

@@ -163,6 +163,14 @@ DeepSeek/Claude Code executor adapter 约束：
 - 非结构化成功输出转成 info/pass finding，作为 evidence 保留。
 - `CLAUDE_DEEPSEEK_TIMEOUT` 或 exit code 124 转成 `category=reviewer_timeout` 的 fail finding，由 shard result/aggregate 进入现有恢复流程。
 
+`tools/run-reviewer-shard.mjs` / `npm run run:reviewer-shard` 是 scheduler CLI 入口：
+
+- 从 workflow state 中读取最新 split plan，默认执行第一个 pending shard，也可用 `--shard-id` 指定。
+- 默认 executor 为 Claude+DeepSeek adapter。
+- 成功后写回 workflow state；最后一个 shard 完成时自动写入 aggregate。
+- 支持 `--mock-findings-json` / `--mock-status`，用于确定性流程测试，不触发真实外部模型。
+- 输入不可读或 shard 不可执行时非零退出。
+
 ## 7. 工作台状态
 
 `summarizeReviewerGate` 输出工作台可展示状态：
