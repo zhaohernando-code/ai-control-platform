@@ -62,3 +62,12 @@
 - `rerun` 和自动 `rollback` 都是继续条件，不是人工等待条件。
 - 只有凭据缺失、破坏性动作、需求冲突、恢复失败耗尽或错误宿主等情况可以 `stop_for_human`。
 - continuation gate 必须输出下一轮 `context_pack_seed`，防止下一轮依赖聊天上下文。
+
+[2026-05-21T16:40:26+08:00] PC/mobile workbench shells consume validated projection JSON:
+工作台前端第一步不直接接 agent 日志、项目状态文件或聊天记录，而是只消费已通过 schema gate 的 Workbench Projection JSON。
+
+决策：
+- PC 入口为 `apps/workbench/desktop.html`，固定占满浏览器视口，内部内容区纵向滚动。
+- Mobile 入口为 `apps/workbench/mobile.html`，使用独立信息架构。
+- 两个入口共用 `apps/workbench/workbench.js`，只读取 projection JSON。
+- 浏览器验证必须检查 projection 是否加载、PC/mobile 是否无横向溢出。

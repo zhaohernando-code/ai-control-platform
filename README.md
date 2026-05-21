@@ -37,6 +37,13 @@ node tools/build-workbench-projection.mjs docs/examples/current-session-workbenc
 node tools/check-workbench-projection.mjs docs/examples/current-session-workbench-projection.json
 ```
 
+## Workbench Shell
+
+- PC: `apps/workbench/desktop.html`
+- Mobile: `apps/workbench/mobile.html`
+
+两个入口都只消费已验证的 `docs/examples/current-session-workbench-projection.json`。
+
 ## 迁移区
 
 - `docs/migrations/` 保存当前会话迁入的新中台历史材料和 Trial 证据。

@@ -1,0 +1,9 @@
+# Workbench Shell
+
+静态 PC / mobile 工作台入口。
+
+- `desktop.html`：PC 单页工作台，固定占满浏览器视口，内部内容区允许纵向滚动。
+- `mobile.html`：手机独立信息架构，不是 PC 页面缩放。
+- `workbench.js`：只读取 `docs/examples/current-session-workbench-projection.json`，不解析日志或聊天记录。
+
+本 shell 只负责展示已经通过 schema gate 的 projection JSON。后续接真实服务时，接口返回也必须先通过 `tools/check-workbench-projection.mjs` 同等校验。

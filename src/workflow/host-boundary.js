@@ -3,6 +3,7 @@ const PLATFORM_TERMS = [
   "平台",
   "控制面",
   "工作台",
+  "workbench",
   "ops workbench",
   "多agent",
   "multi-agent",
@@ -92,4 +93,3 @@ export function assertHostBoundary(input) {
   }
   return result;
 }
-

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Control Platform Mobile</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="mobile-shell" data-view="mobile">
+    <main class="phone-app">
+      <section class="phone-screen">
+        <header class="mobile-top">
+          <div>
+            <strong>中台工作台</strong>
+            <span data-bind="cycle_id">cycle</span>
+          </div>
+          <div class="avatar">AI</div>
+        </header>
+
+        <section class="mobile-hero">
+          <span class="caption">当前状态</span>
+          <h1 data-bind="status">--</h1>
+          <p data-bind="headline">加载中</p>
+        </section>
+
+        <section class="mobile-metrics" aria-label="移动端核心计数">
+          <article>
+            <span>任务</span>
+            <strong data-bind="counter_work_packages">0</strong>
+          </article>
+          <article>
+            <span>证据</span>
+            <strong data-bind="counter_artifacts">0</strong>
+          </article>
+          <article>
+            <span>派发</span>
+            <strong data-bind="counter_dispatchable_tasks">0</strong>
+          </article>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
+            <h2>下一步</h2>
+            <span data-bind="decision">--</span>
+          </div>
+          <div class="mobile-list" data-list="next_actions"></div>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
+            <h2>模型与审查</h2>
+            <span data-bind="selected_model">--</span>
+          </div>
+          <div class="mobile-review">
+            <div>
+              <span>Reviewer</span>
+              <strong data-bind="reviewer_status">--</strong>
+            </div>
+            <div>
+              <span>Signal</span>
+              <strong data-bind="reviewer_signal">--</strong>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <nav class="mobile-tabbar" aria-label="移动端导航">
+        <b>总览</b>
+        <span>任务</span>
+        <span>模型</span>
+        <span>审查</span>
+      </nav>
+    </main>
+    <script type="module" src="./workbench.js"></script>
+  </body>
+</html>

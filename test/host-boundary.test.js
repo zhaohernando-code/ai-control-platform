@@ -29,6 +29,16 @@ test("platform work is accepted in ai-control-platform", () => {
   assert.equal(result.classification, "platform_core");
 });
 
+test("english workbench requests infer platform_core domain", () => {
+  const result = assertHostBoundary({
+    request: "Start the PC/mobile workbench frontend shell against validated projection JSON",
+    targetProjectId: "ai-control-platform"
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.classification, "platform_core");
+});
+
 test("explicit adapter work is allowed with integration classification", () => {
   const result = classifyHost({
     request: "为 stock_dashboard 增加中台只读接入适配器",
@@ -39,4 +49,3 @@ test("explicit adapter work is allowed with integration classification", () => {
   assert.equal(result.allowed, true);
   assert.equal(result.classification, "integration_adapter");
 });
-

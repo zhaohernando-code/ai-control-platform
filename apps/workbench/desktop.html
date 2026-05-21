@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Control Platform Workbench</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="desktop-shell" data-view="desktop">
+    <div class="desktop-app">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark">AI</div>
+          <div>
+            <strong>Control Platform</strong>
+            <span>自主开发中台</span>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <a class="active" href="#overview">总览</a>
+          <a href="#runs">运行</a>
+          <a href="#review">审查</a>
+          <a href="#models">模型</a>
+          <a href="#risks">风险</a>
+        </nav>
+        <div class="operator">
+          <div class="avatar">OP</div>
+          <div>
+            <strong>Operator</strong>
+            <span data-bind="cycle_id">cycle</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workbench" id="overview">
+        <header class="topbar">
+          <div class="top-item">
+            <span>运行状态</span>
+            <strong data-bind="status">--</strong>
+          </div>
+          <div class="top-item">
+            <span>调度决策</span>
+            <strong data-bind="decision">--</strong>
+          </div>
+          <div class="top-item">
+            <span>主模型</span>
+            <strong data-bind="selected_model">--</strong>
+          </div>
+          <div class="top-item">
+            <span>Reviewer</span>
+            <strong data-bind="reviewer_status">--</strong>
+          </div>
+          <div class="top-actions">
+            <button type="button" data-action="validate">校验 Projection</button>
+            <button class="primary" type="button" data-action="next">下一步</button>
+          </div>
+        </header>
+
+        <section class="content-grid">
+          <section class="hero-panel">
+            <div>
+              <span class="caption">当前目标</span>
+              <h1 data-bind="headline">加载中</h1>
+              <p data-bind="reason">等待 projection 数据</p>
+            </div>
+            <div class="status-orbit" aria-hidden="true">
+              <span data-bind="status_short">--</span>
+            </div>
+          </section>
+
+          <section class="metrics" aria-label="核心计数">
+            <article class="metric">
+              <span>Work Packages</span>
+              <strong data-bind="counter_work_packages">0</strong>
+            </article>
+            <article class="metric">
+              <span>Artifacts</span>
+              <strong data-bind="counter_artifacts">0</strong>
+            </article>
+            <article class="metric">
+              <span>Reviewer Findings</span>
+              <strong data-bind="counter_reviewer_findings">0</strong>
+            </article>
+            <article class="metric">
+              <span>Dispatchable</span>
+              <strong data-bind="counter_dispatchable_tasks">0</strong>
+            </article>
+          </section>
+
+          <section class="panel wide">
+            <div class="section-title">
+              <h2>任务流</h2>
+              <span>Context Pack -> Run -> Review -> Continuation</span>
+            </div>
+            <div class="timeline" data-list="next_actions"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>模型路由</h2>
+              <span data-bind="model_summary">--</span>
+            </div>
+            <div class="stack" data-list="model_roles"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>审查门禁</h2>
+              <span data-bind="reviewer_signal">--</span>
+            </div>
+            <div class="review-grid">
+              <div><span>最高级别</span><strong data-bind="reviewer_severity">--</strong></div>
+              <div><span>失败数</span><strong data-bind="reviewer_failed">0</strong></div>
+              <div><span>回退</span><strong data-bind="reviewer_rollback">0</strong></div>
+              <div><span>人工</span><strong data-bind="reviewer_human">0</strong></div>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./workbench.js"></script>
+  </body>
+</html>
