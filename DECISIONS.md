@@ -560,3 +560,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - Workbench Projection 增加 `scheduler_dispatch`。
 - PC/mobile schema 都要求 scheduler dispatch summary。
 - one-screen counters 增加 `scheduler_dispatch_steps`。
+
+[2026-05-21T22:55:38+08:00] Projection fields are not complete until the shell renders and browser-verifies them:
+本轮 schema/projection 已经有 `scheduler_dispatch`，但 PC/mobile shell 还没有可见区域。对于工作台类能力，仅有 JSON 字段不算闭环。
+
+决策：
+- PC shell 增加 Scheduler Dispatch 面板和 Scheduler Steps 指标。
+- Mobile shell 增加自动调度区块和调度步数指标。
+- `workbench.js` 统一绑定 PC/mobile 的 scheduler dispatch status、phase、step、failed、dry-run 和 artifact。
+- `check-workbench-browser-events` 必须验证 PC/mobile 都实际渲染 scheduler dispatch 字段，并继续检查无横向溢出。
+- Browser 可视复查发现的布局问题必须在同轮修复，不把“测试通过但视觉压缩”留到后续补丁。

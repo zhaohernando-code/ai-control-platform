@@ -71,6 +71,7 @@ function renderProjection(projection) {
   const providerHealth = projection.reviewer_provider_health || projection.provider_health || {};
   const scopeSplit = projection.reviewer_scope_split || projection.scope_split || {};
   const shardReview = projection.reviewer_shard_review || projection.shard_review || {};
+  const schedulerDispatch = projection.scheduler_dispatch || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -91,6 +92,7 @@ function renderProjection(projection) {
   setText("counter_artifacts", counters.artifacts ?? 0);
   setText("counter_reviewer_findings", counters.reviewer_findings ?? 0);
   setText("counter_dispatchable_tasks", counters.dispatchable_tasks ?? 0);
+  setText("counter_scheduler_dispatch_steps", counters.scheduler_dispatch_steps ?? schedulerDispatch.step_count ?? 0);
   setText("closeout_status", closeout.status);
   setText("closeout_publish_status", closeout.publish_status);
   setText("closeout_snapshot", closeout.snapshot_id);
@@ -111,6 +113,12 @@ function renderProjection(projection) {
   setText("shard_review_status", shardReview.status);
   setText("shard_review_completed", shardReview.completed_shards ?? 0);
   setText("shard_review_failed", shardReview.failed_finding_count ?? 0);
+  setText("scheduler_dispatch_status", schedulerDispatch.status);
+  setText("scheduler_dispatch_phase", schedulerDispatch.phase);
+  setText("scheduler_dispatch_steps", schedulerDispatch.step_count ?? 0);
+  setText("scheduler_dispatch_failed", schedulerDispatch.failed_step_count ?? 0);
+  setText("scheduler_dispatch_dry_run", schedulerDispatch.dry_run === true ? "yes" : "no");
+  setText("scheduler_dispatch_artifact", schedulerDispatch.artifact_id);
 
   renderNextActions(projection);
   renderModelRoles(projection);

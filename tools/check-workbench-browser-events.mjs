@@ -69,6 +69,8 @@ async function verifySuccessfulClick(browser) {
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
     const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
+    const schedulerDispatchStatus = await page.textContent('[data-bind="scheduler_dispatch_status"]');
+    const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
     await page.close();
 
     const ledger = readLedger(eventsPath);
@@ -80,6 +82,8 @@ async function verifySuccessfulClick(browser) {
     assert(closeoutStatus, "desktop workbench must render closeout status");
     assert(resumeHealthStatus, "desktop workbench must render resume health status");
     assert(providerHealth, "desktop workbench must render provider health status");
+    assert(schedulerDispatchStatus, "desktop workbench must render scheduler dispatch status");
+    assert(schedulerDispatchSteps !== null, "desktop workbench must render scheduler dispatch steps");
 
     console.log(JSON.stringify({
       scenario: "success",
@@ -89,6 +93,8 @@ async function verifySuccessfulClick(browser) {
       closeout_status: closeoutStatus,
       resume_health_status: resumeHealthStatus,
       provider_health: providerHealth,
+      scheduler_dispatch_status: schedulerDispatchStatus,
+      scheduler_dispatch_steps: schedulerDispatchSteps,
       dimensions
     }, null, 2));
   });
@@ -179,12 +185,16 @@ async function verifyMobileProjectionLoad(browser) {
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
     const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
+    const schedulerDispatchStatus = await page.textContent('[data-bind="scheduler_dispatch_status"]');
+    const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
     assert(closeoutStatus, "mobile workbench must render closeout status");
     assert(resumeHealthStatus, "mobile workbench must render resume health status");
     assert(providerHealth, "mobile workbench must render provider health status");
+    assert(schedulerDispatchStatus, "mobile workbench must render scheduler dispatch status");
+    assert(schedulerDispatchSteps !== null, "mobile workbench must render scheduler dispatch steps");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -193,6 +203,8 @@ async function verifyMobileProjectionLoad(browser) {
       closeout_status: closeoutStatus,
       resume_health_status: resumeHealthStatus,
       provider_health: providerHealth,
+      scheduler_dispatch_status: schedulerDispatchStatus,
+      scheduler_dispatch_steps: schedulerDispatchSteps,
       dimensions
     }, null, 2));
   });

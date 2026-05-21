@@ -36,6 +36,10 @@
             <span>派发</span>
             <strong data-bind="counter_dispatchable_tasks">0</strong>
           </article>
+          <article>
+            <span>调度</span>
+            <strong data-bind="counter_scheduler_dispatch_steps">0</strong>
+          </article>
         </section>
 
         <section class="mobile-section">
@@ -67,6 +71,31 @@
             <div>
               <span>Snapshot</span>
               <strong data-bind="closeout_snapshot">--</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
+            <h2>自动调度</h2>
+            <span data-bind="scheduler_dispatch_status">--</span>
+          </div>
+          <div class="mobile-review">
+            <div>
+              <span>Phase</span>
+              <strong data-bind="scheduler_dispatch_phase">--</strong>
+            </div>
+            <div>
+              <span>Steps</span>
+              <strong data-bind="scheduler_dispatch_steps">0</strong>
+            </div>
+            <div>
+              <span>Failed</span>
+              <strong data-bind="scheduler_dispatch_failed">0</strong>
+            </div>
+            <div>
+              <span>Dry run</span>
+              <strong data-bind="scheduler_dispatch_dry_run">no</strong>
             </div>
           </div>
         </section>
