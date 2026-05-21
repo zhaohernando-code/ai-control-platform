@@ -120,6 +120,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Replay validation blocker evidence must be visible in workbench projection and PC/mobile shells as resume health, not only buried in artifact totals."
+    },
+    {
+      "id": "reviewer-provider-health-side-channel",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Reviewer provider health, smoke results, tool-path timeouts, split reruns, and fallback decisions must become durable scheduler facts instead of transient command output."
     }
   ],
   "hardening_items": [
@@ -257,6 +264,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-shell.test.js",
       "regression_test": "workbench projection exposes replay validation blockers as resume health; workbench shell has separate desktop and mobile entries; check-workbench-browser-events renders resume health on desktop and mobile",
       "verification": "node --test test/workbench-projection.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-provider-health-side-channel",
+      "invariant": "Reviewer timeout recovery must persist reviewer_provider_health events and evaluation artifacts, expose the latest provider health in PC/mobile projection, and fail closed on workflow identity mismatch.",
+      "enforcement_target": "src/workflow/reviewer-provider-health.js; src/workflow/workbench-projection.js; apps/workbench; test/reviewer-provider-health.test.js; test/workbench-projection.test.js",
+      "regression_test": "provider health facts persist into manifest events and artifact ledger; workbench projection exposes reviewer provider health scheduler facts",
+      "verification": "node --test test/reviewer-provider-health.test.js test/workbench-projection.test.js; npm run check:workbench:browser-events; npm run check:closeout",
       "status": "completed"
     }
   ]

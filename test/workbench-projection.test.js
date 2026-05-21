@@ -112,7 +112,9 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.one_screen.counters.reviewer_findings, 1);
   assert.equal(projection.one_screen.counters.closeout_publishes, 0);
   assert.equal(projection.resume_health.status, "not_configured");
+  assert.equal(projection.reviewer_provider_health.status, "not_configured");
   assert.equal(projection.one_screen.counters.resume_blockers, 0);
+  assert.equal(projection.one_screen.counters.provider_health_events, 0);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
@@ -210,6 +212,58 @@ test("workbench projection exposes replay validation blockers as resume health",
   assert.equal(projection.one_screen.counters.resume_blockers, 1);
   assert.equal(mobile.resume_health.status, "blocked");
   assert.equal(mobile.resume_health.latest_issue, "replay result drifted from stored projection");
+});
+
+test("workbench projection exposes reviewer provider health scheduler facts", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "reviewer-provider-health-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://reviewer-provider-health/run-projection/cycle-20260521/reviewer-provider-health-run-projection-cycle-20260521-001",
+    producer: "reviewer-provider-health",
+    created_at: "2026-05-21T12:05:00.000Z",
+    metadata: {
+      type: "reviewer_provider_health",
+      recovery_status: "retry",
+      provider_health: "healthy",
+      retry_strategy: "rerun_without_tools_or_split_scope",
+      scheduled_actions: ["rerun_without_tools", "split_scope"],
+      provider: "claude-code",
+      model: "deepseek-v4-pro"
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "reviewer_provider_health",
+        status: "retry",
+        artifact_id: artifact.id,
+        message: "provider smoke passed after reviewer timeout",
+        created_at: "2026-05-21T12:05:00.000Z",
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.reviewer_provider_health.status, "retry");
+  assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
+  assert.equal(projection.reviewer_provider_health.retry_strategy, "rerun_without_tools_or_split_scope");
+  assert.equal(projection.reviewer_provider_health.next_action, "rerun_without_tools");
+  assert.equal(projection.one_screen.counters.provider_health_events, 1);
+  assert.equal(mobile.provider_health.provider_health, "healthy");
+  assert.equal(mobile.provider_health.next_action, "rerun_without_tools");
 });
 
 test("workbench projection ingests operator events before summarizing run state", () => {
@@ -341,6 +395,7 @@ test("mobile projection keeps the one-screen subset", () => {
   assert.equal(mobile.model.selected_model, "gpt");
   assert.equal(mobile.reviewer.recommended_decision_signal, "rerun");
   assert.equal(mobile.resume_health.status, "not_configured");
+  assert.equal(mobile.provider_health.status, "not_configured");
   assert.ok(mobile.next_actions.length <= 3);
 });
 

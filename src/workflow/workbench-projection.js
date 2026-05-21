@@ -164,6 +164,44 @@ function summarizeResumeHealth(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeReviewerProviderHealth(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "reviewer_provider_health");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      provider_health: "unknown",
+      retry_strategy: null,
+      next_action: null,
+      provider: null,
+      model: null,
+      event_id: null,
+      artifact_id: null,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const scheduledActions = asArray(metadata.scheduled_actions);
+
+  return {
+    status: latestEvent.status || metadata.recovery_status || "unknown",
+    provider_health: metadata.provider_health || "unknown",
+    retry_strategy: metadata.retry_strategy || null,
+    next_action: scheduledActions[0] || null,
+    provider: metadata.provider || null,
+    model: metadata.model || null,
+    event_id: latestEvent.id || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    created_at: latestEvent.created_at || artifact?.created_at || null
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -225,6 +263,7 @@ export function createWorkbenchProjection(input = {}) {
   const artifactSummary = summarizeArtifactLedger(artifactLedger);
   const closeoutSummary = summarizeCloseoutEvidence(manifest, artifactLedger);
   const resumeHealth = summarizeResumeHealth(manifest, artifactLedger);
+  const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -254,6 +293,7 @@ export function createWorkbenchProjection(input = {}) {
     artifacts: artifactSummary,
     closeout: closeoutSummary,
     resume_health: resumeHealth,
+    reviewer_provider_health: reviewerProviderHealth,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -279,7 +319,8 @@ export function createWorkbenchProjection(input = {}) {
         reviewer_findings: reviewerSummary.counts?.total || 0,
         dispatchable_tasks: dagSummary.dispatchable.length,
         closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1,
-        resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0
+        resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
+        provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1
       }
     }
   };
@@ -311,6 +352,12 @@ export function createMobileWorkbenchProjection(input = {}) {
       issue_count: projection.resume_health.issue_count,
       latest_issue: projection.resume_health.latest_issue
     },
+    provider_health: {
+      status: projection.reviewer_provider_health.status,
+      provider_health: projection.reviewer_provider_health.provider_health,
+      retry_strategy: projection.reviewer_provider_health.retry_strategy,
+      next_action: projection.reviewer_provider_health.next_action
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -323,4 +370,4 @@ export function createMobileWorkbenchProjection(input = {}) {
   };
 }
 
-export { summarizeCloseoutEvidence, summarizeResumeHealth };
+export { summarizeCloseoutEvidence, summarizeResumeHealth, summarizeReviewerProviderHealth };

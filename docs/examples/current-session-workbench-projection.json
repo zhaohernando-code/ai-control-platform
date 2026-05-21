@@ -22,7 +22,7 @@
     "status": "pass",
     "issues": [],
     "work_package_count": 3,
-    "event_count": 3
+    "event_count": 4
   },
   "operator_events": {
     "status": "pass",
@@ -34,14 +34,14 @@
     "issues": []
   },
   "artifacts": {
-    "total": 3,
+    "total": 4,
     "by_type": {
       "test": 1,
       "review": 1,
-      "evaluation": 1
+      "evaluation": 2
     },
     "by_status": {
-      "pass": 2,
+      "pass": 3,
       "fail": 1
     }
   },
@@ -65,6 +65,17 @@
     "latest_issue": null,
     "created_at": null,
     "issues": []
+  },
+  "reviewer_provider_health": {
+    "status": "retry",
+    "provider_health": "healthy",
+    "retry_strategy": "rerun_without_tools_or_split_scope",
+    "next_action": "rerun_without_tools",
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "event_id": "event-reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "artifact_id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "created_at": "2026-05-21T19:55:30.000+08:00"
   },
   "model_routing": {
     "status": "pass",
@@ -113,8 +124,8 @@
         "unknown": 0
       },
       "artifacts": {
-        "total": 3,
-        "passed": 2,
+        "total": 4,
+        "passed": 3,
         "failed": 1,
         "unknown": 0
       },
@@ -190,11 +201,12 @@
     ],
     "counters": {
       "work_packages": 3,
-      "artifacts": 3,
+      "artifacts": 4,
       "reviewer_findings": 1,
       "dispatchable_tasks": 0,
       "closeout_publishes": 0,
-      "resume_blockers": 0
+      "resume_blockers": 0,
+      "provider_health_events": 1
     }
   }
 }

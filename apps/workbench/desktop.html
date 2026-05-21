@@ -141,6 +141,18 @@
               <div><span>人工</span><strong data-bind="reviewer_human">0</strong></div>
             </div>
           </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <h2>Provider Health</h2>
+              <span data-bind="provider_health_status">--</span>
+            </div>
+            <div class="provider-grid">
+              <div><span>Health</span><strong data-bind="provider_health_value">--</strong></div>
+              <div><span>Next</span><strong data-bind="provider_next_action">--</strong></div>
+              <div class="full"><span>Retry</span><strong data-bind="provider_retry_strategy">--</strong></div>
+            </div>
+          </section>
         </section>
       </main>
     </div>

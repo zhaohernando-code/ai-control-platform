@@ -68,6 +68,7 @@ function renderProjection(projection) {
   const model = projection.model_routing || projection.model || {};
   const closeout = projection.closeout || {};
   const resumeHealth = projection.resume_health || {};
+  const providerHealth = projection.reviewer_provider_health || projection.provider_health || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -97,6 +98,10 @@ function renderProjection(projection) {
   setText("resume_issue_count", resumeHealth.issue_count ?? 0);
   setText("resume_latest_issue", resumeHealth.latest_issue);
   setText("resume_artifact", resumeHealth.artifact_id);
+  setText("provider_health_status", providerHealth.status);
+  setText("provider_health_value", providerHealth.provider_health);
+  setText("provider_next_action", providerHealth.next_action);
+  setText("provider_retry_strategy", providerHealth.retry_strategy);
 
   renderNextActions(projection);
   renderModelRoles(projection);

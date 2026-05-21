@@ -132,6 +132,72 @@
         "type": "reviewer_gate",
         "status": "timeout",
         "created_at": "2026-05-21T08:10:00.000Z"
+      },
+      {
+        "id": "event-reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_provider_health",
+        "status": "retry",
+        "artifact_id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "message": "provider smoke passed after reviewer timeout; retry with no tools or smaller read-only scope before marking DeepSeek unhealthy",
+        "created_at": "2026-05-21T19:55:30.000+08:00",
+        "metadata": {
+          "id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_provider_health",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "provider_health": "healthy",
+          "recovery_status": "retry",
+          "retry_strategy": "rerun_without_tools_or_split_scope",
+          "scheduled_actions": [
+            "rerun_without_tools",
+            "split_scope"
+          ],
+          "created_at": "2026-05-21T19:55:30.000+08:00",
+          "reason": "provider smoke passed after reviewer timeout; retry with no tools or smaller read-only scope before marking DeepSeek unhealthy",
+          "invocation_policy": {
+            "provider": "claude-code",
+            "model": "deepseek-v4-pro",
+            "profile": "quick",
+            "timeout_seconds": 180,
+            "effort": "high",
+            "transport": {
+              "anthropic_base_url": "https://api.deepseek.com/anthropic",
+              "claude_code_model": "deepseek-v4-pro[1m]",
+              "stream_preferred": true,
+              "keepalive_expected": true,
+              "server_start_timeout_seconds": 600
+            },
+            "scope_limits": {
+              "max_files": 3,
+              "max_questions": 3,
+              "max_prompt_chars": 1600,
+              "observed_files": 2,
+              "observed_questions": 1,
+              "observed_prompt_chars": 68
+            },
+            "split_required": false,
+            "split_reason": null,
+            "timeout_recovery": {
+              "first_step": "provider_smoke_check",
+              "smoke_prompt": "只回答 DS_SMOKE_OK。",
+              "smoke_timeout_seconds": 60,
+              "retry_without_tools_when_smoke_passes": true,
+              "mark_provider_unhealthy_when_smoke_fails": true
+            },
+            "official_runtime_note": "streaming SSE keep-alive comments or non-stream empty lines may be emitted while waiting"
+          },
+          "source": {
+            "category": "reviewer_timeout",
+            "smoke_status": "pass",
+            "tools": [
+              "Read",
+              "Grep"
+            ]
+          }
+        }
       }
     ],
     "artifacts": [
@@ -142,6 +208,72 @@
       {
         "id": "reviewer-timeout",
         "status": "fail"
+      },
+      {
+        "id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "evaluation",
+        "status": "pass",
+        "uri": "codex://reviewer-provider-health/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-provider-health",
+        "created_at": "2026-05-21T19:55:30.000+08:00",
+        "metadata": {
+          "id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_provider_health",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "provider_health": "healthy",
+          "recovery_status": "retry",
+          "retry_strategy": "rerun_without_tools_or_split_scope",
+          "scheduled_actions": [
+            "rerun_without_tools",
+            "split_scope"
+          ],
+          "created_at": "2026-05-21T19:55:30.000+08:00",
+          "reason": "provider smoke passed after reviewer timeout; retry with no tools or smaller read-only scope before marking DeepSeek unhealthy",
+          "invocation_policy": {
+            "provider": "claude-code",
+            "model": "deepseek-v4-pro",
+            "profile": "quick",
+            "timeout_seconds": 180,
+            "effort": "high",
+            "transport": {
+              "anthropic_base_url": "https://api.deepseek.com/anthropic",
+              "claude_code_model": "deepseek-v4-pro[1m]",
+              "stream_preferred": true,
+              "keepalive_expected": true,
+              "server_start_timeout_seconds": 600
+            },
+            "scope_limits": {
+              "max_files": 3,
+              "max_questions": 3,
+              "max_prompt_chars": 1600,
+              "observed_files": 2,
+              "observed_questions": 1,
+              "observed_prompt_chars": 68
+            },
+            "split_required": false,
+            "split_reason": null,
+            "timeout_recovery": {
+              "first_step": "provider_smoke_check",
+              "smoke_prompt": "只回答 DS_SMOKE_OK。",
+              "smoke_timeout_seconds": 60,
+              "retry_without_tools_when_smoke_passes": true,
+              "mark_provider_unhealthy_when_smoke_fails": true
+            },
+            "official_runtime_note": "streaming SSE keep-alive comments or non-stream empty lines may be emitted while waiting"
+          },
+          "source": {
+            "category": "reviewer_timeout",
+            "smoke_status": "pass",
+            "tools": [
+              "Read",
+              "Grep"
+            ]
+          }
+        }
       }
     ],
     "gate_results": [
@@ -172,7 +304,7 @@
     ],
     "recovery_attempts": [],
     "created_at": "2026-05-21T08:00:00.000Z",
-    "updated_at": "2026-05-21T08:25:00.000Z"
+    "updated_at": "2026-05-21T19:55:30.000+08:00"
   },
   "artifact_ledger": {
     "run_id": "run-20260521-platform-self-trial",
@@ -193,10 +325,76 @@
         "content_hash": "sha256:reviewer-timeout-sample",
         "producer": "llm-reviewer-gate",
         "created_at": "2026-05-21T08:10:00.000Z"
+      },
+      {
+        "id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "evaluation",
+        "status": "pass",
+        "uri": "codex://reviewer-provider-health/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-provider-health",
+        "created_at": "2026-05-21T19:55:30.000+08:00",
+        "metadata": {
+          "id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_provider_health",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "provider_health": "healthy",
+          "recovery_status": "retry",
+          "retry_strategy": "rerun_without_tools_or_split_scope",
+          "scheduled_actions": [
+            "rerun_without_tools",
+            "split_scope"
+          ],
+          "created_at": "2026-05-21T19:55:30.000+08:00",
+          "reason": "provider smoke passed after reviewer timeout; retry with no tools or smaller read-only scope before marking DeepSeek unhealthy",
+          "invocation_policy": {
+            "provider": "claude-code",
+            "model": "deepseek-v4-pro",
+            "profile": "quick",
+            "timeout_seconds": 180,
+            "effort": "high",
+            "transport": {
+              "anthropic_base_url": "https://api.deepseek.com/anthropic",
+              "claude_code_model": "deepseek-v4-pro[1m]",
+              "stream_preferred": true,
+              "keepalive_expected": true,
+              "server_start_timeout_seconds": 600
+            },
+            "scope_limits": {
+              "max_files": 3,
+              "max_questions": 3,
+              "max_prompt_chars": 1600,
+              "observed_files": 2,
+              "observed_questions": 1,
+              "observed_prompt_chars": 68
+            },
+            "split_required": false,
+            "split_reason": null,
+            "timeout_recovery": {
+              "first_step": "provider_smoke_check",
+              "smoke_prompt": "只回答 DS_SMOKE_OK。",
+              "smoke_timeout_seconds": 60,
+              "retry_without_tools_when_smoke_passes": true,
+              "mark_provider_unhealthy_when_smoke_fails": true
+            },
+            "official_runtime_note": "streaming SSE keep-alive comments or non-stream empty lines may be emitted while waiting"
+          },
+          "source": {
+            "category": "reviewer_timeout",
+            "smoke_status": "pass",
+            "tools": [
+              "Read",
+              "Grep"
+            ]
+          }
+        }
       }
     ],
     "created_at": "2026-05-21T08:00:00.000Z",
-    "updated_at": "2026-05-21T08:20:00.000Z"
+    "updated_at": "2026-05-21T19:55:30.000+08:00"
   },
   "operator_event_ledger": {
     "version": "operator-events.v1",

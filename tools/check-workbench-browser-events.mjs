@@ -51,6 +51,7 @@ async function verifySuccessfulClick(browser) {
     }));
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
+    const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
     await page.close();
 
     const ledger = readLedger(eventsPath);
@@ -61,6 +62,7 @@ async function verifySuccessfulClick(browser) {
     assert(dimensions.scrollWidth <= dimensions.width, "desktop workbench must not overflow horizontally");
     assert(closeoutStatus, "desktop workbench must render closeout status");
     assert(resumeHealthStatus, "desktop workbench must render resume health status");
+    assert(providerHealth, "desktop workbench must render provider health status");
 
     console.log(JSON.stringify({
       scenario: "success",
@@ -69,6 +71,7 @@ async function verifySuccessfulClick(browser) {
       run_id: ledger.events[0].run_id,
       closeout_status: closeoutStatus,
       resume_health_status: resumeHealthStatus,
+      provider_health: providerHealth,
       dimensions
     }, null, 2));
   });
@@ -127,11 +130,13 @@ async function verifyMobileProjectionLoad(browser) {
     const status = await page.textContent('[data-bind="status"]');
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
+    const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
     assert(closeoutStatus, "mobile workbench must render closeout status");
     assert(resumeHealthStatus, "mobile workbench must render resume health status");
+    assert(providerHealth, "mobile workbench must render provider health status");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -139,6 +144,7 @@ async function verifyMobileProjectionLoad(browser) {
       status,
       closeout_status: closeoutStatus,
       resume_health_status: resumeHealthStatus,
+      provider_health: providerHealth,
       dimensions
     }, null, 2));
   });
