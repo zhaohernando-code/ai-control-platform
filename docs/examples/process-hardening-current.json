@@ -461,6 +461,14 @@
       "regression_test": "reviewer shard aggregate failure overrides stale pass evaluation; reviewer shard aggregate pass clears stale rerun evaluation",
       "verification": "node --test test/autonomous-continuation.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-loop-no-replay-artifact",
+      "invariant": "Reviewer shard loop execution must be able to emit a replayable artifact that preserves input workflow state, runner parameters, shard runs, aggregate/provider-health stop facts, output workflow state, and run/cycle identity checks.",
+      "enforcement_target": "src/workflow/reviewer-shard-runner.js; tools/run-reviewer-shard.mjs; test/reviewer-shard-runner.test.js; docs/contracts/LLM_REVIEWER_GATE_CN.md",
+      "regression_test": "reviewer shard loop run artifact is replay-valid; run-reviewer-shard CLI can execute all pending shards with mock executor",
+      "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

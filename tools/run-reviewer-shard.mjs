@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
 import {
+  createReviewerShardLoopRunArtifact,
   runReviewerShard,
   runReviewerShardsUntilAggregate
 } from "../src/workflow/reviewer-shard-runner.js";
@@ -24,6 +25,7 @@ function usage() {
     "  --provider-smoke-status <s>   Optional smoke result for provider health recovery",
     "  --mock-findings-json <json>   Test-only executor output",
     "  --mock-status <pass|fail>     Test-only executor status",
+    "  --run-artifact-output <path>  Write replayable reviewer-shard-loop-run.v1 envelope",
     "  --in-place                    Write back to --input instead of requiring --output"
   ].join("\n");
 }
@@ -100,9 +102,19 @@ if (result.status !== "pass") {
 
 const destination = resolve(inPlace ? inputPath : outputPath);
 writeFileSync(destination, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+const runArtifactOutput = valueAfter("--run-artifact-output", args);
+if (runArtifactOutput) {
+  const artifactPath = resolve(runArtifactOutput);
+  mkdirSync(dirname(artifactPath), { recursive: true });
+  const artifact = createReviewerShardLoopRunArtifact(workflowState, runnerInput, result, {
+    created_at: valueAfter("--created-at", args) || undefined
+  });
+  writeFileSync(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`);
+}
 console.log(JSON.stringify({
   status: "pass",
   output: destination,
+  run_artifact_output: runArtifactOutput ? resolve(runArtifactOutput) : null,
   phase: result.phase,
   shard_id: result.result?.shard_id || result.runs?.at(-1)?.shard_id || null,
   shard_status: result.result?.status || result.runs?.at(-1)?.shard_status || null,

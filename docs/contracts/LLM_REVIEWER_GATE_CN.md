@@ -174,7 +174,15 @@ DeepSeek/Claude Code executor adapter 约束：
 - `--record-provider-health` 打开后，runner 遇到 `category=reviewer_timeout` 的 shard finding 必须写入 `reviewer_provider_health`。
 - 如果没有传 `--provider-smoke-status`，provider health 进入 `needs_smoke_check`，scheduled action 为 `provider_smoke_check`。
 - 支持 `--mock-findings-json` / `--mock-status`，用于确定性流程测试，不触发真实外部模型。
+- `--run-artifact-output` 写出 `reviewer-shard-loop-run.v1` envelope，包含输入 workflow state、runner 参数、runs、aggregate/provider health 停止点和输出 workflow state。
 - 输入不可读或 shard 不可执行时非零退出。
+
+`reviewer-shard-loop-run.v1` 是 scheduler replay artifact：
+
+- artifact run/cycle identity 必须与输入和输出 workflow state 一致。
+- `phase=aggregated` 时 aggregate 必须无 pending shard。
+- `phase=provider_health_recorded` 时必须包含 provider health fact。
+- pass artifact 必须包含输出 workflow state，供后续 closeout/continuation 复用。
 
 ## 7. 工作台状态
 

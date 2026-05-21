@@ -9,10 +9,12 @@ import { createArtifactLedger } from "../src/workflow/artifact-ledger.js";
 import { createReviewerGateRequest } from "../src/workflow/llm-reviewer-gate.js";
 import { recordReviewerScopeSplitPlan } from "../src/workflow/reviewer-scope-splitter.js";
 import {
+  createReviewerShardLoopRunArtifact,
   createReviewerShardPrompt,
   getPendingReviewerShards,
   runReviewerShard,
-  runReviewerShardsUntilAggregate
+  runReviewerShardsUntilAggregate,
+  validateReviewerShardLoopRunArtifact
 } from "../src/workflow/reviewer-shard-runner.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
 
@@ -194,6 +196,33 @@ test("reviewer shard loop stops after provider health recovery fact", async () =
   assert.equal(result.provider_health.recovery_status, "needs_smoke_check");
 });
 
+test("reviewer shard loop run artifact is replay-valid", async () => {
+  const state = workflowState();
+  const input = {
+    created_at: "2026-05-21T21:07:00.000Z",
+    max_shards: 2,
+    executor: async () => ({ status: "pass", findings: [] })
+  };
+  const result = await runReviewerShardsUntilAggregate(state, input);
+  const artifact = createReviewerShardLoopRunArtifact(state, input, result, {
+    created_at: "2026-05-21T21:08:00.000Z"
+  });
+
+  assert.equal(artifact.version, "reviewer-shard-loop-run.v1");
+  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.phase, "aggregated");
+  assert.equal(artifact.input.runner.max_shards, 2);
+  assert.equal(artifact.result.runs.length, 2);
+  assert.equal(validateReviewerShardLoopRunArtifact(artifact).status, "pass");
+
+  const damaged = JSON.parse(JSON.stringify(artifact));
+  damaged.result.workflow_state.manifest.run_id = "wrong-run";
+  const validation = validateReviewerShardLoopRunArtifact(damaged);
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((entry) => entry.code === "result_run_id_mismatch"));
+});
+
 test("reviewer shard runner fails closed without executor or pending shard", async () => {
   const missingExecutor = await runReviewerShard(workflowState(), {
     shard_id: "reviewer-scope-shard-001"
@@ -293,6 +322,7 @@ test("run-reviewer-shard CLI can execute all pending shards with mock executor",
   const dir = mkdtempSync(join(tmpdir(), "reviewer-shard-runner-all-cli-"));
   const inputPath = join(dir, "input.json");
   const outputPath = join(dir, "output.json");
+  const artifactPath = join(dir, "loop-run.json");
   writeFileSync(inputPath, JSON.stringify(workflowState(), null, 2));
 
   const output = execFileSync(process.execPath, [
@@ -304,17 +334,22 @@ test("run-reviewer-shard CLI can execute all pending shards with mock executor",
     "--all",
     "--mock-status",
     "pass",
+    "--run-artifact-output",
+    artifactPath,
     "--created-at",
     "2026-05-21T21:13:00.000Z"
   ], { encoding: "utf8" });
   const summary = JSON.parse(output);
   const state = JSON.parse(readFileSync(outputPath, "utf8"));
+  const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
 
   assert.equal(summary.status, "pass");
   assert.equal(summary.phase, "aggregated");
+  assert.equal(summary.run_artifact_output, artifactPath);
   assert.equal(summary.runs.length, 2);
   assert.equal(summary.aggregate.status, "pass");
   assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_aggregate");
+  assert.equal(validateReviewerShardLoopRunArtifact(artifact).status, "pass");
 });
 
 test("run-reviewer-shard CLI fails closed on unreadable input", () => {

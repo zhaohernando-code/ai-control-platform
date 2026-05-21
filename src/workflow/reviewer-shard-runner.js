@@ -5,6 +5,8 @@ import {
 } from "./reviewer-shard-results.js";
 import { recordReviewerProviderHealthFact } from "./reviewer-provider-health.js";
 
+const REVIEWER_SHARD_LOOP_ARTIFACT_VERSION = "reviewer-shard-loop-run.v1";
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -19,6 +21,10 @@ function statusOf(value) {
 
 function issue(code, message, path) {
   return { code, message, path };
+}
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function findingCategory(finding = {}) {
@@ -284,3 +290,126 @@ export async function runReviewerShardsUntilAggregate(workflowState = {}, input 
     workflow_state: state
   };
 }
+
+function manifestIdentity(workflowState = {}) {
+  return {
+    run_id: normalizeString(workflowState?.manifest?.run_id),
+    cycle_id: normalizeString(workflowState?.manifest?.cycle_id)
+  };
+}
+
+function runnerInputSummary(input = {}) {
+  return {
+    shard_id: normalizeString(input.shard_id || input.shardId) || null,
+    max_shards: Number(input.max_shards || input.maxShards || 20) || 20,
+    record_provider_health_on_timeout: input.record_provider_health_on_timeout === true || input.recordProviderHealthOnTimeout === true,
+    provider_smoke_status: normalizeString(input.provider_smoke_status || input.providerSmokeStatus) || null,
+    stop_on_provider_health: input.stop_on_provider_health !== false && input.stopOnProviderHealth !== false
+  };
+}
+
+export function createReviewerShardLoopRunArtifact(workflowState = {}, runnerInput = {}, result = {}, options = {}) {
+  const outputIdentity = manifestIdentity(result.workflow_state);
+  const inputIdentity = manifestIdentity(workflowState);
+  return {
+    version: REVIEWER_SHARD_LOOP_ARTIFACT_VERSION,
+    run_id: outputIdentity.run_id || inputIdentity.run_id || null,
+    cycle_id: outputIdentity.cycle_id || inputIdentity.cycle_id || null,
+    status: result.status || "fail",
+    phase: result.phase || null,
+    created_at: options.created_at || new Date().toISOString(),
+    input: {
+      workflow_state: workflowState,
+      runner: runnerInputSummary(runnerInput)
+    },
+    result: {
+      status: result.status || "fail",
+      phase: result.phase || null,
+      issues: result.issues || [],
+      runs: result.runs || [],
+      aggregate: result.aggregate || null,
+      provider_health: result.provider_health || null,
+      pending_shards: result.pending_shards ?? result.aggregate?.pending_shards ?? null,
+      workflow_state: result.workflow_state || null
+    }
+  };
+}
+
+export function validateReviewerShardLoopRunArtifact(artifact = {}) {
+  const issues = [];
+  if (!isObject(artifact)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_reviewer_shard_loop_artifact", "artifact must be an object", "")]
+    };
+  }
+
+  if (artifact.version !== REVIEWER_SHARD_LOOP_ARTIFACT_VERSION) {
+    issues.push(issue("invalid_artifact_version", `version must be ${REVIEWER_SHARD_LOOP_ARTIFACT_VERSION}`, "version"));
+  }
+  if (!["pass", "fail"].includes(artifact.status)) {
+    issues.push(issue("invalid_artifact_status", "status must be pass or fail", "status"));
+  }
+  if (!normalizeString(artifact.phase)) {
+    issues.push(issue("missing_artifact_phase", "phase is required", "phase"));
+  }
+  if (!normalizeString(artifact.created_at)) {
+    issues.push(issue("missing_artifact_created_at", "created_at is required", "created_at"));
+  }
+  if (!normalizeString(artifact.run_id)) {
+    issues.push(issue("missing_artifact_run_id", "run_id is required", "run_id"));
+  }
+  if (!normalizeString(artifact.cycle_id)) {
+    issues.push(issue("missing_artifact_cycle_id", "cycle_id is required", "cycle_id"));
+  }
+  if (!isObject(artifact.input?.workflow_state)) {
+    issues.push(issue("missing_input_workflow_state", "input.workflow_state must be an object", "input.workflow_state"));
+  }
+  if (!isObject(artifact.input?.runner)) {
+    issues.push(issue("missing_input_runner", "input.runner must be an object", "input.runner"));
+  }
+  if (!isObject(artifact.result)) {
+    issues.push(issue("missing_artifact_result", "result must be an object", "result"));
+  }
+
+  const expectedRunId = normalizeString(artifact.run_id);
+  const expectedCycleId = normalizeString(artifact.cycle_id);
+  const inputIdentity = manifestIdentity(artifact.input?.workflow_state);
+  const outputIdentity = manifestIdentity(artifact.result?.workflow_state);
+  if (inputIdentity.run_id && inputIdentity.run_id !== expectedRunId) {
+    issues.push(issue("input_run_id_mismatch", "input workflow state run_id must match artifact run_id", "input.workflow_state.manifest.run_id"));
+  }
+  if (inputIdentity.cycle_id && inputIdentity.cycle_id !== expectedCycleId) {
+    issues.push(issue("input_cycle_id_mismatch", "input workflow state cycle_id must match artifact cycle_id", "input.workflow_state.manifest.cycle_id"));
+  }
+  if (outputIdentity.run_id && outputIdentity.run_id !== expectedRunId) {
+    issues.push(issue("result_run_id_mismatch", "result workflow state run_id must match artifact run_id", "result.workflow_state.manifest.run_id"));
+  }
+  if (outputIdentity.cycle_id && outputIdentity.cycle_id !== expectedCycleId) {
+    issues.push(issue("result_cycle_id_mismatch", "result workflow state cycle_id must match artifact cycle_id", "result.workflow_state.manifest.cycle_id"));
+  }
+
+  const result = artifact.result || {};
+  if (result.status !== artifact.status) {
+    issues.push(issue("artifact_status_mismatch", "artifact status must match result.status", "result.status"));
+  }
+  if (result.phase !== artifact.phase) {
+    issues.push(issue("artifact_phase_mismatch", "artifact phase must match result.phase", "result.phase"));
+  }
+  if (artifact.status === "pass" && !isObject(result.workflow_state)) {
+    issues.push(issue("missing_result_workflow_state", "pass artifact must include result.workflow_state", "result.workflow_state"));
+  }
+  if (artifact.phase === "aggregated" && Number(result.aggregate?.pending_shards || 0) !== 0) {
+    issues.push(issue("aggregate_still_pending", "aggregated artifact must have zero pending shards", "result.aggregate.pending_shards"));
+  }
+  if (artifact.phase === "provider_health_recorded" && !isObject(result.provider_health)) {
+    issues.push(issue("missing_provider_health", "provider_health_recorded artifact must include provider health fact", "result.provider_health"));
+  }
+
+  return {
+    status: issues.length ? "fail" : "pass",
+    issues
+  };
+}
+
+export { REVIEWER_SHARD_LOOP_ARTIFACT_VERSION };
