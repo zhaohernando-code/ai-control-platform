@@ -169,7 +169,8 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 工作台服务必须提供 `POST /api/workbench/autonomous-scheduler-loop-resume`：它只能读取所选 history input 的 loop registry/recovery policy，必须由服务端选择 `resume_projection_id` 作为新的 loop 起点，把新 loop artifact 写入该 resume projection 的 workflow state；recovery 不是 ready 或 resume projection 缺少受控 input_path 时必须失败闭合，不得要求操作者手工选择下一轮 id。
 - PC/mobile 工作台可以传当前 history item id 作为 source context，但不得传或拼接 raw resume projection id、scheduler policy 字段或底层执行授权；resume target selection 必须保留在服务端 recovery policy。浏览器门禁必须覆盖“运行 loop -> 恢复 loop”的连续操作，并验证恢复后仍无横向溢出。
 - 每一次 scheduler loop resume 尝试都必须写入源 workflow state：事件类型为 `scheduler_loop_resume_attempt`，artifact metadata version 为 `scheduler-loop-resume-attempt.v1`。blocked 尝试必须记录 recovery status/action 和 issues；成功尝试必须记录 source projection、resume projection、loop status/phase 与目标 loop artifact id。Projection 必须展示 latest resume attempt status/target/issue。
-- 工作台服务必须提供 `POST /api/workbench/next-action` 作为推荐动作的唯一受控执行入口。该入口必须重新计算所选 projection 的 `next_action_readout`，校验调用方传入的 `expected_action` 未漂移，并且只允许执行白名单动作；当前白名单仅包含 `enqueue_scheduler_next_cycle` 与 `run_autonomous_scheduler_loop`。reviewer shard、resume、inspect 等尚未接入的动作必须失败闭合并返回 projection/readout，不得隐式降级为人工成功或临时脚本。
+- 工作台服务必须提供 `POST /api/workbench/next-action` 作为推荐动作的唯一受控执行入口。该入口必须重新计算所选 projection 的 `next_action_readout`，校验调用方传入的 `expected_action` 未漂移，并且只允许执行白名单动作；当前白名单包含 `enqueue_scheduler_next_cycle`、`run_autonomous_scheduler_loop`、`run_reviewer_scope_shard`。resume、inspect 等尚未接入的动作必须失败闭合并返回 projection/readout，不得隐式降级为人工成功或临时脚本。
+- `run_reviewer_scope_shard` 必须通过工作台服务端的 reviewer shard runner 路径执行：服务端从 durable workflow state 选择 pending shard，真实执行默认使用 provider-neutral runner + Claude/DeepSeek executor，测试或受控 profile 可以显式传入 mock reviewer 输出；执行结果必须写回 reviewer_shard_result、必要时的 reviewer_shard_aggregate 或 reviewer_provider_health facts。
 
 ## 5. 与工作台关系
 

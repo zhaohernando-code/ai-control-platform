@@ -34,6 +34,8 @@ import {
   recordSchedulerLoopResumeAttempt,
   runSchedulerLoopDriver
 } from "../src/workflow/autonomous-scheduler-loop.js";
+import { runReviewerShard } from "../src/workflow/reviewer-shard-runner.js";
+import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -319,6 +321,11 @@ function createWorkbenchLoopClient(baseUrl) {
       const url = new URL("/api/workbench/autonomous-scheduler-loop", base);
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
+    },
+    runReviewerShard(projectionId, body = {}) {
+      const url = new URL("/api/workbench/reviewer-shard-run", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
     }
   };
 }
@@ -442,8 +449,26 @@ function appendEvent(eventsPath, event) {
 
 const SUPPORTED_NEXT_ACTIONS = new Set([
   "enqueue_scheduler_next_cycle",
-  "run_autonomous_scheduler_loop"
+  "run_autonomous_scheduler_loop",
+  "run_reviewer_scope_shard"
 ]);
+
+function reviewerShardExecutorFromInput(input = {}) {
+  const mockFindingsJson = normalizeString(input.reviewer_mock_findings_json || input.reviewerMockFindingsJson);
+  const mockStatus = normalizeString(input.reviewer_mock_status || input.reviewerMockStatus);
+  if (mockFindingsJson || mockStatus) {
+    return async () => ({
+      status: mockStatus || "pass",
+      findings: mockFindingsJson ? JSON.parse(mockFindingsJson) : []
+    });
+  }
+
+  const timeoutSeconds = Math.min(180, Math.max(30, Number(input.timeout_seconds || input.timeoutSeconds || 90) || 90));
+  return createClaudeDeepSeekShardExecutor({
+    cwd: root,
+    timeout_seconds: timeoutSeconds
+  });
+}
 
 async function executeProjectedNextAction({ req, selectedId, projection, input = {} }) {
   const readout = projection.next_action_readout || {};
@@ -482,6 +507,20 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
       snapshot_id: input.snapshot_id || input.snapshotId,
       label: input.label,
       created_at: input.created_at || input.createdAt
+    });
+    return { status: "executed", action, result };
+  }
+
+  if (action === "run_reviewer_scope_shard") {
+    const result = await client.runReviewerShard(selectedId, {
+      shard_id: input.shard_id || input.shardId,
+      created_at: input.created_at || input.createdAt,
+      aggregate_created_at: input.aggregate_created_at || input.aggregateCreatedAt,
+      record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout ?? true,
+      provider_smoke_status: input.provider_smoke_status || input.providerSmokeStatus,
+      reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+      reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+      timeout_seconds: input.timeout_seconds || input.timeoutSeconds
     });
     return { status: "executed", action, result };
   }
@@ -659,6 +698,63 @@ export function createWorkbenchServer(options = {}) {
           fact: result.fact,
           aggregate: aggregate?.fact || null,
           projection: createWorkbenchProjection(nextState)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/reviewer-shard-run" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        let executor;
+        try {
+          executor = reviewerShardExecutorFromInput(input);
+        } catch (error) {
+          jsonResponse(res, 400, { error: "reviewer shard executor setup failed", issues: [{ code: "reviewer_shard_executor_setup_failed", message: error.message, path: "reviewer_mock_findings_json" }] });
+          return;
+        }
+
+        const result = await runReviewerShard(workflowState, {
+          shard_id: input.shard_id || input.shardId,
+          created_at: input.created_at || input.createdAt,
+          aggregate_created_at: input.aggregate_created_at || input.aggregateCreatedAt,
+          record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout ?? true,
+          provider_smoke_status: input.provider_smoke_status || input.providerSmokeStatus,
+          executor
+        });
+        if (result.status !== "pass") {
+          jsonResponse(res, 400, { error: "reviewer shard run failed", issues: result.issues || [], projection: createWorkbenchProjection(workflowState) });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          phase: result.phase,
+          shard_id: result.result?.shard_id || result.shard?.id || null,
+          shard_status: result.result?.status || null,
+          result: result.result,
+          provider_health: result.provider_health || null,
+          aggregate: result.aggregate || null,
+          pending_shards: result.pending_shards ?? result.aggregate?.pending_shards ?? null,
+          projection: createWorkbenchProjection(result.workflow_state)
         });
         return;
       }

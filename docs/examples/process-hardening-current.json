@@ -274,6 +274,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Operations timeline and next_action_readout must use durable manifest append order, not wall-clock created_at sorting, because fixture or multi-process clock skew can cause newly appended scheduler facts to be hidden behind older reviewer facts."
+    },
+    {
+      "id": "reviewer-next-action-not-executable",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "run_reviewer_scope_shard must be executable through the same guarded workbench flow as scheduler actions; otherwise the autonomous loop still stops when the next driver is reviewer recovery."
     }
   ],
   "hardening_items": [
@@ -763,6 +770,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; test/workbench-projection.test.js; tools/check-workbench-browser-events.mjs",
       "regression_test": "workbench operations timeline follows manifest order across clock skew; guarded_next_action_click browser scenario executes the projected enqueue action after approved dispatch",
       "verification": "node --test test/workbench-projection.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-next-action-not-executable",
+      "invariant": "run_reviewer_scope_shard must execute through a workbench service endpoint that selects a pending shard from durable workflow state, uses the reviewer shard runner, records shard/aggregate/provider-health facts, and is callable only through the guarded next-action drift check.",
+      "enforcement_target": "tools/workbench-server.mjs; src/workflow/reviewer-shard-runner.js; test/workbench-server.test.js; test/reviewer-shard-runner.test.js",
+      "regression_test": "workbench server runs reviewer shard through projected next action; workbench server records direct reviewer shard runs; reviewer shard runner records one shard and leaves remaining shard pending",
+      "verification": "node --test test/workbench-server.test.js test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
