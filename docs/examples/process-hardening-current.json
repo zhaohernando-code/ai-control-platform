@@ -344,6 +344,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Workbench projection must derive next reviewer shard from pending shard ids after completed shard results; otherwise real reviewer loops can keep pointing at an already completed shard."
+    },
+    {
+      "id": "projected-loop-partial-shard-resume-drift",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Projected scheduler loops that stop at an iteration bound after completing one reviewer shard must continue from durable pending shard evidence, not treat the current projection id as a new resume target or fall back to inspect-only state."
     }
   ],
   "hardening_items": [
@@ -913,6 +920,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/evaluations/20260522_REAL_DS_PROJECTED_LOOP_SMOKE_CN.md",
       "regression_test": "workbench projection advances next reviewer shard after partial result",
       "verification": "node --test test/workbench-projection.test.js test/workbench-projection-fixture.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "projected-loop-partial-shard-resume-drift",
+      "invariant": "After a projected_next_action scheduler loop reaches its iteration bound with reviewer shards still pending, next_action_readout must recommend run_reviewer_scope_shard from durable shard state; only next_item.id may become a cross-projection resume target.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; test/workbench-server.test.js; test/autonomous-scheduler-loop.test.js",
+      "regression_test": "workbench server continues projected real reviewer loop from durable partial shard state",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

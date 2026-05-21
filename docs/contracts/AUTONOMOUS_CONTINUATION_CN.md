@@ -180,6 +180,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - PC/mobile 可以提供 `Projected Real Loop` 控制，但它只能发送 `approved_bounded_real_reviewer`、`execution_strategy=projected_next_action`、`max_external_reviewer_calls=1`、`provider_cost_mode=bounded` 和 bounded timeout。服务端在选择真实 executor 前必须检查最新 reviewer provider health fact 为 healthy；缺失或 unhealthy 时必须失败闭合，不得触发 Claude/DeepSeek。
 - Provider health preflight 是读取条件，不应在 projected loop 即将执行前追加一个新的 automation driver；否则 `next_action_readout` 可能改为 provider recovery。真实 reviewer loop smoke 必须证明 reviewer shard 仍是当前推荐动作。
 - Reviewer shard projection 在尚未 aggregate 时，必须根据 split shard ids 减去已完成 shard result ids 计算 `next_shard`；不能在 partial result 后继续展示 split plan 的初始 shard。
+- Projected loop 在 `iteration_limit_reached` 后，如果 durable reviewer shard state 显示仍有 `pending_shards`，`next_action_readout` 必须继续推荐 `run_reviewer_scope_shard`，并由 reviewer shard runner 根据已完成 result 跳到下一片。只有服务返回的真实 `next_item.id` 可以成为跨 projection resume target；当前 `item.id` 不能被误判为新 resume 目标。
 
 ## 5. 与工作台关系
 

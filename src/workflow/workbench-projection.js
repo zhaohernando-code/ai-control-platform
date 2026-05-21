@@ -688,6 +688,22 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   }
   if (driver.type === "autonomous_scheduler_loop_run") {
     const loop = summaries.schedulerLoop || {};
+    const shardReview = summaries.reviewerShardReview || {};
+    if (
+      loop.execution_strategy === "projected_next_action" &&
+      loop.phase === "iteration_limit_reached" &&
+      Number(shardReview.pending_shards || 0) > 0
+    ) {
+      return {
+        status: "ready",
+        action: "run_reviewer_scope_shard",
+        source_event_id: driver.event_id,
+        source_type: driver.type,
+        target_projection_id: null,
+        reason: `${driver.summary}; reviewer shard ${shardReview.next_shard || "next"} remains pending`,
+        requires_operator: false
+      };
+    }
     return {
       status: loop.recovery_status === "ready" ? "ready" : loop.recovery_status || "ready",
       action: loop.recovery_status === "ready" ? "resume_autonomous_scheduler_loop" : "inspect_scheduler_loop",
@@ -824,7 +840,8 @@ export function createWorkbenchProjection(input = {}) {
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
   const nextActionReadout = createNextActionReadout(operationsTimeline, {
     schedulerLoop,
-    reviewerProviderHealth
+    reviewerProviderHealth,
+    reviewerShardReview
   });
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);

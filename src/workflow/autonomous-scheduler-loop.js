@@ -106,10 +106,8 @@ function loopSnapshotId(prefix, projectionId, index) {
   return `${safeIdPart(prefix)}-${safeIdPart(projectionId)}-${String(index + 1).padStart(2, "0")}`;
 }
 
-function projectedNextProjectionId(actionResult = {}, fallbackProjectionId = null) {
+function projectedNextProjectionId(actionResult = {}) {
   return actionResult?.result?.next_item?.id ||
-    actionResult?.result?.item?.id ||
-    actionResult?.item?.id ||
     null;
 }
 
@@ -200,7 +198,7 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
           created_at: input.created_at || input.createdAt
         });
         iteration.status = actionResult.status || "executed";
-        iteration.next_projection_id = projectedNextProjectionId(actionResult, currentProjectionId);
+        iteration.next_projection_id = projectedNextProjectionId(actionResult);
         currentProjectionId = iteration.next_projection_id || currentProjectionId;
         continue;
       }

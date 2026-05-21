@@ -1133,6 +1133,99 @@ test("workbench server can run projected real reviewer loop with injected execut
   });
 });
 
+test("workbench server continues projected real reviewer loop from durable partial shard state", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-real-resume-"));
+  const inputPath = join(snapshotsRoot, "projected-real-resume-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "projected-real-resume",
+    items: [
+      {
+        id: "projected-real-resume",
+        label: "Projected real resume",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  const calls = [];
+  const realReviewerExecutor = async ({ shard }) => {
+    calls.push(shard.id);
+    return {
+      status: "pass",
+      findings: [],
+      provenance: {
+        executor_kind: "test_real_reviewer",
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        timeout_seconds: 90,
+        external_call_budget_used: 1
+      }
+    };
+  };
+
+  await withServer(async (baseUrl) => {
+    const first = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=projected-real-resume`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        execution_profile: "approved_bounded_real_reviewer",
+        execution_strategy: "projected_next_action",
+        max_external_reviewer_calls: 1,
+        provider_cost_mode: "bounded",
+        timeout_seconds: 90,
+        snapshot_prefix: "projected-real-resume",
+        created_at: "2026-05-22T05:40:00.000Z"
+      })
+    });
+    const firstCreated = first.json();
+
+    assert.equal(first.status, 201);
+    assert.deepEqual(calls, ["reviewer-scope-shard-001"]);
+    assert.equal(firstCreated.projection.reviewer_shard_review.completed_shards, 1);
+    assert.equal(firstCreated.projection.reviewer_shard_review.next_shard, "reviewer-scope-shard-002");
+    assert.equal(firstCreated.projection.next_action_readout.action, "run_reviewer_scope_shard");
+
+    const second = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=projected-real-resume`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        execution_profile: "approved_bounded_real_reviewer",
+        execution_strategy: "projected_next_action",
+        max_external_reviewer_calls: 1,
+        provider_cost_mode: "bounded",
+        timeout_seconds: 90,
+        snapshot_prefix: "projected-real-resume",
+        created_at: "2026-05-22T05:41:00.000Z"
+      })
+    });
+    const secondCreated = second.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+    const shardIds = state.manifest.events
+      .filter((event) => event.type === "reviewer_shard_result")
+      .map((event) => event.metadata.shard_id);
+
+    assert.equal(second.status, 201);
+    assert.deepEqual(calls, ["reviewer-scope-shard-001", "reviewer-scope-shard-002"]);
+    assert.deepEqual(shardIds, ["reviewer-scope-shard-001", "reviewer-scope-shard-002"]);
+    assert.equal(secondCreated.result.iterations[0].projected_action, "run_reviewer_scope_shard");
+    assert.equal(secondCreated.projection.reviewer_shard_review.pending_shards, 0);
+    assert.equal(secondCreated.projection.reviewer_shard_review.status, "pass");
+    assert.equal(state.manifest.events.at(-2).type, "reviewer_shard_aggregate");
+    assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  }, {
+    historyPath,
+    snapshotsRoot,
+    realReviewerExecutor
+  });
+});
+
 test("workbench server resumes autonomous scheduler loop from registry recovery policy", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-"));

@@ -912,3 +912,12 @@ Injected real-loop smoke 暴露了一个流程细节：如果为了预检把 pro
 - `reviewer_scope_split` projection 保留 `shard_ids`。
 - `reviewer_shard_review.next_shard` 在 partial result 状态下从 `shard_ids - completedIds` 计算。
 - 增加 partial result 回归，防止真实 loop 恢复时重复调度已完成 shard。
+
+[2026-05-22T05:42:00+08:00] Projected loop partial shard continuation must not recurse through current item:
+真实 reviewer loop 采用单片预算时，第一轮完成 shard 001 后会原地写回同一个 projection。测试暴露出两个恢复风险：服务响应里的当前 `item.id` 可能被误判为下一 projection；而 loop driver 作为最新事件时，如果只展示 inspect/resume，会让第二片 shard 需要人工判断。
+
+决策：
+- `projected_next_action` 只有看到真实 `next_item.id` 才记录跨 projection `next_projection_id`。
+- 当 loop phase 为 `iteration_limit_reached` 且 reviewer shard review 仍有 pending shard 时，projection 推荐 `run_reviewer_scope_shard`。
+- 第二轮真实 reviewer loop 仍通过 reviewer execution policy、provider-health preflight、单次外部调用预算和 bounded timeout。
+- 回归验证两轮单片 projected real loop 依次执行 shard 001/002，并在 durable state 中聚合，不重复 001。
