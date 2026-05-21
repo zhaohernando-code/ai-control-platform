@@ -48,6 +48,7 @@ export function createProjectionSource(options = {}) {
   const providerHealthUrl = options.providerHealthUrl || "/api/workbench/reviewer-provider-health";
   const shardResultUrl = options.shardResultUrl || "/api/workbench/reviewer-shard-result";
   const schedulerDispatchPlanUrl = options.schedulerDispatchPlanUrl || "/api/workbench/scheduler-dispatch-plan";
+  const schedulerDispatchUrl = options.schedulerDispatchUrl || "/api/workbench/scheduler-dispatch";
   const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || "/api/workbench/scheduler-dispatch-run";
   const fetchImpl = options.fetch || globalThis.fetch;
 
@@ -58,6 +59,7 @@ export function createProjectionSource(options = {}) {
     providerHealthUrl,
     shardResultUrl,
     schedulerDispatchPlanUrl,
+    schedulerDispatchUrl,
     schedulerDispatchRunUrl,
     async load() {
       if (!fetchImpl) {
@@ -152,6 +154,21 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         throw new Error(`Scheduler dispatch plan create failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    async runSchedulerDispatch(input = {}) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(schedulerDispatchUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Scheduler dispatch failed: ${response.status}`);
       }
 
       return response.json();

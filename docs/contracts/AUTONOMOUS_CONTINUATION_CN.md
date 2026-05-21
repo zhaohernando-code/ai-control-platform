@@ -150,6 +150,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 调度 CLI 支持 `--workbench-base-url` / `--projection-id`，用于在执行完成后自动写回工作台服务；artifact 执行失败或写回失败都不能伪装为成功。
 - Scheduler dispatch plan 可以内置 `writeback` 策略。`mode=service` 必须提供 workbench base URL；runner CLI 在没有显式 flag 时使用计划内策略。
 - 工作台服务可以从 projection history 的 `input_path` 生成 scheduler dispatch plan，并自动注入 service writeback base URL 与 projection id；没有 `input_path` 或 Host 不可信时必须失败闭合。
+- 工作台控制面可以触发受控 scheduler dispatch dry-run。服务端必须先生成计划、执行 dry-run、写回 artifact 并返回新 projection；前端不得在服务成功前乐观刷新状态。
 
 ## 5. 与工作台关系
 

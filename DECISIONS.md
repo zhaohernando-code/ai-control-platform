@@ -621,3 +621,14 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - service writeback 的 `base_url` 由当前请求 Host 推导，并对 Host 做字符白名单校验。
 - 生成计划自动填入 `projection_id` 为当前 history id。
 - Projection Source 增加 `createSchedulerDispatchPlan`，为工作台控制面后续触发调度计划预留稳定接口。
+
+[2026-05-21T23:15:42+08:00] Workbench scheduler control must not be optimistic:
+工作台按钮如果点击后直接改 UI，会复现之前“看起来成功但实际没写入”的问题。调度控制必须等服务端完成计划、执行和写回后再刷新 projection。
+
+决策：
+- Workbench server 增加 `POST /api/workbench/scheduler-dispatch`。
+- 当前工作台控制仅允许 `dry_run`，非 dry-run 请求失败闭合。
+- 服务端基于 history input 生成计划，执行 scheduler dry-run，写回 scheduler dispatch artifact，再返回新的 projection。
+- PC/mobile shell 增加 `data-scheduler-dispatch="dry-run"` 控制。
+- `workbench.js` 只在服务返回 projection 后调用 `renderProjection`；失败时显示“调度失败”。
+- `check-workbench-browser-events` 增加 scheduler dispatch click 场景，验证按钮点击后页面显示 pass/3 steps 且无横向溢出。

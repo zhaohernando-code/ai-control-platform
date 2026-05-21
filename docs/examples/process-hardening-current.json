@@ -557,6 +557,14 @@
       "regression_test": "workbench server creates scheduler dispatch plans from projection history input; workbench server rejects scheduler dispatch plans without workflow state input; workbench server rejects scheduler dispatch plan creation with unsafe host; projection source creates scheduler dispatch plans",
       "verification": "node --test test/workbench-server.test.js test/workbench-projection-source.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "workbench-scheduler-control-optimistic-ui",
+      "invariant": "Workbench scheduler controls must run through the service, require dry-run for UI-triggered dispatch, persist scheduler dispatch artifacts, and update rendered state only from the returned projection.",
+      "enforcement_target": "tools/workbench-server.mjs; apps/workbench/projection-source.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-server.test.js; test/workbench-projection-source.test.js; test/workbench-shell.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "workbench server runs guarded scheduler dispatch dry-run from projection history input; workbench server rejects non-dry-run scheduler dispatch from workbench control; projection source runs guarded scheduler dispatch; workbench shell consumes projection json instead of logs; scheduler_dispatch_click browser scenario",
+      "verification": "node --test test/workbench-server.test.js test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

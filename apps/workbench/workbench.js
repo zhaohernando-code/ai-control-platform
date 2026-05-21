@@ -243,5 +243,28 @@ qsa("[data-provider-health]").forEach((button) => {
   });
 });
 
+qsa("[data-scheduler-dispatch]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    button.dataset.eventState = "pending";
+    button.textContent = "调度中";
+
+    try {
+      const result = await source.runSchedulerDispatch({
+        dry_run: true,
+        created_at: new Date().toISOString()
+      });
+      button.dataset.eventState = "recorded";
+      button.textContent = "调度已记录";
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch {
+      button.dataset.eventState = "failed";
+      button.textContent = "调度失败";
+    }
+  });
+});
+
 renderHistorySelect();
 main();

@@ -167,6 +167,37 @@ async function verifyProviderHealthClick(browser) {
   });
 }
 
+async function verifySchedulerDispatchClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-scheduler-dispatch="dry-run"]');
+    await page.waitForFunction(() => document.querySelector('[data-scheduler-dispatch="dry-run"]')?.textContent.includes("调度已记录"));
+
+    const schedulerDispatchStatus = await page.textContent('[data-bind="scheduler_dispatch_status"]');
+    const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(schedulerDispatchStatus === "pass", "scheduler dispatch click must update rendered scheduler status");
+    assert(schedulerDispatchSteps === "3", "scheduler dispatch click must render scheduler step count");
+    assert(dimensions.scrollWidth <= dimensions.width, "scheduler dispatch click must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "scheduler_dispatch_click",
+      scheduler_dispatch_status: schedulerDispatchStatus,
+      scheduler_dispatch_steps: schedulerDispatchSteps,
+      dimensions
+    }, null, 2));
+  });
+}
+
 async function verifyMobileProjectionLoad(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -215,6 +246,7 @@ try {
   await verifySuccessfulClick(browser);
   await verifyFailedClickDoesNotShowSuccess(browser);
   await verifyProviderHealthClick(browser);
+  await verifySchedulerDispatchClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();

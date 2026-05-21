@@ -371,6 +371,43 @@ test("workbench server creates scheduler dispatch plans from projection history 
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server runs guarded scheduler dispatch dry-run from projection history input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-control-"));
+  const inputPath = join(snapshotsRoot, "scheduler-control-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-control",
+    items: [
+      {
+        id: "scheduler-control",
+        label: "Scheduler control",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch?id=scheduler-control`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dry_run: true })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.result.status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.step_count, 3);
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server records scheduler dispatch runs into workflow state input", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-dispatch-"));
@@ -532,6 +569,38 @@ test("workbench server rejects scheduler dispatch plans without workflow state i
     assert.equal(response.status, 400);
     assert.match(rejected.error, /workflow state input not found/);
   });
+});
+
+test("workbench server rejects non-dry-run scheduler dispatch from workbench control", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-control-reject-"));
+  const inputPath = join(snapshotsRoot, "scheduler-control-reject-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-control-reject",
+    items: [
+      {
+        id: "scheduler-control-reject",
+        label: "Scheduler control reject",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dry_run: false })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /requires dry_run/);
+  }, { historyPath, snapshotsRoot });
 });
 
 test("workbench server rejects scheduler dispatch plan creation with unsafe host", async () => {

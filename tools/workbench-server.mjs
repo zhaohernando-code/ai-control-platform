@@ -11,7 +11,11 @@ import {
   recordReviewerShardAggregate,
   recordReviewerShardResult
 } from "../src/workflow/reviewer-shard-results.js";
-import { recordSchedulerDispatchRunArtifact } from "../src/workflow/scheduler-dispatch-runner.js";
+import {
+  createSchedulerDispatchRunArtifact,
+  recordSchedulerDispatchRunArtifact,
+  runSchedulerDispatchPlan
+} from "../src/workflow/scheduler-dispatch-runner.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -156,6 +160,30 @@ function schedulerDispatchRunIssues(input = {}) {
   }
 
   return issues;
+}
+
+function schedulerPlanInputFromWorkflowState(workflowState, input = {}) {
+  return {
+    project_status: {
+      project: "ai-control-platform",
+      blockers: [],
+      next_step: input.next_step || input.nextStep || ""
+    },
+    run_evaluation: input.run_evaluation || input.runEvaluation || { status: "pass" },
+    workflow_state: workflowState
+  };
+}
+
+function schedulerPlanOptionsFromRequest(req, item, selectedId, input = {}) {
+  return {
+    workflow_state_input_path: item.input_path,
+    workbench_writeback_mode: "service",
+    workbench_base_url: workbenchBaseUrlFromRequest(req),
+    projection_id: selectedId,
+    reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+    reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+    next_step: input.next_step || input.nextStep
+  };
 }
 
 function readEvents(eventsPath) {
@@ -360,23 +388,10 @@ export function createWorkbenchServer(options = {}) {
 
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
-        const plan = createSchedulerDispatchPlan({
-          project_status: {
-            project: "ai-control-platform",
-            blockers: [],
-            next_step: input.next_step || input.nextStep || ""
-          },
-          run_evaluation: input.run_evaluation || input.runEvaluation || { status: "pass" },
-          workflow_state: workflowState
-        }, {
-          workflow_state_input_path: item.input_path,
-          workbench_writeback_mode: "service",
-          workbench_base_url: workbenchBaseUrlFromRequest(req),
-          projection_id: selectedId,
-          reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
-          reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
-          next_step: input.next_step || input.nextStep
-        });
+        const plan = createSchedulerDispatchPlan(
+          schedulerPlanInputFromWorkflowState(workflowState, input),
+          schedulerPlanOptionsFromRequest(req, item, selectedId, input)
+        );
         if (plan.status !== "pass") {
           jsonResponse(res, 400, { error: "scheduler dispatch plan failed", issues: plan.issues });
           return;
@@ -386,6 +401,63 @@ export function createWorkbenchServer(options = {}) {
           status: "created",
           item,
           plan
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/scheduler-dispatch" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        if (input.dry_run === false || input.dryRun === false) {
+          jsonResponse(res, 400, { error: "workbench scheduler dispatch currently requires dry_run" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const plan = createSchedulerDispatchPlan(
+          schedulerPlanInputFromWorkflowState(workflowState, input),
+          schedulerPlanOptionsFromRequest(req, item, selectedId, input)
+        );
+        if (plan.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch plan failed", issues: plan.issues });
+          return;
+        }
+
+        const runResult = await runSchedulerDispatchPlan(plan, { dry_run: true });
+        const runArtifact = createSchedulerDispatchRunArtifact(plan, runResult, {
+          created_at: input.created_at || input.createdAt
+        });
+        const recorded = recordSchedulerDispatchRunArtifact(workflowState, runArtifact, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (recorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch run record failed", issues: recorded.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          plan,
+          result: runResult,
+          artifact: recorded.artifact,
+          projection: createWorkbenchProjection(recorded.workflow_state)
         });
         return;
       }

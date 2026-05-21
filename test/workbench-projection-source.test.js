@@ -205,6 +205,47 @@ test("projection source creates scheduler dispatch plans", async () => {
   assert.match(calls[0].options.body, /reviewer_mock_status/);
 });
 
+test("projection source runs guarded scheduler dispatch", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    schedulerDispatchUrl: "/api/workbench/scheduler-dispatch",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", projection: validProjection() };
+        }
+      };
+    }
+  });
+
+  const result = await source.runSchedulerDispatch({ dry_run: true });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.schedulerDispatchUrl, "/api/workbench/scheduler-dispatch");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /dry_run/);
+});
+
+test("projection source rejects failed scheduler dispatch", async () => {
+  const source = createProjectionSource({
+    schedulerDispatchUrl: "/api/workbench/scheduler-dispatch",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "scheduler dispatch failed" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.runSchedulerDispatch({ dry_run: false }),
+    /Scheduler dispatch failed: 400/
+  );
+});
+
 test("projection source rejects failed scheduler dispatch plan creation", async () => {
   const source = createProjectionSource({
     schedulerDispatchPlanUrl: "/api/workbench/scheduler-dispatch-plan",
