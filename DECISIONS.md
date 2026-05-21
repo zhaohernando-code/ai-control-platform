@@ -436,3 +436,14 @@ API 存在但 UI 无入口，仍然会让 operator 回到手动 CLI 或聊天指
 - 新增 `POST /api/workbench/reviewer-shard-result`，复用同一套 `recordReviewerShardResult` / `recordReviewerShardAggregate` 语义。
 - API 只允许写入 history item 的 `input_path` workflow state；静态 projection 失败闭合。
 - `projection-source` 增加 `recordReviewerShardResult`，后续 UI/operator action 不需要手写 API 调用。
+
+[2026-05-21T21:39:23+08:00] Reviewer shard execution needs a provider-neutral runner:
+有 split plan、result recording 和 API 仍不够；如果没有统一 runner，调度器仍需要人工挑选 pending shard、拼 prompt、调用 provider、记录结果、判断是否 aggregate。
+
+决策：
+- 新增 `reviewer-shard-runner`。
+- runner 只选择尚无 `reviewer_shard_result` 的 pending shard。
+- runner 构造只读 prompt，但不硬编码 DeepSeek、Claude Code 或 GPT；真实执行通过 executor adapter 注入。
+- executor 返回后复用 `recordReviewerShardResult`。
+- 最后一个 shard 完成后自动调用 `recordReviewerShardAggregate`。
+- 缺少 executor 或 shard 不在 pending 集合中时失败闭合。

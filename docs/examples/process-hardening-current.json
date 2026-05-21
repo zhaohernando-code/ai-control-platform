@@ -176,6 +176,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Reviewer shard outputs need reusable CLI/API recording paths; otherwise real DS shard reviews require manual JSON edits and can drift from workflow state."
+    },
+    {
+      "id": "reviewer-shard-runner-missing",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Reviewer shard split and recording primitives still need a provider-neutral runner so pending shards can be selected, executed, recorded, and aggregated without manual orchestration."
     }
   ],
   "hardening_items": [
@@ -377,6 +384,14 @@
       "enforcement_target": "tools/record-reviewer-shard-result.mjs; tools/workbench-server.mjs; apps/workbench/projection-source.js; package.json; test/reviewer-shard-results.test.js; test/workbench-server.test.js; test/workbench-projection-source.test.js",
       "regression_test": "record-reviewer-shard-result CLI writes shard results and aggregate facts; workbench server records reviewer shard results into workflow state input; projection source records reviewer shard results",
       "verification": "node --test test/reviewer-shard-results.test.js test/workbench-server.test.js test/workbench-projection-source.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-runner-missing",
+      "invariant": "Reviewer shard execution must use a provider-neutral runner that selects only pending shards, builds read-only prompts, requires an executor adapter, records shard results, and aggregates automatically after the final shard.",
+      "enforcement_target": "src/workflow/reviewer-shard-runner.js; test/reviewer-shard-runner.test.js",
+      "regression_test": "reviewer shard runner lists pending shards and builds read-only prompts; reviewer shard runner records one shard and leaves remaining shard pending; reviewer shard runner aggregates automatically after the last shard; reviewer shard runner fails closed without executor or pending shard",
+      "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
