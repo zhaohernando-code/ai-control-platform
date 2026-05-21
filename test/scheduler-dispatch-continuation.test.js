@@ -144,6 +144,7 @@ test("run-scheduler-dispatch-plan CLI can write next continuation input", () => 
     history_path: join(dir, "projection-history.json"),
     snapshots_root: join(dir, "snapshots"),
     closeout_loop_artifact_path: join(dir, "autonomous-closeout-loop-run.json"),
+    scheduler_continuation_output_path: continuationOutputPath,
     reviewer_mock_status: "pass"
   });
   writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
@@ -153,9 +154,7 @@ test("run-scheduler-dispatch-plan CLI can write next continuation input", () => 
     "--plan",
     planPath,
     "--output",
-    runArtifactPath,
-    "--continuation-output",
-    continuationOutputPath
+    runArtifactPath
   ], { encoding: "utf8" });
   const summary = JSON.parse(stdout);
   const continuation = JSON.parse(readFileSync(continuationOutputPath, "utf8"));

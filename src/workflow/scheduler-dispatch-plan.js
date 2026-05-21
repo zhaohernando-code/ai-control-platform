@@ -80,6 +80,7 @@ export function createSchedulerDispatchPlan(input = {}, options = {}) {
   const outputPath = pathOrDefault(options, "workflow_state_output_path", `tmp/scheduler/${runId}/workflow-state-after-reviewer-shards.json`);
   const runArtifactPath = pathOrDefault(options, "reviewer_shard_loop_artifact_path", `tmp/scheduler/${runId}/reviewer-shard-loop-run.json`);
   const continuationInputPath = pathOrDefault(options, "continuation_input_path", `tmp/scheduler/${runId}/continuation-input.json`);
+  const schedulerContinuationOutputPath = pathOrDefault(options, "scheduler_continuation_output_path", `tmp/scheduler/${runId}/scheduler-dispatch-continuation-input.json`);
   const historyPath = pathOrDefault(options, "history_path", `tmp/scheduler/${runId}/projection-history.json`);
   const snapshotsRoot = pathOrDefault(options, "snapshots_root", `tmp/scheduler/${runId}/snapshots`);
   const closeoutArtifactPath = pathOrDefault(options, "closeout_loop_artifact_path", `tmp/scheduler/${runId}/autonomous-closeout-loop-run.json`);
@@ -164,6 +165,10 @@ export function createSchedulerDispatchPlan(input = {}, options = {}) {
     issues,
     decision,
     writeback,
+    continuation_output: {
+      mode: "file",
+      path: schedulerContinuationOutputPath
+    },
     steps
   };
 }

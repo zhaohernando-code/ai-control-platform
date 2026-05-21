@@ -202,6 +202,7 @@ test("run-scheduler-dispatch-plan CLI writes dry-run artifact", () => {
   assert.equal(result.status, 0);
   assert.equal(summary.status, "pass");
   assert.equal(summary.step_count, 3);
+  assert.equal(summary.continuation_status, "not_requested");
   assert.equal(artifact.version, "scheduler-dispatch-run.v1");
   assert.ok(artifact.result.steps.every((step) => step.dry_run === true));
 });

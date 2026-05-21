@@ -29,6 +29,7 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
     workflow_state_output_path: "tmp/scheduler/output.json",
     reviewer_shard_loop_artifact_path: "tmp/scheduler/reviewer-shard-loop-run.json",
     continuation_input_path: "tmp/scheduler/continuation-input.json",
+    scheduler_continuation_output_path: "tmp/scheduler/scheduler-dispatch-continuation-input.json",
     history_path: "tmp/scheduler/projection-history.json",
     snapshots_root: "tmp/scheduler/snapshots",
     closeout_loop_artifact_path: "tmp/scheduler/autonomous-closeout-loop-run.json",
@@ -55,6 +56,10 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
     mode: "service",
     base_url: "http://127.0.0.1:4180",
     projection_id: "current-session"
+  });
+  assert.deepEqual(plan.continuation_output, {
+    mode: "file",
+    path: "tmp/scheduler/scheduler-dispatch-continuation-input.json"
   });
 });
 

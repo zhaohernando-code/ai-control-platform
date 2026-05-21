@@ -81,7 +81,7 @@ if (args.includes("--help") || args.includes("-h")) {
 
 const planPath = valueAfter("--plan", args);
 const outputPath = valueAfter("--output", args);
-const continuationOutputPath = valueAfter("--continuation-output", args);
+let continuationOutputPath = valueAfter("--continuation-output", args);
 let workbenchBaseUrl = valueAfter("--workbench-base-url", args);
 let projectionId = valueAfter("--projection-id", args);
 if (!planPath || !outputPath) {
@@ -98,6 +98,9 @@ try {
   }
   if (!projectionId && plan?.writeback?.mode === "service") {
     projectionId = plan.writeback.projection_id || "";
+  }
+  if (!continuationOutputPath && !hasFlag("--dry-run", args) && plan?.continuation_output?.mode === "file") {
+    continuationOutputPath = plan.continuation_output.path || "";
   }
   result = await runSchedulerDispatchPlan(plan, {
     dry_run: hasFlag("--dry-run", args)

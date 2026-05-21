@@ -691,3 +691,11 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - 当该参数存在时，runner 写出 scheduler dispatch run artifact 后立即调用 replay-validating adapter。
 - continuation 生成失败时 runner 必须非零退出，不能把 artifact pass 伪装成整体 pass。
 - CLI summary 必须包含 continuation status、output 和 next work package count。
+
+[2026-05-21T23:57:39+08:00] Scheduler dispatch plans carry continuation output destinations:
+如果 continuation output 仍只存在于 CLI flag，自动调度器还会在“生成 plan”和“执行 plan”之间丢失下一轮输出位置。
+
+决策：
+- `createSchedulerDispatchPlan` 增加 `continuation_output`，默认写入 scheduler run 目录。
+- `run-scheduler-dispatch-plan` 在非 dry-run 且未显式传 `--continuation-output` 时读取 plan 内的 continuation output。
+- dry-run 不自动生成 continuation input，避免把结构验证伪装成可复用下一轮。

@@ -158,6 +158,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 非 dry-run scheduler dispatch artifact 必须记录每个成功 step 的声明输出摘要。`run-autonomous-closeout-loop` 输出摘要必须包含 next continuation status/action/work package count；projection 和 PC/mobile 工作台必须展示这些字段，作为是否继续下一轮的机器可读依据。
 - Scheduler dispatch 产出的下一轮 continuation input 必须通过 `prepare:scheduler-dispatch-continuation` 或等价 adapter 生成。该 adapter 只能读取 `scheduler-dispatch-run.v1` 中声明的 closeout loop artifact 路径，并必须复用 autonomous closeout loop replay validator；blocked 时不得生成 continuation input。
 - `run-scheduler-dispatch-plan` 可以通过 `--continuation-output` 在同一次执行中生成下一轮 continuation input。该输出仍必须走 scheduler dispatch continuation adapter；adapter blocked 时整个 runner 必须失败。
+- Scheduler dispatch plan 必须携带 `continuation_output` 文件目标；非 dry-run runner 在没有显式 CLI flag 时使用 plan 内目标，dry-run 不生成 continuation input。
 
 ## 5. 与工作台关系
 
