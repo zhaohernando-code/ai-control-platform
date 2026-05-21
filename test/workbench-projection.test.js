@@ -111,6 +111,8 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.task_dag.status, "pass");
   assert.equal(projection.one_screen.counters.reviewer_findings, 1);
   assert.equal(projection.one_screen.counters.closeout_publishes, 0);
+  assert.equal(projection.resume_health.status, "not_configured");
+  assert.equal(projection.one_screen.counters.resume_blockers, 0);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
@@ -158,6 +160,56 @@ test("workbench projection exposes latest closeout publication evidence", () => 
   assert.equal(projection.one_screen.counters.closeout_publishes, 1);
   assert.equal(mobile.closeout.status, "pass");
   assert.equal(mobile.closeout.snapshot_id, "run-projection");
+});
+
+test("workbench projection exposes replay validation blockers as resume health", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "autonomous-loop-replay-validation-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "fail",
+    uri: "autonomous-loop://replay-validation/run-projection/cycle-20260521",
+    producer: "autonomous-orchestrator",
+    created_at: "2026-05-21T11:15:00.000Z",
+    metadata: {
+      run_id: "run-projection",
+      cycle_id: "cycle-20260521",
+      replay_status: "blocked",
+      issues: [{ code: "result_drift", message: "replay result drifted from stored projection", path: "result" }]
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "autonomous_loop_replay_validation",
+        status: "blocked",
+        artifact_id: artifact.id,
+        message: "autonomous loop replay validation blocked scheduler continuation",
+        created_at: "2026-05-21T11:15:00.000Z",
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.resume_health.status, "blocked");
+  assert.equal(projection.resume_health.replay_status, "blocked");
+  assert.equal(projection.resume_health.artifact_id, artifact.id);
+  assert.equal(projection.resume_health.issue_count, 1);
+  assert.equal(projection.resume_health.latest_issue, "replay result drifted from stored projection");
+  assert.equal(projection.one_screen.counters.resume_blockers, 1);
+  assert.equal(mobile.resume_health.status, "blocked");
+  assert.equal(mobile.resume_health.latest_issue, "replay result drifted from stored projection");
 });
 
 test("workbench projection ingests operator events before summarizing run state", () => {
@@ -288,6 +340,7 @@ test("mobile projection keeps the one-screen subset", () => {
   assert.equal(mobile.status, "rerun");
   assert.equal(mobile.model.selected_model, "gpt");
   assert.equal(mobile.reviewer.recommended_decision_signal, "rerun");
+  assert.equal(mobile.resume_health.status, "not_configured");
   assert.ok(mobile.next_actions.length <= 3);
 });
 

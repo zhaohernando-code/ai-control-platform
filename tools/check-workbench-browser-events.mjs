@@ -50,6 +50,7 @@ async function verifySuccessfulClick(browser) {
       scrollWidth: document.documentElement.scrollWidth
     }));
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
+    const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
     await page.close();
 
     const ledger = readLedger(eventsPath);
@@ -59,6 +60,7 @@ async function verifySuccessfulClick(browser) {
     assert(ledger.events[0].cycle_id, "successful click must persist cycle_id");
     assert(dimensions.scrollWidth <= dimensions.width, "desktop workbench must not overflow horizontally");
     assert(closeoutStatus, "desktop workbench must render closeout status");
+    assert(resumeHealthStatus, "desktop workbench must render resume health status");
 
     console.log(JSON.stringify({
       scenario: "success",
@@ -66,6 +68,7 @@ async function verifySuccessfulClick(browser) {
       action: ledger.events[0].action,
       run_id: ledger.events[0].run_id,
       closeout_status: closeoutStatus,
+      resume_health_status: resumeHealthStatus,
       dimensions
     }, null, 2));
   });
@@ -123,16 +126,19 @@ async function verifyMobileProjectionLoad(browser) {
     const cycleId = await page.textContent('[data-bind="cycle_id"]');
     const status = await page.textContent('[data-bind="status"]');
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
+    const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
     assert(closeoutStatus, "mobile workbench must render closeout status");
+    assert(resumeHealthStatus, "mobile workbench must render resume health status");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
       cycle_id: cycleId,
       status,
       closeout_status: closeoutStatus,
+      resume_health_status: resumeHealthStatus,
       dimensions
     }, null, 2));
   });

@@ -110,6 +110,19 @@
 
           <section class="panel">
             <div class="section-title">
+              <h2>Resume Health</h2>
+              <span data-bind="resume_health_status">--</span>
+            </div>
+            <div class="resume-grid">
+              <div><span>Replay</span><strong data-bind="resume_replay_status">--</strong></div>
+              <div><span>Issues</span><strong data-bind="resume_issue_count">0</strong></div>
+              <div class="full"><span>Latest</span><strong data-bind="resume_latest_issue">--</strong></div>
+              <div class="full"><span>Evidence</span><strong data-bind="resume_artifact">--</strong></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
               <h2>模型路由</h2>
               <span data-bind="model_summary">--</span>
             </div>

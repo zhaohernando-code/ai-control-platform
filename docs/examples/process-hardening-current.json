@@ -113,6 +113,13 @@
       "category": "reviewer_timeout",
       "severity": "p1",
       "message": "DeepSeek reviewer timeouts must follow bounded invocation profiles, official keepalive/start-timeout behavior, and provider smoke diagnosis instead of a single arbitrary wrapper timeout."
+    },
+    {
+      "id": "replay-blocker-projection-side-channel",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Replay validation blocker evidence must be visible in workbench projection and PC/mobile shells as resume health, not only buried in artifact totals."
     }
   ],
   "hardening_items": [
@@ -242,6 +249,14 @@
       "enforcement_target": "src/workflow/llm-reviewer-gate.js; test/llm-reviewer-gate.test.js; docs/contracts/MODEL_ROUTING_POLICY_CN.md",
       "regression_test": "DeepSeek reviewer invocation policy bounds scope and recommends split; reviewer timeout becomes a recoverable autonomous-run finding; reviewer timeout recovery runs provider smoke before marking DeepSeek unhealthy",
       "verification": "node --test test/llm-reviewer-gate.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "replay-blocker-projection-side-channel",
+      "invariant": "Workbench projection, schema, desktop shell, mobile shell, and browser verification must expose replay validation blockers through resume_health.",
+      "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-shell.test.js",
+      "regression_test": "workbench projection exposes replay validation blockers as resume health; workbench shell has separate desktop and mobile entries; check-workbench-browser-events renders resume health on desktop and mobile",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:closeout",
       "status": "completed"
     }
   ]

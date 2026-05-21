@@ -56,6 +56,16 @@
     "created_at": null,
     "issues": []
   },
+  "resume_health": {
+    "status": "not_configured",
+    "replay_status": null,
+    "event_id": null,
+    "artifact_id": null,
+    "issue_count": 0,
+    "latest_issue": null,
+    "created_at": null,
+    "issues": []
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -183,7 +193,8 @@
       "artifacts": 3,
       "reviewer_findings": 1,
       "dispatchable_tasks": 0,
-      "closeout_publishes": 0
+      "closeout_publishes": 0,
+      "resume_blockers": 0
     }
   }
 }

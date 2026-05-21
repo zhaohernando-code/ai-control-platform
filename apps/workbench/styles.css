@@ -128,6 +128,7 @@ select {
 .metric span,
 .review-grid span,
 .closeout-grid span,
+.resume-grid span,
 .mobile-review span {
   color: var(--muted);
   font-size: 12px;
@@ -316,7 +317,8 @@ h2 {
 }
 
 .review-grid,
-.closeout-grid {
+.closeout-grid,
+.resume-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -324,18 +326,21 @@ h2 {
 
 .review-grid div,
 .closeout-grid div,
+.resume-grid div,
 .mobile-review div {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
 }
 
-.closeout-grid .full {
+.closeout-grid .full,
+.resume-grid .full {
   grid-column: 1 / -1;
 }
 
 .review-grid strong,
 .closeout-grid strong,
+.resume-grid strong,
 .mobile-review strong {
   display: block;
   margin-top: 5px;
