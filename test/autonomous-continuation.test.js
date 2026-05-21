@@ -83,8 +83,52 @@ test("reviewer provider health facts generate scheduler follow-up work packages"
 
   assert.equal(decision.action, CONTINUE);
   assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-rerun-without-tools"));
-  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-split-scope"));
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-split-scope"));
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-001"));
   assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-provider-rerun-without-tools"));
+});
+
+test("reviewer scope split facts generate concrete shard work packages", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass" },
+    reviewer_provider_health: {
+      recovery_status: "retry",
+      provider_health: "healthy",
+      scheduled_actions: ["split_scope"],
+      retry_strategy: "split_scope"
+    },
+    reviewer_scope_split: {
+      status: "pass",
+      split_reason: "reviewer request was split into bounded shards",
+      shards: [
+        {
+          id: "reviewer-scope-shard-001",
+          status: "pending",
+          provider: "claude-code",
+          model: "deepseek-v4-pro",
+          profile: "process_guard",
+          files: ["src/workflow/llm-reviewer-gate.js"],
+          allowed_tools: []
+        },
+        {
+          id: "reviewer-scope-shard-002",
+          status: "pending",
+          provider: "claude-code",
+          model: "deepseek-v4-pro",
+          profile: "process_guard",
+          files: ["src/workflow/reviewer-provider-health.js"],
+          allowed_tools: []
+        }
+      ]
+    }
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-split-scope"));
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-001"));
+  assert.equal(decision.next_work_packages.find((workPackage) => workPackage.id === "reviewer-scope-shard-001").action, "run_reviewer_scope_shard");
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-scope-shard-002"));
 });
 
 test("provider health fallback schedules model fallback work package", () => {

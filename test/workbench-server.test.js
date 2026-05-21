@@ -58,9 +58,10 @@ test("workbench server returns latest projection", async () => {
     assert.equal(projection.run_id, "run-20260521-platform-self-trial");
     assert.equal(projection.operator_events.status, "pass");
     assert.equal(projection.operator_events.applied_artifacts, 1);
-    assert.equal(projection.manifest.event_count, 4);
-    assert.equal(projection.artifacts.total, 4);
+    assert.equal(projection.manifest.event_count, 5);
+    assert.equal(projection.artifacts.total, 5);
     assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
+    assert.equal(projection.reviewer_scope_split.shard_count, 2);
   });
 });
 
@@ -71,9 +72,10 @@ test("workbench server builds latest projection from workflow state input", asyn
 
     assert.equal(response.status, 200);
     assert.equal(projection.operator_events.event_count, 1);
-    assert.equal(projection.artifacts.by_type.evaluation, 2);
-    assert.equal(projection.autonomous_run.summaries.artifacts.total, 4);
+    assert.equal(projection.artifacts.by_type.evaluation, 3);
+    assert.equal(projection.autonomous_run.summaries.artifacts.total, 5);
     assert.equal(projection.reviewer_provider_health.next_action, "rerun_without_tools");
+    assert.equal(projection.reviewer_scope_split.next_shard, "reviewer-scope-shard-001");
   });
 });
 

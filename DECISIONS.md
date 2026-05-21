@@ -403,3 +403,14 @@ API 存在但 UI 无入口，仍然会让 operator 回到手动 CLI 或聊天指
 - 前端通过 `recordProviderHealth` 调用 `/api/workbench/reviewer-provider-health`。
 - 成功后用 API 返回的 projection 直接刷新 provider health 与 next action。
 - Browser gate 使用临时 workflow-state snapshot 点击 Smoke Timeout，验证页面更新为 unhealthy / fallback 且无横向溢出。
+
+[2026-05-21T20:23:03+08:00] Smoke-pass DS tool timeouts need a concrete split layer:
+本轮真实 DS 工具复审超时但无工具 smoke 通过，说明 provider 通道健康，问题更可能在工具路径或请求范围。继续原样重跑会浪费时间并可能卡住自动流程。
+
+决策：
+- 新增 `reviewer-scope-splitter`，把 reviewer request 转成 bounded shards。
+- shard 必须受 profile 的 files/questions/prompt chars 限制，并保留 provider、model、profile、output contract 和 forbidden actions。
+- `tool_timeout_recovery` 支持更保守的一文件一 shard，并可生成 `no_tools` shard，避免重复提交同一个会超时的工具请求。
+- split plan 必须写入 `reviewer_scope_split` manifest event 和 artifact ledger evaluation artifact。
+- continuation 已有 concrete shards 时，生成 `run_reviewer_scope_shard` work packages，不再重复排抽象 `split_scope`。
+- PC/mobile projection 展示 shard_count、pending_shards、next_shard，让工作台能看到 DS reviewer 是否正在按分片推进。

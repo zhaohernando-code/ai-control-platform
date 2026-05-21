@@ -155,6 +155,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Workbench must let operators record DS smoke outcomes through UI controls backed by the provider health API, not only CLI/API calls."
+    },
+    {
+      "id": "reviewer-tool-timeout-unsplit-scope",
+      "status": "fail",
+      "category": "reviewer_timeout",
+      "severity": "p1",
+      "message": "Smoke-pass DeepSeek tool review timeouts must not reschedule the same broad tool request; they need a bounded reviewer scope split plan with concrete shards."
     }
   ],
   "hardening_items": [
@@ -332,6 +339,14 @@
       "enforcement_target": "apps/workbench; apps/workbench/projection-source.js; tools/check-workbench-browser-events.mjs; test/workbench-projection-source.test.js; test/workbench-shell.test.js",
       "regression_test": "projection source records reviewer provider health; workbench shell consumes projection json instead of logs; check-workbench-browser-events provider_health_click scenario",
       "verification": "node --test test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-tool-timeout-unsplit-scope",
+      "invariant": "Smoke-pass reviewer tool timeouts must create durable reviewer_scope_split shards with bounded files, questions, prompt chars, and tool permissions before any DS reviewer rerun is scheduled.",
+      "enforcement_target": "src/workflow/reviewer-scope-splitter.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; test/reviewer-scope-splitter.test.js; test/autonomous-continuation.test.js; test/workbench-projection.test.js",
+      "regression_test": "reviewer scope split creates bounded shards for oversized requests; reviewer scope split can produce no-tool shards after tool-path timeout; reviewer scope split facts generate concrete shard work packages; workbench projection exposes reviewer scope split shard status",
+      "verification": "node --test test/reviewer-scope-splitter.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

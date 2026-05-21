@@ -54,6 +54,7 @@ function validatePcProjection(projection, issues) {
     "closeout",
     "resume_health",
     "reviewer_provider_health",
+    "reviewer_scope_split",
     "model_routing",
     "reviewer_gate",
     "autonomous_run",
@@ -79,7 +80,7 @@ function validateMobileProjection(projection, issues) {
     requireString(projection, field, issues);
   }
 
-  for (const field of ["counters", "closeout", "resume_health", "provider_health", "model", "reviewer"]) {
+  for (const field of ["counters", "closeout", "resume_health", "provider_health", "scope_split", "model", "reviewer"]) {
     requireObject(projection, field, issues);
   }
 

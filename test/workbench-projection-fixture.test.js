@@ -20,8 +20,10 @@ test("current session workbench fixture is generated from durable input", () => 
   assert.equal(projection.reviewer_gate.recommended_decision_signal, "rerun");
   assert.equal(projection.operator_events.status, "pass");
   assert.equal(projection.operator_events.applied_run_events, 1);
-  assert.equal(projection.manifest.event_count, 4);
-  assert.equal(projection.one_screen.counters.artifacts, 4);
+  assert.equal(projection.manifest.event_count, 5);
+  assert.equal(projection.one_screen.counters.artifacts, 5);
   assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
   assert.equal(projection.reviewer_provider_health.next_action, "rerun_without_tools");
+  assert.equal(projection.reviewer_scope_split.shard_count, 2);
+  assert.equal(projection.reviewer_scope_split.next_shard, "reviewer-scope-shard-001");
 });

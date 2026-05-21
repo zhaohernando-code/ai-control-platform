@@ -111,6 +111,14 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 这些 work packages 必须进入 `next_work_packages` 和 `context_pack_seed.subtasks`，不能只展示在工作台上。
 
+如果 workflow state 或 projection 中已经存在 `reviewer_scope_split` fact，continuation 必须优先消费具体 shard：
+
+- 未完成 shard -> `run_reviewer_scope_shard` work package。
+- work package 的 `owned_files` 来自 shard.files，reviewer 元数据保留 provider、model、profile、allowed_tools 和 dispatch_mode。
+- 已有 concrete shards 时，不再重复生成抽象 `reviewer-provider-split-scope`。
+
+这保证 smoke 通过但 DS tool review 超时时，下一轮会沿着“生成 split plan -> 分片复审 -> 汇总 findings”继续，而不是原样重跑同一个会超时的工具请求。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。

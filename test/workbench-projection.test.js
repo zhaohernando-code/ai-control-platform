@@ -266,6 +266,61 @@ test("workbench projection exposes reviewer provider health scheduler facts", ()
   assert.equal(mobile.provider_health.next_action, "rerun_without_tools");
 });
 
+test("workbench projection exposes reviewer scope split shard status", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "reviewer-scope-split-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://reviewer-scope-split/run-projection/cycle-20260521/reviewer-scope-split-run-projection-cycle-20260521-001",
+    producer: "reviewer-scope-splitter",
+    created_at: "2026-05-21T12:08:00.000Z",
+    metadata: {
+      type: "reviewer_scope_split",
+      status: "pass",
+      split_required: true,
+      shard_count: 2,
+      pending_shards: 2,
+      provider: "claude-code",
+      model: "deepseek-v4-pro",
+      shards: [
+        { id: "reviewer-scope-shard-001", status: "pending" },
+        { id: "reviewer-scope-shard-002", status: "pending" }
+      ]
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "reviewer_scope_split",
+        status: "planned",
+        artifact_id: artifact.id,
+        message: "Reviewer scope split into 2 bounded shard(s).",
+        created_at: "2026-05-21T12:08:00.000Z",
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.reviewer_scope_split.status, "planned");
+  assert.equal(projection.reviewer_scope_split.shard_count, 2);
+  assert.equal(projection.reviewer_scope_split.pending_shards, 2);
+  assert.equal(projection.reviewer_scope_split.next_shard, "reviewer-scope-shard-001");
+  assert.equal(projection.one_screen.counters.reviewer_scope_shards, 2);
+  assert.equal(mobile.scope_split.next_shard, "reviewer-scope-shard-001");
+});
+
 test("workbench projection ingests operator events before summarizing run state", () => {
   const input = baseInput({
     operator_event_ledger: {

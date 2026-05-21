@@ -70,12 +70,14 @@ function nextStepFrom(input) {
 
 function nextWorkPackagesFrom(input) {
   const providerPackages = reviewerProviderWorkPackagesFrom(input);
+  const scopeSplitPackages = reviewerScopeSplitWorkPackagesFrom(input);
   return [
     ...asArray(input?.next_work_packages),
     ...asArray(input?.nextWorkPackages),
     ...asArray(input?.run_evaluation?.next_work_packages),
     ...asArray(input?.run_evaluation?.projection?.next_work_packages),
-    ...providerPackages
+    ...providerPackages,
+    ...scopeSplitPackages
   ];
 }
 
@@ -85,6 +87,15 @@ function latestReviewerProviderHealth(input = {}) {
 
   const events = asArray(input?.workflow_state?.manifest?.events)
     .filter((event) => event?.type === "reviewer_provider_health");
+  return events.at(-1)?.metadata || null;
+}
+
+function latestReviewerScopeSplit(input = {}) {
+  const explicit = input?.reviewer_scope_split || input?.scope_split || input?.workflow_state?.reviewer_scope_split;
+  if (explicit) return explicit;
+
+  const events = asArray(input?.workflow_state?.manifest?.events)
+    .filter((event) => event?.type === "reviewer_scope_split");
   return events.at(-1)?.metadata || null;
 }
 
@@ -106,17 +117,45 @@ function providerHealthOwnedFiles(action) {
 
 function reviewerProviderWorkPackagesFrom(input = {}) {
   const health = latestReviewerProviderHealth(input);
+  const splitPlan = latestReviewerScopeSplit(input);
+  const hasConcreteSplitShards = asArray(splitPlan?.shards).length > 0 && splitPlan?.status !== "fail";
   const actions = asArray(health?.scheduled_actions || health?.scheduledActions);
   const nextAction = normalizeString(health?.next_action || health?.nextAction);
   const scheduledActions = actions.length > 0 ? actions : (nextAction ? [nextAction] : []);
 
-  return scheduledActions.map((action) => ({
-    id: `reviewer-provider-${normalizeString(action).replace(/_/g, "-")}`,
-    title: providerHealthActionTitle(action),
-    action,
-    owned_files: providerHealthOwnedFiles(action),
-    reason: health?.reason || health?.retry_strategy || "reviewer provider health requires scheduler follow-up"
-  }));
+  return scheduledActions
+    .filter((action) => !(action === "split_scope" && hasConcreteSplitShards))
+    .map((action) => ({
+      id: `reviewer-provider-${normalizeString(action).replace(/_/g, "-")}`,
+      title: providerHealthActionTitle(action),
+      action,
+      owned_files: providerHealthOwnedFiles(action),
+      reason: health?.reason || health?.retry_strategy || "reviewer provider health requires scheduler follow-up"
+    }));
+}
+
+function reviewerScopeSplitWorkPackagesFrom(input = {}) {
+  const splitPlan = latestReviewerScopeSplit(input);
+  if (!splitPlan || splitPlan.status === "fail") return [];
+
+  return asArray(splitPlan.shards)
+    .filter((shard) => statusOf(shard) !== "completed" && statusOf(shard) !== "pass")
+    .map((shard) => ({
+      id: normalizeString(shard.id),
+      title: `Run bounded reviewer shard ${normalizeString(shard.id).replace(/^reviewer-scope-shard-/, "")}`,
+      action: "run_reviewer_scope_shard",
+      shard_id: normalizeString(shard.id),
+      owned_files: compactStrings(shard.files),
+      reason: splitPlan.split_reason || "reviewer scope split plan requires per-shard external review",
+      reviewer: {
+        provider: shard.provider || splitPlan.provider,
+        model: shard.model || splitPlan.model,
+        profile: shard.profile || splitPlan.profile,
+        allowed_tools: asArray(shard.allowed_tools),
+        dispatch_mode: shard.dispatch_mode
+      }
+    }))
+    .filter((workPackage) => workPackage.id);
 }
 
 function projectStatus(input) {

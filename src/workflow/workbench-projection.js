@@ -202,6 +202,50 @@ function summarizeReviewerProviderHealth(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeReviewerScopeSplit(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "reviewer_scope_split");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      shard_count: 0,
+      pending_shards: 0,
+      next_shard: null,
+      split_required: false,
+      provider: null,
+      model: null,
+      event_id: null,
+      artifact_id: null,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const shards = asArray(metadata.shards);
+  const pendingShards = shards.filter((shard) => {
+    const status = normalizeString(shard?.status).toLowerCase();
+    return status !== "completed" && status !== "pass";
+  });
+
+  return {
+    status: latestEvent.status || metadata.status || "unknown",
+    shard_count: metadata.shard_count || shards.length,
+    pending_shards: metadata.pending_shards || pendingShards.length,
+    next_shard: pendingShards[0]?.id || null,
+    split_required: Boolean(metadata.split_required),
+    provider: metadata.provider || null,
+    model: metadata.model || null,
+    event_id: latestEvent.id || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    created_at: latestEvent.created_at || artifact?.created_at || null
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -264,6 +308,7 @@ export function createWorkbenchProjection(input = {}) {
   const closeoutSummary = summarizeCloseoutEvidence(manifest, artifactLedger);
   const resumeHealth = summarizeResumeHealth(manifest, artifactLedger);
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
+  const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -294,6 +339,7 @@ export function createWorkbenchProjection(input = {}) {
     closeout: closeoutSummary,
     resume_health: resumeHealth,
     reviewer_provider_health: reviewerProviderHealth,
+    reviewer_scope_split: reviewerScopeSplit,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -320,7 +366,8 @@ export function createWorkbenchProjection(input = {}) {
         dispatchable_tasks: dagSummary.dispatchable.length,
         closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1,
         resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
-        provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1
+        provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
+        reviewer_scope_shards: reviewerScopeSplit.shard_count || 0
       }
     }
   };
@@ -358,6 +405,12 @@ export function createMobileWorkbenchProjection(input = {}) {
       retry_strategy: projection.reviewer_provider_health.retry_strategy,
       next_action: projection.reviewer_provider_health.next_action
     },
+    scope_split: {
+      status: projection.reviewer_scope_split.status,
+      shard_count: projection.reviewer_scope_split.shard_count,
+      pending_shards: projection.reviewer_scope_split.pending_shards,
+      next_shard: projection.reviewer_scope_split.next_shard
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -370,4 +423,4 @@ export function createMobileWorkbenchProjection(input = {}) {
   };
 }
 
-export { summarizeCloseoutEvidence, summarizeResumeHealth, summarizeReviewerProviderHealth };
+export { summarizeCloseoutEvidence, summarizeResumeHealth, summarizeReviewerProviderHealth, summarizeReviewerScopeSplit };
