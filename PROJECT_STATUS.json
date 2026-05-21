@@ -9,8 +9,8 @@
     "id": "new-platform-repo-bootstrap",
     "label": "Create standalone platform repo and codify anti-drift workflow gates"
   },
-  "updated_at": "2026-05-21T16:25:38+08:00",
-  "progress_summary": "Standalone platform repository has been created and pushed to GitHub at git@github.com:zhaohernando-code/ai-control-platform.git to prevent platform-core work from drifting into managed business projects. Existing Chinese design docs, capability matrix, recovery redesign, and PC/mobile visual drafts are copied into this repo. Host-boundary and project-onboarding gates are active. Current-session platform materials have been migrated into this repo: formal contracts and visuals are active docs, while stock_dashboard autonomous-flow trials/code/tests and root hook route fixes are quarantined under docs/migrations and legacy for platform-neutral refactoring. The current round extended the platform self-trial from text evaluation into machine-readable workflow primitives: run manifest, artifact ledger, task DAG, goal guard, LLM reviewer gate, model router, and workbench projection. The reviewer gate is now a platform data model; Claude+DeepSeek is treated as one provider/model option selected by policy, not a hard-coded workflow. Workbench projection now provides PC/mobile one-screen state input without requiring UI code to parse logs. A durable current-session example input and generated projection fixture now prove the workbench state can be regenerated from persisted JSON. Projection schema validation and CLI gate now protect PC/mobile rendering from malformed projection JSON.",
+  "updated_at": "2026-05-21T16:32:59+08:00",
+  "progress_summary": "Standalone platform repository has been created and pushed to GitHub at git@github.com:zhaohernando-code/ai-control-platform.git to prevent platform-core work from drifting into managed business projects. Existing Chinese design docs, capability matrix, recovery redesign, and PC/mobile visual drafts are copied into this repo. Host-boundary and project-onboarding gates are active. Current-session platform materials have been migrated into this repo: formal contracts and visuals are active docs, while stock_dashboard autonomous-flow trials/code/tests and root hook route fixes are quarantined under docs/migrations and legacy for platform-neutral refactoring. The current round extended the platform self-trial from text evaluation into machine-readable workflow primitives: run manifest, artifact ledger, task DAG, goal guard, LLM reviewer gate, model router, workbench projection, and autonomous continuation. The reviewer gate is now a platform data model; Claude+DeepSeek is treated as one provider/model option selected by policy, not a hard-coded workflow. Workbench projection now provides PC/mobile one-screen state input without requiring UI code to parse logs. Projection schema validation and CLI gate protect PC/mobile rendering from malformed projection JSON. Autonomous continuation now prevents the platform from stopping after a completed cycle while PROJECT_STATUS.next_step or next_work_packages are available and no human blocker exists.",
   "blockers": [],
   "next_step": "Start the PC/mobile workbench frontend shell against validated projection JSON, keeping visual design separate for desktop and mobile.",
   "linked_docs": [
@@ -45,6 +45,10 @@
     {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/WORKBENCH_PROJECTION_CN.md",
       "role": "workbench_projection_contract"
+    },
+    {
+      "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "role": "autonomous_continuation_contract"
     },
     {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/PLATFORM_FOUNDATION_DESIGN_CN.md",

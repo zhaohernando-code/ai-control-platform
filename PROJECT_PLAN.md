@@ -30,6 +30,7 @@
 4. 建立 goal guard，保证整体目标、宿主和 changed files 不跑偏。（已落地 `src/workflow/goal-guard.js`）
 5. 建立 LLM reviewer gate 与 model router，让 GPT / DeepSeek V4 Pro / DeepSeek V4 Flash 按任务风险和成本协同。（已落地 `src/workflow/llm-reviewer-gate.js`、`src/workflow/model-router.js`）
 6. 再接入 Ops Workbench projection，而不是先做孤立 UI。（已落地 `src/workflow/workbench-projection.js`）
+7. 建立 autonomous continuation gate，防止完成一轮后停在总结等待用户继续。（已落地 `src/workflow/autonomous-continuation.js`）
 
 ## P2：Ops Workbench
 

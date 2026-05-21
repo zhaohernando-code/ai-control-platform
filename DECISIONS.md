@@ -53,3 +53,12 @@
 - `workbench.mobile.v1` 是移动端独立信息架构的状态子集，不是 PC 页面缩放。
 - projection 只汇总事实，不直接调用 agent、模型、CI 或发布系统。
 - 缺少 manifest、artifact ledger 或 model plan 时，projection 进入 `human_intervention`，因为系统缺少足够事实继续自动判断。
+
+[2026-05-21T16:32:59+08:00] Completed cycles must run continuation gate:
+用户指出当前执行仍会在总结后停止，这会导致未来中台任务创建后也停在中间。因此完成测试、提交、推送或输出总结之后，必须运行 Autonomous Continuation gate。
+
+决策：
+- `PROJECT_STATUS.next_step` 或 `next_work_packages` 存在且没有人工阻塞时，系统必须 `continue`。
+- `rerun` 和自动 `rollback` 都是继续条件，不是人工等待条件。
+- 只有凭据缺失、破坏性动作、需求冲突、恢复失败耗尽或错误宿主等情况可以 `stop_for_human`。
+- continuation gate 必须输出下一轮 `context_pack_seed`，防止下一轮依赖聊天上下文。

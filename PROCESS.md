@@ -26,3 +26,4 @@
 - **多模型协同要先路由再调用**：GPT、DeepSeek V4 Pro、DeepSeek V4 Flash 不是固定替代关系。每次使用前必须根据 stage、risk、budget、host 和 tags 生成 model routing plan；高风险平台任务需要独立 reviewer，低风险分类和摘要优先低成本模型。
 - **外部 reviewer 是 gate，不是临时 skill**：Claude Code + DeepSeek V4 Pro 这类审查方式必须进入 reviewer gate request、review findings、run manifest 和工作台 projection。只读审查是默认约束，写入型工具必须被 gate 拦截。
 - **工作台只消费 projection，不解析零散日志**：PC 和 mobile 工作台必须以 Workbench Projection 为一屏状态输入。任务、模型、reviewer、artifact 和 DAG 状态先汇总成 projection，再进入 UI。
+- **完成一轮后必须运行 continuation gate**：提交、推送、测试通过或输出总结都不是停止条件。只要 `PROJECT_STATUS.next_step` 或 `next_work_packages` 存在且没有人工阻塞，系统必须生成下一轮 Context Pack seed 并继续执行。
