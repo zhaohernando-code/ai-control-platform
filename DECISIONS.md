@@ -25,3 +25,12 @@
 
 [2026-05-21T16:18:00+08:00] Configure GitHub remote for AI Control Platform:
 新中台仓库已创建 GitHub 私有远端并推送 `main`。远端为 `git@github.com:zhaohernando-code/ai-control-platform.git`，网页入口为 `https://github.com/zhaohernando-code/ai-control-platform`。后续新中台开发必须以该远端为 upstream 收口，不能只停留在本地仓。
+
+[2026-05-21T15:43:44+08:00] Accept isolated subagent outputs only after main-process evaluation:
+本轮用两个隔离子进程试运行中台自身流程：子进程 A 负责 Context Pack / Work Package，子进程 B 负责 Autonomous Run Evaluation / Recovery Decision。两者只写入各自 owned files，不直接提交主仓；主进程读取实际文件、运行测试和边界模拟后再合入。
+
+决策：
+- Context Pack 是派发子进程前的硬门禁，缺少宿主、禁止动作、owned files、验收门禁或回退条件时不得派发。
+- Work Package 必须继承 Context Pack 的 owned files 范围，缺少写入范围或越界写入时 `dispatch_allowed=false`。
+- Run Evaluation 的默认方向是自动继续：普通测试、构建、artifact 或 reviewer 普通失败进入 `rerun`；host boundary、owned files、安全或严重 reviewer 失败进入 `rollback`；只有凭据缺失、破坏性动作、需求冲突或连续恢复失败才进入 `human_intervention`。
+- 子进程输出摘要不能作为验收依据，主进程必须读取 patch、运行 gate，并写入评估记录。
