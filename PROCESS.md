@@ -23,3 +23,5 @@
 - **主进程负责最终质量**：子进程完成后，主进程检查宿主、边界、代码设计、测试、文档和是否满足“平台本体”目标。
 - **失败不靠口头提醒修复**：如果发现跑偏，先把失败升级成可执行 gate 或测试，再重跑同类任务。
 - **本轮最小验收**：新增能力必须能从机器可读输入中判断：需求属于哪个宿主、子任务是否允许执行、执行结果是否需要重跑，以及哪些证据要进入工作台状态。
+- **多模型协同要先路由再调用**：GPT、DeepSeek V4 Pro、DeepSeek V4 Flash 不是固定替代关系。每次使用前必须根据 stage、risk、budget、host 和 tags 生成 model routing plan；高风险平台任务需要独立 reviewer，低风险分类和摘要优先低成本模型。
+- **外部 reviewer 是 gate，不是临时 skill**：Claude Code + DeepSeek V4 Pro 这类审查方式必须进入 reviewer gate request、review findings、run manifest 和工作台 projection。只读审查是默认约束，写入型工具必须被 gate 拦截。

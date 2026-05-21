@@ -34,3 +34,13 @@
 - Work Package 必须继承 Context Pack 的 owned files 范围，缺少写入范围或越界写入时 `dispatch_allowed=false`。
 - Run Evaluation 的默认方向是自动继续：普通测试、构建、artifact 或 reviewer 普通失败进入 `rerun`；host boundary、owned files、安全或严重 reviewer 失败进入 `rollback`；只有凭据缺失、破坏性动作、需求冲突或连续恢复失败才进入 `human_intervention`。
 - 子进程输出摘要不能作为验收依据，主进程必须读取 patch、运行 gate，并写入评估记录。
+
+[2026-05-21T16:07:23+08:00] Model collaboration must be routed by policy:
+多 LLM 协同不是固定使用 Claude+DeepSeek，也不是所有任务都使用最高成本模型。中台需要按任务阶段、风险、预算、宿主和标签生成模型协同计划。
+
+决策：
+- `deepseek-v4-flash` 优先用于低风险分类、摘要、路由和批量预筛。
+- `deepseek-v4-pro` 优先用于独立审查、代码审计、第二意见和中高风险推理。
+- `gpt` 优先用于高风险平台核心实现、复杂规划、Recovery、架构和最终仲裁。
+- 高风险平台任务必须包含独立 reviewer；预算降级必须记录 preferred model、selected model 和 downgrade reason。
+- Claude Code + DeepSeek V4 Pro 只是 reviewer gate 的一个 provider/model 组合，不能作为唯一审查方案写死。

@@ -9,10 +9,10 @@
     "id": "new-platform-repo-bootstrap",
     "label": "Create standalone platform repo and codify anti-drift workflow gates"
   },
-  "updated_at": "2026-05-21T15:43:44+08:00",
-  "progress_summary": "Standalone platform repository has been created and pushed to GitHub at git@github.com:zhaohernando-code/ai-control-platform.git to prevent platform-core work from drifting into managed business projects. Existing Chinese design docs, capability matrix, recovery redesign, and PC/mobile visual drafts are copied into this repo. Host-boundary and project-onboarding gates are active. Current-session platform materials have been migrated into this repo: formal contracts and visuals are active docs, while stock_dashboard autonomous-flow trials/code/tests and root hook route fixes are quarantined under docs/migrations and legacy for platform-neutral refactoring. The current round completed a platform self-trial: isolated subagents produced Context Pack / Work Package and Autonomous Run Evaluation modules, the main process reviewed their files, ran tests and boundary simulation, then accepted the outputs into the platform host.",
+  "updated_at": "2026-05-21T16:11:36+08:00",
+  "progress_summary": "Standalone platform repository has been created and pushed to GitHub at git@github.com:zhaohernando-code/ai-control-platform.git to prevent platform-core work from drifting into managed business projects. Existing Chinese design docs, capability matrix, recovery redesign, and PC/mobile visual drafts are copied into this repo. Host-boundary and project-onboarding gates are active. Current-session platform materials have been migrated into this repo: formal contracts and visuals are active docs, while stock_dashboard autonomous-flow trials/code/tests and root hook route fixes are quarantined under docs/migrations and legacy for platform-neutral refactoring. The current round extended the platform self-trial from text evaluation into machine-readable workflow primitives: run manifest, artifact ledger, task DAG, goal guard, LLM reviewer gate, and model router. The reviewer gate is now a platform data model; Claude+DeepSeek is treated as one provider/model option selected by policy, not a hard-coded workflow.",
   "blockers": [],
-  "next_step": "Turn the self-trial evaluation into a machine-readable run manifest and artifact ledger, then connect autonomous-run next_work_packages to a platform-neutral task DAG.",
+  "next_step": "Persist reviewer-gate timeout/results into run manifest artifacts, then build the first workbench projection assembler from run manifest, artifact ledger, model routing, reviewer gate, and autonomous-run decision.",
   "linked_docs": [
     {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/PROJECT_PLAN.md",
@@ -31,11 +31,27 @@
       "role": "run_evaluation_contract"
     },
     {
+      "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/RUN_MANIFEST_LEDGER_DAG_CN.md",
+      "role": "run_manifest_ledger_contract"
+    },
+    {
+      "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/LLM_REVIEWER_GATE_CN.md",
+      "role": "reviewer_gate_contract"
+    },
+    {
+      "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/MODEL_ROUTING_POLICY_CN.md",
+      "role": "model_routing_contract"
+    },
+    {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/PLATFORM_FOUNDATION_DESIGN_CN.md",
       "role": "product_design"
     },
     {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_SELF_TRIAL_CONTEXT_RUN_EVAL_CN.md",
+      "role": "self_trial_evaluation"
+    },
+    {
+      "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_SELF_TRIAL_RUN_MANIFEST_MODEL_ROUTING_CN.md",
       "role": "self_trial_evaluation"
     },
     {
