@@ -218,6 +218,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Autonomous scheduler loop artifacts must be replay-validated into a run registry and recovery policy before process restart or projection history can claim the loop is resumable."
+    },
+    {
+      "id": "scheduler-loop-recovery-without-service-resume",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A ready scheduler loop recovery policy must be consumable by a service endpoint that selects the resume projection and starts the next bounded loop without relying on the current chat or operator-selected projection id."
     }
   ],
   "hardening_items": [
@@ -643,6 +650,14 @@
       "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/autonomous-scheduler-loop.test.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/workbench-shell.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
       "regression_test": "scheduler loop run artifact validation rejects damaged run history; scheduler loop registry and recovery policy resume from latest queued projection; scheduler loop registry blocks invalid durable artifacts; workbench projection blocks invalid autonomous scheduler loop history; workbench server runs bounded autonomous scheduler loop from projection history input",
       "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-loop-recovery-without-service-resume",
+      "invariant": "Ready scheduler loop recovery policy must be executable by the workbench service: the service chooses the registry-selected resume projection, runs a bounded loop from it, records the loop artifact into that projection's workflow state, and rejects non-ready recovery without mutation.",
+      "enforcement_target": "tools/workbench-server.mjs; apps/workbench/projection-source.js; test/workbench-server.test.js; test/workbench-projection-source.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "workbench server resumes autonomous scheduler loop from registry recovery policy; workbench server rejects autonomous scheduler loop resume without ready recovery; projection source resumes autonomous scheduler loop; projection source rejects failed autonomous scheduler loop resume",
+      "verification": "node --test test/workbench-server.test.js test/workbench-projection-source.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

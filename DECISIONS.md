@@ -741,3 +741,13 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - 增加 `evaluateSchedulerLoopRecovery`，把 registry 映射为 `ready/resume_from_latest_projection`、`blocked/quarantine_invalid_loop_artifact`、`idle/wait_for_new_work` 或 recoverable retry。
 - Workbench projection 和 `/api/workbench/projections` history readout 展示 run count、invalid count、recovery status/action、resumable、resume projection id。
 - PC/mobile 工作台渲染 recovery 状态，浏览器门禁验证 loop 点击后 recovery 进入 ready。
+
+[2026-05-22T01:36:00+08:00] Scheduler loop resume must be service-selected:
+有了 recovery policy 后，如果下一步仍要求当前会话或操作者手动选择 projection id，自运行仍会在上下文切换时断掉。恢复入口必须消费 durable registry，而不是消费聊天记忆。
+
+决策：
+- 新增 `POST /api/workbench/autonomous-scheduler-loop-resume`。
+- 入口从所选 history input 读取 loop registry/recovery policy；只有 `ready` 且有 `resume_projection_id` 时才执行。
+- 服务端用 registry 选出的 `resume_projection_id` 作为 loop 起点，不接受前端拼底层 scheduler id。
+- 新 loop artifact 写入 resume projection 的 workflow state，而不是写回源 projection，避免跨轮状态混淆。
+- 没有 ready recovery、resume projection 缺少受控 `input_path` 或 loop 记录失败时必须失败闭合。

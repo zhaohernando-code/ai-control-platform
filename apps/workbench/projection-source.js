@@ -52,6 +52,7 @@ export function createProjectionSource(options = {}) {
   const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || "/api/workbench/scheduler-dispatch-run";
   const schedulerNextCycleUrl = options.schedulerNextCycleUrl || "/api/workbench/scheduler-next-cycle";
   const autonomousSchedulerLoopUrl = options.autonomousSchedulerLoopUrl || "/api/workbench/autonomous-scheduler-loop";
+  const autonomousSchedulerLoopResumeUrl = options.autonomousSchedulerLoopResumeUrl || "/api/workbench/autonomous-scheduler-loop-resume";
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
@@ -65,6 +66,7 @@ export function createProjectionSource(options = {}) {
     schedulerDispatchRunUrl,
     schedulerNextCycleUrl,
     autonomousSchedulerLoopUrl,
+    autonomousSchedulerLoopResumeUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -223,6 +225,25 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         const error = new Error(`Autonomous scheduler loop failed: ${response.status}`);
+        error.response = payload;
+        error.projection = payload?.projection || null;
+        throw error;
+      }
+
+      return payload;
+    },
+    async resumeAutonomousSchedulerLoop(input = {}) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(autonomousSchedulerLoopResumeUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        const error = new Error(`Autonomous scheduler loop resume failed: ${response.status}`);
         error.response = payload;
         error.projection = payload?.projection || null;
         throw error;

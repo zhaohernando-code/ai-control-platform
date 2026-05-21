@@ -579,6 +579,94 @@ test("workbench server runs bounded autonomous scheduler loop from projection hi
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server resumes autonomous scheduler loop from registry recovery policy", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-"));
+  const inputPath = join(snapshotsRoot, "autonomous-loop-resume-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "resume-source",
+    items: [
+      {
+        id: "resume-source",
+        label: "Resume source",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const first = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=resume-source`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        snapshot_prefix: "server-loop",
+        created_at: "2026-05-22T01:20:00.000Z"
+      })
+    });
+    assert.equal(first.status, 201);
+
+    const resumed = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop-resume?id=resume-source`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        snapshot_prefix: "server-resume",
+        created_at: "2026-05-22T01:21:00.000Z"
+      })
+    });
+    const created = resumed.json();
+    const history = (await request(`${baseUrl}/api/workbench/projections`)).json();
+    const targetInputPath = join(snapshotsRoot, "server-loop-resume-source-01.workbench-input.json");
+    const targetState = JSON.parse(readFileSync(targetInputPath, "utf8"));
+
+    assert.equal(resumed.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.recovery.status, "ready");
+    assert.equal(created.item.id, "server-loop-resume-source-01");
+    assert.equal(created.result.phase, "no_dispatchable_scheduler_actions");
+    assert.equal(history.latest, "server-loop-resume-source-01");
+    assert.equal(targetState.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects autonomous scheduler loop resume without ready recovery", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-blocked-"));
+  const inputPath = join(snapshotsRoot, "autonomous-loop-resume-blocked-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "resume-blocked",
+    items: [
+      {
+        id: "resume-blocked",
+        label: "Resume blocked",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop-resume?id=resume-blocked`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ max_iterations: 1 })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 409);
+    assert.equal(rejected.recovery.status, "not_configured");
+    assert.equal(rejected.projection.scheduler_loop.recovery_status, "not_configured");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server rejects autonomous scheduler loop without workflow state input", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=bootstrap`, {

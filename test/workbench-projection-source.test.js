@@ -274,6 +274,29 @@ test("projection source runs autonomous scheduler loop", async () => {
   assert.match(calls[0].options.body, /max_iterations/);
 });
 
+test("projection source resumes autonomous scheduler loop", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    autonomousSchedulerLoopResumeUrl: "/api/workbench/autonomous-scheduler-loop-resume",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", recovery: { status: "ready" }, projection: validProjection() };
+        }
+      };
+    }
+  });
+
+  const result = await source.resumeAutonomousSchedulerLoop({ max_iterations: 1 });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.autonomousSchedulerLoopResumeUrl, "/api/workbench/autonomous-scheduler-loop-resume");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /max_iterations/);
+});
+
 test("projection source rejects failed scheduler dispatch", async () => {
   const projection = validProjection();
   const source = createProjectionSource({
@@ -327,6 +350,26 @@ test("projection source rejects failed autonomous scheduler loop", async () => {
 
   await assert.rejects(source.runAutonomousSchedulerLoop({ max_iterations: 9 }), (error) => {
     assert.match(error.message, /Autonomous scheduler loop failed: 400/);
+    assert.equal(error.projection, projection);
+    return true;
+  });
+});
+
+test("projection source rejects failed autonomous scheduler loop resume", async () => {
+  const projection = validProjection();
+  const source = createProjectionSource({
+    autonomousSchedulerLoopResumeUrl: "/api/workbench/autonomous-scheduler-loop-resume",
+    fetch: async () => ({
+      ok: false,
+      status: 409,
+      async json() {
+        return { error: "loop not resumable", projection };
+      }
+    })
+  });
+
+  await assert.rejects(source.resumeAutonomousSchedulerLoop({ max_iterations: 1 }), (error) => {
+    assert.match(error.message, /Autonomous scheduler loop resume failed: 409/);
     assert.equal(error.projection, projection);
     return true;
   });

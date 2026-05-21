@@ -27,7 +27,9 @@ import {
   recordSchedulerNextCycleEnqueue
 } from "../src/workflow/scheduler-dispatch-continuation.js";
 import {
+  buildSchedulerLoopRunRegistry,
   createSchedulerLoopRunArtifact,
+  evaluateSchedulerLoopRecovery,
   recordAutonomousSchedulerLoopRunArtifact,
   runSchedulerLoopDriver
 } from "../src/workflow/autonomous-scheduler-loop.js";
@@ -923,6 +925,87 @@ export function createWorkbenchServer(options = {}) {
           item,
           result: loopResult,
           artifact: recorded.artifact,
+          projection: createWorkbenchProjection(recorded.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/autonomous-scheduler-loop-resume" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const sourcePath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const sourceWorkflowState = readJson(sourcePath);
+        const registry = buildSchedulerLoopRunRegistry(sourceWorkflowState);
+        const recovery = evaluateSchedulerLoopRecovery(registry);
+        const sourceProjection = createWorkbenchProjection(sourceWorkflowState);
+        if (recovery.status !== "ready" || !recovery.resume_projection_id) {
+          jsonResponse(res, 409, {
+            error: "autonomous scheduler loop is not resumable",
+            recovery,
+            projection: sourceProjection
+          });
+          return;
+        }
+
+        const targetId = recovery.resume_projection_id;
+        const targetItem = history.items.find((entry) => entry.id === targetId);
+        if (!targetItem?.input_path) {
+          jsonResponse(res, 400, {
+            error: `resume workflow state input not found: ${targetId}`,
+            recovery,
+            projection: sourceProjection
+          });
+          return;
+        }
+
+        const loopInput = {
+          start_projection_id: targetId,
+          max_iterations: Number(input.max_iterations || input.maxIterations || 1),
+          execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+          snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "resume-loop",
+          created_at: input.created_at || input.createdAt
+        };
+        const loopResult = await runSchedulerLoopDriver(loopInput, {
+          client: createWorkbenchLoopClient(workbenchBaseUrlFromRequest(req))
+        });
+        const loopArtifact = createSchedulerLoopRunArtifact(loopInput, loopResult, {
+          created_at: input.created_at || input.createdAt
+        });
+
+        const targetPath = historyItemPath(targetItem.input_path, "input_path", allowedHistoryRoots);
+        const targetWorkflowState = readJson(targetPath);
+        const recorded = recordAutonomousSchedulerLoopRunArtifact(targetWorkflowState, loopArtifact, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (recorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "autonomous scheduler loop resume record failed", issues: recorded.issues });
+          return;
+        }
+        writeFileSync(targetPath, `${JSON.stringify({ ...targetWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
+
+        jsonResponse(res, loopResult.status === "pass" ? 201 : 400, {
+          status: loopResult.status === "pass" ? "created" : "failed",
+          source_item: item,
+          item: targetItem,
+          recovery,
+          result: loopResult,
+          artifact: recorded.artifact,
+          source_projection: sourceProjection,
           projection: createWorkbenchProjection(recorded.workflow_state)
         });
         return;
