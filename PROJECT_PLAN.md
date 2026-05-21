@@ -11,6 +11,7 @@
 3. 固化 Context Pack 模板：目标、非目标、宿主、owned files、禁止动作、验收门禁。
 4. 固化主进程评审循环：设计流程 -> 子进程落地 -> 主进程评估 -> 回退/调流程/重跑。
 5. 把本次 `stock_dashboard` 偏移作为反例测试。
+6. 固化项目 onboarding/config 同步 gate，防止新增项目后 `WORKSPACE_INDEX.json`、根级入口文档、hook 路由和控制面路由测试没有同步。
 
 ## P1：流程产品化
 
@@ -19,6 +20,7 @@
 3. Lock domain 推断器。
 4. LLM Reviewer 合同。
 5. Recovery Engine MVP。
+6. 将 `legacy/stock-dashboard-autonomous-flow` 中迁移来的平台试验代码重构为平台中立模块。
 
 ## P2：Ops Workbench
 
@@ -26,4 +28,3 @@
 2. 手机独立工作台。
 3. 能力成熟度、风险、自愈、人工决策统一视图。
 4. 真实项目接入和周期体检。
-
