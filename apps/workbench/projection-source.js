@@ -45,12 +45,14 @@ export function createProjectionSource(options = {}) {
   const url = options.url || projectionUrlFromLocation(options.location);
   const historyUrl = options.historyUrl || historyUrlFromLocation(options.location);
   const eventsUrl = options.eventsUrl || "/api/workbench/events";
+  const providerHealthUrl = options.providerHealthUrl || "/api/workbench/reviewer-provider-health";
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
     url,
     historyUrl,
     eventsUrl,
+    providerHealthUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -99,6 +101,21 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         throw new Error(`Operator event write failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    async recordProviderHealth(input) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(providerHealthUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Provider health write failed: ${response.status}`);
       }
 
       return response.json();

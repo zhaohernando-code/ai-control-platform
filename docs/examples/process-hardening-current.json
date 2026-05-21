@@ -148,6 +148,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Workbench/operator-triggered provider health updates need a server API path; otherwise browser-visible workflows cannot persist DS smoke outcomes."
+    },
+    {
+      "id": "reviewer-provider-health-no-ui-action",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Workbench must let operators record DS smoke outcomes through UI controls backed by the provider health API, not only CLI/API calls."
     }
   ],
   "hardening_items": [
@@ -317,6 +324,14 @@
       "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/contracts/LLM_REVIEWER_GATE_CN.md",
       "regression_test": "workbench server records reviewer provider health into workflow state input; workbench server rejects provider health recording without workflow state input",
       "verification": "node --test test/workbench-server.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-provider-health-no-ui-action",
+      "invariant": "PC/mobile workbench controls must call the provider health API and browser verification must prove Smoke Timeout updates rendered provider health without layout overflow.",
+      "enforcement_target": "apps/workbench; apps/workbench/projection-source.js; tools/check-workbench-browser-events.mjs; test/workbench-projection-source.test.js; test/workbench-shell.test.js",
+      "regression_test": "projection source records reviewer provider health; workbench shell consumes projection json instead of logs; check-workbench-browser-events provider_health_click scenario",
+      "verification": "node --test test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:closeout",
       "status": "completed"
     }
   ]

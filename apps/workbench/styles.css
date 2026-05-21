@@ -200,6 +200,13 @@ select {
   gap: 8px;
 }
 
+.provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .content-grid {
   min-height: 0;
   overflow-y: auto;

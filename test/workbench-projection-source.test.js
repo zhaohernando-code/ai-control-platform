@@ -104,6 +104,47 @@ test("projection source records operator events", async () => {
   assert.match(calls[0].options.body, /validate/);
 });
 
+test("projection source records reviewer provider health", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    providerHealthUrl: "/api/workbench/reviewer-provider-health",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", fact: { provider_health: "healthy" } };
+        }
+      };
+    }
+  });
+
+  const result = await source.recordProviderHealth({ smoke_status: "pass", tools: ["Read"] });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.providerHealthUrl, "/api/workbench/reviewer-provider-health");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /smoke_status/);
+});
+
+test("projection source rejects failed provider health writes", async () => {
+  const source = createProjectionSource({
+    providerHealthUrl: "/api/workbench/reviewer-provider-health",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "provider health failed" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.recordProviderHealth({ smoke_status: "timeout" }),
+    /Provider health write failed: 400/
+  );
+});
+
 test("projection source rejects failed operator event writes", async () => {
   const source = createProjectionSource({
     eventsUrl: "/api/workbench/events",

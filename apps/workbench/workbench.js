@@ -202,5 +202,29 @@ qsa("[data-action]").forEach((button) => {
   });
 });
 
+qsa("[data-provider-health]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const smokeStatus = button.dataset.providerHealth;
+    if (!smokeStatus) return;
+
+    try {
+      const result = await source.recordProviderHealth({
+        smoke_status: smokeStatus,
+        tools: ["Read", "Grep"],
+        created_at: new Date().toISOString()
+      });
+      button.dataset.eventState = "recorded";
+      button.textContent = "Smoke 已记录";
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch {
+      button.dataset.eventState = "failed";
+      button.textContent = "Smoke 写入失败";
+    }
+  });
+});
+
 renderHistorySelect();
 main();

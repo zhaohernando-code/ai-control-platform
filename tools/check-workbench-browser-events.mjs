@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { once } from "node:events";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -15,11 +15,28 @@ function assert(condition, message) {
 }
 
 async function withWorkbenchServer(fn) {
+  mkdirSync("tmp", { recursive: true });
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-ui-events-"));
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-browser-snapshots-"));
   const eventsPath = join(dir, "operator-events.json");
+  const inputPath = join(snapshotsRoot, "current-session-workbench-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+  writeFileSync(inputPath, readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "current-session",
+    items: [
+      {
+        id: "current-session",
+        label: "Current session",
+        status: "rerun",
+        input_path: inputPath.replace(`${process.cwd()}/`, "")
+      }
+    ]
+  }, null, 2));
 
-  const server = createWorkbenchServer({ eventsPath });
+  const server = createWorkbenchServer({ eventsPath, historyPath, snapshotsRoot });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
 
@@ -113,6 +130,37 @@ async function verifyFailedClickDoesNotShowSuccess(browser) {
   });
 }
 
+async function verifyProviderHealthClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-provider-health="timeout"]');
+    await page.waitForFunction(() => document.querySelector('[data-provider-health="timeout"]')?.textContent.includes("Smoke 已记录"));
+
+    const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
+    const nextAction = await page.textContent('[data-bind="provider_next_action"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(providerHealth === "unhealthy", "provider health click must update rendered provider health");
+    assert(nextAction === "fallback_model_or_defer_external_review", "provider health click must render fallback next action");
+    assert(dimensions.scrollWidth <= dimensions.width, "provider health click must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "provider_health_click",
+      provider_health: providerHealth,
+      next_action: nextAction,
+      dimensions
+    }, null, 2));
+  });
+}
+
 async function verifyMobileProjectionLoad(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -154,6 +202,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   await verifySuccessfulClick(browser);
   await verifyFailedClickDoesNotShowSuccess(browser);
+  await verifyProviderHealthClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();

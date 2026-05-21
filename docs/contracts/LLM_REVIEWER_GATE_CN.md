@@ -96,6 +96,8 @@ Reviewer timeout 不得直接变成人工阻塞，也不得无限重试同一个
 - 没有 `input_path` 时失败闭合，不能修改静态 projection。
 - 成功后返回 fact 和重新生成的 projection。
 
+PC/mobile 工作台可以通过 Smoke OK / Smoke Timeout 控件调用该 API。浏览器门禁必须验证控件点击后页面状态刷新为最新 provider health，并且不产生横向溢出。
+
 ## 5. 工作台状态
 
 `summarizeReviewerGate` 输出工作台可展示状态：
