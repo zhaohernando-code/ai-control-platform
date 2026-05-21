@@ -323,6 +323,13 @@
       "category": "observability",
       "severity": "p1",
       "message": "Reviewer execution source, profile, and external call budget must be visible in workbench projection and PC/mobile shells; otherwise operators cannot distinguish mock trials from bounded real reviewer runs without inspecting raw artifacts."
+    },
+    {
+      "id": "real-reviewer-without-provider-preflight",
+      "status": "fail",
+      "category": "reviewer_timeout",
+      "severity": "p1",
+      "message": "Bounded real reviewer projected-loop controls must require a latest healthy provider health fact before selecting a real executor; otherwise an unhealthy or unverified provider can be retried autonomously."
     }
   ],
   "hardening_items": [
@@ -868,6 +875,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-shell.test.js; test/workbench-projection-fixture.test.js; docs/examples/current-session-workbench-projection.json",
       "regression_test": "workbench projection exposes reviewer shard executor provenance; workbench shell renders shard_review_executor/profile/budget bindings; projected_mock_loop_click browser scenario renders mock executor and zero external budget",
       "verification": "node --test test/workbench-projection.test.js test/workbench-shell.test.js test/workbench-projection-fixture.test.js test/workbench-projection-schema.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "real-reviewer-without-provider-preflight",
+      "invariant": "The bounded real reviewer profile must pass a provider-health preflight before a real executor is selected, while mock profiles remain isolated; PC/mobile must expose a distinct Projected Real Loop control that sends bounded real profile, budget, cost mode, and timeout controls.",
+      "enforcement_target": "src/workflow/reviewer-execution-policy.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; test/reviewer-execution-policy.test.js; test/workbench-server.test.js; test/workbench-shell.test.js",
+      "regression_test": "reviewer provider health preflight gates bounded real reviewer execution; workbench server blocks bounded real reviewer profile without healthy provider preflight; workbench server runs bounded real reviewer profile only with explicit budget and injected executor; workbench shell exposes projected-real control",
+      "verification": "node --test test/reviewer-execution-policy.test.js test/workbench-server.test.js test/workbench-shell.test.js test/autonomous-scheduler-loop.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

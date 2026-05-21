@@ -36,7 +36,10 @@ import {
 } from "../src/workflow/autonomous-scheduler-loop.js";
 import { runReviewerShard } from "../src/workflow/reviewer-shard-runner.js";
 import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
-import { evaluateReviewerExecutionPolicy } from "../src/workflow/reviewer-execution-policy.js";
+import {
+  evaluateReviewerExecutionPolicy,
+  evaluateReviewerProviderHealthPreflight
+} from "../src/workflow/reviewer-execution-policy.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -481,6 +484,14 @@ function reviewerShardExecutorFromInput(input = {}, options = {}) {
     error.policy = policy;
     throw error;
   }
+  const preflight = evaluateReviewerProviderHealthPreflight(options.workflowState, policy);
+  if (preflight.status !== "pass") {
+    const error = new Error("reviewer provider health preflight rejected");
+    error.code = "reviewer_provider_health_preflight_rejected";
+    error.issues = preflight.issues;
+    error.policy = policy;
+    throw error;
+  }
 
   const mockFindingsJson = normalizeString(input.reviewer_mock_findings_json || input.reviewerMockFindingsJson);
   const mockStatus = normalizeString(input.reviewer_mock_status || input.reviewerMockStatus);
@@ -803,10 +814,10 @@ export function createWorkbenchServer(options = {}) {
         const workflowState = readJson(inputPath);
         let executorSetup;
         try {
-          executorSetup = reviewerShardExecutorFromInput(input, { realReviewerExecutor });
+          executorSetup = reviewerShardExecutorFromInput(input, { realReviewerExecutor, workflowState });
         } catch (error) {
           jsonResponse(res, 400, {
-            error: error.code === "reviewer_execution_policy_rejected"
+            error: error.code === "reviewer_execution_policy_rejected" || error.code === "reviewer_provider_health_preflight_rejected"
               ? "reviewer execution policy rejected"
               : "reviewer shard executor setup failed",
             issues: error.issues || [{ code: "reviewer_shard_executor_setup_failed", message: error.message, path: "reviewer_mock_findings_json" }],

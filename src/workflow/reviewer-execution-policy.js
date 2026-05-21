@@ -20,6 +20,13 @@ function hasMockOutput(input = {}) {
     normalizeString(input.reviewer_mock_findings_json || input.reviewerMockFindingsJson));
 }
 
+function latestProviderHealthFact(workflowState = {}) {
+  const events = Array.isArray(workflowState?.manifest?.events)
+    ? workflowState.manifest.events.filter((event) => event?.type === "reviewer_provider_health")
+    : [];
+  return events.at(-1)?.metadata || null;
+}
+
 function numberValue(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
@@ -120,6 +127,29 @@ export function evaluateReviewerExecutionPolicy(input = {}) {
     },
     issues
   };
+}
+
+export function evaluateReviewerProviderHealthPreflight(workflowState = {}, policy = {}) {
+  if (policy?.controls?.executor_mode !== "claude_deepseek") {
+    return { status: "pass", issues: [] };
+  }
+
+  const health = latestProviderHealthFact(workflowState);
+  if (!health) {
+    return {
+      status: "fail",
+      issues: [issue("reviewer_provider_health_preflight_required", "bounded real reviewer profile requires a latest healthy provider health fact", "manifest.events")]
+    };
+  }
+
+  if (normalizeToken(health.provider_health) !== "healthy" || normalizeToken(health.recovery_status) === "blocked") {
+    return {
+      status: "fail",
+      issues: [issue("reviewer_provider_unhealthy", "bounded real reviewer profile cannot run while provider health is not healthy", "reviewer_provider_health.provider_health")]
+    };
+  }
+
+  return { status: "pass", issues: [] };
 }
 
 export {

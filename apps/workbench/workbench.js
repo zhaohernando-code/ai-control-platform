@@ -336,21 +336,26 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
   button.addEventListener("click", async () => {
     const loopMode = button.dataset.autonomousSchedulerLoop;
     const projectedMock = loopMode === "projected-mock";
+    const projectedReal = loopMode === "projected-real";
     button.dataset.eventState = "pending";
-    button.textContent = projectedMock ? "Projected Loop 运行中" : "Loop 运行中";
+    button.textContent = projectedMock || projectedReal ? "Projected Loop 运行中" : "Loop 运行中";
 
     try {
       const result = await source.runAutonomousSchedulerLoop({
         projection_id: currentProjectionId,
         max_iterations: projectedMock ? 2 : 1,
-        execution_profile: "approved_mock_non_dry_run",
-        execution_strategy: projectedMock ? "projected_next_action" : "scheduler_dispatch_chain",
+        execution_profile: projectedReal ? "approved_bounded_real_reviewer" : "approved_mock_non_dry_run",
+        execution_strategy: projectedMock || projectedReal ? "projected_next_action" : "scheduler_dispatch_chain",
         reviewer_mock_status: projectedMock ? "pass" : undefined,
+        max_external_reviewer_calls: projectedReal ? 1 : undefined,
+        provider_cost_mode: projectedReal ? "bounded" : undefined,
+        timeout_seconds: projectedReal ? 90 : undefined,
+        budget_tier: projectedReal ? "medium" : undefined,
         snapshot_prefix: projectedMock ? "workbench-projected-loop" : "workbench-loop",
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      button.textContent = projectedMock ? "Projected Loop 已记录" : "Loop 已记录";
+      button.textContent = projectedMock || projectedReal ? "Projected Loop 已记录" : "Loop 已记录";
       currentProjectionId = result.item?.id || currentProjectionId;
       if (result.projection) {
         currentProjection = result.projection;
@@ -362,7 +367,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
         renderProjection(error.projection);
       }
       button.dataset.eventState = "failed";
-      button.textContent = "Loop 失败";
+      button.textContent = projectedReal ? "Real Loop 被拦截" : "Loop 失败";
     }
   });
 });

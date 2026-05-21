@@ -887,3 +887,12 @@ Projected mock loop 暴露在工作台后，操作者仍需要知道当前读数
 - Mobile projection 保留同一组关键读数，避免手机端成为降级观察面。
 - PC/mobile shell 显示 executor 和 budget，PC 额外显示 profile。
 - 浏览器门禁在 projected mock loop 场景验证 executor=`mock` 且 budget=`0`。
+
+[2026-05-22T05:05:00+08:00] Real reviewer projected loop needs provider-health preflight:
+真实 reviewer 入口不能只是另一个按钮。只要会触发 Claude/DeepSeek，服务端必须先确认 provider 最近处于 healthy 状态，否则长期自运行会把 provider 故障变成自动重试。
+
+决策：
+- `approved_bounded_real_reviewer` 在 executor selection 前执行 provider-health preflight。
+- 缺少最新 reviewer provider health fact 或 latest health 非 healthy 时，服务端在创建 executor 前失败闭合。
+- PC/mobile 新增独立 `Projected Real Loop` 控制，只发送 bounded real profile、projected strategy、单次外部调用预算、bounded cost mode 和 timeout。
+- Mock profile 与 real profile 的 UI 入口、请求字段和服务端 policy 保持分离。

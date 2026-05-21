@@ -220,6 +220,9 @@ test("workbench server records reviewer provider health into workflow state inpu
   const inputPath = join(snapshotsRoot, "provider-health-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => event.type !== "reviewer_provider_health");
+  workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
+  workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -691,6 +694,20 @@ test("workbench server runs bounded real reviewer profile only with explicit bud
   const inputPath = join(snapshotsRoot, "real-reviewer-policy-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events.push({
+    id: "event-real-reviewer-health",
+    type: "reviewer_provider_health",
+    status: "retry",
+    created_at: "2026-05-22T04:40:00.000Z",
+    metadata: {
+      type: "reviewer_provider_health",
+      provider_health: "healthy",
+      recovery_status: "retry",
+      retry_strategy: "rerun_without_tools_or_split_scope",
+      provider: "deepseek",
+      model: "deepseek-v4-pro"
+    }
+  });
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -744,6 +761,50 @@ test("workbench server runs bounded real reviewer profile only with explicit bud
       };
     }
   });
+});
+
+test("workbench server blocks bounded real reviewer profile without healthy provider preflight", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-real-reviewer-preflight-"));
+  const inputPath = join(snapshotsRoot, "real-reviewer-preflight-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => event.type !== "reviewer_provider_health");
+  workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
+  workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "real-reviewer-preflight",
+    items: [
+      {
+        id: "real-reviewer-preflight",
+        label: "Real reviewer preflight",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/reviewer-shard-run?id=real-reviewer-preflight`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        execution_profile: "approved_bounded_real_reviewer",
+        max_external_reviewer_calls: 1,
+        provider_cost_mode: "bounded",
+        timeout_seconds: 90,
+        created_at: "2026-05-22T04:42:00.000Z"
+      })
+    });
+    const rejected = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "reviewer execution policy rejected");
+    assert.ok(rejected.issues.some((entry) => entry.code === "reviewer_provider_health_preflight_required"));
+    assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
+  }, { historyPath, snapshotsRoot });
 });
 
 test("workbench server records direct reviewer shard runs", async () => {
