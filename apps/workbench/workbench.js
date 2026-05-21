@@ -56,7 +56,7 @@ function renderOperationsTimeline(projection) {
       ...rows.map((item) => {
         const row = document.createElement("article");
         row.className = list.classList.contains("mobile-list") ? "mobile-action" : "timeline-item";
-        row.innerHTML = `<strong>${text(item.type)} · ${text(item.status)}</strong><span>${text(item.summary)}</span>`;
+        row.innerHTML = `<strong>${text(item.group)} · ${text(item.next_action_role)}</strong><span>${text(item.type)} / ${text(item.summary)}</span>`;
         return row;
       })
     );

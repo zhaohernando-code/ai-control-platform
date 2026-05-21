@@ -798,6 +798,20 @@ test("workbench projection exposes compact operations timeline", () => {
       issues: []
     }
   };
+  const providerArtifact = {
+    id: "reviewer-provider-health-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://reviewer-provider-health/run-projection/cycle-20260521/reviewer-provider-health-run-projection-cycle-20260521-001",
+    producer: "reviewer-provider-health",
+    created_at: "2026-05-22T02:12:00.000Z",
+    metadata: {
+      type: "reviewer_provider_health",
+      status: "retry",
+      provider_health: "healthy",
+      scheduled_actions: ["split_scope"]
+    }
+  };
   input.manifest = {
     ...input.manifest,
     events: [
@@ -817,26 +831,43 @@ test("workbench projection exposes compact operations timeline", () => {
         artifact_id: resumeArtifact.id,
         created_at: resumeArtifact.created_at,
         metadata: resumeArtifact.metadata
+      },
+      {
+        id: `event-${providerArtifact.id}`,
+        type: "reviewer_provider_health",
+        status: "retry",
+        artifact_id: providerArtifact.id,
+        created_at: providerArtifact.created_at,
+        metadata: providerArtifact.metadata
       }
     ],
-    artifacts: [...input.manifest.artifacts, dispatchArtifact, resumeArtifact]
+    artifacts: [...input.manifest.artifacts, dispatchArtifact, resumeArtifact, providerArtifact]
   };
   input.artifact_ledger = {
     ...input.artifact_ledger,
-    artifacts: [...input.artifact_ledger.artifacts, dispatchArtifact, resumeArtifact]
+    artifacts: [...input.artifact_ledger.artifacts, dispatchArtifact, resumeArtifact, providerArtifact]
   };
 
   const projection = createWorkbenchProjection(input);
   const mobile = createMobileWorkbenchProjection(input);
 
   assert.equal(projection.operations_timeline.status, "available");
-  assert.equal(projection.operations_timeline.count, 2);
+  assert.equal(projection.operations_timeline.count, 3);
+  assert.equal(projection.operations_timeline.group_counts.scheduler, 2);
+  assert.equal(projection.operations_timeline.group_counts.reviewer_recovery, 1);
+  assert.equal(projection.operations_timeline.driver_count, 2);
+  assert.equal(projection.operations_timeline.operator_only_count, 1);
   assert.equal(projection.operations_timeline.items[0].type, "scheduler_dispatch_run");
-  assert.equal(projection.operations_timeline.latest.type, "scheduler_loop_resume_attempt");
-  assert.equal(projection.operations_timeline.latest.summary, "pass -> next-projection");
-  assert.equal(projection.one_screen.counters.operation_events, 2);
+  assert.equal(projection.operations_timeline.items[0].next_action_role, "operator_observable");
+  assert.equal(projection.operations_timeline.items[1].type, "scheduler_loop_resume_attempt");
+  assert.equal(projection.operations_timeline.items[1].group, "scheduler");
+  assert.equal(projection.operations_timeline.items[1].next_action_role, "automation_driver");
+  assert.equal(projection.operations_timeline.latest.type, "reviewer_provider_health");
+  assert.equal(projection.operations_timeline.latest.group, "reviewer_recovery");
+  assert.equal(projection.operations_timeline.latest_driver.type, "reviewer_provider_health");
+  assert.equal(projection.one_screen.counters.operation_events, 3);
   assert.equal(mobile.operations_timeline.status, "available");
-  assert.equal(mobile.operations_timeline.latest.type, "scheduler_loop_resume_attempt");
+  assert.equal(mobile.operations_timeline.latest.type, "reviewer_provider_health");
 });
 
 test("workbench projection exposes scheduler dispatch policy blockers", () => {

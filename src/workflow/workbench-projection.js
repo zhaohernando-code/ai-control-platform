@@ -560,6 +560,28 @@ function operationSummary(type, metadata = {}) {
   return metadata.status || "recorded";
 }
 
+function operationGroup(type) {
+  if (String(type || "").startsWith("reviewer_")) return "reviewer_recovery";
+  return "scheduler";
+}
+
+function operationNextActionRole(type, metadata = {}) {
+  if (type === "scheduler_dispatch_continuation") {
+    return metadata.status === "ready" || metadata.status === "pass" ? "automation_driver" : "operator_observable";
+  }
+  if (type === "scheduler_next_cycle_enqueue") return "automation_driver";
+  if (type === "autonomous_scheduler_loop_run") {
+    return metadata.status === "pass" ? "automation_driver" : "operator_observable";
+  }
+  if (type === "scheduler_loop_resume_attempt") {
+    return metadata.status === "pass" ? "automation_driver" : "operator_observable";
+  }
+  if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
+    return "automation_driver";
+  }
+  return "operator_observable";
+}
+
 function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
   const artifacts = [
     ...asArray(artifactLedger?.artifacts),
@@ -573,6 +595,8 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
       return {
         event_id: event.id || null,
         type: event.type,
+        group: operationGroup(event.type),
+        next_action_role: operationNextActionRole(event.type, metadata),
         status: event.status || metadata.status || artifact?.status || "unknown",
         artifact_id: event.artifact_id || artifact?.id || null,
         created_at: event.created_at || artifact?.created_at || null,
@@ -581,10 +605,19 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
     })
     .sort((left, right) => normalizeString(left.created_at).localeCompare(normalizeString(right.created_at)))
     .slice(-12);
+  const groupCounts = items.reduce((summary, item) => {
+    summary[item.group] = (summary[item.group] || 0) + 1;
+    return summary;
+  }, {});
+  const driverItems = items.filter((item) => item.next_action_role === "automation_driver");
 
   return {
     status: items.length > 0 ? "available" : "not_configured",
     count: items.length,
+    group_counts: groupCounts,
+    driver_count: driverItems.length,
+    operator_only_count: items.length - driverItems.length,
+    latest_driver: driverItems.at(-1) || null,
     latest: items.at(-1) || null,
     items
   };
@@ -817,6 +850,10 @@ export function createMobileWorkbenchProjection(input = {}) {
     operations_timeline: {
       status: projection.operations_timeline.status,
       count: projection.operations_timeline.count,
+      group_counts: projection.operations_timeline.group_counts,
+      driver_count: projection.operations_timeline.driver_count,
+      operator_only_count: projection.operations_timeline.operator_only_count,
+      latest_driver: projection.operations_timeline.latest_driver,
       latest: projection.operations_timeline.latest,
       items: projection.operations_timeline.items.slice(-5)
     },
