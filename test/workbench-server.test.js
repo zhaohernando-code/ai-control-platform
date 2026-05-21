@@ -56,6 +56,22 @@ test("workbench server returns latest projection", async () => {
     assert.equal(response.status, 200);
     assert.equal(projection.projection_version, "workbench.v1");
     assert.equal(projection.run_id, "run-20260521-platform-self-trial");
+    assert.equal(projection.operator_events.status, "pass");
+    assert.equal(projection.operator_events.applied_artifacts, 1);
+    assert.equal(projection.manifest.event_count, 3);
+    assert.equal(projection.artifacts.total, 3);
+  });
+});
+
+test("workbench server builds latest projection from workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/projection`);
+    const projection = response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(projection.operator_events.event_count, 1);
+    assert.equal(projection.artifacts.by_type.evaluation, 1);
+    assert.equal(projection.autonomous_run.summaries.artifacts.total, 3);
   });
 });
 
@@ -80,6 +96,57 @@ test("workbench server returns selected historical projection", async () => {
     assert.equal(projection.run_id, "run-20260521-platform-bootstrap");
     assert.equal(projection.status, "pass");
   });
+});
+
+test("workbench server prefers input snapshot over static projection path", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "diverged",
+    items: [
+      {
+        id: "diverged",
+        label: "Diverged",
+        input_path: "docs/examples/current-session-workbench-input.json",
+        projection_path: "docs/examples/bootstrap-workbench-projection.json"
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/projection`);
+    const projection = response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(projection.run_id, "run-20260521-platform-self-trial");
+    assert.equal(projection.operator_events.status, "pass");
+  }, { historyPath });
+});
+
+test("workbench server rejects projection history paths outside examples", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
+  const historyPath = join(dir, "projection-history.json");
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "escape",
+    items: [
+      {
+        id: "escape",
+        label: "Escape",
+        input_path: "../package.json",
+        projection_path: "docs/examples/current-session-workbench-projection.json"
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/projection`);
+    const body = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(body.error, /input_path must stay under docs\/examples/);
+  }, { historyPath });
 });
 
 test("workbench server serves desktop app shell", async () => {

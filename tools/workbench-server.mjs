@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { extname, normalize, resolve } from "node:path";
+import { extname, isAbsolute, normalize, resolve } from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
+
+import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
 const defaultEventsPath = resolve(root, "docs/examples/operator-events.json");
+const examplesRoot = resolve(root, "docs/examples");
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -26,8 +29,25 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function projectionById(id = null) {
-  const history = readJson(historyPath);
+function historyItemPath(itemPath, field) {
+  if (!itemPath) return null;
+  if (typeof itemPath !== "string" || isAbsolute(itemPath)) {
+    const error = new Error(`${field} must be a relative docs/examples path`);
+    error.code = "INVALID_HISTORY_PATH";
+    throw error;
+  }
+
+  const filePath = resolve(root, itemPath);
+  if (!filePath.startsWith(`${examplesRoot}/`)) {
+    const error = new Error(`${field} must stay under docs/examples`);
+    error.code = "INVALID_HISTORY_PATH";
+    throw error;
+  }
+
+  return filePath;
+}
+
+function projectionById(id = null, history = readJson(historyPath)) {
   const selectedId = id || history.latest;
   const item = history.items.find((entry) => entry.id === selectedId);
 
@@ -40,7 +60,9 @@ function projectionById(id = null) {
   return {
     history,
     item,
-    projection: readJson(resolve(root, item.projection_path))
+    projection: item.input_path
+      ? createWorkbenchProjection(readJson(historyItemPath(item.input_path, "input_path")))
+      : readJson(historyItemPath(item.projection_path, "projection_path"))
   };
 }
 
@@ -113,19 +135,20 @@ function safeStaticPath(pathname) {
 
 export function createWorkbenchServer(options = {}) {
   const eventsPath = options.eventsPath || defaultEventsPath;
+  const serverHistoryPath = options.historyPath || historyPath;
 
   return createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
       if (url.pathname === "/api/workbench/projection") {
-        const { projection } = projectionById(url.searchParams.get("id"));
+        const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath));
         jsonResponse(res, 200, projection);
         return;
       }
 
       if (url.pathname === "/api/workbench/projections") {
-        const history = readJson(historyPath);
+        const history = readJson(serverHistoryPath);
         jsonResponse(res, 200, history);
         return;
       }
@@ -170,6 +193,11 @@ export function createWorkbenchServer(options = {}) {
     } catch (error) {
       if (error.code === "ENOENT" || error.code === "PROJECTION_NOT_FOUND") {
         jsonResponse(res, 404, { error: error.message });
+        return;
+      }
+
+      if (error.code === "INVALID_HISTORY_PATH") {
+        jsonResponse(res, 400, { error: error.message });
         return;
       }
 

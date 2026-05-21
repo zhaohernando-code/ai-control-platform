@@ -29,6 +29,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Projection generation must not use stale run_result or run_evaluation when operator events were ingested."
+    },
+    {
+      "id": "projection-history-path-escape",
+      "status": "fail",
+      "category": "security",
+      "severity": "p1",
+      "message": "Projection history input_path and projection_path must not read files outside docs/examples."
     }
   ],
   "hardening_items": [
@@ -62,6 +69,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js",
       "regression_test": "workbench projection ignores stale run result when operator events are present",
       "verification": "node --test test/workbench-projection.test.js test/workbench-projection-fixture.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "projection-history-path-escape",
+      "invariant": "Workbench projection history paths must be relative and confined to docs/examples.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js",
+      "regression_test": "workbench server rejects projection history paths outside examples",
+      "verification": "node --test test/workbench-server.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

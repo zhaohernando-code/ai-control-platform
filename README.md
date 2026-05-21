@@ -63,6 +63,8 @@ node tools/workbench-server.mjs 4180
 - `GET /api/workbench/events`
 - `POST /api/workbench/events`
 
+`/api/workbench/projection` 会优先使用 projection history item 的 `input_path` 动态生成 projection；没有 `input_path` 的历史项才回退到 `projection_path` 静态文件。History path 必须是 `docs/examples/` 下的相对路径。
+
 Operator events 可以通过 `src/workflow/operator-events.js` 摄入为 Run Manifest events 和 Artifact Ledger artifacts，避免工作台操作停留在 UI 临时状态。
 
 ## 迁移区

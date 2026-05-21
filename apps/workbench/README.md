@@ -21,3 +21,5 @@ node tools/workbench-server.mjs 4180
 - `POST /api/workbench/events`
 - `GET /apps/workbench/desktop.html?projection=/api/workbench/projection`
 - `GET /apps/workbench/mobile.html?projection=/api/workbench/projection`
+
+Projection API 优先从 history item 的 `input_path` 读取 workflow state input 并动态生成 projection；`projection_path` 只作为没有 input snapshot 的兼容回退。History path 必须是 `docs/examples/` 下的相对路径。

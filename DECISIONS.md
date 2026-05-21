@@ -171,3 +171,20 @@
 - autonomous_run 必须从摄入后的 manifest 和 artifact ledger 重新计算。
 - 没有 operator events 时，仍允许使用显式 run evaluation。
 - 该约束已进入 process-hardening gate。
+
+[2026-05-21T17:41:01+08:00] Workbench server should prefer workflow state snapshots:
+工作台 server 如果只读静态 projection JSON，就会绕过 operator event ingestion、run evaluation 重算等流程逻辑。history item 已经具备 `input_path`，应优先从 workflow state input 动态生成 projection。
+
+决策：
+- `GET /api/workbench/projection` 优先读取 history item 的 `input_path` 并调用 `createWorkbenchProjection`。
+- 只有缺少 `input_path` 的历史项才读取 `projection_path` 静态 projection。
+- Current session projection API 现在来自 workflow state snapshot，bootstrap 历史项保持静态兼容。
+
+[2026-05-21T17:44:53+08:00] Projection history paths must be constrained:
+隔离 reviewer 发现 history item 的 `input_path` / `projection_path` 可以通过 `../` 指向仓库外文件。Projection server 读取动态 input snapshot 前必须先做路径边界检查。
+
+决策：
+- History path 必须是相对路径。
+- History path 必须解析到 `docs/examples/` 目录下。
+- 非法 history path 返回 400，不读取文件。
+- 增加动态 input 优先级分歧测试，证明 server 没有回退到静态 projection。
