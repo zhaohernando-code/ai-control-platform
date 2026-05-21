@@ -295,6 +295,13 @@
       "category": "observability",
       "severity": "p1",
       "message": "Projected next-action loop must be available as a bounded workbench trial profile with browser verification; otherwise the platform cannot visually prove that projection-driven execution advances reviewer recovery without human intervention."
+    },
+    {
+      "id": "inspect-terminal-action-hidden",
+      "status": "fail",
+      "category": "observability",
+      "severity": "p1",
+      "message": "Projected loops that stop on inspect_* recommendations must record the terminal action and reason in the loop artifact/projection; otherwise autonomous stopping still depends on reading transient phase strings."
     }
   ],
   "hardening_items": [
@@ -808,6 +815,14 @@
       "enforcement_target": "apps/workbench/desktop.html; apps/workbench/mobile.html; apps/workbench/workbench.js; tools/check-workbench-browser-events.mjs; test/workbench-shell.test.js",
       "regression_test": "workbench shell exposes projected mock loop control; projected_mock_loop_click browser scenario renders pass loop status and completed reviewer shards",
       "verification": "node --test test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "inspect-terminal-action-hidden",
+      "invariant": "Projected scheduler loop iterations that stop on non-executable inspect or wait recommendations must persist terminal_action and terminal_reason in the loop run artifact and expose those fields through scheduler_loop projection summaries.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; apps/workbench/workbench.js; test/autonomous-scheduler-loop.test.js",
+      "regression_test": "scheduler loop can follow projected next-action recommendations and records terminal_action/terminal_reason",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-shell.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

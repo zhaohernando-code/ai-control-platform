@@ -448,6 +448,8 @@ function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
       latest_resume_status: resumeAttempt.status,
       latest_resume_target: resumeAttempt.resume_projection_id,
       latest_resume_issue: resumeAttempt.latest_issue,
+      terminal_action: null,
+      terminal_reason: null,
       issue_count: 0,
       latest_issue: null,
       created_at: null
@@ -470,8 +472,10 @@ function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
     latest_resume_status: resumeAttempt.status,
     latest_resume_target: resumeAttempt.resume_projection_id,
     latest_resume_issue: resumeAttempt.latest_issue,
+    terminal_action: latest.terminal_action,
+    terminal_reason: latest.terminal_reason,
     issue_count: latest.issue_count,
-    latest_issue: latest.latest_issue,
+    latest_issue: latest.latest_issue || latest.terminal_reason,
     created_at: latest.created_at
   };
 }

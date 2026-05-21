@@ -147,6 +147,8 @@
     "latest_resume_status": "not_configured",
     "latest_resume_target": null,
     "latest_resume_issue": null,
+    "terminal_action": null,
+    "terminal_reason": null,
     "issue_count": 0,
     "latest_issue": null,
     "created_at": null

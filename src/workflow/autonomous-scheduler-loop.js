@@ -166,9 +166,11 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
 
         if (readout.status !== "ready" || isTerminalProjectedAction(readout.action)) {
           iteration.status = "stopped";
+          iteration.terminal_action = readout.action || null;
+          iteration.terminal_reason = readout.reason || "projected next action is not executable";
           return {
             status: "pass",
-            phase: "no_dispatchable_scheduler_actions",
+            phase: "terminal_projected_action",
             issues: [],
             iterations
           };
@@ -376,6 +378,8 @@ function runReadoutFromEvent(event = {}, artifact = {}) {
     latest_issue: issues[0]?.message || issues[0]?.code || null,
     iteration_count: iterations.length,
     latest_iteration_status: latestIteration?.status || null,
+    terminal_action: latestIteration?.terminal_action || null,
+    terminal_reason: latestIteration?.terminal_reason || null,
     latest_projection_id: latestIteration?.next_projection_id || latestIteration?.projection_id || null,
     resume_projection_id: latestIteration?.next_projection_id || null,
     issues

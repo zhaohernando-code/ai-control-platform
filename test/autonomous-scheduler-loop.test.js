@@ -164,11 +164,13 @@ test("scheduler loop can follow projected next-action recommendations", async ()
   }, { client });
 
   assert.equal(result.status, "pass");
-  assert.equal(result.phase, "no_dispatchable_scheduler_actions");
+  assert.equal(result.phase, "terminal_projected_action");
   assert.equal(result.iterations.length, 2);
   assert.equal(result.iterations[0].projected_action, "enqueue_scheduler_next_cycle");
   assert.equal(result.iterations[0].next_projection_id, "current-next");
   assert.equal(result.iterations[1].projected_action, "inspect_resume_target");
+  assert.equal(result.iterations[1].terminal_action, "inspect_resume_target");
+  assert.equal(result.iterations[1].terminal_reason, "projected next action is not executable");
   assert.deepEqual(calls.map((call) => call[0]), ["loadHistory", "projection", "nextAction", "projection"]);
   assert.equal(calls[2][2].expected_action, "enqueue_scheduler_next_cycle");
   assert.equal(calls[2][2].reviewer_mock_status, "pass");
