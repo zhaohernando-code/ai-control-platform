@@ -255,3 +255,11 @@ closeout runner 不能只把发布结果打印到 CLI。无人值守流程的下
 - `runCloseoutPlan` 返回的 `workflow_state` 会追加 `closeout_snapshot_publish` manifest event。
 - 同一结果会记录到 `artifact_ledger`，artifact 类型为 `evaluation`，成功为 `pass`，失败为 `fail`。
 - 失败 closeout 也必须生成证据，供下一轮 recovery / rerun 使用。
+
+[2026-05-21T18:33:53+08:00] Workbench latest should include closeout evidence:
+只返回带 evidence 的 workflow state 仍然需要调用方额外持久化。为了减少无人值守流程中的隐式步骤，成功 closeout 应默认把带 evidence 的 workflow state 再发布到同一 snapshot id。
+
+决策：
+- `runCloseoutPlan` 成功发布原始 workflow state 后，追加 closeout evidence。
+- 默认再次执行 snapshot publish，把带 evidence 的 workflow state 写入同一 history item。
+- 如果 evidence snapshot publish 失败，runner 返回失败，不把 closeout 误报为完成。

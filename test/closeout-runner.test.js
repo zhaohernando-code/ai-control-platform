@@ -69,9 +69,12 @@ test("runCloseoutPlan publishes local workbench snapshot from continuation decis
 
   assert.equal(result.status, "created");
   assert.equal(result.mode, "local");
+  assert.equal(result.evidence_snapshot_publish.status, "created");
   assert.equal(history.latest, "run-closeout-runner");
   assert.match(history.items[0].input_path, /^tmp\/ai-control-platform-closeout-/);
   assert.equal(snapshot.manifest.run_id, "run-20260521-platform-self-trial");
+  assert.equal(snapshot.manifest.events.at(-1).type, "closeout_snapshot_publish");
+  assert.equal(snapshot.artifact_ledger.artifacts.at(-1).id, "closeout-snapshot-run-closeout-runner");
   assert.equal(result.workflow_state.manifest.events.at(-1).type, "closeout_snapshot_publish");
   assert.equal(result.workflow_state.artifact_ledger.artifacts.at(-1).id, "closeout-snapshot-run-closeout-runner");
 });

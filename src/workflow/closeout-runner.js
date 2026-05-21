@@ -258,12 +258,31 @@ async function runCloseoutPlan(input = {}, options = {}) {
     };
   }
   const result = await executeSnapshotPublishPlan(plan, options);
+  const workflowState = recordCloseoutEvidence(plan.input || plan.workflow_state || plan.workflowState, result, {
+    ...options,
+    plan
+  });
+  if (result.status === "created" && options.persistEvidenceSnapshot !== false) {
+    const evidenceSnapshot = await executeSnapshotPublishPlan({ ...plan, input: workflowState }, options);
+    if (evidenceSnapshot.status !== "created") {
+      return {
+        ...evidenceSnapshot,
+        initial_publish: result,
+        workflow_state: workflowState
+      };
+    }
+    return {
+      ...result,
+      projection: evidenceSnapshot.projection,
+      snapshot_path: evidenceSnapshot.snapshot_path || result.snapshot_path,
+      evidence_snapshot_publish: evidenceSnapshot,
+      workflow_state: workflowState
+    };
+  }
+
   return {
     ...result,
-    workflow_state: recordCloseoutEvidence(plan.input || plan.workflow_state || plan.workflowState, result, {
-      ...options,
-      plan
-    })
+    workflow_state: workflowState
   };
 }
 
