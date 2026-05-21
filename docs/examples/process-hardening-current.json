@@ -232,6 +232,13 @@
       "category": "false_success",
       "severity": "p1",
       "message": "Workbench resume controls must not let the frontend choose raw scheduler resume ids; the UI may identify the current history item, but the service must choose the registry-approved resume projection."
+    },
+    {
+      "id": "scheduler-loop-resume-attempt-side-channel",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Scheduler loop resume attempts, including blocked recovery, must be recorded as workflow facts; otherwise process restart cannot distinguish no attempt from a failed or quarantined resume."
     }
   ],
   "hardening_items": [
@@ -673,6 +680,14 @@
       "enforcement_target": "apps/workbench/projection-source.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection-source.test.js; test/workbench-shell.test.js",
       "regression_test": "projection source removes projection_id from request body and uses it only as id query context; workbench shell exposes resume control; autonomous_scheduler_loop_click browser scenario runs loop then resume and renders idle recovery",
       "verification": "node --test test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-loop-resume-attempt-side-channel",
+      "invariant": "Every scheduler loop resume attempt must write a scheduler_loop_resume_attempt event and artifact into the source workflow state; blocked attempts must be visible in projection, and successful attempts must link source recovery to the target loop artifact.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/autonomous-scheduler-loop.test.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/workbench-shell.test.js",
+      "regression_test": "scheduler loop resume attempts are durable workflow facts; workbench projection exposes scheduler loop resume attempts; workbench server rejects autonomous scheduler loop resume without ready recovery while writing a blocked attempt; workbench server resumes autonomous scheduler loop from registry recovery policy while writing a pass attempt",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

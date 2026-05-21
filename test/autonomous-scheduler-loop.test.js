@@ -11,6 +11,7 @@ import {
   createSchedulerLoopRunArtifact,
   evaluateSchedulerLoopRecovery,
   recordAutonomousSchedulerLoopRunArtifact,
+  recordSchedulerLoopResumeAttempt,
   runSchedulerLoopDriver,
   schedulerLoopInput,
   validateSchedulerLoopRunArtifact
@@ -260,6 +261,26 @@ test("scheduler loop registry blocks invalid durable artifacts", async () => {
   assert.equal(recovery.status, "blocked");
   assert.equal(recovery.action, "quarantine_invalid_loop_artifact");
   assert.ok(recovery.issues.some((entry) => entry.code === "scheduler_loop_status_mismatch"));
+});
+
+test("scheduler loop resume attempts are durable workflow facts", () => {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const recorded = recordSchedulerLoopResumeAttempt(workflowState, {
+    status: "blocked",
+    source_projection_id: "source",
+    resume_projection_id: "target",
+    recovery_status: "blocked",
+    recovery_action: "quarantine_invalid_loop_artifact",
+    issues: [{ code: "invalid_loop", message: "loop artifact invalid", path: "scheduler_loop" }]
+  }, {
+    created_at: "2026-05-22T02:00:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "scheduler_loop_resume_attempt");
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).status, "blocked");
+  assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).metadata.version, "scheduler-loop-resume-attempt.v1");
+  assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).metadata.resume_projection_id, "target");
 });
 
 test("run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url", () => {

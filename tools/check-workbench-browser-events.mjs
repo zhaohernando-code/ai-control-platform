@@ -268,6 +268,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop-resume="bounded"]')?.textContent.includes("Resume 已记录"));
     const resumedLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const resumedLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
+    const resumedLoopAttempt = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -279,6 +280,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(schedulerLoopRecovery === "ready", "autonomous scheduler loop click must render recovery readiness");
     assert(resumedLoopStatus === "pass", "autonomous scheduler loop resume must render loop pass");
     assert(resumedLoopRecovery === "idle", "autonomous scheduler loop resume must render idle recovery when no actions remain");
+    assert(resumedLoopAttempt === "not_configured", "resume target projection should not claim the source resume attempt");
     assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
 
     console.log(JSON.stringify({
@@ -288,6 +290,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       scheduler_loop_recovery: schedulerLoopRecovery,
       resumed_loop_status: resumedLoopStatus,
       resumed_loop_recovery: resumedLoopRecovery,
+      resumed_loop_attempt: resumedLoopAttempt,
       dimensions
     }, null, 2));
   });
@@ -316,6 +319,7 @@ async function verifyMobileProjectionLoad(browser) {
     const schedulerContinuationReady = await page.textContent('[data-bind="scheduler_continuation_ready"]');
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
+    const schedulerLoopResumeStatus = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
@@ -327,6 +331,7 @@ async function verifyMobileProjectionLoad(browser) {
     assert(schedulerContinuationReady, "mobile workbench must render scheduler continuation readiness");
     assert(schedulerLoopStatus, "mobile workbench must render scheduler loop status");
     assert(schedulerLoopRecovery, "mobile workbench must render scheduler loop recovery");
+    assert(schedulerLoopResumeStatus, "mobile workbench must render scheduler loop resume attempt status");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -340,6 +345,7 @@ async function verifyMobileProjectionLoad(browser) {
       scheduler_continuation_ready: schedulerContinuationReady,
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_recovery: schedulerLoopRecovery,
+      scheduler_loop_resume_status: schedulerLoopResumeStatus,
       dimensions
     }, null, 2));
   });

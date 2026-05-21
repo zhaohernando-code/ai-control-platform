@@ -761,3 +761,13 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - `运行 Loop` 和 `恢复 Loop` 都只使用当前 history item id 作为 source context。
 - 服务端 resume endpoint 仍负责选择真正的 `resume_projection_id`。
 - 浏览器门禁在同一场景中执行 `运行 Loop -> 恢复 Loop`，并验证恢复后状态为 pass/idle 且无横向溢出。
+
+[2026-05-22T02:04:00+08:00] Scheduler loop resume attempts must be durable facts:
+resume endpoint 如果只返回 HTTP response，重启后就无法知道是否发生过 blocked resume、是否已经从某个 source projection 尝试恢复、恢复是否写到了目标轮。这个缺口会让“无需人工介入”的状态管理再次退回聊天记忆。
+
+决策：
+- 新增 `scheduler-loop-resume-attempt.v1` artifact。
+- `recordSchedulerLoopResumeAttempt` 写入源 workflow state 的 manifest event 和 artifact ledger。
+- blocked recovery、缺少 resume input、loop 执行失败、loop 执行成功都必须记录 attempt。
+- 成功 attempt 记录 source projection、resume projection、loop status/phase 和目标 loop artifact id。
+- Workbench projection 的 `scheduler_loop` 摘要展示 latest resume status、target 和 issue；PC/mobile 工作台渲染 resume attempt status。

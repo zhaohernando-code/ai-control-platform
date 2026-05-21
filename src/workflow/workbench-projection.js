@@ -429,6 +429,7 @@ function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
     artifact_ledger: artifactLedger
   });
   const recovery = evaluateSchedulerLoopRecovery(registry);
+  const resumeAttempt = summarizeSchedulerLoopResumeAttempt(manifest, artifactLedger);
   const latest = registry.latest || null;
   if (!latest) {
     return {
@@ -444,6 +445,9 @@ function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
       recovery_action: recovery.action,
       resumable: false,
       resume_projection_id: null,
+      latest_resume_status: resumeAttempt.status,
+      latest_resume_target: resumeAttempt.resume_projection_id,
+      latest_resume_issue: resumeAttempt.latest_issue,
       issue_count: 0,
       latest_issue: null,
       created_at: null
@@ -463,9 +467,52 @@ function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
     recovery_action: recovery.action,
     resumable: recovery.resumable,
     resume_projection_id: recovery.resume_projection_id,
+    latest_resume_status: resumeAttempt.status,
+    latest_resume_target: resumeAttempt.resume_projection_id,
+    latest_resume_issue: resumeAttempt.latest_issue,
     issue_count: latest.issue_count,
     latest_issue: latest.latest_issue,
     created_at: latest.created_at
+  };
+}
+
+function summarizeSchedulerLoopResumeAttempt(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "scheduler_loop_resume_attempt");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      artifact_id: null,
+      resume_projection_id: null,
+      recovery_status: null,
+      recovery_action: null,
+      loop_status: null,
+      loop_phase: null,
+      latest_issue: null,
+      issue_count: 0,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const issues = asArray(metadata.issues);
+
+  return {
+    status: latestEvent.status || metadata.status || "unknown",
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    resume_projection_id: metadata.resume_projection_id || null,
+    recovery_status: metadata.recovery_status || null,
+    recovery_action: metadata.recovery_action || null,
+    loop_status: metadata.loop_status || null,
+    loop_phase: metadata.loop_phase || null,
+    latest_issue: issues[0]?.message || issues[0]?.code || null,
+    issue_count: issues.length,
+    created_at: latestEvent.created_at || artifact?.created_at || null
   };
 }
 
@@ -686,7 +733,9 @@ export function createMobileWorkbenchProjection(input = {}) {
       recovery_status: projection.scheduler_loop.recovery_status,
       recovery_action: projection.scheduler_loop.recovery_action,
       resumable: projection.scheduler_loop.resumable,
-      resume_projection_id: projection.scheduler_loop.resume_projection_id
+      resume_projection_id: projection.scheduler_loop.resume_projection_id,
+      latest_resume_status: projection.scheduler_loop.latest_resume_status,
+      latest_resume_target: projection.scheduler_loop.latest_resume_target
     },
     model: {
       selected_model: projection.model_routing.selected_model,
@@ -708,5 +757,6 @@ export {
   summarizeReviewerShardReview,
   summarizeSchedulerDispatchContinuation,
   summarizeAutonomousSchedulerLoop,
+  summarizeSchedulerLoopResumeAttempt,
   summarizeSchedulerDispatch
 };

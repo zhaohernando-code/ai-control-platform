@@ -623,13 +623,17 @@ test("workbench server resumes autonomous scheduler loop from registry recovery 
     const history = (await request(`${baseUrl}/api/workbench/projections`)).json();
     const targetInputPath = join(snapshotsRoot, "server-loop-resume-source-01.workbench-input.json");
     const targetState = JSON.parse(readFileSync(targetInputPath, "utf8"));
+    const sourceState = JSON.parse(readFileSync(inputPath, "utf8"));
 
     assert.equal(resumed.status, 201);
     assert.equal(created.status, "created");
     assert.equal(created.recovery.status, "ready");
+    assert.equal(created.resume_attempt.metadata.status, "pass");
     assert.equal(created.item.id, "server-loop-resume-source-01");
     assert.equal(created.result.phase, "no_dispatchable_scheduler_actions");
     assert.equal(history.latest, "server-loop-resume-source-01");
+    assert.equal(sourceState.manifest.events.at(-1).type, "scheduler_loop_resume_attempt");
+    assert.equal(sourceState.manifest.events.at(-1).status, "pass");
     assert.equal(targetState.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
   }, { historyPath, snapshotsRoot });
 });
@@ -660,10 +664,14 @@ test("workbench server rejects autonomous scheduler loop resume without ready re
       body: JSON.stringify({ max_iterations: 1 })
     });
     const rejected = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
 
     assert.equal(response.status, 409);
     assert.equal(rejected.recovery.status, "not_configured");
-    assert.equal(rejected.projection.scheduler_loop.recovery_status, "not_configured");
+    assert.equal(rejected.resume_attempt.metadata.status, "blocked");
+    assert.equal(rejected.projection.scheduler_loop.latest_resume_status, "blocked");
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_loop_resume_attempt");
+    assert.equal(state.manifest.events.at(-1).status, "blocked");
   }, { historyPath, snapshotsRoot });
 });
 

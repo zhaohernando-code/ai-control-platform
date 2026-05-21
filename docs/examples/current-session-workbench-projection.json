@@ -144,6 +144,9 @@
     "recovery_action": "start_bounded_loop",
     "resumable": false,
     "resume_projection_id": null,
+    "latest_resume_status": "not_configured",
+    "latest_resume_target": null,
+    "latest_resume_issue": null,
     "issue_count": 0,
     "latest_issue": null,
     "created_at": null

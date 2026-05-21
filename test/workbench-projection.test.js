@@ -713,6 +713,58 @@ test("workbench projection blocks invalid autonomous scheduler loop history", ()
   assert.equal(mobile.scheduler_loop.recovery_status, "blocked");
 });
 
+test("workbench projection exposes scheduler loop resume attempts", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "scheduler-loop-resume-attempt-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "fail",
+    uri: "scheduler-loop://resume-attempt/run-projection/cycle-20260521/scheduler-loop-resume-attempt-run-projection-cycle-20260521-001",
+    producer: "autonomous-scheduler-loop",
+    created_at: "2026-05-22T02:00:00.000Z",
+    metadata: {
+      type: "scheduler_loop_resume_attempt",
+      version: "scheduler-loop-resume-attempt.v1",
+      status: "blocked",
+      run_id: "run-projection",
+      cycle_id: "cycle-20260521",
+      source_projection_id: "source",
+      resume_projection_id: "target",
+      recovery_status: "blocked",
+      recovery_action: "quarantine_invalid_loop_artifact",
+      issues: [{ code: "invalid_loop", message: "loop artifact invalid", path: "scheduler_loop" }]
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "scheduler_loop_resume_attempt",
+        status: "blocked",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.scheduler_loop.latest_resume_status, "blocked");
+  assert.equal(projection.scheduler_loop.latest_resume_target, "target");
+  assert.equal(projection.scheduler_loop.latest_resume_issue, "loop artifact invalid");
+  assert.equal(mobile.scheduler_loop.latest_resume_status, "blocked");
+  assert.equal(mobile.scheduler_loop.latest_resume_target, "target");
+});
+
 test("workbench projection exposes scheduler dispatch policy blockers", () => {
   const input = baseInput();
   const artifact = {

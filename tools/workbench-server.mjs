@@ -31,6 +31,7 @@ import {
   createSchedulerLoopRunArtifact,
   evaluateSchedulerLoopRecovery,
   recordAutonomousSchedulerLoopRunArtifact,
+  recordSchedulerLoopResumeAttempt,
   runSchedulerLoopDriver
 } from "../src/workflow/autonomous-scheduler-loop.js";
 
@@ -954,10 +955,25 @@ export function createWorkbenchServer(options = {}) {
         const recovery = evaluateSchedulerLoopRecovery(registry);
         const sourceProjection = createWorkbenchProjection(sourceWorkflowState);
         if (recovery.status !== "ready" || !recovery.resume_projection_id) {
+          const blockedAttempt = recordSchedulerLoopResumeAttempt(sourceWorkflowState, {
+            status: "blocked",
+            source_projection_id: selectedId,
+            recovery_status: recovery.status,
+            recovery_action: recovery.action,
+            issues: recovery.issues || []
+          }, {
+            created_at: input.created_at || input.createdAt
+          });
+          if (blockedAttempt.status === "pass") {
+            writeFileSync(sourcePath, `${JSON.stringify({ ...sourceWorkflowState, ...blockedAttempt.workflow_state }, null, 2)}\n`);
+          }
           jsonResponse(res, 409, {
             error: "autonomous scheduler loop is not resumable",
             recovery,
-            projection: sourceProjection
+            resume_attempt: blockedAttempt.artifact || null,
+            projection: blockedAttempt.status === "pass"
+              ? createWorkbenchProjection(blockedAttempt.workflow_state)
+              : sourceProjection
           });
           return;
         }
@@ -965,10 +981,26 @@ export function createWorkbenchServer(options = {}) {
         const targetId = recovery.resume_projection_id;
         const targetItem = history.items.find((entry) => entry.id === targetId);
         if (!targetItem?.input_path) {
+          const blockedAttempt = recordSchedulerLoopResumeAttempt(sourceWorkflowState, {
+            status: "blocked",
+            source_projection_id: selectedId,
+            resume_projection_id: targetId,
+            recovery_status: recovery.status,
+            recovery_action: recovery.action,
+            issues: [{ code: "resume_input_missing", message: `resume workflow state input not found: ${targetId}`, path: "recovery.resume_projection_id" }]
+          }, {
+            created_at: input.created_at || input.createdAt
+          });
+          if (blockedAttempt.status === "pass") {
+            writeFileSync(sourcePath, `${JSON.stringify({ ...sourceWorkflowState, ...blockedAttempt.workflow_state }, null, 2)}\n`);
+          }
           jsonResponse(res, 400, {
             error: `resume workflow state input not found: ${targetId}`,
             recovery,
-            projection: sourceProjection
+            resume_attempt: blockedAttempt.artifact || null,
+            projection: blockedAttempt.status === "pass"
+              ? createWorkbenchProjection(blockedAttempt.workflow_state)
+              : sourceProjection
           });
           return;
         }
@@ -998,6 +1030,25 @@ export function createWorkbenchServer(options = {}) {
         }
         writeFileSync(targetPath, `${JSON.stringify({ ...targetWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
 
+        const resumeAttempt = recordSchedulerLoopResumeAttempt(sourceWorkflowState, {
+          status: loopResult.status === "pass" ? "pass" : "fail",
+          source_projection_id: selectedId,
+          resume_projection_id: targetId,
+          recovery_status: recovery.status,
+          recovery_action: recovery.action,
+          loop_status: loopResult.status,
+          loop_phase: loopResult.phase,
+          loop_artifact_id: recorded.artifact.id,
+          issues: loopResult.issues || []
+        }, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (resumeAttempt.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler loop resume attempt record failed", issues: resumeAttempt.issues });
+          return;
+        }
+        writeFileSync(sourcePath, `${JSON.stringify({ ...sourceWorkflowState, ...resumeAttempt.workflow_state }, null, 2)}\n`);
+
         jsonResponse(res, loopResult.status === "pass" ? 201 : 400, {
           status: loopResult.status === "pass" ? "created" : "failed",
           source_item: item,
@@ -1005,7 +1056,8 @@ export function createWorkbenchServer(options = {}) {
           recovery,
           result: loopResult,
           artifact: recorded.artifact,
-          source_projection: sourceProjection,
+          resume_attempt: resumeAttempt.artifact,
+          source_projection: createWorkbenchProjection(resumeAttempt.workflow_state),
           projection: createWorkbenchProjection(recorded.workflow_state)
         });
         return;

@@ -139,6 +139,7 @@ function renderProjection(projection) {
   setText("scheduler_loop_latest", schedulerLoop.latest_projection_id);
   setText("scheduler_loop_recovery", schedulerLoop.recovery_status);
   setText("scheduler_loop_action", schedulerLoop.recovery_action);
+  setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
 
   renderNextActions(projection);
   renderModelRoles(projection);

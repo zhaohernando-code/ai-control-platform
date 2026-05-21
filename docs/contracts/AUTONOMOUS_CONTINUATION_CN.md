@@ -168,6 +168,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 工作台 projection 与 `/api/workbench/projections` history readout 必须展示 loop run count、invalid count、recovery status/action、resumable 和 resume projection id，避免进程重启后只能依赖当前聊天上下文判断是否继续。
 - 工作台服务必须提供 `POST /api/workbench/autonomous-scheduler-loop-resume`：它只能读取所选 history input 的 loop registry/recovery policy，必须由服务端选择 `resume_projection_id` 作为新的 loop 起点，把新 loop artifact 写入该 resume projection 的 workflow state；recovery 不是 ready 或 resume projection 缺少受控 input_path 时必须失败闭合，不得要求操作者手工选择下一轮 id。
 - PC/mobile 工作台可以传当前 history item id 作为 source context，但不得传或拼接 raw resume projection id、scheduler policy 字段或底层执行授权；resume target selection 必须保留在服务端 recovery policy。浏览器门禁必须覆盖“运行 loop -> 恢复 loop”的连续操作，并验证恢复后仍无横向溢出。
+- 每一次 scheduler loop resume 尝试都必须写入源 workflow state：事件类型为 `scheduler_loop_resume_attempt`，artifact metadata version 为 `scheduler-loop-resume-attempt.v1`。blocked 尝试必须记录 recovery status/action 和 issues；成功尝试必须记录 source projection、resume projection、loop status/phase 与目标 loop artifact id。Projection 必须展示 latest resume attempt status/target/issue。
 
 ## 5. 与工作台关系
 

@@ -2,6 +2,7 @@ import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
 
 const AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION = "autonomous-scheduler-loop-run.v1";
+const SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION = "scheduler-loop-resume-attempt.v1";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -431,6 +432,26 @@ function nextAutonomousSchedulerLoopArtifactId(workflowState = {}, options = {})
   return id;
 }
 
+function nextSchedulerLoopResumeAttemptArtifactId(workflowState = {}, options = {}) {
+  const explicit = normalizeString(options.artifact_id || options.artifactId);
+  if (explicit) return explicit;
+
+  const prefix = `scheduler-loop-resume-attempt-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`;
+  const used = new Set([
+    ...asArray(workflowState?.manifest?.events).map((event) => normalizeString(event?.artifact_id)).filter(Boolean),
+    ...asArray(workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts)
+      .map((artifact) => normalizeString(artifact?.id))
+      .filter(Boolean)
+  ]);
+  let index = 1;
+  let id = `${prefix}-${String(index).padStart(3, "0")}`;
+  while (used.has(id)) {
+    index += 1;
+    id = `${prefix}-${String(index).padStart(3, "0")}`;
+  }
+  return id;
+}
+
 export function recordAutonomousSchedulerLoopRunArtifact(workflowState = {}, runArtifact = {}, options = {}) {
   if (!isObject(workflowState)) {
     return {
@@ -500,4 +521,91 @@ export function recordAutonomousSchedulerLoopRunArtifact(workflowState = {}, run
   };
 }
 
-export { schedulerLoopInput, AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION };
+export function recordSchedulerLoopResumeAttempt(workflowState = {}, attempt = {}, options = {}) {
+  if (!isObject(workflowState)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_workflow_state", "workflow state must be an object", "workflow_state")]
+    };
+  }
+
+  const runId = normalizeString(workflowState?.manifest?.run_id);
+  const cycleId = normalizeString(workflowState?.manifest?.cycle_id);
+  if (!runId || !cycleId) {
+    return {
+      status: "fail",
+      issues: [issue("missing_workflow_identity", "workflow state manifest run_id and cycle_id are required", "workflow_state.manifest")]
+    };
+  }
+
+  const attemptStatus = normalizeString(attempt.status || "blocked");
+  if (!["pass", "fail", "blocked"].includes(attemptStatus)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_resume_attempt_status", "resume attempt status must be pass, fail, or blocked", "attempt.status")]
+    };
+  }
+
+  const id = nextSchedulerLoopResumeAttemptArtifactId(workflowState, options);
+  const createdAt = normalizeString(options.created_at || options.createdAt || attempt.created_at || attempt.createdAt) || new Date().toISOString();
+  const issues = asArray(attempt.issues);
+  const artifactStatus = attemptStatus === "pass" ? "pass" : "fail";
+  const metadata = {
+    type: "scheduler_loop_resume_attempt",
+    version: SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION,
+    status: attemptStatus,
+    run_id: runId,
+    cycle_id: cycleId,
+    source_projection_id: normalizeString(attempt.source_projection_id || attempt.sourceProjectionId) || null,
+    resume_projection_id: normalizeString(attempt.resume_projection_id || attempt.resumeProjectionId) || null,
+    recovery_status: normalizeString(attempt.recovery_status || attempt.recoveryStatus) || null,
+    recovery_action: normalizeString(attempt.recovery_action || attempt.recoveryAction) || null,
+    loop_status: normalizeString(attempt.loop_status || attempt.loopStatus) || null,
+    loop_phase: normalizeString(attempt.loop_phase || attempt.loopPhase) || null,
+    loop_artifact_id: normalizeString(attempt.loop_artifact_id || attempt.loopArtifactId) || null,
+    issues
+  };
+  const artifact = {
+    id,
+    type: "evaluation",
+    status: artifactStatus,
+    uri: `scheduler-loop://resume-attempt/${encodeURIComponent(runId)}/${encodeURIComponent(cycleId)}/${encodeURIComponent(id)}`,
+    producer: "autonomous-scheduler-loop",
+    created_at: createdAt,
+    metadata
+  };
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${id}`,
+    type: "scheduler_loop_resume_attempt",
+    status: attemptStatus,
+    artifact_id: id,
+    message: `scheduler loop resume ${attemptStatus}`,
+    created_at: createdAt,
+    metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    status: "pass",
+    artifact,
+    fact: metadata,
+    workflow_state: {
+      ...workflowState,
+      manifest: {
+        ...manifest,
+        artifacts: [...asArray(manifest.artifacts), artifact]
+      },
+      artifact_ledger: artifactLedger
+    }
+  };
+}
+
+export {
+  schedulerLoopInput,
+  AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION,
+  SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION
+};
