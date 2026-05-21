@@ -1,0 +1,299 @@
+{
+  "generated_at": "2026-05-21T16:25:00.000Z",
+  "manifest": {
+    "run_id": "run-20260521-platform-self-trial",
+    "cycle_id": "cycle-20260521-autonomous-platform",
+    "goal": "将新中台开发流程代码化并生成工作台一屏状态输入",
+    "context_pack": {
+      "requirement_summary": "继续开发新中台：将自主开发流程、多模型协同、reviewer gate 和工作台 projection 代码化",
+      "host": "platform_core",
+      "target_project_id": "ai-control-platform",
+      "non_goals": [
+        "不修改 stock_dashboard",
+        "不开发孤立 UI",
+        "不把 Claude+DeepSeek 写死为唯一审查方案"
+      ],
+      "forbidden_actions": [
+        "不得写入业务项目",
+        "不得写入 legacy/",
+        "不得跳过主进程评估"
+      ],
+      "owned_files": [
+        "src/workflow/run-manifest.js",
+        "src/workflow/artifact-ledger.js",
+        "src/workflow/task-dag.js",
+        "src/workflow/goal-guard.js",
+        "src/workflow/llm-reviewer-gate.js",
+        "src/workflow/model-router.js",
+        "src/workflow/workbench-projection.js",
+        "test/run-manifest.test.js",
+        "test/artifact-ledger.test.js",
+        "test/task-dag.test.js",
+        "test/goal-guard.test.js",
+        "test/llm-reviewer-gate.test.js",
+        "test/model-router.test.js",
+        "test/workbench-projection.test.js"
+      ],
+      "acceptance_gates": [
+        "npm test",
+        "npm run check:onboarding",
+        "Goal Guard self-check"
+      ],
+      "rollback_conditions": [
+        "平台能力写入业务项目",
+        "reviewer gate 被写成临时 skill",
+        "projection 无法展示模型和 reviewer 状态"
+      ],
+      "subtasks": [
+        {
+          "id": "workflow-state",
+          "title": "Run manifest and artifact ledger",
+          "owned_files": [
+            "src/workflow/run-manifest.js",
+            "src/workflow/artifact-ledger.js",
+            "test/run-manifest.test.js",
+            "test/artifact-ledger.test.js"
+          ]
+        },
+        {
+          "id": "routing-and-review",
+          "title": "Model router and reviewer gate",
+          "owned_files": [
+            "src/workflow/llm-reviewer-gate.js",
+            "src/workflow/model-router.js",
+            "test/llm-reviewer-gate.test.js",
+            "test/model-router.test.js"
+          ],
+          "depends_on": [
+            "workflow-state"
+          ]
+        },
+        {
+          "id": "projection",
+          "title": "Workbench projection assembler",
+          "owned_files": [
+            "src/workflow/workbench-projection.js",
+            "test/workbench-projection.test.js"
+          ],
+          "depends_on": [
+            "routing-and-review"
+          ]
+        }
+      ]
+    },
+    "work_packages": [
+      {
+        "id": "workflow-state",
+        "title": "Run manifest and artifact ledger",
+        "status": "completed",
+        "owned_files": [
+          "src/workflow/run-manifest.js",
+          "src/workflow/artifact-ledger.js",
+          "test/run-manifest.test.js",
+          "test/artifact-ledger.test.js"
+        ]
+      },
+      {
+        "id": "routing-and-review",
+        "title": "Model router and reviewer gate",
+        "status": "completed",
+        "owned_files": [
+          "src/workflow/llm-reviewer-gate.js",
+          "src/workflow/model-router.js",
+          "test/llm-reviewer-gate.test.js",
+          "test/model-router.test.js"
+        ],
+        "depends_on": [
+          "workflow-state"
+        ]
+      },
+      {
+        "id": "projection",
+        "title": "Workbench projection assembler",
+        "status": "completed",
+        "owned_files": [
+          "src/workflow/workbench-projection.js",
+          "test/workbench-projection.test.js"
+        ],
+        "depends_on": [
+          "routing-and-review"
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-context-pack",
+        "type": "context_pack",
+        "status": "pass",
+        "created_at": "2026-05-21T08:00:00.000Z"
+      },
+      {
+        "id": "event-reviewer-timeout",
+        "type": "reviewer_gate",
+        "status": "timeout",
+        "created_at": "2026-05-21T08:10:00.000Z"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "tests",
+        "status": "pass"
+      },
+      {
+        "id": "reviewer-timeout",
+        "status": "fail"
+      }
+    ],
+    "gate_results": [
+      {
+        "gate_id": "npm-test",
+        "status": "pass"
+      },
+      {
+        "gate_id": "goal-guard",
+        "status": "pass"
+      }
+    ],
+    "review_findings": [
+      {
+        "finding_id": "run-20260521-platform-self-trial-reviewer-timeout",
+        "status": "fail",
+        "category": "reviewer_timeout",
+        "severity": "medium",
+        "message": "External reviewer gate timed out after 120s; schedule a bounded rerun or model downgrade.",
+        "requires_rollback": false,
+        "requires_human": false,
+        "evidence": {
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "timeout_seconds": 120
+        }
+      }
+    ],
+    "recovery_attempts": [],
+    "created_at": "2026-05-21T08:00:00.000Z",
+    "updated_at": "2026-05-21T08:25:00.000Z"
+  },
+  "artifact_ledger": {
+    "run_id": "run-20260521-platform-self-trial",
+    "cycle_id": "cycle-20260521-autonomous-platform",
+    "artifacts": [
+      {
+        "id": "workflow-tests",
+        "type": "test",
+        "status": "pass",
+        "path": "test/workbench-projection.test.js",
+        "producer": "main-process",
+        "created_at": "2026-05-21T08:20:00.000Z"
+      },
+      {
+        "id": "reviewer-timeout",
+        "type": "review",
+        "status": "fail",
+        "content_hash": "sha256:reviewer-timeout-sample",
+        "producer": "llm-reviewer-gate",
+        "created_at": "2026-05-21T08:10:00.000Z"
+      }
+    ],
+    "created_at": "2026-05-21T08:00:00.000Z",
+    "updated_at": "2026-05-21T08:20:00.000Z"
+  },
+  "model_plan": {
+    "status": "pass",
+    "issues": [],
+    "goal": "将新中台开发流程代码化并生成工作台一屏状态输入",
+    "selected_model": "gpt",
+    "preferred_model": "gpt",
+    "roles": [
+      {
+        "role": "primary",
+        "model_id": "gpt",
+        "purpose": "produce the main plan or implementation output"
+      },
+      {
+        "role": "independent_reviewer",
+        "model_id": "deepseek-v4-pro",
+        "purpose": "perform read-only second-opinion review"
+      }
+    ],
+    "routing_reasons": [
+      "stage=implementation",
+      "risk=high",
+      "budget=high",
+      "selected gpt"
+    ],
+    "guardrails": {
+      "reviewer_default_read_only": true,
+      "high_risk_requires_independent_review": true,
+      "budget_downgrade_must_be_recorded": false
+    }
+  },
+  "reviewer_gate": {
+    "request": {
+      "run_id": "run-20260521-platform-self-trial",
+      "cycle_id": "cycle-20260521-autonomous-platform",
+      "provider": {
+        "provider": "claude-code",
+        "model": "deepseek-v4-pro",
+        "cost_tier": "medium",
+        "accuracy_tier": "high",
+        "tooling": "read-only"
+      },
+      "scope": "Review model-router and reviewer-gate as a bounded read-only sample.",
+      "files": [
+        "src/workflow/model-router.js",
+        "src/workflow/llm-reviewer-gate.js"
+      ],
+      "questions": [
+        "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+      ],
+      "forbidden_actions": [
+        "no edits",
+        "no write-capable tools"
+      ],
+      "output_contract": "Return structured findings.",
+      "read_only": true,
+      "allowed_tools": [
+        "read",
+        "grep",
+        "glob"
+      ]
+    },
+    "findings": [
+      {
+        "finding_id": "run-20260521-platform-self-trial-reviewer-timeout",
+        "status": "fail",
+        "category": "reviewer_timeout",
+        "severity": "medium",
+        "message": "External reviewer gate timed out after 120s; schedule a bounded rerun or model downgrade.",
+        "requires_rollback": false,
+        "requires_human": false,
+        "evidence": {
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "timeout_seconds": 120
+        }
+      }
+    ]
+  },
+  "task_dag": [
+    {
+      "id": "workflow-state",
+      "status": "done"
+    },
+    {
+      "id": "routing-and-review",
+      "status": "done",
+      "depends_on": [
+        "workflow-state"
+      ]
+    },
+    {
+      "id": "projection",
+      "status": "done",
+      "depends_on": [
+        "routing-and-review"
+      ]
+    }
+  ]
+}

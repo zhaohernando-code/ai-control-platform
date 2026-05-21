@@ -1,0 +1,166 @@
+{
+  "projection_version": "workbench.v1",
+  "generated_at": "2026-05-21T16:25:00.000Z",
+  "run_id": "run-20260521-platform-self-trial",
+  "cycle_id": "cycle-20260521-autonomous-platform",
+  "goal": "将新中台开发流程代码化并生成工作台一屏状态输入",
+  "status": "rerun",
+  "decision": "rerun",
+  "reasons": [
+    "rerun:run-20260521-platform-self-trial-reviewer-timeout: External reviewer gate timed out after 120s; schedule a bounded rerun or model downgrade.",
+    "rerun:reviewer-timeout: failed"
+  ],
+  "blockers": [],
+  "input_validation": {
+    "status": "pass",
+    "issues": []
+  },
+  "manifest": {
+    "run_id": "run-20260521-platform-self-trial",
+    "cycle_id": "cycle-20260521-autonomous-platform",
+    "goal": "将新中台开发流程代码化并生成工作台一屏状态输入",
+    "status": "pass",
+    "issues": [],
+    "work_package_count": 3,
+    "event_count": 2
+  },
+  "artifacts": {
+    "total": 2,
+    "by_type": {
+      "test": 1,
+      "review": 1
+    },
+    "by_status": {
+      "pass": 1,
+      "fail": 1
+    }
+  },
+  "model_routing": {
+    "status": "pass",
+    "selected_model": "gpt",
+    "preferred_model": "gpt",
+    "role_count": 2,
+    "by_model": {
+      "gpt": 1,
+      "deepseek-v4-pro": 1
+    },
+    "has_independent_reviewer": true,
+    "has_arbiter": false
+  },
+  "reviewer_gate": {
+    "run_id": "run-20260521-platform-self-trial",
+    "cycle_id": "cycle-20260521-autonomous-platform",
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "status": "fail",
+    "counts": {
+      "total": 1,
+      "passed": 0,
+      "failed": 1,
+      "rollback": 0,
+      "human": 0
+    },
+    "max_severity": "medium",
+    "recommended_decision_signal": "rerun"
+  },
+  "autonomous_run": {
+    "run_id": "run-20260521-platform-self-trial",
+    "cycle_id": "cycle-20260521-autonomous-platform",
+    "status": "rerun",
+    "decision": "rerun",
+    "reasons": [
+      "rerun:run-20260521-platform-self-trial-reviewer-timeout: External reviewer gate timed out after 120s; schedule a bounded rerun or model downgrade.",
+      "rerun:reviewer-timeout: failed"
+    ],
+    "blockers": [],
+    "summaries": {
+      "work_packages": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "unknown": 0
+      },
+      "artifacts": {
+        "total": 2,
+        "passed": 1,
+        "failed": 1,
+        "unknown": 0
+      },
+      "gates": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "unknown": 0
+      },
+      "review_findings": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "unknown": 0
+      },
+      "recovery_attempts": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "unknown": 0
+      }
+    },
+    "current_work_packages": [
+      {
+        "id": "workflow-state",
+        "title": "Run manifest and artifact ledger",
+        "owner": null
+      },
+      {
+        "id": "routing-and-review",
+        "title": "Model router and reviewer gate",
+        "owner": null
+      },
+      {
+        "id": "projection",
+        "title": "Workbench projection assembler",
+        "owner": null
+      }
+    ],
+    "next_work_packages": [
+      {
+        "id": "rerun_run_recovery",
+        "action": "rerun",
+        "title": "Rerun failed checks with recovery context",
+        "reason": "rerun:run-20260521-platform-self-trial-reviewer-timeout: External reviewer gate timed out after 120s; schedule a bounded rerun or model downgrade.",
+        "source": null
+      }
+    ],
+    "recovery": {
+      "consecutive_failed_attempts": 0,
+      "last_attempt_id": null,
+      "last_attempt_status": null
+    }
+  },
+  "task_dag": {
+    "status": "pass",
+    "issues": [],
+    "total": 3,
+    "by_status": {
+      "done": 3
+    },
+    "dispatchable": []
+  },
+  "one_screen": {
+    "headline": "将新中台开发流程代码化并生成工作台一屏状态输入",
+    "primary_status": "rerun",
+    "next_actions": [
+      {
+        "id": "rerun_run_recovery",
+        "action": "rerun",
+        "title": "Rerun failed checks with recovery context"
+      }
+    ],
+    "counters": {
+      "work_packages": 3,
+      "artifacts": 2,
+      "reviewer_findings": 1,
+      "dispatchable_tasks": 0
+    }
+  }
+}
