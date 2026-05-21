@@ -260,6 +260,20 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Schedulers need a single next_action_readout derived from the latest automation driver; otherwise they must parse the full operations timeline and can drift on action selection."
+    },
+    {
+      "id": "projected-next-action-without-execution-gate",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A visible next_action_readout is insufficient for self-running development unless execution goes through a service-side allowlist, projection drift check, and fail-closed unsupported-action path."
+    },
+    {
+      "id": "timeline-clock-skew-breaks-causal-next-action",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Operations timeline and next_action_readout must use durable manifest append order, not wall-clock created_at sorting, because fixture or multi-process clock skew can cause newly appended scheduler facts to be hidden behind older reviewer facts."
     }
   ],
   "hardening_items": [
@@ -733,6 +747,22 @@
       "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/workbench-projection-fixture.test.js; test/workbench-shell.test.js",
       "regression_test": "workbench projection exposes next_action_readout from reviewer_provider_health latest_driver; schema requires next_action_readout; browser gate renders next-action readout",
       "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-projection-fixture.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "projected-next-action-without-execution-gate",
+      "invariant": "Recommended next actions must execute only through a service-side allowlist that recomputes projection state, rejects expected-action drift, supports only explicitly wired autonomous actions, and fails closed for unsupported reviewer or inspection actions.",
+      "enforcement_target": "tools/workbench-server.mjs; apps/workbench/projection-source.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; test/workbench-server.test.js; test/workbench-projection-source.test.js; test/workbench-shell.test.js",
+      "regression_test": "workbench server executes allowlisted projected next actions; workbench server fails closed for unsupported projected next action; workbench server fails closed when projected next action drifts; projection source runs projected next action; workbench shell exposes guarded next-action control",
+      "verification": "node --test test/workbench-server.test.js test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "timeline-clock-skew-breaks-causal-next-action",
+      "invariant": "Operations timeline latest/latest_driver and next_action_readout must follow manifest event append order instead of created_at sorting so newly appended scheduler facts remain causally latest even when fixture, model, or process clocks differ.",
+      "enforcement_target": "src/workflow/workbench-projection.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; test/workbench-projection.test.js; tools/check-workbench-browser-events.mjs",
+      "regression_test": "workbench operations timeline follows manifest order across clock skew; guarded_next_action_click browser scenario executes the projected enqueue action after approved dispatch",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

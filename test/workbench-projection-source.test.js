@@ -301,6 +301,35 @@ test("projection source resumes autonomous scheduler loop", async () => {
   assert.doesNotMatch(calls[0].options.body, /projection_id/);
 });
 
+test("projection source runs projected next action", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    nextActionUrl: "/api/workbench/next-action",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "executed", action: "run_autonomous_scheduler_loop", projection: validProjection() };
+        }
+      };
+    }
+  });
+
+  const result = await source.runNextAction({
+    projection_id: "current",
+    expected_action: "run_autonomous_scheduler_loop",
+    max_iterations: 1
+  });
+
+  assert.equal(result.status, "executed");
+  assert.equal(source.nextActionUrl, "/api/workbench/next-action");
+  assert.equal(calls[0].url, "/api/workbench/next-action?id=current");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /expected_action/);
+  assert.doesNotMatch(calls[0].options.body, /projection_id/);
+});
+
 test("projection source rejects failed scheduler dispatch", async () => {
   const projection = validProjection();
   const source = createProjectionSource({
@@ -374,6 +403,26 @@ test("projection source rejects failed autonomous scheduler loop resume", async 
 
   await assert.rejects(source.resumeAutonomousSchedulerLoop({ max_iterations: 1 }), (error) => {
     assert.match(error.message, /Autonomous scheduler loop resume failed: 409/);
+    assert.equal(error.projection, projection);
+    return true;
+  });
+});
+
+test("projection source rejects failed projected next action", async () => {
+  const projection = validProjection();
+  const source = createProjectionSource({
+    nextActionUrl: "/api/workbench/next-action",
+    fetch: async () => ({
+      ok: false,
+      status: 409,
+      async json() {
+        return { error: "unsupported next action", projection };
+      }
+    })
+  });
+
+  await assert.rejects(source.runNextAction({ expected_action: "run_reviewer_scope_shard" }), (error) => {
+    assert.match(error.message, /Workbench next action failed: 409/);
     assert.equal(error.projection, projection);
     return true;
   });

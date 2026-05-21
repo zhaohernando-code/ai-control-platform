@@ -160,6 +160,7 @@
     "driver_count": 2,
     "operator_only_count": 0,
     "latest_driver": {
+      "sequence": 4,
       "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
       "type": "reviewer_scope_split",
       "group": "reviewer_recovery",
@@ -170,6 +171,7 @@
       "summary": "2 shard(s)"
     },
     "latest": {
+      "sequence": 4,
       "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
       "type": "reviewer_scope_split",
       "group": "reviewer_recovery",
@@ -181,6 +183,7 @@
     },
     "items": [
       {
+        "sequence": 3,
         "event_id": "event-reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
         "type": "reviewer_provider_health",
         "group": "reviewer_recovery",
@@ -191,6 +194,7 @@
         "summary": "healthy / rerun_without_tools, split_scope"
       },
       {
+        "sequence": 4,
         "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
         "type": "reviewer_scope_split",
         "group": "reviewer_recovery",

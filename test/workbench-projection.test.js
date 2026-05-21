@@ -877,6 +877,70 @@ test("workbench projection exposes compact operations timeline", () => {
   assert.equal(mobile.next_action_readout.action, "split_scope");
 });
 
+test("workbench operations timeline follows manifest order across clock skew", () => {
+  const input = baseInput();
+  const reviewerArtifact = {
+    id: "reviewer-scope-split-clock-skew",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://reviewer-scope-split/clock-skew",
+    producer: "reviewer-scope-splitter",
+    created_at: "2026-05-22T20:20:30.000Z",
+    metadata: {
+      type: "reviewer_scope_split",
+      status: "planned",
+      shard_count: 2,
+      shards: [{ id: "reviewer-scope-shard-001" }]
+    }
+  };
+  const continuationArtifact = {
+    id: "scheduler-dispatch-continuation-clock-skew",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-dispatch://continuation/clock-skew",
+    producer: "scheduler-dispatch-continuation",
+    created_at: "2026-05-22T17:36:04.000Z",
+    metadata: {
+      type: "scheduler_dispatch_continuation",
+      status: "ready",
+      next_decision: { action: "rerun", next_work_packages: [{ id: "next" }] }
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${reviewerArtifact.id}`,
+        type: "reviewer_scope_split",
+        status: "planned",
+        artifact_id: reviewerArtifact.id,
+        created_at: reviewerArtifact.created_at,
+        metadata: reviewerArtifact.metadata
+      },
+      {
+        id: `event-${continuationArtifact.id}`,
+        type: "scheduler_dispatch_continuation",
+        status: "pass",
+        artifact_id: continuationArtifact.id,
+        created_at: continuationArtifact.created_at,
+        metadata: continuationArtifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, reviewerArtifact, continuationArtifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, reviewerArtifact, continuationArtifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.operations_timeline.items.at(-1).type, "scheduler_dispatch_continuation");
+  assert.equal(projection.operations_timeline.latest_driver.type, "scheduler_dispatch_continuation");
+  assert.equal(projection.next_action_readout.action, "enqueue_scheduler_next_cycle");
+});
+
 test("workbench projection exposes scheduler dispatch policy blockers", () => {
   const input = baseInput();
   const artifact = {

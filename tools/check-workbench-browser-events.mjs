@@ -250,6 +250,42 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
   });
 }
 
+async function verifyGuardedNextActionClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-scheduler-dispatch="approved-mock"]');
+    await page.waitForFunction(() => document.querySelector('[data-scheduler-dispatch="approved-mock"]')?.textContent.includes("调度已记录"));
+    const projectedAction = await page.textContent('[data-bind="next_action_readout_action"]');
+    await page.click('[data-workbench-next-action="guarded"]');
+    await page.waitForFunction(() => document.querySelector('[data-workbench-next-action="guarded"]')?.textContent.includes("推荐动作已记录"));
+
+    const buttonText = await page.textContent('[data-workbench-next-action="guarded"]');
+    const schedulerContinuationReady = await page.textContent('[data-bind="scheduler_continuation_ready"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(projectedAction === "enqueue_scheduler_next_cycle", "guarded next action must execute the projected enqueue action");
+    assert(buttonText.includes("推荐动作已记录"), "guarded next action button must show persisted execution");
+    assert(schedulerContinuationReady, "guarded next action must render a projection after execution");
+    assert(dimensions.scrollWidth <= dimensions.width, "guarded next action must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "guarded_next_action_click",
+      projected_action: projectedAction,
+      button_text: buttonText,
+      scheduler_continuation_ready: schedulerContinuationReady,
+      dimensions
+    }, null, 2));
+  });
+}
+
 async function verifyAutonomousSchedulerLoopClick(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -373,6 +409,7 @@ try {
   await verifyProviderHealthClick(browser);
   await verifySchedulerDispatchClick(browser);
   await verifyApprovedMockSchedulerDispatchClick(browser);
+  await verifyGuardedNextActionClick(browser);
   await verifyAutonomousSchedulerLoopClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {

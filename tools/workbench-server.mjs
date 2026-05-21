@@ -314,6 +314,11 @@ function createWorkbenchLoopClient(baseUrl) {
       const url = new URL("/api/workbench/scheduler-next-cycle", base);
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
+    },
+    runAutonomousSchedulerLoop(projectionId, body = {}) {
+      const url = new URL("/api/workbench/autonomous-scheduler-loop", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
     }
   };
 }
@@ -433,6 +438,61 @@ function appendEvent(eventsPath, event) {
   };
   writeFileSync(eventsPath, `${JSON.stringify(nextLedger, null, 2)}\n`);
   return nextLedger;
+}
+
+const SUPPORTED_NEXT_ACTIONS = new Set([
+  "enqueue_scheduler_next_cycle",
+  "run_autonomous_scheduler_loop"
+]);
+
+async function executeProjectedNextAction({ req, selectedId, projection, input = {} }) {
+  const readout = projection.next_action_readout || {};
+  const action = normalizeString(readout.action);
+  const expectedAction = normalizeString(input.expected_action || input.expectedAction);
+
+  if (expectedAction && expectedAction !== action) {
+    return {
+      status: "blocked",
+      http_status: 409,
+      error: "projected next action drifted",
+      issues: [{
+        code: "next_action_drift",
+        message: `expected ${expectedAction} but projection recommends ${action || "none"}`,
+        path: "next_action_readout.action"
+      }]
+    };
+  }
+
+  if (readout.status !== "ready" || !SUPPORTED_NEXT_ACTIONS.has(action)) {
+    return {
+      status: "blocked",
+      http_status: 409,
+      error: "projected next action is not supported for autonomous execution",
+      issues: [{
+        code: "unsupported_projected_next_action",
+        message: `${action || "none"} is not in the autonomous execution allowlist`,
+        path: "next_action_readout.action"
+      }]
+    };
+  }
+
+  const client = createWorkbenchLoopClient(workbenchBaseUrlFromRequest(req));
+  if (action === "enqueue_scheduler_next_cycle") {
+    const result = await client.enqueueSchedulerNextCycle(selectedId, {
+      snapshot_id: input.snapshot_id || input.snapshotId,
+      label: input.label,
+      created_at: input.created_at || input.createdAt
+    });
+    return { status: "executed", action, result };
+  }
+
+  const result = await client.runAutonomousSchedulerLoop(selectedId, {
+    max_iterations: input.max_iterations || input.maxIterations || 1,
+    execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+    snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "autonomous-loop",
+    created_at: input.created_at || input.createdAt
+  });
+  return { status: "executed", action, result };
 }
 
 function safeStaticPath(pathname) {
@@ -1059,6 +1119,55 @@ export function createWorkbenchServer(options = {}) {
           resume_attempt: resumeAttempt.artifact,
           source_projection: createWorkbenchProjection(resumeAttempt.workflow_state),
           projection: createWorkbenchProjection(recorded.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/next-action" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const projection = createWorkbenchProjection(workflowState);
+        const executed = await executeProjectedNextAction({
+          req,
+          selectedId,
+          projection,
+          input
+        });
+        if (executed.status !== "executed") {
+          jsonResponse(res, executed.http_status || 409, {
+            error: executed.error,
+            issues: executed.issues || [],
+            item,
+            next_action_readout: projection.next_action_readout,
+            projection
+          });
+          return;
+        }
+
+        jsonResponse(res, 201, {
+          status: "executed",
+          action: executed.action,
+          item,
+          next_action_readout: projection.next_action_readout,
+          result: executed.result,
+          projection: executed.result?.projection || executed.result?.current_projection || null
         });
         return;
       }

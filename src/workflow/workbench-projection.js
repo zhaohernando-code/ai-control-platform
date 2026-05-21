@@ -588,11 +588,13 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
     ...asArray(manifest?.artifacts)
   ];
   const items = asArray(manifest?.events)
-    .filter((event) => OPERATION_EVENT_TYPES.has(event?.type))
-    .map((event) => {
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => OPERATION_EVENT_TYPES.has(event?.type))
+    .map(({ event, index }) => {
       const artifact = artifacts.find((entry) => entry.id === event.artifact_id) || null;
       const metadata = artifact?.metadata || event.metadata || {};
       return {
+        sequence: index + 1,
         event_id: event.id || null,
         type: event.type,
         group: operationGroup(event.type),
@@ -603,7 +605,6 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
         summary: operationSummary(event.type, metadata)
       };
     })
-    .sort((left, right) => normalizeString(left.created_at).localeCompare(normalizeString(right.created_at)))
     .slice(-12);
   const groupCounts = items.reduce((summary, item) => {
     summary[item.group] = (summary[item.group] || 0) + 1;

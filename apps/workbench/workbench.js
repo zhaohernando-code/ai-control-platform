@@ -359,6 +359,40 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
   });
 });
 
+qsa("[data-workbench-next-action]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const action = currentProjection?.next_action_readout?.action || currentProjection?.one_screen?.recommended_action;
+    button.dataset.eventState = "pending";
+    button.textContent = "推荐动作执行中";
+
+    try {
+      const result = await source.runNextAction({
+        projection_id: currentProjectionId,
+        expected_action: action,
+        max_iterations: 1,
+        execution_profile: "approved_mock_non_dry_run",
+        snapshot_id: `workbench-next-${Date.now()}`,
+        snapshot_prefix: "workbench-next-loop",
+        created_at: new Date().toISOString()
+      });
+      button.dataset.eventState = "recorded";
+      button.textContent = "推荐动作已记录";
+      currentProjectionId = result.result?.next_item?.id || result.result?.item?.id || result.item?.id || currentProjectionId;
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch (error) {
+      if (error.projection) {
+        currentProjection = error.projection;
+        renderProjection(error.projection);
+      }
+      button.dataset.eventState = "failed";
+      button.textContent = "推荐动作被拦截";
+    }
+  });
+});
+
 qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
   button.addEventListener("click", async () => {
     button.dataset.eventState = "pending";

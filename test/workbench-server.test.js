@@ -531,6 +531,116 @@ test("workbench server rejects scheduler next-cycle without dispatch run artifac
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server executes allowlisted projected next actions", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-"));
+  const inputPath = join(snapshotsRoot, "next-action-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "next-action-source",
+    items: [
+      {
+        id: "next-action-source",
+        label: "Next action source",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const dispatch = await request(`${baseUrl}/api/workbench/scheduler-dispatch?id=next-action-source`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        execution_profile: "approved_mock_non_dry_run",
+        created_at: "2026-05-22T02:50:00.000Z"
+      })
+    });
+    assert.equal(dispatch.status, 201);
+
+    const enqueue = await request(`${baseUrl}/api/workbench/next-action?id=next-action-source`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "enqueue_scheduler_next_cycle",
+        snapshot_id: "next-action-queued",
+        label: "Next action queued",
+        created_at: "2026-05-22T02:51:00.000Z"
+      })
+    });
+    const queued = enqueue.json();
+    const sourceAfterEnqueue = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(enqueue.status, 201);
+    assert.equal(queued.status, "executed");
+    assert.equal(queued.action, "enqueue_scheduler_next_cycle");
+    assert.equal(queued.next_action_readout.action, "enqueue_scheduler_next_cycle");
+    assert.equal(queued.result.status, "queued");
+    assert.equal(queued.result.next_item.id, "next-action-queued");
+    assert.equal(sourceAfterEnqueue.manifest.events.at(-1).type, "scheduler_next_cycle_enqueue");
+
+    const loop = await request(`${baseUrl}/api/workbench/next-action?id=next-action-source`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "run_autonomous_scheduler_loop",
+        max_iterations: 1,
+        snapshot_prefix: "next-action-loop",
+        created_at: "2026-05-22T02:52:00.000Z"
+      })
+    });
+    const looped = loop.json();
+    const sourceAfterLoop = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(loop.status, 201);
+    assert.equal(looped.status, "executed");
+    assert.equal(looped.action, "run_autonomous_scheduler_loop");
+    assert.equal(looped.next_action_readout.action, "run_autonomous_scheduler_loop");
+    assert.equal(looped.result.status, "created");
+    assert.equal(looped.result.result.phase, "iteration_limit_reached");
+    assert.equal(sourceAfterLoop.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server fails closed for unsupported projected next action", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=current-session`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "run_reviewer_scope_shard",
+        created_at: "2026-05-22T02:53:00.000Z"
+      })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 409);
+    assert.equal(rejected.next_action_readout.action, "run_reviewer_scope_shard");
+    assert.equal(rejected.issues[0].code, "unsupported_projected_next_action");
+  });
+});
+
+test("workbench server fails closed when projected next action drifts", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=current-session`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "enqueue_scheduler_next_cycle",
+        created_at: "2026-05-22T02:54:00.000Z"
+      })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 409);
+    assert.equal(rejected.next_action_readout.action, "run_reviewer_scope_shard");
+    assert.equal(rejected.issues[0].code, "next_action_drift");
+  });
+});
+
 test("workbench server runs bounded autonomous scheduler loop from projection history input", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-"));
