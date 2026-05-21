@@ -485,6 +485,14 @@
       "regression_test": "scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands; scheduler dispatch plan fails closed without workflow state input path; scheduler dispatch plan CLI writes reviewer shard dispatch plan",
       "verification": "node --test test/scheduler-dispatch-plan.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-dispatch-unbounded-execution",
+      "invariant": "Scheduler dispatch execution must validate plans, run only whitelisted npm scripts, respect step dependencies, stop on first failure, and emit scheduler-dispatch-run.v1 artifacts.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-runner.js; tools/run-scheduler-dispatch-plan.mjs; package.json; test/scheduler-dispatch-runner.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch runner validates allowed npm scripts; scheduler dispatch runner executes steps with injected executor; scheduler dispatch runner stops on step failure; run-scheduler-dispatch-plan CLI writes dry-run artifact",
+      "verification": "node --test test/scheduler-dispatch-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

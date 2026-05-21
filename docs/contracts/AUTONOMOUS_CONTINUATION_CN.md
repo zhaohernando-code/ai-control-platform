@@ -137,6 +137,14 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 缺少 `workflow_state_input_path` 时必须失败闭合，因为 reviewer shard runner 需要明确输入/输出文件。
 - dispatch plan 只生成可审计命令，不直接绕过 artifact validation 或 closeout validation。
 
+`tools/run-scheduler-dispatch-plan.mjs` / `npm run run:scheduler-dispatch` 是当前受限执行器：
+
+- 执行前必须先 validate dispatch plan。
+- 只允许 `npm run run:reviewer-shard`、`npm run prepare:reviewer-shard-loop-continuation`、`npm run run:autonomous-closeout-loop`。
+- 按 step `depends_on` 顺序执行；任一步失败立即停止。
+- 支持 `--dry-run`，用于 closeout 前验证计划结构。
+- 输出 `scheduler-dispatch-run.v1` artifact，记录每个 step 的 status、exit code、stdout/stderr 和 dry-run 标记。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。

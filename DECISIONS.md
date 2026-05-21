@@ -530,3 +530,14 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - runner step 默认使用 `--all` 和 `--record-provider-health`，避免每个 shard 后停住或 timeout 后丢失 health fact。
 - dispatch planner 缺少 workflow state input path 时失败闭合。
 - CLI `tools/create-scheduler-dispatch-plan.mjs` / `npm run plan:scheduler-dispatch` 写出可审计计划 JSON，后续执行器只需要按 steps 运行。
+
+[2026-05-21T22:34:02+08:00] Scheduler dispatch execution must be bounded:
+有了 dispatch plan 后，如果执行器允许任意 command，自动执行会变成新的安全和跑偏入口。执行器必须只运行平台明确支持的 scheduler steps。
+
+决策：
+- 新增 `scheduler-dispatch-runner`。
+- 执行前验证计划和 step dependencies。
+- 仅允许三个白名单 npm scripts：`run:reviewer-shard`、`prepare:reviewer-shard-loop-continuation`、`run:autonomous-closeout-loop`。
+- 任一步失败立即停止，输出结构化 issue。
+- 新增 `scheduler-dispatch-run.v1` artifact，保存 step 结果和 dry-run 标记。
+- CLI `tools/run-scheduler-dispatch-plan.mjs` 支持 `--dry-run`，用于在真实执行前验证计划。
