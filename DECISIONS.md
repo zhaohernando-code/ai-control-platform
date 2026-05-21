@@ -580,3 +580,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - 写入前要求 history item 有 `input_path`，禁止写入静态 projection fallback。
 - `recordSchedulerDispatchRunArtifact` 拒绝 artifact run/cycle 与 workflow state manifest 不一致。
 - Projection Source 增加 `recordSchedulerDispatchRun`，供后续调度执行器或工作台控制面复用。
+
+[2026-05-21T23:02:49+08:00] Scheduler dispatch CLI must close the loop into workbench writeback:
+有服务端写回 API 后，如果 `run:scheduler-dispatch` 仍只输出本地 artifact 文件，自动调度和工作台状态之间仍需要人工搬运。
+
+决策：
+- `run-scheduler-dispatch-plan.mjs` 增加 `--workbench-base-url`。
+- 可选 `--projection-id` 指定 history item，避免写错当前 snapshot。
+- CLI 先写本地 `scheduler-dispatch-run.v1` artifact，再 POST 到 `/api/workbench/scheduler-dispatch-run`。
+- 只要 artifact 执行失败或服务写回失败，CLI 都以失败退出。
+- 集成测试必须证明 CLI dry-run 后 workflow snapshot 和 projection 都显示 `scheduler_dispatch.status = pass`。

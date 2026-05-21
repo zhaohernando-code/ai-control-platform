@@ -147,6 +147,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 输出 `scheduler-dispatch-run.v1` artifact，记录每个 step 的 status、exit code、stdout/stderr 和 dry-run 标记。
 - `scheduler-dispatch-run.v1` 可以记录回 workflow state，工作台 projection 必须展示 latest scheduler dispatch status。
 - 工作台服务必须提供 scheduler dispatch run 写回 API；写回前校验 artifact version、status、result.steps、history input_path 和 run/cycle identity。
+- 调度 CLI 支持 `--workbench-base-url` / `--projection-id`，用于在执行完成后自动写回工作台服务；artifact 执行失败或写回失败都不能伪装为成功。
 
 ## 5. 与工作台关系
 

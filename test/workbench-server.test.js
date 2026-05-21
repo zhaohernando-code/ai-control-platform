@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
@@ -50,6 +51,26 @@ function request(url, options = {}) {
     req.on("error", reject);
     if (options.body) req.write(options.body);
     req.end();
+  });
+}
+
+function runNode(args, options = {}) {
+  return new Promise((resolveRun, reject) => {
+    const child = spawn(process.execPath, args, {
+      cwd: process.cwd(),
+      env: { ...process.env, ...(options.env || {}) },
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (status) => resolveRun({ status, stdout, stderr }));
   });
 }
 
@@ -360,6 +381,67 @@ test("workbench server records scheduler dispatch runs into workflow state input
     assert.equal(created.projection.scheduler_dispatch.step_count, 3);
     assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
     assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.version, "scheduler-dispatch-run.v1");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("run-scheduler-dispatch-plan CLI records scheduler dispatch run through workbench service", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-cli-"));
+  const inputPath = join(snapshotsRoot, "scheduler-cli-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const planPath = join(snapshotsRoot, "scheduler-cli-plan.json");
+  const outputPath = join(snapshotsRoot, "scheduler-cli-run.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const plan = createSchedulerDispatchPlan({
+    project_status: {
+      project: "ai-control-platform",
+      blockers: [],
+      next_step: ""
+    },
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  }, {
+    workflow_state_input_path: relative(process.cwd(), inputPath)
+  });
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(planPath, JSON.stringify(plan, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-cli",
+    items: [
+      {
+        id: "scheduler-cli",
+        label: "Scheduler CLI",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const result = await runNode([
+      "tools/run-scheduler-dispatch-plan.mjs",
+      "--plan",
+      planPath,
+      "--output",
+      outputPath,
+      "--dry-run",
+      "--workbench-base-url",
+      baseUrl,
+      "--projection-id",
+      "scheduler-cli"
+    ]);
+    const summary = JSON.parse(result.stdout);
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+    const projection = (await request(`${baseUrl}/api/workbench/projection?id=scheduler-cli`)).json();
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(summary.status, "pass");
+    assert.equal(summary.record_status, "pass");
+    assert.equal(summary.projection_scheduler_status, "pass");
+    assert.equal(summary.projection_scheduler_steps, 3);
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+    assert.equal(projection.scheduler_dispatch.status, "pass");
+    assert.equal(projection.scheduler_dispatch.step_count, 3);
   }, { historyPath, snapshotsRoot });
 });
 
