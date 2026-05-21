@@ -32,6 +32,14 @@
 - Durable state 中 shard result 顺序：001 -> 002
 - 最终写入 `reviewer_shard_aggregate`，pending shards 为 0
 
+浏览器门禁增加 `projected_real_partial_shard_readout`：
+
+- PC 工作台渲染 `shard_review_next=reviewer-scope-shard-002`
+- 渲染 executor：`browser_test_real_reviewer`
+- 渲染 external budget：`1`
+- 渲染推荐动作：`run_reviewer_scope_shard`
+- 1440px 宽度下无横向溢出
+
 ## 结论
 
 单片预算真实 reviewer loop 可以通过重复 bounded projected loop 自主推进，不需要人工选择 shard，也不会重复调用已完成 shard。

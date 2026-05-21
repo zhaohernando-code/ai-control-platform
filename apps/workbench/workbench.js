@@ -137,6 +137,7 @@ function renderProjection(projection) {
   setText("shard_review_status", shardReview.status);
   setText("shard_review_completed", shardReview.completed_shards ?? 0);
   setText("shard_review_failed", shardReview.failed_finding_count ?? 0);
+  setText("shard_review_next", shardReview.next_shard);
   setText("shard_review_executor", shardReview.latest_executor_kind);
   setText("shard_review_profile", shardReview.latest_execution_profile);
   setText("shard_review_budget", shardReview.latest_external_call_budget_used ?? 0);

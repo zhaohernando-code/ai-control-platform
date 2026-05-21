@@ -14,7 +14,7 @@ function assert(condition, message) {
   }
 }
 
-async function withWorkbenchServer(fn) {
+async function withWorkbenchServer(fn, options = {}) {
   mkdirSync("tmp", { recursive: true });
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-ui-events-"));
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-browser-snapshots-"));
@@ -36,7 +36,12 @@ async function withWorkbenchServer(fn) {
     ]
   }, null, 2));
 
-  const server = createWorkbenchServer({ eventsPath, historyPath, snapshotsRoot });
+  const server = createWorkbenchServer({
+    eventsPath,
+    historyPath,
+    snapshotsRoot,
+    realReviewerExecutor: options.realReviewerExecutor
+  });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
 
@@ -335,6 +340,72 @@ async function verifyProjectedMockLoopClick(browser) {
   });
 }
 
+async function verifyProjectedRealPartialShardReadout(browser) {
+  const calls = [];
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-autonomous-scheduler-loop="projected-real"]');
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-real"]')?.textContent.includes("Projected Loop 已记录"));
+
+    const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
+    const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
+    const schedulerLoopStrategy = await page.textContent('[data-bind="scheduler_loop_strategy"]');
+    const shardReviewCompleted = await page.textContent('[data-bind="shard_review_completed"]');
+    const shardReviewNext = await page.textContent('[data-bind="shard_review_next"]');
+    const shardReviewExecutor = await page.textContent('[data-bind="shard_review_executor"]');
+    const shardReviewBudget = await page.textContent('[data-bind="shard_review_budget"]');
+    const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(calls.length === 1 && calls[0] === "reviewer-scope-shard-001", "projected real partial run must execute only the first shard");
+    assert(schedulerLoopStatus === "pass", "projected real partial loop must render loop pass");
+    assert(schedulerLoopIterations === "1", "projected real partial loop must stay within one iteration");
+    assert(schedulerLoopStrategy === "projected_next_action", "projected real partial loop must render projected strategy");
+    assert(shardReviewCompleted === "1", "projected real partial loop must render one completed shard");
+    assert(shardReviewNext === "reviewer-scope-shard-002", "projected real partial loop must render next pending shard");
+    assert(shardReviewExecutor === "browser_test_real_reviewer", "projected real partial loop must render injected real executor");
+    assert(shardReviewBudget === "1", "projected real partial loop must render one external reviewer call");
+    assert(nextActionReadout === "run_reviewer_scope_shard", "projected real partial loop must recommend the next shard");
+    assert(dimensions.scrollWidth <= dimensions.width, "projected real partial loop must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "projected_real_partial_shard_readout",
+      scheduler_loop_status: schedulerLoopStatus,
+      scheduler_loop_iterations: schedulerLoopIterations,
+      scheduler_loop_strategy: schedulerLoopStrategy,
+      shard_review_completed: shardReviewCompleted,
+      shard_review_next: shardReviewNext,
+      shard_review_executor: shardReviewExecutor,
+      shard_review_budget: shardReviewBudget,
+      next_action_readout: nextActionReadout,
+      dimensions
+    }, null, 2));
+  }, {
+    realReviewerExecutor: async ({ shard }) => {
+      calls.push(shard.id);
+      return {
+        status: "pass",
+        findings: [],
+        provenance: {
+          executor_kind: "browser_test_real_reviewer",
+          provider: "deepseek",
+          model: "deepseek-v4-pro",
+          timeout_seconds: 90,
+          external_call_budget_used: 1
+        }
+      };
+    }
+  });
+}
+
 async function verifyAutonomousSchedulerLoopClick(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -460,6 +531,7 @@ try {
   await verifyApprovedMockSchedulerDispatchClick(browser);
   await verifyGuardedNextActionClick(browser);
   await verifyProjectedMockLoopClick(browser);
+  await verifyProjectedRealPartialShardReadout(browser);
   await verifyAutonomousSchedulerLoopClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {

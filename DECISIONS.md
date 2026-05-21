@@ -921,3 +921,4 @@ Injected real-loop smoke 暴露了一个流程细节：如果为了预检把 pro
 - 当 loop phase 为 `iteration_limit_reached` 且 reviewer shard review 仍有 pending shard 时，projection 推荐 `run_reviewer_scope_shard`。
 - 第二轮真实 reviewer loop 仍通过 reviewer execution policy、provider-health preflight、单次外部调用预算和 bounded timeout。
 - 回归验证两轮单片 projected real loop 依次执行 shard 001/002，并在 durable state 中聚合，不重复 001。
+- PC/mobile 工作台渲染 reviewer shard 的 next shard；浏览器门禁用 injected real reviewer 验证单片真实预算后可见 `next_shard=reviewer-scope-shard-002`、budget=1 和 `next_action=run_reviewer_scope_shard`。
