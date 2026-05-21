@@ -171,6 +171,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 每一次 scheduler loop resume 尝试都必须写入源 workflow state：事件类型为 `scheduler_loop_resume_attempt`，artifact metadata version 为 `scheduler-loop-resume-attempt.v1`。blocked 尝试必须记录 recovery status/action 和 issues；成功尝试必须记录 source projection、resume projection、loop status/phase 与目标 loop artifact id。Projection 必须展示 latest resume attempt status/target/issue。
 - 工作台服务必须提供 `POST /api/workbench/next-action` 作为推荐动作的唯一受控执行入口。该入口必须重新计算所选 projection 的 `next_action_readout`，校验调用方传入的 `expected_action` 未漂移，并且只允许执行白名单动作；当前白名单包含 `enqueue_scheduler_next_cycle`、`run_autonomous_scheduler_loop`、`run_reviewer_scope_shard`。resume、inspect 等尚未接入的动作必须失败闭合并返回 projection/readout，不得隐式降级为人工成功或临时脚本。
 - `run_reviewer_scope_shard` 必须通过工作台服务端的 reviewer shard runner 路径执行：服务端从 durable workflow state 选择 pending shard，真实执行默认使用 provider-neutral runner + Claude/DeepSeek executor，测试或受控 profile 可以显式传入 mock reviewer 输出；执行结果必须写回 reviewer_shard_result、必要时的 reviewer_shard_aggregate 或 reviewer_provider_health facts。
+- Autonomous scheduler loop 必须支持两种策略：默认 `scheduler_dispatch_chain` 保留现有稳定路径；`projected_next_action` 先读取 projection 的 `next_action_readout`，再通过 `/api/workbench/next-action` 执行推荐动作。Projected strategy 用于验证平台是否能从看板状态直接推进，而不是只靠写死的 scheduler-only step sequence。
 
 ## 5. 与工作台关系
 

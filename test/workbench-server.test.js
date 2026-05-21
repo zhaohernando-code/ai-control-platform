@@ -686,6 +686,59 @@ test("workbench server records direct reviewer shard runs", async () => {
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server resumes scheduler loop through projected next action", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-resume-"));
+  const inputPath = join(snapshotsRoot, "next-action-resume-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "next-action-resume",
+    items: [
+      {
+        id: "next-action-resume",
+        label: "Next action resume",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const loop = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=next-action-resume`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        snapshot_prefix: "resume-loop",
+        created_at: "2026-05-22T02:53:40.000Z"
+      })
+    });
+    assert.equal(loop.status, 201);
+
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=next-action-resume`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "resume_autonomous_scheduler_loop",
+        snapshot_prefix: "next-action-resume",
+        created_at: "2026-05-22T02:53:50.000Z"
+      })
+    });
+    const created = response.json();
+    const sourceState = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "executed");
+    assert.equal(created.action, "resume_autonomous_scheduler_loop");
+    assert.equal(created.result.status, "created");
+    assert.equal(created.result.recovery.status, "ready");
+    assert.equal(sourceState.manifest.events.at(-1).type, "scheduler_loop_resume_attempt");
+    assert.equal(sourceState.manifest.events.at(-1).status, "pass");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server fails closed for unsupported projected next action", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-unsupported-"));
@@ -706,7 +759,7 @@ test("workbench server fails closed for unsupported projected next action", asyn
   }));
 
   await withServer(async (baseUrl) => {
-    const loop = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=next-action-unsupported`, {
+    const first = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=next-action-unsupported`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -715,20 +768,30 @@ test("workbench server fails closed for unsupported projected next action", asyn
         created_at: "2026-05-22T02:53:40.000Z"
       })
     });
-    assert.equal(loop.status, 201);
+    assert.equal(first.status, 201);
+    const resumed = await request(`${baseUrl}/api/workbench/next-action?id=next-action-unsupported`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "resume_autonomous_scheduler_loop",
+        snapshot_prefix: "unsupported-resume",
+        created_at: "2026-05-22T02:53:50.000Z"
+      })
+    });
+    assert.equal(resumed.status, 201);
 
     const response = await request(`${baseUrl}/api/workbench/next-action?id=next-action-unsupported`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        expected_action: "resume_autonomous_scheduler_loop",
-        created_at: "2026-05-22T02:53:50.000Z"
+        expected_action: "inspect_resume_target",
+        created_at: "2026-05-22T02:54:00.000Z"
       })
     });
     const rejected = response.json();
 
     assert.equal(response.status, 409);
-    assert.equal(rejected.next_action_readout.action, "resume_autonomous_scheduler_loop");
+    assert.equal(rejected.next_action_readout.action, "inspect_resume_target");
     assert.equal(rejected.issues[0].code, "unsupported_projected_next_action");
   }, { historyPath, snapshotsRoot });
 });
@@ -796,6 +859,51 @@ test("workbench server runs bounded autonomous scheduler loop from projection hi
     assert.equal(sourceItem.scheduler_loop.recovery_status, "ready");
     assert.equal(sourceItem.scheduler_loop.resume_projection_id, "server-loop-autonomous-loop-01");
     assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server can run autonomous scheduler loop through projected next actions", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-loop-"));
+  const inputPath = join(snapshotsRoot, "projected-loop-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "projected-loop",
+    items: [
+      {
+        id: "projected-loop",
+        label: "Projected loop",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=projected-loop`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 2,
+        execution_strategy: "projected_next_action",
+        reviewer_mock_status: "pass",
+        snapshot_prefix: "projected-loop",
+        created_at: "2026-05-22T03:45:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.result.phase, "iteration_limit_reached");
+    assert.equal(created.result.iterations[0].projected_action, "run_reviewer_scope_shard");
+    assert.equal(created.result.iterations[1].projected_action, "run_reviewer_scope_shard");
+    assert.equal(state.manifest.events.at(-2).type, "reviewer_shard_aggregate");
+    assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+    assert.equal(created.projection.reviewer_shard_review.pending_shards, 0);
   }, { historyPath, snapshotsRoot });
 });
 

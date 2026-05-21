@@ -20,6 +20,7 @@ function usage() {
     "  --start-projection-id <id>",
     "  --max-iterations <n>  Bounded loop count, 1-5",
     "  --execution-profile <profile>  Currently only approved_mock_non_dry_run",
+    "  --execution-strategy <strategy>  scheduler_dispatch_chain or projected_next_action",
     "  --snapshot-prefix <id-prefix>"
   ].join("\n");
 }
@@ -67,6 +68,15 @@ function createWorkbenchSchedulerLoopClient(baseUrl) {
     loadHistory() {
       return requestJson(apiUrl("/api/workbench/projections"));
     },
+    loadProjection(projectionId) {
+      return requestJson(apiUrl("/api/workbench/projection", projectionId));
+    },
+    runNextAction(projectionId, body = {}) {
+      return requestJson(apiUrl("/api/workbench/next-action", projectionId), {
+        method: "POST",
+        body
+      });
+    },
     createSchedulerDispatchPlan(projectionId, body = {}) {
       return requestJson(apiUrl("/api/workbench/scheduler-dispatch-plan", projectionId), {
         method: "POST",
@@ -105,6 +115,7 @@ const input = {
   start_projection_id: valueAfter("--start-projection-id", args),
   max_iterations: Number(valueAfter("--max-iterations", args) || 1),
   execution_profile: valueAfter("--execution-profile", args) || "approved_mock_non_dry_run",
+  execution_strategy: valueAfter("--execution-strategy", args) || "scheduler_dispatch_chain",
   snapshot_prefix: valueAfter("--snapshot-prefix", args) || "scheduler-loop"
 };
 

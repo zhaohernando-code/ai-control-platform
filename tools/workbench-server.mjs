@@ -302,6 +302,16 @@ function createWorkbenchLoopClient(baseUrl) {
     loadHistory() {
       return requestJson(new URL("/api/workbench/projections", base));
     },
+    loadProjection(projectionId) {
+      const url = new URL("/api/workbench/projection", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url);
+    },
+    runNextAction(projectionId, body = {}) {
+      const url = new URL("/api/workbench/next-action", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    },
     createSchedulerDispatchPlan(projectionId, body = {}) {
       const url = new URL("/api/workbench/scheduler-dispatch-plan", base);
       if (projectionId) url.searchParams.set("id", projectionId);
@@ -319,6 +329,11 @@ function createWorkbenchLoopClient(baseUrl) {
     },
     runAutonomousSchedulerLoop(projectionId, body = {}) {
       const url = new URL("/api/workbench/autonomous-scheduler-loop", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    },
+    resumeAutonomousSchedulerLoop(projectionId, body = {}) {
+      const url = new URL("/api/workbench/autonomous-scheduler-loop-resume", base);
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
     },
@@ -450,7 +465,8 @@ function appendEvent(eventsPath, event) {
 const SUPPORTED_NEXT_ACTIONS = new Set([
   "enqueue_scheduler_next_cycle",
   "run_autonomous_scheduler_loop",
-  "run_reviewer_scope_shard"
+  "run_reviewer_scope_shard",
+  "resume_autonomous_scheduler_loop"
 ]);
 
 function reviewerShardExecutorFromInput(input = {}) {
@@ -521,6 +537,16 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
       reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
       reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
       timeout_seconds: input.timeout_seconds || input.timeoutSeconds
+    });
+    return { status: "executed", action, result };
+  }
+
+  if (action === "resume_autonomous_scheduler_loop") {
+    const result = await client.resumeAutonomousSchedulerLoop(selectedId, {
+      max_iterations: input.max_iterations || input.maxIterations || 1,
+      execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+      snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "resume-loop",
+      created_at: input.created_at || input.createdAt
     });
     return { status: "executed", action, result };
   }
@@ -1056,6 +1082,10 @@ export function createWorkbenchServer(options = {}) {
           start_projection_id: selectedId,
           max_iterations: maxIterations,
           execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+          execution_strategy: input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain",
+          reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+          reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
           snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "autonomous-loop",
           created_at: input.created_at || input.createdAt
         };
@@ -1165,6 +1195,10 @@ export function createWorkbenchServer(options = {}) {
           start_projection_id: targetId,
           max_iterations: Number(input.max_iterations || input.maxIterations || 1),
           execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+          execution_strategy: input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain",
+          reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+          reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
           snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "resume-loop",
           created_at: input.created_at || input.createdAt
         };

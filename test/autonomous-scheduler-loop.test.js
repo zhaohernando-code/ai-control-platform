@@ -131,6 +131,50 @@ test("scheduler loop dispatches and enqueues until iteration bound", async () =>
   assert.equal(result.iterations[1].projection_id, "current-next");
 });
 
+test("scheduler loop can follow projected next-action recommendations", async () => {
+  const calls = [];
+  const client = {
+    async loadHistory() {
+      calls.push(["loadHistory"]);
+      return { latest: "current" };
+    },
+    async loadProjection(id) {
+      calls.push(["projection", id]);
+      return {
+        next_action_readout: {
+          status: "ready",
+          action: id === "current-next" ? "inspect_resume_target" : "enqueue_scheduler_next_cycle"
+        }
+      };
+    },
+    async runNextAction(id, body) {
+      calls.push(["nextAction", id, body]);
+      return {
+        status: "executed",
+        action: body.expected_action,
+        result: { next_item: { id: `${id}-next` } }
+      };
+    }
+  };
+  const result = await runSchedulerLoopDriver({
+    max_iterations: 2,
+    execution_strategy: "projected_next_action",
+    reviewer_mock_status: "pass",
+    snapshot_prefix: "projected-loop"
+  }, { client });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "no_dispatchable_scheduler_actions");
+  assert.equal(result.iterations.length, 2);
+  assert.equal(result.iterations[0].projected_action, "enqueue_scheduler_next_cycle");
+  assert.equal(result.iterations[0].next_projection_id, "current-next");
+  assert.equal(result.iterations[1].projected_action, "inspect_resume_target");
+  assert.deepEqual(calls.map((call) => call[0]), ["loadHistory", "projection", "nextAction", "projection"]);
+  assert.equal(calls[2][2].expected_action, "enqueue_scheduler_next_cycle");
+  assert.equal(calls[2][2].reviewer_mock_status, "pass");
+  assert.equal(calls[2][2].snapshot_id, "projected-loop-current-01");
+});
+
 test("scheduler loop fails when dispatch does not produce ready continuation", async () => {
   const client = fakeClient({
     dispatch: {

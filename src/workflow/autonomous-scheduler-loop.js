@@ -46,10 +46,14 @@ function boundedMaxIterations(value) {
 function schedulerLoopInput(input = {}) {
   const maxIterations = boundedMaxIterations(input.max_iterations || input.maxIterations || 1);
   const executionProfile = normalizeString(input.execution_profile || input.executionProfile || "approved_mock_non_dry_run");
+  const executionStrategy = normalizeString(input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain");
   const issues = [...maxIterations.issues];
 
   if (executionProfile !== "approved_mock_non_dry_run") {
     issues.push(issue("unsupported_scheduler_loop_profile", "scheduler loop currently supports only approved_mock_non_dry_run", "execution_profile"));
+  }
+  if (!["scheduler_dispatch_chain", "projected_next_action"].includes(executionStrategy)) {
+    issues.push(issue("unsupported_scheduler_loop_strategy", "scheduler loop strategy must be scheduler_dispatch_chain or projected_next_action", "execution_strategy"));
   }
 
   return {
@@ -57,13 +61,17 @@ function schedulerLoopInput(input = {}) {
     issues,
     max_iterations: maxIterations.value,
     execution_profile: executionProfile,
+    execution_strategy: executionStrategy,
     start_projection_id: normalizeString(input.start_projection_id || input.startProjectionId),
     snapshot_prefix: normalizeString(input.snapshot_prefix || input.snapshotPrefix || "scheduler-loop")
   };
 }
 
-function requireClient(client = {}) {
-  const missing = ["loadHistory", "createSchedulerDispatchPlan", "runSchedulerDispatch", "enqueueSchedulerNextCycle"]
+function requireClient(client = {}, strategy = "scheduler_dispatch_chain") {
+  const required = strategy === "projected_next_action"
+    ? ["loadHistory", "loadProjection", "runNextAction"]
+    : ["loadHistory", "createSchedulerDispatchPlan", "runSchedulerDispatch", "enqueueSchedulerNextCycle"];
+  const missing = required
     .filter((method) => typeof client[method] !== "function");
   return missing.length > 0
     ? [issue("missing_scheduler_loop_client", `scheduler loop client is missing: ${missing.join(", ")}`, "client")]
@@ -91,9 +99,24 @@ function loopSnapshotId(prefix, projectionId, index) {
   return `${safeIdPart(prefix)}-${safeIdPart(projectionId)}-${String(index + 1).padStart(2, "0")}`;
 }
 
+function projectedNextProjectionId(actionResult = {}, fallbackProjectionId = null) {
+  return actionResult?.result?.next_item?.id ||
+    actionResult?.result?.item?.id ||
+    actionResult?.item?.id ||
+    fallbackProjectionId;
+}
+
+function isTerminalProjectedAction(action = "") {
+  return !action ||
+    action === "wait_for_driver_event" ||
+    action === "inspect_scheduler_loop" ||
+    action === "inspect_resume_target" ||
+    action === "inspect_latest_driver";
+}
+
 export async function runSchedulerLoopDriver(input = {}, options = {}) {
   const normalized = schedulerLoopInput(input);
-  const clientIssues = requireClient(options.client);
+  const clientIssues = requireClient(options.client, normalized.execution_strategy);
   if (normalized.status !== "pass" || clientIssues.length > 0) {
     return {
       status: "fail",
@@ -128,10 +151,45 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
         dispatch_status: null,
         continuation_ready: false,
         enqueue_status: null,
+        projected_action: null,
+        next_action_status: null,
         next_projection_id: null,
         issues: []
       };
       iterations.push(iteration);
+
+      if (normalized.execution_strategy === "projected_next_action") {
+        const projection = await options.client.loadProjection(currentProjectionId);
+        const readout = projection?.next_action_readout || {};
+        iteration.projected_action = readout.action || null;
+        iteration.next_action_status = readout.status || null;
+
+        if (readout.status !== "ready" || isTerminalProjectedAction(readout.action)) {
+          iteration.status = "stopped";
+          return {
+            status: "pass",
+            phase: "no_dispatchable_scheduler_actions",
+            issues: [],
+            iterations
+          };
+        }
+
+        const actionResult = await options.client.runNextAction(currentProjectionId, {
+          expected_action: readout.action,
+          max_iterations: 1,
+          execution_profile: normalized.execution_profile,
+          reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+          reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
+          snapshot_id: loopSnapshotId(normalized.snapshot_prefix, currentProjectionId, index),
+          snapshot_prefix: normalized.snapshot_prefix,
+          created_at: input.created_at || input.createdAt
+        });
+        iteration.status = actionResult.status || "executed";
+        iteration.next_projection_id = projectedNextProjectionId(actionResult, currentProjectionId);
+        currentProjectionId = iteration.next_projection_id;
+        continue;
+      }
 
       const plan = await options.client.createSchedulerDispatchPlan(currentProjectionId, {});
       iteration.plan_status = planStatus(plan);
@@ -213,6 +271,7 @@ export function createSchedulerLoopRunArtifact(input = {}, result = {}, options 
       start_projection_id: input.start_projection_id || input.startProjectionId || null,
       max_iterations: input.max_iterations || input.maxIterations || 1,
       execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+      execution_strategy: input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain",
       snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "scheduler-loop"
     },
     result: {

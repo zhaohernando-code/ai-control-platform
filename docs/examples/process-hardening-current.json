@@ -281,6 +281,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "run_reviewer_scope_shard must be executable through the same guarded workbench flow as scheduler actions; otherwise the autonomous loop still stops when the next driver is reviewer recovery."
+    },
+    {
+      "id": "scheduler-loop-hardcoded-around-projection",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Autonomous scheduler loop must be able to advance from projection next_action_readout through the guarded next-action endpoint; otherwise the platform can only self-run scheduler-only chains and cannot validate the general workbench-driven process."
     }
   ],
   "hardening_items": [
@@ -778,6 +785,14 @@
       "enforcement_target": "tools/workbench-server.mjs; src/workflow/reviewer-shard-runner.js; test/workbench-server.test.js; test/reviewer-shard-runner.test.js",
       "regression_test": "workbench server runs reviewer shard through projected next action; workbench server records direct reviewer shard runs; reviewer shard runner records one shard and leaves remaining shard pending",
       "verification": "node --test test/workbench-server.test.js test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-loop-hardcoded-around-projection",
+      "invariant": "Autonomous scheduler loop must support a projected_next_action strategy that reads projection next_action_readout and executes through /api/workbench/next-action, while preserving scheduler_dispatch_chain as the stable default path.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; tools/workbench-server.mjs; tools/run-autonomous-scheduler-loop.mjs; test/autonomous-scheduler-loop.test.js; test/workbench-server.test.js",
+      "regression_test": "scheduler loop can follow projected next-action recommendations; workbench server can run autonomous scheduler loop through projected next actions; scheduler loop dispatches and enqueues until iteration bound",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
