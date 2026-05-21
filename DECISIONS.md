@@ -896,3 +896,11 @@ Projected mock loop 暴露在工作台后，操作者仍需要知道当前读数
 - 缺少最新 reviewer provider health fact 或 latest health 非 healthy 时，服务端在创建 executor 前失败闭合。
 - PC/mobile 新增独立 `Projected Real Loop` 控制，只发送 bounded real profile、projected strategy、单次外部调用预算、bounded cost mode 和 timeout。
 - Mock profile 与 real profile 的 UI 入口、请求字段和服务端 policy 保持分离。
+
+[2026-05-22T05:12:00+08:00] Provider health preflight must not steal the projected driver:
+Injected real-loop smoke 暴露了一个流程细节：如果为了预检把 provider health 事件追加到最后，projection 会把 provider recovery 当成最新 driver，loop 就不再执行 reviewer shard。
+
+决策：
+- Provider health preflight 只读取已有健康事实，不在同一 projected loop 执行前追加新的 automation driver。
+- 真实 reviewer loop smoke 使用已有 healthy fact，同时保持 `next_action_readout=run_reviewer_scope_shard`。
+- 后续如果需要刷新 provider health，应作为独立前置 cycle 完成，再进入 reviewer projected loop。

@@ -1067,6 +1067,72 @@ test("workbench server can run autonomous scheduler loop through projected next 
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server can run projected real reviewer loop with injected executor", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-real-loop-"));
+  const inputPath = join(snapshotsRoot, "projected-real-loop-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "projected-real-loop",
+    items: [
+      {
+        id: "projected-real-loop",
+        label: "Projected real loop",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  const calls = [];
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=projected-real-loop`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        execution_profile: "approved_bounded_real_reviewer",
+        execution_strategy: "projected_next_action",
+        max_external_reviewer_calls: 1,
+        provider_cost_mode: "bounded",
+        timeout_seconds: 90,
+        snapshot_prefix: "projected-real-loop",
+        created_at: "2026-05-22T05:11:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.result.iterations[0].projected_action, "run_reviewer_scope_shard");
+    assert.equal(created.projection.reviewer_shard_review.latest_executor_kind, "test_real_reviewer");
+    assert.equal(created.projection.reviewer_shard_review.latest_external_call_budget_used, 1);
+    assert.equal(created.projection.scheduler_loop.execution_profile, "approved_bounded_real_reviewer");
+    assert.equal(calls.length, 1);
+    assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  }, {
+    historyPath,
+    snapshotsRoot,
+    realReviewerExecutor: async ({ shard }) => {
+      calls.push(shard.id);
+      return {
+        status: "pass",
+        findings: [],
+        provenance: {
+          executor_kind: "test_real_reviewer",
+          provider: "deepseek",
+          model: "deepseek-v4-pro",
+          timeout_seconds: 90,
+          external_call_budget_used: 1
+        }
+      };
+    }
+  });
+});
+
 test("workbench server resumes autonomous scheduler loop from registry recovery policy", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-"));

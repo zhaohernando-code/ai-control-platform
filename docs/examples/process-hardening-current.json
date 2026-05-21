@@ -330,6 +330,13 @@
       "category": "reviewer_timeout",
       "severity": "p1",
       "message": "Bounded real reviewer projected-loop controls must require a latest healthy provider health fact before selecting a real executor; otherwise an unhealthy or unverified provider can be retried autonomously."
+    },
+    {
+      "id": "provider-preflight-steals-next-action",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Provider-health preflight evidence must not be appended as the latest automation driver immediately before projected loop execution; otherwise the loop may follow provider recovery instead of the intended reviewer shard next action."
     }
   ],
   "hardening_items": [
@@ -883,6 +890,14 @@
       "enforcement_target": "src/workflow/reviewer-execution-policy.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; test/reviewer-execution-policy.test.js; test/workbench-server.test.js; test/workbench-shell.test.js",
       "regression_test": "reviewer provider health preflight gates bounded real reviewer execution; workbench server blocks bounded real reviewer profile without healthy provider preflight; workbench server runs bounded real reviewer profile only with explicit budget and injected executor; workbench shell exposes projected-real control",
       "verification": "node --test test/reviewer-execution-policy.test.js test/workbench-server.test.js test/workbench-shell.test.js test/autonomous-scheduler-loop.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "provider-preflight-steals-next-action",
+      "invariant": "Projected real reviewer loop smoke tests must use an existing healthy provider fact without appending a new provider-health automation driver immediately before execution, preserving reviewer shard as the next_action_readout driver.",
+      "enforcement_target": "test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "workbench server can run projected real reviewer loop with injected executor",
+      "verification": "node --test test/workbench-server.test.js test/autonomous-scheduler-loop.test.js test/reviewer-execution-policy.test.js test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
