@@ -22,3 +22,6 @@
 当前会话中已经产生的中台相关材料统一迁入 `ai-control-platform`。正式设计、能力矩阵、Recovery 重设计和自主开发流程进入 `docs/contracts/`；视觉稿进入 `docs/design/`；错误落在 `stock_dashboard` 的 autonomous-flow 试验文档、registry、源码和测试进入 `docs/migrations/` 与 `legacy/`，作为后续平台中立重构输入。
 
 同时把“新项目创建后配置不同步”列为 P0 门禁：新增项目必须同步 `WORKSPACE_INDEX.json`、项目 canonical docs、根级入口文档、hook 路由回归和控制面路由回归。该检查已经有 `project-onboarding-sync` gate 和 `npm run check:onboarding`。
+
+[2026-05-21T16:18:00+08:00] Configure GitHub remote for AI Control Platform:
+新中台仓库已创建 GitHub 私有远端并推送 `main`。远端为 `git@github.com:zhaohernando-code/ai-control-platform.git`，网页入口为 `https://github.com/zhaohernando-code/ai-control-platform`。后续新中台开发必须以该远端为 upstream 收口，不能只停留在本地仓。
