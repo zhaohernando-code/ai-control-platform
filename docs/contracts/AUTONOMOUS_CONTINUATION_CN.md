@@ -161,6 +161,8 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Scheduler dispatch plan 必须携带 `continuation_output` 文件目标；非 dry-run runner 在没有显式 CLI flag 时使用 plan 内目标，dry-run 不生成 continuation input。
 - 工作台服务执行受控非 dry-run scheduler dispatch 后，必须同步生成 plan 声明的 continuation input，并把 `scheduler_dispatch_continuation` 作为 durable workflow fact 写回 manifest 和 artifact ledger；projection history 必须能展示 `continuation_ready`、`enqueue_available`、continuation input path 和 next work package count。
 - 工作台服务必须提供 `POST /api/workbench/scheduler-next-cycle`：它只能消费 projection history `input_path` 中最新的 scheduler dispatch run artifact，重新运行 scheduler dispatch continuation adapter，读取并校验已生成的 continuation input，然后写入 `scheduler_next_cycle_enqueue` fact 并发布下一轮 workflow snapshot。没有 `input_path`、没有 dispatch run、adapter blocked、continuation path 越界或 generated input 身份不一致时必须失败闭合，不得写入半状态。
+- `tools/run-autonomous-scheduler-loop.mjs` / `npm run run:autonomous-scheduler-loop` 是当前最小自运行 loop driver。它只能连接本机 HTTP workbench server，只允许命名 profile `approved_mock_non_dry_run`，`max_iterations` 必须在 1-5 之间，并且每轮都按 `scheduler-dispatch-plan -> scheduler-dispatch -> scheduler-next-cycle` 推进；没有 dispatchable scheduler steps、continuation 未 ready、enqueue 未返回 next history id 或达到迭代上限时必须停止并输出 `autonomous-scheduler-loop-run.v1` artifact。
+- 自运行 loop 的服务端集成测试不得用同步子进程阻塞同一进程里的 workbench server；必须使用异步 child process，让本地 server 仍能处理 loop driver 的 HTTP 请求。
 
 ## 5. 与工作台关系
 

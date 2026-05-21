@@ -613,6 +613,14 @@
       "regression_test": "workbench server runs approved mocked non-dry-run scheduler dispatch from profile; scheduler dispatch continuation readiness and enqueue are durable workflow facts; workbench projection exposes scheduler dispatch continuation readiness; projection source enqueues scheduler next cycle; scheduler_dispatch_approved_mock_click browser scenario renders scheduler continuation readiness",
       "verification": "node --test test/scheduler-dispatch-continuation.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-next-cycle-without-autonomous-loop-driver",
+      "invariant": "A server-side next-cycle enqueue endpoint is not sufficient for self-running development; the platform must have a bounded autonomous scheduler loop driver with local workbench transport, named execution profile, durable run artifact, and nonblocking service integration test.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; tools/run-autonomous-scheduler-loop.mjs; package.json; test/autonomous-scheduler-loop.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler loop dispatches and enqueues until iteration bound; scheduler loop stops without dispatch when plan has no steps; scheduler loop fails when dispatch does not produce ready continuation; run-autonomous-scheduler-loop CLI can drive one workbench service cycle",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js; npm test; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

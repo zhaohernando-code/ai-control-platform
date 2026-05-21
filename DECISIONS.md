@@ -709,3 +709,14 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - 新增 `POST /api/workbench/scheduler-next-cycle`，只从 history `input_path` 的最新 scheduler dispatch run artifact 出发，重新运行 replay-validating adapter，读取并校验已生成的 continuation input。
 - next-cycle enqueue 成功后写入 `scheduler_next_cycle_enqueue` event/artifact，并发布下一轮 workflow snapshot 到 projection history。
 - 该入口不触发新的外部执行；缺少 input_path、缺少 dispatch run、continuation path 越界、adapter blocked 或 generated input 身份不一致都必须失败闭合。
+
+[2026-05-22T00:31:00+08:00] Autonomous scheduler loop must be bounded and transport-driven:
+有了 `scheduler-next-cycle` 之后，仍需要一个可复用的 loop driver 把“执行当前轮 -> 发布下一轮 -> 继续下一轮”串起来，否则系统还是依赖当前会话继续发起下一步。
+
+决策：
+- 新增 `src/workflow/autonomous-scheduler-loop.js`，只做 loop 状态机和 artifact 汇总，通过注入 client 调用 workbench 服务，不重复实现 dispatch runner。
+- 新增 `tools/run-autonomous-scheduler-loop.mjs` 和 `npm run run:autonomous-scheduler-loop`。
+- CLI 只允许本机 HTTP workbench base URL，避免自运行 loop 打到远端未知服务。
+- 当前 loop 只允许命名 profile `approved_mock_non_dry_run`，`max_iterations` 限制在 1-5。
+- 每轮按 `scheduler-dispatch-plan -> scheduler-dispatch -> scheduler-next-cycle` 推进；无 dispatchable steps、continuation 未 ready、enqueue 未返回 next item 或达到迭代上限时停止并输出 `autonomous-scheduler-loop-run.v1`。
+- 服务端集成测试必须用异步子进程，不能用同步 `execFileSync` 阻塞同进程里的 workbench server。
