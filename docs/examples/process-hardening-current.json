@@ -597,6 +597,14 @@
       "regression_test": "scheduler dispatch runner summarizes step output artifacts; workbench projection exposes scheduler dispatch run status; workbench server runs approved mocked non-dry-run scheduler dispatch from profile; workbench shell has separate desktop and mobile entries; scheduler_dispatch_approved_mock_click browser scenario renders next continuation status and package count",
       "verification": "node --test test/scheduler-dispatch-runner.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-dispatch-continuation-without-replay-validation",
+      "invariant": "Scheduler dispatch run artifacts must not directly produce next continuation input unless the declared closeout loop artifact is reread and accepted by the autonomous closeout loop replay validator.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-continuation.js; tools/prepare-scheduler-dispatch-continuation.mjs; package.json; test/scheduler-dispatch-continuation.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch continuation prepares next input from closeout output; scheduler dispatch continuation blocks missing closeout output; prepare-scheduler-dispatch-continuation CLI writes continuation input",
+      "verification": "node --test test/scheduler-dispatch-continuation.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

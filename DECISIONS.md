@@ -672,3 +672,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - `scheduler-dispatch-run.v1` step result 必须包含 reviewer shard loop、continuation input、autonomous closeout loop 的结构化摘要。
 - Workbench projection 从 closeout loop artifact 摘要中展示 next continuation status、action 和 next work package count。
 - PC/mobile 工作台展示 approved dispatch 后的下一轮任务数量。
+
+[2026-05-21T23:50:12+08:00] Scheduler dispatch continuation must reuse replay validation:
+approved dispatch 产生下一轮 continuation input 时，不能直接信任 scheduler artifact 里的路径或摘要；必须重新读取 closeout loop artifact 并走既有 replay validator。
+
+决策：
+- 新增 `scheduler-dispatch-continuation` adapter。
+- 输入 `scheduler-dispatch-run.v1`，定位 `run-autonomous-closeout-loop` 的声明输出路径。
+- 读取 closeout loop artifact 后复用 `prepareAutonomousContinuationFromLoopArtifact`。
+- 新增 `prepare:scheduler-dispatch-continuation` CLI，输出下一轮 continuation input。
+- 缺失路径、非 pass scheduler run、不可复用 closeout artifact 都必须 blocked，不得生成下一轮输入。
