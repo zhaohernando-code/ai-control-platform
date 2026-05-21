@@ -66,6 +66,119 @@ test("medium budget records downgrade instead of silently using high-cost GPT", 
   assert.equal(selection.downgraded_for_budget, true);
 });
 
+test("codex plan pressure adds DeepSeek Pro process guard before expensive GPT work", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "继续无人值守中台开发并检查流程是否跑偏",
+    stage: "implementation",
+    risk: "high",
+    budget_tier: "high",
+    host: "platform_core",
+    codex_plan_pressure: true,
+    tags: ["boundary_sensitive", "process_guard"]
+  });
+  const summary = summarizeModelRouting(plan);
+  const guardIndex = plan.roles.findIndex((role) => role.role === "process_guard");
+  const primaryIndex = plan.roles.findIndex((role) => role.role === "primary");
+
+  assert.equal(plan.selected_model, "gpt");
+  assert.ok(guardIndex >= 0);
+  assert.ok(primaryIndex >= 0);
+  assert.ok(guardIndex < primaryIndex);
+  assert.ok(plan.roles.some((role) => role.role === "process_guard" && role.model_id === "deepseek-v4-pro"));
+  assert.ok(plan.roles.some((role) => role.role === "independent_reviewer" && role.model_id === "deepseek-v4-pro"));
+  assert.equal(plan.guardrails.codex_plan_pressure_uses_deepseek_pro, true);
+  assert.equal(summary.has_process_guard, true);
+  assert.equal(summary.by_model["deepseek-v4-pro"], 2);
+});
+
+test("plan budget pressure tag adds process guard before planning primary", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "设计下一轮中台流程并先审查是否跑偏",
+    stage: "planning",
+    risk: "high",
+    budget_tier: "high",
+    host: "platform_core",
+    tags: ["plan_budget_pressure"]
+  });
+  const guardIndex = plan.roles.findIndex((role) => role.role === "process_guard");
+  const primaryIndex = plan.roles.findIndex((role) => role.role === "primary");
+
+  assert.equal(plan.selected_model, "gpt");
+  assert.ok(guardIndex >= 0);
+  assert.ok(guardIndex < primaryIndex);
+});
+
+test("process guard tag alone adds guard before primary", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "只用流程守门标签触发前置审查",
+    stage: "implementation",
+    risk: "high",
+    budget_tier: "high",
+    host: "platform_core",
+    tags: ["process_guard"]
+  });
+  const guardIndex = plan.roles.findIndex((role) => role.role === "process_guard");
+  const primaryIndex = plan.roles.findIndex((role) => role.role === "primary");
+
+  assert.equal(plan.selected_model, "gpt");
+  assert.ok(guardIndex >= 0);
+  assert.ok(guardIndex < primaryIndex);
+});
+
+test("cost pressure adds process guard but low-risk classification stays cheap", () => {
+  const guarded = buildModelCollaborationPlan({
+    goal: "在预算压力下继续平台实现前先做流程守门",
+    stage: "implementation",
+    risk: "high",
+    budget_tier: "high",
+    host: "platform_core",
+    cost_pressure: true
+  });
+  const classification = buildModelCollaborationPlan({
+    goal: "把用户新需求分类到平台模块",
+    stage: "classification",
+    risk: "low",
+    budget_tier: "low",
+    codex_plan_pressure: true,
+    tags: ["classification", "routing"]
+  });
+
+  assert.ok(guarded.roles.some((role) => role.role === "process_guard"));
+  assert.equal(summarizeModelRouting(classification).has_process_guard, false);
+  assert.equal(classification.selected_model, "deepseek-v4-flash");
+});
+
+test("DeepSeek Pro primary review does not duplicate process guard", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "审查平台宿主边界是否仍可能漂移",
+    stage: "review",
+    risk: "high",
+    budget_tier: "high",
+    cost_pressure: true,
+    tags: ["independent_review", "code_audit"]
+  });
+  const processGuards = plan.roles.filter((role) => role.role === "process_guard");
+
+  assert.equal(plan.selected_model, "deepseek-v4-pro");
+  assert.equal(processGuards.length, 0);
+  assert.ok(plan.roles.some((role) => role.role === "arbiter" && role.model_id === "gpt"));
+});
+
+test("codex plan pressure does not duplicate guard when DeepSeek Pro is primary", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "在 plan 压力下让 DS Pro 审查代码而不重复插入 guard",
+    stage: "review",
+    risk: "high",
+    budget_tier: "high",
+    codex_plan_pressure: true,
+    tags: ["independent_review", "code_audit"]
+  });
+
+  assert.equal(plan.selected_model, "deepseek-v4-pro");
+  assert.equal(plan.roles.filter((role) => role.role === "process_guard").length, 0);
+  assert.ok(plan.roles.some((role) => role.role === "arbiter" && role.model_id === "gpt"));
+});
+
 test("invalid request fails validation", () => {
   const validation = validateModelRoutingRequest({
     stage: "implementation",

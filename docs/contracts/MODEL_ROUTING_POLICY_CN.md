@@ -35,11 +35,22 @@
 - 高风险平台核心实现、Recovery、架构、最终仲裁：优先 `gpt`。
 - 高风险任务必须加入独立 reviewer；当 primary 是 `gpt` 时，reviewer 默认 `deepseek-v4-pro`。
 - 当 primary 是 `deepseek-v4-pro` 且任务仍是高风险 review 时，加入 `gpt` 作为 arbiter。
+- 当出现 `codex_plan_pressure` / `plan_budget_pressure` 或平台流程门禁任务时，必须前置 `deepseek-v4-pro` 的 `process_guard` 角色，用于在 GPT 消耗实现/仲裁预算前审查流程偏移、replay 安全和 gate 完整性。
 - 预算不足时可以降级，但必须记录 `preferred_model`、`selected_model` 与 `downgraded_for_budget`，不能静默降级。
 
 ## 4. 与 Reviewer Gate 的关系
 
 `llm-reviewer-gate` 负责把外部审查请求和 findings 结构化；`model-router` 负责决定是否需要 reviewer、用哪个 reviewer、是否需要 arbiter。
+
+DeepSeek reviewer 调用必须同时生成 invocation policy，而不是只保存“超时了”：
+
+- Anthropic 兼容入口固定记录为 `https://api.deepseek.com/anthropic`。
+- Claude Code 运行模型记录为 `deepseek-v4-pro[1m]`，低成本子进程模型记录为 `deepseek-v4-flash`。
+- DeepSeek 官方说明在等待期间可能通过流式 SSE keep-alive 或非流式空行保持连接；10 分钟未开始推理服务端才会关闭连接。因此中台 wrapper 超时不能随意设为 120 秒的全局常量。
+- `process_guard` 默认使用 300 秒 timeout、`high` effort、最多 3 个文件 / 3 个问题 / 2200 字 prompt；超过上限时必须拆分 review，而不是扩大单次上下文。
+- `full_audit` 可使用 600 秒 timeout 和 `max` effort，但仍必须有文件、问题、prompt 上限。
+- reviewer 超时后不能立即判定 DeepSeek 不可用；必须先运行无工具 smoke prompt。smoke 通过时优先无工具重试或拆分文件复审，smoke 失败时才把 provider 标记为 unhealthy 并切换 fallback。
+- 手动 `./start-claude-deepseek-no-proxy.sh` 默认是交互模式；平台 reviewer wrapper 使用同一个 launcher，但额外启用 `--bare -p --no-session-persistence --tools --add-dir`。任何健康诊断都必须区分“provider 通道可用”和“非交互工具审查路径卡住”。
 
 工作流：
 
@@ -60,6 +71,7 @@ Context Pack
 - selected model 与 preferred model。
 - role count。
 - 每个模型承担的角色数量。
+- 是否有 process guard。
 - 是否有 independent reviewer。
 - 是否有 arbiter。
 

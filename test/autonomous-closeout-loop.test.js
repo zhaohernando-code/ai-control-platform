@@ -8,6 +8,7 @@ import { decideContinuation } from "../src/workflow/autonomous-continuation.js";
 import {
   createAutonomousLoopRunArtifact,
   prepareAutonomousContinuationFromLoopArtifact,
+  recordReplayValidationBlocker,
   runAutonomousCloseoutLoop,
   validateAutonomousLoopRunArtifact
 } from "../src/workflow/autonomous-orchestrator.js";
@@ -208,7 +209,12 @@ test("prepareAutonomousContinuationFromLoopArtifact blocks scheduler reuse of in
   assert.equal(blocked.should_continue, false);
   assert.equal(blocked.continuation_input, null);
   assert.equal(blocked.blockers[0].category, "replay_artifact_invalid");
+  assert.equal(blocked.workflow_state.manifest.events.at(-1).type, "autonomous_loop_replay_validation");
+  assert.equal(blocked.workflow_state.artifact_ledger.artifacts.at(-1).status, "fail");
   assert.ok(blocked.issues.some((entry) => entry.path === "result.next_decision.snapshot_publish_plan.input.manifest.run_id"));
+  const blockedProjection = createWorkbenchProjection(blocked.workflow_state);
+  assert.equal(blockedProjection.artifacts.by_status.fail, 2);
+  assert.equal(blockedProjection.autonomous_run.summaries.artifacts.failed, 2);
 
   const failedArtifact = {
     version: "autonomous-closeout-loop-run.v1",
@@ -232,6 +238,7 @@ test("prepareAutonomousContinuationFromLoopArtifact blocks scheduler reuse of in
 
   assert.equal(validateAutonomousLoopRunArtifact(failedArtifact).status, "pass");
   assert.equal(failedBlocked.status, "blocked");
+  assert.equal(failedBlocked.workflow_state.manifest.events.at(-1).type, "autonomous_loop_replay_validation");
   assert.ok(failedBlocked.issues.some((entry) => entry.code === "non_reusable_artifact_status"));
 
   const missingCloseoutState = JSON.parse(JSON.stringify(artifact));
@@ -263,6 +270,59 @@ test("prepareAutonomousContinuationFromLoopArtifact blocks scheduler reuse of in
   assert.ok(malformedInitialPlanBlocked.issues.some((entry) => entry.code === "invalid_initial_snapshot_publish_plan"));
 });
 
+test("recordReplayValidationBlocker writes durable manifest and artifact ledger evidence", async () => {
+  const artifact = await createValidLoopArtifact("orchestrator-replay-evidence");
+  const workflowState = recordReplayValidationBlocker(artifact.input.workflow_state, [
+    { code: "sample_replay_issue", message: "sample replay issue", path: "result" }
+  ], {
+    created_at: "2026-05-21T11:15:00.000Z"
+  });
+
+  const event = workflowState.manifest.events.at(-1);
+  const ledgerArtifact = workflowState.artifact_ledger.artifacts.at(-1);
+  const projection = createWorkbenchProjection(workflowState);
+
+  assert.equal(event.type, "autonomous_loop_replay_validation");
+  assert.equal(event.status, "blocked");
+  assert.match(event.artifact_id, /-001$/);
+  assert.equal(ledgerArtifact.type, "evaluation");
+  assert.equal(ledgerArtifact.status, "fail");
+  assert.equal(ledgerArtifact.producer, "autonomous-orchestrator");
+  assert.equal(ledgerArtifact.metadata.issues[0].code, "sample_replay_issue");
+  assert.equal(projection.autonomous_run.summaries.artifacts.failed, 2);
+
+  const secondWorkflowState = recordReplayValidationBlocker(workflowState, [
+    { code: "second_replay_issue", message: "second replay issue", path: "result" }
+  ], {
+    created_at: "2026-05-21T11:16:00.000Z"
+  });
+
+  assert.match(secondWorkflowState.manifest.events.at(-1).artifact_id, /-002$/);
+  assert.notEqual(secondWorkflowState.manifest.events.at(-1).id, event.id);
+  assert.equal(secondWorkflowState.artifact_ledger.artifacts.filter((entry) => entry.id.includes("autonomous-loop-replay-validation")).length, 2);
+
+  const explicitWorkflowState = recordReplayValidationBlocker(secondWorkflowState, [
+    { code: "explicit_replay_issue", message: "explicit replay issue", path: "result" }
+  ], {
+    artifact_id: ledgerArtifact.id,
+    created_at: "2026-05-21T11:17:00.000Z"
+  });
+
+  assert.match(explicitWorkflowState.artifact_ledger.artifacts.at(-1).id, new RegExp(`${ledgerArtifact.id}-001$`));
+
+  const mismatchedWorkflowState = JSON.parse(JSON.stringify(artifact.input.workflow_state));
+  mismatchedWorkflowState.artifact_ledger.run_id = "wrong-run";
+  assert.equal(recordReplayValidationBlocker(mismatchedWorkflowState, [{ code: "bad_state" }]), null);
+
+  const mismatchedArtifact = JSON.parse(JSON.stringify(artifact));
+  mismatchedArtifact.input.workflow_state.artifact_ledger.run_id = "wrong-run";
+  mismatchedArtifact.result.next_decision.snapshot_publish_plan.input.manifest.run_id = "wrong-run";
+  const mismatchedBlocked = prepareAutonomousContinuationFromLoopArtifact(mismatchedArtifact);
+
+  assert.equal(mismatchedBlocked.status, "blocked");
+  assert.equal(mismatchedBlocked.workflow_state, null);
+});
+
 test("run-autonomous-closeout-loop resume mode validates artifacts before scheduler continuation", async () => {
   const artifact = await createValidLoopArtifact("orchestrator-resume-cli");
   const dir = mkdtempSync(join(process.cwd(), "tmp/orchestrator-resume-cli-check-"));
@@ -279,17 +339,35 @@ test("run-autonomous-closeout-loop resume mode validates artifacts before schedu
   assert.equal(JSON.parse(ready.stdout).status, "ready");
 
   const damagedPath = join(dir, "damaged-loop-run.json");
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
   const damaged = JSON.parse(JSON.stringify(artifact));
   damaged.result.closeout.workflow_state.manifest.cycle_id = "wrong-cycle";
   writeFileSync(damagedPath, `${JSON.stringify(damaged, null, 2)}\n`);
-  const blocked = spawnSync(process.execPath, ["tools/run-autonomous-closeout-loop.mjs", "--resume-from", damagedPath], {
+  const blocked = spawnSync(process.execPath, [
+    "tools/run-autonomous-closeout-loop.mjs",
+    "--resume-from",
+    damagedPath,
+    "--history-path",
+    historyPath,
+    "--snapshots-root",
+    snapshotsRoot
+  ], {
     cwd: process.cwd(),
     encoding: "utf8",
     maxBuffer: 10 * 1024 * 1024
   });
+  const blockedOutput = JSON.parse(blocked.stdout);
+  const history = readJson(historyPath);
+  const snapshot = readJson(blockedOutput.snapshot_publish.snapshot_path);
 
   assert.notEqual(blocked.status, 0);
-  assert.equal(JSON.parse(blocked.stdout).status, "blocked");
+  assert.equal(blockedOutput.status, "blocked");
+  assert.equal(blockedOutput.snapshot_publish.status, "created");
+  assert.equal(history.latest, artifact.run_id);
+  assert.equal(snapshot.manifest.events.at(-1).type, "autonomous_loop_replay_validation");
+  assert.equal(snapshot.artifact_ledger.artifacts.at(-1).status, "fail");
   assert.match(blocked.stdout, /replay_artifact_invalid/);
 
   const missing = spawnSync(process.execPath, ["tools/run-autonomous-closeout-loop.mjs", "--resume-from", join(dir, "missing.json")], {

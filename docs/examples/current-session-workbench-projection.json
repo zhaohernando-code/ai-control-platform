@@ -65,6 +65,7 @@
       "gpt": 1,
       "deepseek-v4-pro": 1
     },
+    "has_process_guard": false,
     "has_independent_reviewer": true,
     "has_arbiter": false
   },

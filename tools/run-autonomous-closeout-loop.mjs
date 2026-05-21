@@ -7,6 +7,8 @@ import {
   prepareAutonomousContinuationFromLoopArtifact,
   runAutonomousCloseoutLoop
 } from "../src/workflow/autonomous-orchestrator.js";
+import { publishWorkbenchSnapshot } from "../src/workflow/workbench-snapshots.js";
+import { localOutputPathIssues, platformRootIssues } from "../src/workflow/closeout-runner.js";
 
 function valueAfter(flag, args) {
   const index = args.indexOf(flag);
@@ -48,6 +50,52 @@ function blockedResumeResult(code, message, path = "resume_from") {
   };
 }
 
+function defaultHistoryPath(root) {
+  return resolve(root, "docs/examples/projection-history.json");
+}
+
+function defaultSnapshotsRoot(root) {
+  return resolve(root, "docs/examples/snapshots");
+}
+
+function publishResumeWorkflowState(result, args) {
+  if (!result.workflow_state) return result;
+
+  const root = resolve(process.cwd());
+  const historyPath = resolve(valueAfter("--history-path", args) || defaultHistoryPath(root));
+  const snapshotsRoot = resolve(valueAfter("--snapshots-root", args) || defaultSnapshotsRoot(root));
+  const boundaryIssues = [
+    ...platformRootIssues(root),
+    ...localOutputPathIssues(root, historyPath, snapshotsRoot)
+  ];
+
+  if (boundaryIssues.length > 0) {
+    return {
+      ...result,
+      snapshot_publish: {
+        status: "fail",
+        issues: boundaryIssues
+      }
+    };
+  }
+
+  const snapshotId = result.workflow_state.manifest?.run_id || "autonomous-loop-replay-blocked";
+  const publish = publishWorkbenchSnapshot({
+    id: snapshotId,
+    label: "Autonomous loop replay validation blocked",
+    input: result.workflow_state
+  }, {
+    root,
+    historyPath,
+    snapshotsRoot
+  });
+
+  return {
+    ...result,
+    snapshot_publish: publish
+  };
+}
+
 function printResult(result) {
   console.log(JSON.stringify(result, null, 2));
   if (!["pass", "ready"].includes(result.status)) {
@@ -72,7 +120,7 @@ if (inputPath && resumePath) {
   } catch (error) {
     resume = blockedResumeResult("replay_artifact_read_failed", error.message, "resume_from");
   }
-  printResult(resume);
+  printResult(publishResumeWorkflowState(resume, args));
 } else {
   const input = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
   const result = await runAutonomousCloseoutLoop(input, {

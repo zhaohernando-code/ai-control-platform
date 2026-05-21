@@ -1,4 +1,6 @@
 import { decideContinuation } from "./autonomous-continuation.js";
+import { appendRunEvent } from "./run-manifest.js";
+import { recordArtifact } from "./artifact-ledger.js";
 import { runCloseoutPlan } from "./closeout-runner.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { validateWorkbenchProjectionSchema } from "./workbench-projection-schema.js";
@@ -51,6 +53,28 @@ function pushIdentityIssues(issues, identity, expected, path) {
   }
 }
 
+function workflowStateIdentityIssues(workflowState = {}) {
+  const issues = [];
+  const manifest = manifestIdentity(workflowState);
+  const ledger = {
+    run_id: normalizeString(workflowState?.artifact_ledger?.run_id || workflowState?.artifactLedger?.run_id),
+    cycle_id: normalizeString(workflowState?.artifact_ledger?.cycle_id || workflowState?.artifactLedger?.cycle_id)
+  };
+
+  if (!manifest.run_id) issues.push(issue("missing_workflow_state_run_id", "workflow state manifest.run_id is required", "manifest.run_id"));
+  if (!manifest.cycle_id) issues.push(issue("missing_workflow_state_cycle_id", "workflow state manifest.cycle_id is required", "manifest.cycle_id"));
+  if (!ledger.run_id) issues.push(issue("missing_workflow_state_ledger_run_id", "workflow state artifact_ledger.run_id is required", "artifact_ledger.run_id"));
+  if (!ledger.cycle_id) issues.push(issue("missing_workflow_state_ledger_cycle_id", "workflow state artifact_ledger.cycle_id is required", "artifact_ledger.cycle_id"));
+  if (manifest.run_id && ledger.run_id && manifest.run_id !== ledger.run_id) {
+    issues.push(issue("workflow_state_run_id_mismatch", "workflow state manifest and artifact_ledger run_id must match", "artifact_ledger.run_id"));
+  }
+  if (manifest.cycle_id && ledger.cycle_id && manifest.cycle_id !== ledger.cycle_id) {
+    issues.push(issue("workflow_state_cycle_id_mismatch", "workflow state manifest and artifact_ledger cycle_id must match", "artifact_ledger.cycle_id"));
+  }
+
+  return issues;
+}
+
 function continuationInputFromProjection(input, workflowState, projection) {
   return {
     project_status: input.next_project_status || input.nextProjectStatus || input.project_status || input.projectStatus,
@@ -95,11 +119,91 @@ function replayBlocker(validation) {
   };
 }
 
-function replayBlockedResult(issues) {
+function safeIdPart(value) {
+  return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function replayValidationArtifactId(workflowState = {}, options = {}) {
+  const explicitId = normalizeString(options.artifact_id);
+
+  const runId = safeIdPart(workflowState?.manifest?.run_id);
+  const cycleId = safeIdPart(workflowState?.manifest?.cycle_id);
+  const prefix = explicitId || `autonomous-loop-replay-validation-${runId}-${cycleId}`;
+  const artifacts = workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts || [];
+  const events = workflowState?.manifest?.events || [];
+  const usedIds = new Set([
+    ...artifacts.map((item) => item?.id).filter(Boolean),
+    ...events.map((item) => normalizeString(item?.artifact_id)).filter(Boolean)
+  ]);
+  if (explicitId && !usedIds.has(explicitId)) return explicitId;
+
+  let index = 1;
+  let id = `${prefix}-${String(index).padStart(3, "0")}`;
+  while (usedIds.has(id)) {
+    index += 1;
+    id = `${prefix}-${String(index).padStart(3, "0")}`;
+  }
+  return id;
+}
+
+function replayValidationArtifact(workflowState = {}, issues = [], options = {}) {
+  const runId = normalizeString(workflowState?.manifest?.run_id) || "unknown-run";
+  const cycleId = normalizeString(workflowState?.manifest?.cycle_id) || "unknown-cycle";
+  const createdAt = normalizeString(options.created_at) || new Date().toISOString();
+  const id = replayValidationArtifactId(workflowState, options);
+
+  return {
+    id,
+    type: "evaluation",
+    status: "fail",
+    uri: `autonomous-loop://replay-validation/${runId}/${cycleId}`,
+    producer: "autonomous-orchestrator",
+    created_at: createdAt,
+    metadata: {
+      run_id: runId,
+      cycle_id: cycleId,
+      replay_status: "blocked",
+      issues
+    }
+  };
+}
+
+function recordReplayValidationBlocker(workflowState = {}, issues = [], options = {}) {
+  if (!isObject(workflowState)) return null;
+  if (workflowStateIdentityIssues(workflowState).length > 0) return null;
+  const artifact = replayValidationArtifact(workflowState, issues, options);
+  const manifest = appendRunEvent(workflowState.manifest || {}, {
+    id: `event-${artifact.id}`,
+    type: "autonomous_loop_replay_validation",
+    status: "blocked",
+    artifact_id: artifact.id,
+    message: "autonomous loop replay validation blocked scheduler continuation",
+    created_at: artifact.created_at,
+    metadata: artifact.metadata
+  });
+  const manifestArtifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    ...workflowState,
+    manifest: {
+      ...manifest,
+      artifacts: [...manifestArtifacts, artifact]
+    },
+    artifact_ledger: artifactLedger
+  };
+}
+
+function replayBlockedResult(issues, options = {}) {
   const validation = {
     status: "fail",
     issues
   };
+  const workflowState = recordReplayValidationBlocker(options.workflowState, issues, options);
   return {
     status: "blocked",
     phase: "replay_validation",
@@ -109,7 +213,8 @@ function replayBlockedResult(issues) {
     continuation_input: null,
     context_pack_seed: null,
     snapshot_publish_plan: null,
-    next_decision: null
+    next_decision: null,
+    workflow_state: workflowState
   };
 }
 
@@ -261,7 +366,7 @@ function validateAutonomousLoopRunArtifact(artifact = {}) {
 function prepareAutonomousContinuationFromLoopArtifact(artifact = {}) {
   const validation = validateAutonomousLoopRunArtifact(artifact);
   if (validation.status !== "pass") {
-    return replayBlockedResult(validation.issues);
+    return replayBlockedResult(validation.issues, { workflowState: artifact?.input?.workflow_state });
   }
 
   const reuseIssues = [];
@@ -288,7 +393,7 @@ function prepareAutonomousContinuationFromLoopArtifact(artifact = {}) {
   }
 
   if (reuseIssues.length > 0) {
-    return replayBlockedResult(reuseIssues);
+    return replayBlockedResult(reuseIssues, { workflowState: artifact.input.workflow_state });
   }
 
   return {
@@ -297,6 +402,7 @@ function prepareAutonomousContinuationFromLoopArtifact(artifact = {}) {
     should_continue: true,
     issues: [],
     blockers: [],
+    workflow_state: null,
     continuation_input: continuationInputFromProjection(
       artifact.input,
       artifact.result.closeout.workflow_state,
@@ -364,6 +470,7 @@ export {
   AUTONOMOUS_LOOP_ARTIFACT_VERSION,
   createAutonomousLoopRunArtifact,
   prepareAutonomousContinuationFromLoopArtifact,
+  recordReplayValidationBlocker,
   runAutonomousCloseoutLoop,
   validateAutonomousLoopRunArtifact
 };

@@ -98,6 +98,9 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 只有 `status=pass`、`phase=next_continuation` 且包含 closeout workflow state、projection、context pack seed、snapshot publish plan 的 artifact 可复用。
 - artifact 不存在、JSON 损坏或 CLI mode 歧义时也必须输出结构化 blocker JSON，不能只输出 Node stack trace。
 - resume mode 不得在校验失败时生成 continuation input。
+- 如果 artifact 中仍包含可信的 `input.workflow_state`，blocked resume 必须把 `autonomous_loop_replay_validation` 事件和失败的 `evaluation` artifact 写回 workflow state，使工作台 projection 和 recovery evaluation 能看到这次失败，而不是只依赖 CLI stdout。
+- replay blocker evidence 必须使用不覆盖历史的唯一 artifact/event id；如果 manifest 与 artifact ledger 的 run/cycle 身份不一致，不得写入半状态。
+- `--resume-from` 在写入 blocker evidence 后必须发布 workflow state snapshot 并更新 projection history；发布失败要进入 `snapshot_publish` 结果，不能声称工作台已可见。
 
 ## 5. 与工作台关系
 

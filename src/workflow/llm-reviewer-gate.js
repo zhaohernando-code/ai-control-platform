@@ -6,6 +6,38 @@ const DEFAULT_PROVIDER = {
   tooling: "read-only"
 };
 
+const DEEPSEEK_OFFICIAL_RUNTIME = {
+  anthropic_base_url: "https://api.deepseek.com/anthropic",
+  claude_code_model: "deepseek-v4-pro[1m]",
+  flash_subagent_model: "deepseek-v4-flash",
+  server_start_timeout_seconds: 600,
+  keepalive: "streaming SSE keep-alive comments or non-stream empty lines may be emitted while waiting"
+};
+
+const REVIEWER_INVOCATION_PROFILES = {
+  quick: {
+    timeout_seconds: 180,
+    max_files: 3,
+    max_questions: 3,
+    max_prompt_chars: 1600,
+    effort: "high"
+  },
+  process_guard: {
+    timeout_seconds: 300,
+    max_files: 3,
+    max_questions: 3,
+    max_prompt_chars: 2200,
+    effort: "high"
+  },
+  full_audit: {
+    timeout_seconds: 600,
+    max_files: 5,
+    max_questions: 3,
+    max_prompt_chars: 3200,
+    effort: "max"
+  }
+};
+
 const WRITE_CAPABLE_TOOLS = new Set([
   "bash",
   "edit",
@@ -48,6 +80,13 @@ function normalizeProvider(input = {}) {
     accuracy_tier: normalizeString(input.accuracy_tier) || DEFAULT_PROVIDER.accuracy_tier,
     tooling: normalizeString(input.tooling) || DEFAULT_PROVIDER.tooling
   };
+}
+
+function reviewerProfileName(input = {}) {
+  const raw = normalizeToken(input.profile || input.review_profile || input.mode || input.stage);
+  if (raw === "full" || raw === "audit" || raw === "full_audit") return "full_audit";
+  if (raw === "process_guard" || raw === "guard" || raw === "preflight") return "process_guard";
+  return "quick";
 }
 
 function normalizeToolList(input) {
@@ -145,6 +184,91 @@ export function createReviewerGateRequest(input = {}) {
   };
 }
 
+export function createReviewerInvocationPolicy(input = {}) {
+  const request = createReviewerGateRequest(input.request || input);
+  const profileName = reviewerProfileName(input);
+  const profile = REVIEWER_INVOCATION_PROFILES[profileName];
+  const promptChars = normalizeString(input.prompt || input.prompt_text || input.scope || request.scope).length;
+  const timeoutSeconds = Math.min(
+    Number(input.timeout_seconds || input.timeoutSeconds || profile.timeout_seconds) || profile.timeout_seconds,
+    DEEPSEEK_OFFICIAL_RUNTIME.server_start_timeout_seconds
+  );
+  const needsSplit = request.files.length > profile.max_files ||
+    request.questions.length > profile.max_questions ||
+    promptChars > profile.max_prompt_chars;
+
+  return {
+    provider: request.provider.provider,
+    model: request.provider.model,
+    profile: profileName,
+    timeout_seconds: timeoutSeconds,
+    effort: normalizeString(input.effort) || profile.effort,
+    transport: {
+      anthropic_base_url: DEEPSEEK_OFFICIAL_RUNTIME.anthropic_base_url,
+      claude_code_model: DEEPSEEK_OFFICIAL_RUNTIME.claude_code_model,
+      stream_preferred: true,
+      keepalive_expected: true,
+      server_start_timeout_seconds: DEEPSEEK_OFFICIAL_RUNTIME.server_start_timeout_seconds
+    },
+    scope_limits: {
+      max_files: profile.max_files,
+      max_questions: profile.max_questions,
+      max_prompt_chars: profile.max_prompt_chars,
+      observed_files: request.files.length,
+      observed_questions: request.questions.length,
+      observed_prompt_chars: promptChars
+    },
+    split_required: needsSplit,
+    split_reason: needsSplit
+      ? "review scope exceeds bounded DeepSeek reviewer profile; split into smaller read-only reviews before rerun"
+      : null,
+    timeout_recovery: {
+      first_step: "provider_smoke_check",
+      smoke_prompt: "只回答 DS_SMOKE_OK。",
+      smoke_timeout_seconds: 60,
+      retry_without_tools_when_smoke_passes: true,
+      mark_provider_unhealthy_when_smoke_fails: true
+    },
+    official_runtime_note: DEEPSEEK_OFFICIAL_RUNTIME.keepalive
+  };
+}
+
+export function classifyReviewerTimeoutRecovery(input = {}) {
+  const policy = createReviewerInvocationPolicy(input.request || input);
+  const smokeStatus = normalizeToken(input.smoke_status || input.smokeStatus || input.provider_smoke_status);
+  const reviewerHadTools = normalizeToolList(input.tools || input.allowed_tools || input.request?.allowed_tools).length > 0;
+
+  if (smokeStatus === "pass" || smokeStatus === "ok" || smokeStatus === "success") {
+    return {
+      status: "retry",
+      provider_health: "healthy",
+      retry_strategy: reviewerHadTools ? "rerun_without_tools_or_split_scope" : "split_scope",
+      invocation_policy: policy,
+      reason: reviewerHadTools
+        ? "provider smoke passed after reviewer timeout; retry with no tools or smaller read-only scope before marking DeepSeek unhealthy"
+        : "provider smoke passed after reviewer timeout; split scope before marking DeepSeek unhealthy"
+    };
+  }
+
+  if (smokeStatus === "fail" || smokeStatus === "failed" || smokeStatus === "timeout") {
+    return {
+      status: "blocked",
+      provider_health: "unhealthy",
+      retry_strategy: "fallback_model_or_defer_external_review",
+      invocation_policy: policy,
+      reason: "provider smoke failed after reviewer timeout; do not keep scheduling DeepSeek reviewer work until health recovers"
+    };
+  }
+
+  return {
+    status: "needs_smoke_check",
+    provider_health: "unknown",
+    retry_strategy: "run_provider_smoke_check",
+    invocation_policy: policy,
+    reason: "reviewer timed out; run a minimal provider smoke check before deciding whether to retry or mark provider unhealthy"
+  };
+}
+
 export function validateReviewerGateRequest(request) {
   const issues = [];
 
@@ -206,6 +330,10 @@ export function normalizeReviewerFindings(findings, request = {}) {
 
 export function createReviewerTimeoutFinding(request = {}, timeoutSeconds = null) {
   const reviewerRequest = createReviewerGateRequest(request);
+  const invocationPolicy = createReviewerInvocationPolicy({
+    request: reviewerRequest,
+    timeout_seconds: timeoutSeconds || undefined
+  });
   const timeoutText = timeoutSeconds ? ` after ${timeoutSeconds}s` : "";
 
   return normalizeReviewerFindings(
@@ -219,7 +347,8 @@ export function createReviewerTimeoutFinding(request = {}, timeoutSeconds = null
         evidence: {
           provider: reviewerRequest.provider.provider,
           model: reviewerRequest.provider.model,
-          timeout_seconds: timeoutSeconds
+          timeout_seconds: timeoutSeconds,
+          invocation_policy: invocationPolicy
         }
       }
     ],
@@ -261,4 +390,4 @@ export function summarizeReviewerGate(input = {}) {
   };
 }
 
-export { DEFAULT_PROVIDER, WRITE_CAPABLE_TOOLS };
+export { DEFAULT_PROVIDER, DEEPSEEK_OFFICIAL_RUNTIME, REVIEWER_INVOCATION_PROFILES, WRITE_CAPABLE_TOOLS };

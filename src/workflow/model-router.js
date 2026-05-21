@@ -101,8 +101,12 @@ function baseModelFor(request) {
 function collaborationRolesFor(request, primaryModelId) {
   const risk = normalizeToken(request.risk || request.risk_level);
   const stage = normalizeToken(request.stage || request.task_type || request.phase);
+  const tags = request.tags || [];
+  const codexPlanPressure = request.codex_plan_pressure === true ||
+    request.cost_pressure === true ||
+    hasAnyTag(tags, ["codex_plan_pressure", "plan_budget_pressure", "process_guard"]);
   const requiresIndependentReview = request.requires_independent_review === true ||
-    hasAnyTag(request.tags, ["independent_review", "code_audit", "boundary_sensitive"]) ||
+    hasAnyTag(tags, ["independent_review", "code_audit", "boundary_sensitive"]) ||
     riskRank(risk) >= riskRank("high");
   const roles = [
     {
@@ -117,6 +121,19 @@ function collaborationRolesFor(request, primaryModelId) {
       role: "scout",
       model_id: "deepseek-v4-flash",
       purpose: "classify, summarize, or prefilter low-risk input"
+    });
+  }
+
+  if (
+    codexPlanPressure &&
+    primaryModelId !== "deepseek-v4-pro" &&
+    ["planning", "implementation", "recovery", "review", "final_review"].includes(stage)
+  ) {
+    const primaryIndex = roles.findIndex((role) => role.role === "primary");
+    roles.splice(primaryIndex >= 0 ? primaryIndex : 0, 0, {
+      role: "process_guard",
+      model_id: "deepseek-v4-pro",
+      purpose: "preflight process drift, replay safety, and gate completeness before GPT spends implementation or arbitration budget"
     });
   }
 
@@ -209,6 +226,7 @@ export function buildModelCollaborationPlan(request = {}) {
     guardrails: {
       reviewer_default_read_only: true,
       high_risk_requires_independent_review: true,
+      codex_plan_pressure_uses_deepseek_pro: roles.some((role) => role.role === "process_guard" && role.model_id === "deepseek-v4-pro"),
       budget_downgrade_must_be_recorded: selection.downgraded_for_budget
     }
   };
@@ -227,6 +245,7 @@ export function summarizeModelRouting(plan) {
     preferred_model: plan?.preferred_model || null,
     role_count: roles.length,
     by_model: byModel,
+    has_process_guard: roles.some((role) => role.role === "process_guard"),
     has_independent_reviewer: roles.some((role) => role.role === "independent_reviewer"),
     has_arbiter: roles.some((role) => role.role === "arbiter")
   };

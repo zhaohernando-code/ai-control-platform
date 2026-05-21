@@ -99,6 +99,20 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Replay validation must be wired into the scheduler continuation reuse path; a standalone validator is insufficient if resume can bypass it."
+    },
+    {
+      "id": "autonomous-loop-replay-blocker-side-channel",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Replay validation blockers must be persisted into workflow state when a replay artifact still contains trusted workflow state; stdout-only blockers are not enough for workbench or recovery."
+    },
+    {
+      "id": "deepseek-reviewer-timeout-policy-drift",
+      "status": "fail",
+      "category": "reviewer_timeout",
+      "severity": "p1",
+      "message": "DeepSeek reviewer timeouts must follow bounded invocation profiles, official keepalive/start-timeout behavior, and provider smoke diagnosis instead of a single arbitrary wrapper timeout."
     }
   ],
   "hardening_items": [
@@ -212,6 +226,22 @@
       "enforcement_target": "src/workflow/autonomous-orchestrator.js; tools/run-autonomous-closeout-loop.mjs; test/autonomous-closeout-loop.test.js",
       "regression_test": "prepareAutonomousContinuationFromLoopArtifact and run-autonomous-closeout-loop --resume-from block invalid, failed, incomplete, unreadable, and ambiguous replay artifacts before scheduler continuation",
       "verification": "node --test test/autonomous-closeout-loop.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "autonomous-loop-replay-blocker-side-channel",
+      "invariant": "Blocked replay validation attempts with trusted workflow state must append unique manifest and artifact-ledger evidence, publish the resulting workflow state snapshot, and avoid writing half-state when manifest and ledger identity disagree.",
+      "enforcement_target": "src/workflow/autonomous-orchestrator.js; tools/run-autonomous-closeout-loop.mjs; test/autonomous-closeout-loop.test.js",
+      "regression_test": "recordReplayValidationBlocker writes unique autonomous_loop_replay_validation event and failed evaluation artifacts; mismatched workflow state is not written; resume CLI publishes blocked workflow state snapshots",
+      "verification": "node --test test/autonomous-closeout-loop.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "deepseek-reviewer-timeout-policy-drift",
+      "invariant": "DeepSeek reviewer calls must use explicit invocation profiles that record official Anthropic endpoint, Claude Code model, stream/keepalive expectations, bounded timeout, effort, scope split limits, and timeout recovery smoke checks.",
+      "enforcement_target": "src/workflow/llm-reviewer-gate.js; test/llm-reviewer-gate.test.js; docs/contracts/MODEL_ROUTING_POLICY_CN.md",
+      "regression_test": "DeepSeek reviewer invocation policy bounds scope and recommends split; reviewer timeout becomes a recoverable autonomous-run finding; reviewer timeout recovery runs provider smoke before marking DeepSeek unhealthy",
+      "verification": "node --test test/llm-reviewer-gate.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

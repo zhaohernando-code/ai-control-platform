@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  classifyReviewerTimeoutRecovery,
+  createReviewerInvocationPolicy,
   createReviewerTimeoutFinding,
   createReviewerGateRequest,
   normalizeReviewerFindings,
@@ -146,4 +148,67 @@ test("reviewer timeout becomes a recoverable autonomous-run finding", () => {
   assert.equal(finding.requires_rollback, false);
   assert.equal(finding.requires_human, false);
   assert.equal(decision.status, RERUN);
+  assert.equal(finding.evidence.invocation_policy.transport.server_start_timeout_seconds, 600);
+  assert.equal(finding.evidence.invocation_policy.transport.stream_preferred, true);
+  assert.equal(finding.evidence.invocation_policy.transport.keepalive_expected, true);
+  assert.equal(finding.evidence.invocation_policy.timeout_recovery.smoke_prompt, "只回答 DS_SMOKE_OK。");
+  assert.equal(finding.evidence.invocation_policy.timeout_recovery.smoke_timeout_seconds, 60);
+  assert.equal(finding.evidence.invocation_policy.timeout_recovery.retry_without_tools_when_smoke_passes, true);
+  assert.equal(finding.evidence.invocation_policy.timeout_recovery.mark_provider_unhealthy_when_smoke_fails, true);
+});
+
+test("DeepSeek reviewer invocation policy bounds scope and recommends split", () => {
+  const policy = createReviewerInvocationPolicy({
+    ...validRequest({
+      files: [
+        "src/workflow/a.js",
+        "src/workflow/b.js",
+        "src/workflow/c.js",
+        "src/workflow/d.js"
+      ],
+      questions: ["q1", "q2", "q3", "q4"]
+    }),
+    review_profile: "process_guard",
+    prompt: "x".repeat(2300),
+    timeout_seconds: 900
+  });
+
+  assert.equal(policy.profile, "process_guard");
+  assert.equal(policy.timeout_seconds, 600);
+  assert.equal(policy.transport.anthropic_base_url, "https://api.deepseek.com/anthropic");
+  assert.equal(policy.transport.claude_code_model, "deepseek-v4-pro[1m]");
+  assert.equal(policy.effort, "high");
+  assert.equal(policy.split_required, true);
+  assert.equal(policy.scope_limits.max_files, 3);
+  assert.equal(policy.scope_limits.observed_questions, 4);
+});
+
+test("reviewer timeout recovery runs provider smoke before marking DeepSeek unhealthy", () => {
+  const unknown = classifyReviewerTimeoutRecovery({
+    request: validRequest(),
+    allowed_tools: ["Read"]
+  });
+  const smokePass = classifyReviewerTimeoutRecovery({
+    request: validRequest(),
+    tools: ["Read"],
+    smoke_status: "pass"
+  });
+  const smokeFail = classifyReviewerTimeoutRecovery({
+    request: validRequest(),
+    smoke_status: "timeout"
+  });
+  const smokePassWithoutTools = classifyReviewerTimeoutRecovery({
+    request: validRequest({ allowed_tools: [] }),
+    smoke_status: "pass"
+  });
+
+  assert.equal(unknown.status, "needs_smoke_check");
+  assert.equal(unknown.retry_strategy, "run_provider_smoke_check");
+  assert.equal(smokePass.status, "retry");
+  assert.equal(smokePass.provider_health, "healthy");
+  assert.equal(smokePass.retry_strategy, "rerun_without_tools_or_split_scope");
+  assert.equal(smokePassWithoutTools.status, "retry");
+  assert.equal(smokePassWithoutTools.retry_strategy, "split_scope");
+  assert.equal(smokeFail.status, "blocked");
+  assert.equal(smokeFail.provider_health, "unhealthy");
 });
