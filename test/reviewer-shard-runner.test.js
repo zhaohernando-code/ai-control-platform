@@ -127,6 +127,31 @@ test("reviewer shard runner aggregates automatically after the last shard", asyn
   assert.ok(second.workflow_state.manifest.review_findings.some((finding) => finding.finding_id === "runner-shard-finding"));
 });
 
+test("reviewer shard runner records provider health for timeout findings", async () => {
+  const result = await runReviewerShard(workflowState(), {
+    shard_id: "reviewer-scope-shard-001",
+    created_at: "2026-05-21T21:04:00.000Z",
+    record_provider_health_on_timeout: true,
+    executor: async () => ({
+      status: "fail",
+      findings: [
+        {
+          id: "runner-timeout",
+          status: "fail",
+          severity: "medium",
+          category: "reviewer_timeout",
+          message: "reviewer shard timed out"
+        }
+      ]
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.provider_health.recovery_status, "needs_smoke_check");
+  assert.deepEqual(result.provider_health.scheduled_actions, ["provider_smoke_check"]);
+  assert.equal(result.workflow_state.manifest.events.at(-1).type, "reviewer_provider_health");
+});
+
 test("reviewer shard runner fails closed without executor or pending shard", async () => {
   const missingExecutor = await runReviewerShard(workflowState(), {
     shard_id: "reviewer-scope-shard-001"
@@ -189,6 +214,37 @@ test("run-reviewer-shard CLI executes pending shards with mock executor", () => 
   assert.equal(secondSummary.phase, "aggregated");
   assert.equal(secondSummary.aggregate.failed_finding_count, 1);
   assert.ok(state.manifest.review_findings.some((finding) => finding.finding_id === "runner-cli-finding"));
+});
+
+test("run-reviewer-shard CLI records provider health on timeout findings", () => {
+  const dir = mkdtempSync(join(tmpdir(), "reviewer-shard-runner-timeout-cli-"));
+  const inputPath = join(dir, "input.json");
+  const outputPath = join(dir, "output.json");
+  writeFileSync(inputPath, JSON.stringify(workflowState(), null, 2));
+
+  const output = execFileSync(process.execPath, [
+    "tools/run-reviewer-shard.mjs",
+    "--input",
+    inputPath,
+    "--output",
+    outputPath,
+    "--shard-id",
+    "reviewer-scope-shard-001",
+    "--mock-findings-json",
+    JSON.stringify([{ id: "cli-timeout", status: "fail", severity: "medium", category: "reviewer_timeout", message: "timeout" }]),
+    "--mock-status",
+    "fail",
+    "--record-provider-health",
+    "--created-at",
+    "2026-05-21T21:12:00.000Z"
+  ], { encoding: "utf8" });
+  const summary = JSON.parse(output);
+  const state = JSON.parse(readFileSync(outputPath, "utf8"));
+
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.provider_health.provider_health, "unknown");
+  assert.deepEqual(summary.provider_health.scheduled_actions, ["provider_smoke_check"]);
+  assert.equal(state.manifest.events.at(-1).type, "reviewer_provider_health");
 });
 
 test("run-reviewer-shard CLI fails closed on unreadable input", () => {

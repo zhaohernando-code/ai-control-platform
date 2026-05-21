@@ -12,8 +12,11 @@ function usage() {
     "Options:",
     "  --shard-id <id>               Pending shard id; defaults to the first pending shard",
     "  --cwd <path>                  Project cwd for external reviewer",
+    "  --timeout-seconds <seconds>   External reviewer timeout override",
     "  --created-at <iso>            Fact timestamp",
     "  --aggregate-created-at <iso>  Aggregate timestamp",
+    "  --record-provider-health      Write provider health fact when shard times out",
+    "  --provider-smoke-status <s>   Optional smoke result for provider health recovery",
     "  --mock-findings-json <json>   Test-only executor output",
     "  --mock-status <pass|fail>     Test-only executor status",
     "  --in-place                    Write back to --input instead of requiring --output"
@@ -61,7 +64,8 @@ let executor;
 try {
   workflowState = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
   executor = mockExecutorFromArgs(args) || createClaudeDeepSeekShardExecutor({
-    cwd: valueAfter("--cwd", args) || process.cwd()
+    cwd: valueAfter("--cwd", args) || process.cwd(),
+    timeout_seconds: valueAfter("--timeout-seconds", args)
   });
 } catch (error) {
   console.error(JSON.stringify({
@@ -75,6 +79,8 @@ const result = await runReviewerShard(workflowState, {
   shard_id: valueAfter("--shard-id", args),
   created_at: valueAfter("--created-at", args),
   aggregate_created_at: valueAfter("--aggregate-created-at", args),
+  record_provider_health_on_timeout: hasFlag("--record-provider-health", args),
+  provider_smoke_status: valueAfter("--provider-smoke-status", args),
   executor
 });
 
@@ -91,6 +97,12 @@ console.log(JSON.stringify({
   phase: result.phase,
   shard_id: result.result.shard_id,
   shard_status: result.result.status,
+  provider_health: result.provider_health ? {
+    status: result.provider_health.status,
+    provider_health: result.provider_health.provider_health,
+    retry_strategy: result.provider_health.retry_strategy,
+    scheduled_actions: result.provider_health.scheduled_actions
+  } : null,
   pending_shards: result.pending_shards ?? result.aggregate?.pending_shards ?? null,
   aggregate: result.aggregate ? {
     status: result.aggregate.status,

@@ -197,6 +197,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Reviewer shard runner needs a scheduler CLI entrypoint; otherwise pending shard execution still depends on ad hoc scripts."
+    },
+    {
+      "id": "reviewer-shard-timeout-provider-health-gap",
+      "status": "fail",
+      "category": "reviewer_timeout",
+      "severity": "p1",
+      "message": "Reviewer shard runner timeouts must publish provider health facts; otherwise DS runner failures look like ordinary review findings and do not trigger smoke or fallback recovery."
     }
   ],
   "hardening_items": [
@@ -421,6 +428,14 @@
       "invariant": "Pending reviewer shards must be executable through a reusable CLI that writes workflow state, supports mock execution for deterministic tests, and fails closed on unreadable input.",
       "enforcement_target": "tools/run-reviewer-shard.mjs; package.json; test/reviewer-shard-runner.test.js",
       "regression_test": "run-reviewer-shard CLI executes pending shards with mock executor; run-reviewer-shard CLI fails closed on unreadable input",
+      "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-timeout-provider-health-gap",
+      "invariant": "When reviewer shard execution returns reviewer_timeout and provider-health recording is enabled, the runner must append reviewer_provider_health facts and schedule provider smoke unless a smoke result is already supplied.",
+      "enforcement_target": "src/workflow/reviewer-shard-runner.js; tools/run-reviewer-shard.mjs; test/reviewer-shard-runner.test.js; docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md",
+      "regression_test": "reviewer shard runner records provider health for timeout findings; run-reviewer-shard CLI records provider health on timeout findings; real DS reviewer shard run records pass without false provider health",
       "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }

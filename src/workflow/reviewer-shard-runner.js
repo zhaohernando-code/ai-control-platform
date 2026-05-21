@@ -3,6 +3,7 @@ import {
   recordReviewerShardResult,
   shardResultsFromWorkflowState
 } from "./reviewer-shard-results.js";
+import { recordReviewerProviderHealthFact } from "./reviewer-provider-health.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -18,6 +19,33 @@ function statusOf(value) {
 
 function issue(code, message, path) {
   return { code, message, path };
+}
+
+function findingCategory(finding = {}) {
+  return normalizeString(finding.category || finding.type || finding.code).toLowerCase();
+}
+
+function hasReviewerTimeoutFinding(findings = []) {
+  return asArray(findings).some((finding) => findingCategory(finding) === "reviewer_timeout");
+}
+
+function reviewerRequestFromShard(shard = {}, splitPlan = {}) {
+  return {
+    run_id: shard.run_id || splitPlan.run_id,
+    cycle_id: shard.cycle_id || splitPlan.cycle_id,
+    provider: {
+      provider: shard.provider || splitPlan.provider,
+      model: shard.model || splitPlan.model,
+      tooling: shard.dispatch_mode === "no_tools" ? "none" : "read-only"
+    },
+    scope: shard.scope || splitPlan.split_reason || "Reviewer shard timeout recovery",
+    files: asArray(shard.files),
+    questions: asArray(shard.questions),
+    forbidden_actions: asArray(shard.forbidden_actions),
+    output_contract: shard.output_contract || "Return structured reviewer findings.",
+    read_only: true,
+    allowed_tools: asArray(shard.allowed_tools)
+  };
 }
 
 function latestScopeSplitPlan(workflowState = {}) {
@@ -141,9 +169,25 @@ export async function runReviewerShard(workflowState = {}, input = {}) {
   });
   if (recorded.status !== "pass") return recorded;
 
-  const nextPending = getPendingReviewerShards(recorded.workflow_state);
+  let nextWorkflowState = recorded.workflow_state;
+  let providerHealth = null;
+  if (input.record_provider_health_on_timeout === true || input.recordProviderHealthOnTimeout === true) {
+    if (hasReviewerTimeoutFinding(recorded.fact.findings)) {
+      const health = recordReviewerProviderHealthFact(nextWorkflowState, {
+        request: reviewerRequestFromShard(shard, pending.split_plan),
+        smoke_status: input.provider_smoke_status || input.providerSmokeStatus,
+        tools: shard.allowed_tools,
+        created_at: input.provider_health_created_at || input.providerHealthCreatedAt || input.created_at
+      });
+      if (health.status !== "pass") return health;
+      providerHealth = health.fact;
+      nextWorkflowState = health.workflow_state;
+    }
+  }
+
+  const nextPending = getPendingReviewerShards(nextWorkflowState);
   if (nextPending.status === "pass" && nextPending.pending_shards === 0) {
-    const aggregate = recordReviewerShardAggregate(recorded.workflow_state, {
+    const aggregate = recordReviewerShardAggregate(nextWorkflowState, {
       created_at: input.aggregate_created_at || input.created_at
     });
     if (aggregate.status !== "pass") return aggregate;
@@ -153,6 +197,7 @@ export async function runReviewerShard(workflowState = {}, input = {}) {
       shard,
       prompt,
       result: recorded.fact,
+      provider_health: providerHealth,
       aggregate: aggregate.fact,
       workflow_state: aggregate.workflow_state
     };
@@ -164,7 +209,8 @@ export async function runReviewerShard(workflowState = {}, input = {}) {
     shard,
     prompt,
     result: recorded.fact,
+    provider_health: providerHealth,
     pending_shards: nextPending.pending_shards,
-    workflow_state: recorded.workflow_state
+    workflow_state: nextWorkflowState
   };
 }

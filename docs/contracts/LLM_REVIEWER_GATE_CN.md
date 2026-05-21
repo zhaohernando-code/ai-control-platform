@@ -168,6 +168,8 @@ DeepSeek/Claude Code executor adapter 约束：
 - 从 workflow state 中读取最新 split plan，默认执行第一个 pending shard，也可用 `--shard-id` 指定。
 - 默认 executor 为 Claude+DeepSeek adapter。
 - 成功后写回 workflow state；最后一个 shard 完成时自动写入 aggregate。
+- `--record-provider-health` 打开后，runner 遇到 `category=reviewer_timeout` 的 shard finding 必须写入 `reviewer_provider_health`。
+- 如果没有传 `--provider-smoke-status`，provider health 进入 `needs_smoke_check`，scheduled action 为 `provider_smoke_check`。
 - 支持 `--mock-findings-json` / `--mock-status`，用于确定性流程测试，不触发真实外部模型。
 - 输入不可读或 shard 不可执行时非零退出。
 

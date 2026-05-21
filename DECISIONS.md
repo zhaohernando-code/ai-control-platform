@@ -469,3 +469,14 @@ runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚
 - 支持 mock findings/status 以便 deterministic tests 不触发真实模型。
 - 成功写回 workflow state；最后一个 shard 自动 aggregate。
 - 输入不可读或 shard 不可执行时非零退出。
+
+[2026-05-21T22:03:19+08:00] Runner-level timeout must publish provider health facts:
+真实 DS shard 试运行通过，说明 canonical launcher 在 no-tools shard 场景下可用。但 timeout 路径也必须被流程托管，否则 runner 会把 provider 问题降级为普通 review finding。
+
+决策：
+- `runReviewerShard` 支持 `record_provider_health_on_timeout`。
+- CLI 暴露 `--record-provider-health` 和 `--provider-smoke-status`。
+- 当 shard result findings 中存在 `category=reviewer_timeout` 时，runner 写入 `reviewer_provider_health`。
+- 未提供 smoke status 时，provider health 进入 `needs_smoke_check`，scheduled action 为 `provider_smoke_check`。
+- 成功 shard 不写 provider health，避免健康事实噪音。
+- 真实 DS shard 成功记录在 `docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md`。
