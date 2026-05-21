@@ -1,3 +1,6 @@
+import { recordArtifact } from "./artifact-ledger.js";
+import { appendRunEvent } from "./run-manifest.js";
+
 const AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION = "autonomous-scheduler-loop-run.v1";
 
 function asArray(value) {
@@ -14,6 +17,10 @@ function issue(code, message, path) {
 
 function safeIdPart(value) {
   return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function boundedMaxIterations(value) {
@@ -205,6 +212,95 @@ export function createSchedulerLoopRunArtifact(input = {}, result = {}, options 
       phase: result.phase || null,
       issues: result.issues || [],
       iterations: result.iterations || []
+    }
+  };
+}
+
+function nextAutonomousSchedulerLoopArtifactId(workflowState = {}, options = {}) {
+  const explicit = normalizeString(options.artifact_id || options.artifactId);
+  if (explicit) return explicit;
+
+  const prefix = `autonomous-scheduler-loop-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`;
+  const used = new Set([
+    ...asArray(workflowState?.manifest?.events).map((event) => normalizeString(event?.artifact_id)).filter(Boolean),
+    ...asArray(workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts)
+      .map((artifact) => normalizeString(artifact?.id))
+      .filter(Boolean)
+  ]);
+  let index = 1;
+  let id = `${prefix}-${String(index).padStart(3, "0")}`;
+  while (used.has(id)) {
+    index += 1;
+    id = `${prefix}-${String(index).padStart(3, "0")}`;
+  }
+  return id;
+}
+
+export function recordAutonomousSchedulerLoopRunArtifact(workflowState = {}, runArtifact = {}, options = {}) {
+  if (!isObject(workflowState)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_workflow_state", "workflow state must be an object", "workflow_state")]
+    };
+  }
+
+  const runId = normalizeString(workflowState?.manifest?.run_id);
+  const cycleId = normalizeString(workflowState?.manifest?.cycle_id);
+  if (!runId || !cycleId) {
+    return {
+      status: "fail",
+      issues: [issue("missing_workflow_identity", "workflow state manifest run_id and cycle_id are required", "workflow_state.manifest")]
+    };
+  }
+
+  if (runArtifact?.version !== AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_scheduler_loop_artifact", "autonomous scheduler loop artifact version is required", "run_artifact.version")]
+    };
+  }
+
+  const id = nextAutonomousSchedulerLoopArtifactId(workflowState, options);
+  const createdAt = normalizeString(options.created_at || options.createdAt || runArtifact.created_at) || new Date().toISOString();
+  const artifact = {
+    id,
+    type: "evaluation",
+    status: runArtifact.status || "fail",
+    uri: `scheduler-loop://run/${encodeURIComponent(runId)}/${encodeURIComponent(cycleId)}/${encodeURIComponent(id)}`,
+    producer: "autonomous-scheduler-loop",
+    created_at: createdAt,
+    metadata: {
+      type: "autonomous_scheduler_loop_run",
+      run_id: runId,
+      cycle_id: cycleId,
+      ...runArtifact
+    }
+  };
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${id}`,
+    type: "autonomous_scheduler_loop_run",
+    status: artifact.status,
+    artifact_id: id,
+    message: `autonomous scheduler loop ${runArtifact.phase || "run"} ${artifact.status}`,
+    created_at: createdAt,
+    metadata: artifact.metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    status: "pass",
+    artifact,
+    workflow_state: {
+      ...workflowState,
+      manifest: {
+        ...manifest,
+        artifacts: [...asArray(manifest.artifacts), artifact]
+      },
+      artifact_ledger: artifactLedger
     }
   };
 }

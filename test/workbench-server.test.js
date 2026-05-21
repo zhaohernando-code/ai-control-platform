@@ -531,6 +531,63 @@ test("workbench server rejects scheduler next-cycle without dispatch run artifac
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server runs bounded autonomous scheduler loop from projection history input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-"));
+  const inputPath = join(snapshotsRoot, "autonomous-loop-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "autonomous-loop",
+    items: [
+      {
+        id: "autonomous-loop",
+        label: "Autonomous loop",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=autonomous-loop`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_iterations: 1,
+        snapshot_prefix: "server-loop",
+        created_at: "2026-05-22T00:50:00.000Z"
+      })
+    });
+    const created = response.json();
+    const history = (await request(`${baseUrl}/api/workbench/projections`)).json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.result.phase, "iteration_limit_reached");
+    assert.equal(created.projection.scheduler_loop.status, "pass");
+    assert.equal(created.projection.scheduler_loop.iteration_count, 1);
+    assert.equal(history.latest, "server-loop-autonomous-loop-01");
+    assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects autonomous scheduler loop without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/autonomous-scheduler-loop?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ max_iterations: 1 })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
+});
+
 test("workbench server records scheduler dispatch runs into workflow state input", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-dispatch-"));

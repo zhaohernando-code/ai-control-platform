@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import { dirname, extname, isAbsolute, normalize, relative, resolve } from "node:path";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -26,6 +26,11 @@ import {
   recordSchedulerDispatchContinuationPrepared,
   recordSchedulerNextCycleEnqueue
 } from "../src/workflow/scheduler-dispatch-continuation.js";
+import {
+  createSchedulerLoopRunArtifact,
+  recordAutonomousSchedulerLoopRunArtifact,
+  runSchedulerLoopDriver
+} from "../src/workflow/autonomous-scheduler-loop.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -223,6 +228,71 @@ function writePreparedSchedulerContinuation(runArtifact, prepared, allowedOutput
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify(prepared.continuation_input, null, 2)}\n`);
   return outputPath;
+}
+
+function requestJson(url, body = null) {
+  return new Promise((resolveRequest, reject) => {
+    if (url.protocol !== "http:") {
+      reject(new Error("workbench loop client supports only local http"));
+      return;
+    }
+    const payload = body ? JSON.stringify(body) : null;
+    const req = httpRequest(url, {
+      method: payload ? "POST" : "GET",
+      headers: payload
+        ? {
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(payload)
+        }
+        : {}
+    }, (response) => {
+      let text = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        text += chunk;
+      });
+      response.on("end", () => {
+        let json = null;
+        try {
+          json = text ? JSON.parse(text) : null;
+        } catch {
+          json = null;
+        }
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          reject(new Error(json?.error || text || `workbench request failed: ${response.statusCode}`));
+          return;
+        }
+        resolveRequest(json);
+      });
+    });
+    req.on("error", reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+function createWorkbenchLoopClient(baseUrl) {
+  const base = new URL(baseUrl);
+  return {
+    loadHistory() {
+      return requestJson(new URL("/api/workbench/projections", base));
+    },
+    createSchedulerDispatchPlan(projectionId, body = {}) {
+      const url = new URL("/api/workbench/scheduler-dispatch-plan", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    },
+    runSchedulerDispatch(projectionId, body = {}) {
+      const url = new URL("/api/workbench/scheduler-dispatch", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    },
+    enqueueSchedulerNextCycle(projectionId, body = {}) {
+      const url = new URL("/api/workbench/scheduler-next-cycle", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    }
+  };
 }
 
 function readBody(req) {
@@ -780,6 +850,60 @@ export function createWorkbenchServer(options = {}) {
           next_item: published.item,
           projection: published.projection,
           current_projection: createWorkbenchProjection(enqueued.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/autonomous-scheduler-loop" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const maxIterations = Number(input.max_iterations || input.maxIterations || 1);
+        const loopInput = {
+          start_projection_id: selectedId,
+          max_iterations: maxIterations,
+          execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+          snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "autonomous-loop",
+          created_at: input.created_at || input.createdAt
+        };
+        const loopResult = await runSchedulerLoopDriver(loopInput, {
+          client: createWorkbenchLoopClient(workbenchBaseUrlFromRequest(req))
+        });
+        const loopArtifact = createSchedulerLoopRunArtifact(loopInput, loopResult, {
+          created_at: input.created_at || input.createdAt
+        });
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const latestWorkflowState = readJson(inputPath);
+        const recorded = recordAutonomousSchedulerLoopRunArtifact(latestWorkflowState, loopArtifact, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (recorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "autonomous scheduler loop record failed", issues: recorded.issues });
+          return;
+        }
+        writeFileSync(inputPath, `${JSON.stringify({ ...latestWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
+
+        jsonResponse(res, loopResult.status === "pass" ? 201 : 400, {
+          status: loopResult.status === "pass" ? "created" : "failed",
+          item,
+          result: loopResult,
+          artifact: recorded.artifact,
+          projection: createWorkbenchProjection(recorded.workflow_state)
         });
         return;
       }

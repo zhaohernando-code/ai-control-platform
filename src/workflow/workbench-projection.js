@@ -419,6 +419,47 @@ function summarizeSchedulerDispatchContinuation(manifest = {}, artifactLedger = 
   };
 }
 
+function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "autonomous_scheduler_loop_run");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      phase: null,
+      artifact_id: null,
+      iteration_count: 0,
+      latest_iteration_status: null,
+      latest_projection_id: null,
+      issue_count: 0,
+      latest_issue: null,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const result = metadata.result || {};
+  const iterations = asArray(result.iterations);
+  const latestIteration = iterations.at(-1) || null;
+  const issues = asArray(result.issues);
+
+  return {
+    status: latestEvent.status || metadata.status || result.status || "unknown",
+    phase: metadata.phase || result.phase || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    iteration_count: iterations.length,
+    latest_iteration_status: latestIteration?.status || null,
+    latest_projection_id: latestIteration?.next_projection_id || latestIteration?.projection_id || null,
+    issue_count: issues.length,
+    latest_issue: issues[0]?.message || issues[0]?.code || null,
+    created_at: latestEvent.created_at || artifact?.created_at || metadata.created_at || null
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -485,6 +526,7 @@ export function createWorkbenchProjection(input = {}) {
   const reviewerShardReview = summarizeReviewerShardReview(manifest, artifactLedger);
   const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
+  const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -519,6 +561,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewer_shard_review: reviewerShardReview,
     scheduler_dispatch: schedulerDispatch,
     scheduler_continuation: schedulerContinuation,
+    scheduler_loop: schedulerLoop,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -549,7 +592,8 @@ export function createWorkbenchProjection(input = {}) {
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
         reviewer_shards_completed: reviewerShardReview.completed_shards || 0,
         scheduler_dispatch_steps: schedulerDispatch.step_count || 0,
-        scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0
+        scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0,
+        scheduler_loop_iterations: schedulerLoop.iteration_count || 0
       }
     }
   };
@@ -622,6 +666,13 @@ export function createMobileWorkbenchProjection(input = {}) {
       enqueue_available: projection.scheduler_continuation.enqueue_available,
       next_work_package_count: projection.scheduler_continuation.next_work_package_count
     },
+    scheduler_loop: {
+      status: projection.scheduler_loop.status,
+      phase: projection.scheduler_loop.phase,
+      iteration_count: projection.scheduler_loop.iteration_count,
+      latest_iteration_status: projection.scheduler_loop.latest_iteration_status,
+      latest_projection_id: projection.scheduler_loop.latest_projection_id
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -641,5 +692,6 @@ export {
   summarizeReviewerScopeSplit,
   summarizeReviewerShardReview,
   summarizeSchedulerDispatchContinuation,
+  summarizeAutonomousSchedulerLoop,
   summarizeSchedulerDispatch
 };

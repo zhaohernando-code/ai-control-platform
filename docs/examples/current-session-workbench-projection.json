@@ -131,6 +131,17 @@
     "latest_issue": null,
     "created_at": null
   },
+  "scheduler_loop": {
+    "status": "not_configured",
+    "phase": null,
+    "artifact_id": null,
+    "iteration_count": 0,
+    "latest_iteration_status": null,
+    "latest_projection_id": null,
+    "issue_count": 0,
+    "latest_issue": null,
+    "created_at": null
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -264,7 +275,8 @@
       "reviewer_scope_shards": 2,
       "reviewer_shards_completed": 0,
       "scheduler_dispatch_steps": 0,
-      "scheduler_continuation_ready": 0
+      "scheduler_continuation_ready": 0,
+      "scheduler_loop_iterations": 0
     }
   }
 }

@@ -720,3 +720,14 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - 当前 loop 只允许命名 profile `approved_mock_non_dry_run`，`max_iterations` 限制在 1-5。
 - 每轮按 `scheduler-dispatch-plan -> scheduler-dispatch -> scheduler-next-cycle` 推进；无 dispatchable steps、continuation 未 ready、enqueue 未返回 next item 或达到迭代上限时停止并输出 `autonomous-scheduler-loop-run.v1`。
 - 服务端集成测试必须用异步子进程，不能用同步 `execFileSync` 阻塞同进程里的 workbench server。
+
+[2026-05-22T00:47:00+08:00] Autonomous scheduler loop must be visible and operator-triggerable from the workbench:
+自运行能力如果只存在于 CLI，仍然会和工作台状态脱节。工作台需要能看到 loop 运行结果，也需要一个受限入口启动 bounded loop。
+
+决策：
+- `autonomous_scheduler_loop_run` 被记录为 manifest event 和 artifact ledger artifact。
+- Workbench projection 增加 `scheduler_loop` summary，PC/mobile schema 都要求该对象存在。
+- Workbench server 增加 `POST /api/workbench/autonomous-scheduler-loop`，服务端运行 bounded loop 后把 loop artifact 写回发起 history item 的 workflow state。
+- PC/mobile 工作台展示 loop status、iteration count 和 latest projection id。
+- 前端按钮只发送 `max_iterations=1`、`execution_profile=approved_mock_non_dry_run` 和 snapshot prefix，不拼底层 policy 控制。
+- 浏览器门禁增加 `autonomous_scheduler_loop_click`，验证页面点击能完成一轮 loop 且不产生横向溢出。

@@ -8,6 +8,7 @@ import test from "node:test";
 
 import {
   createSchedulerLoopRunArtifact,
+  recordAutonomousSchedulerLoopRunArtifact,
   runSchedulerLoopDriver,
   schedulerLoopInput
 } from "../src/workflow/autonomous-scheduler-loop.js";
@@ -163,6 +164,19 @@ test("scheduler loop run artifact captures iterations", async () => {
   assert.equal(artifact.version, "autonomous-scheduler-loop-run.v1");
   assert.equal(artifact.status, "pass");
   assert.equal(artifact.result.iterations.length, 1);
+});
+
+test("scheduler loop run artifact records into workflow state", async () => {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
+  const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result);
+  const recorded = recordAutonomousSchedulerLoopRunArtifact(workflowState, artifact, {
+    created_at: "2026-05-22T00:45:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+  assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).metadata.version, "autonomous-scheduler-loop-run.v1");
 });
 
 test("run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url", () => {

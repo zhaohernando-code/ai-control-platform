@@ -129,10 +129,19 @@
               <span>Enqueue</span>
               <strong data-bind="scheduler_continuation_enqueue">--</strong>
             </div>
+            <div>
+              <span>Loop</span>
+              <strong data-bind="scheduler_loop_status">--</strong>
+            </div>
+            <div>
+              <span>Loops</span>
+              <strong data-bind="scheduler_loop_iterations">0</strong>
+            </div>
           </div>
           <div class="provider-actions">
             <button type="button" data-scheduler-dispatch="dry-run">调度 Dry Run</button>
             <button type="button" data-scheduler-dispatch="approved-mock">批准 Mock 执行</button>
+            <button type="button" data-autonomous-scheduler-loop="bounded">运行 Loop</button>
           </div>
         </section>
 

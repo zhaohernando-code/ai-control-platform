@@ -73,6 +73,7 @@ function renderProjection(projection) {
   const shardReview = projection.reviewer_shard_review || projection.shard_review || {};
   const schedulerDispatch = projection.scheduler_dispatch || {};
   const schedulerContinuation = projection.scheduler_continuation || {};
+  const schedulerLoop = projection.scheduler_loop || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -131,6 +132,10 @@ function renderProjection(projection) {
   setText("scheduler_continuation_ready", schedulerContinuation.ready === true ? "ready" : "not ready");
   setText("scheduler_continuation_enqueue", schedulerContinuation.enqueue_status);
   setText("scheduler_continuation_path", schedulerContinuation.continuation_input_path);
+  setText("scheduler_loop_status", schedulerLoop.status);
+  setText("scheduler_loop_phase", schedulerLoop.phase);
+  setText("scheduler_loop_iterations", schedulerLoop.iteration_count ?? 0);
+  setText("scheduler_loop_latest", schedulerLoop.latest_projection_id);
 
   renderNextActions(projection);
   renderModelRoles(projection);
@@ -286,6 +291,35 @@ qsa("[data-scheduler-dispatch]").forEach((button) => {
       }
       button.dataset.eventState = "failed";
       button.textContent = "调度失败";
+    }
+  });
+});
+
+qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    button.dataset.eventState = "pending";
+    button.textContent = "Loop 运行中";
+
+    try {
+      const result = await source.runAutonomousSchedulerLoop({
+        max_iterations: 1,
+        execution_profile: "approved_mock_non_dry_run",
+        snapshot_prefix: "workbench-loop",
+        created_at: new Date().toISOString()
+      });
+      button.dataset.eventState = "recorded";
+      button.textContent = "Loop 已记录";
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch (error) {
+      if (error.projection) {
+        currentProjection = error.projection;
+        renderProjection(error.projection);
+      }
+      button.dataset.eventState = "failed";
+      button.textContent = "Loop 失败";
     }
   });
 });

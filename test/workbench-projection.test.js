@@ -115,10 +115,12 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.reviewer_provider_health.status, "not_configured");
   assert.equal(projection.scheduler_dispatch.status, "not_configured");
   assert.equal(projection.scheduler_continuation.status, "not_configured");
+  assert.equal(projection.scheduler_loop.status, "not_configured");
   assert.equal(projection.one_screen.counters.resume_blockers, 0);
   assert.equal(projection.one_screen.counters.provider_health_events, 0);
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 0);
   assert.equal(projection.one_screen.counters.scheduler_continuation_ready, 0);
+  assert.equal(projection.one_screen.counters.scheduler_loop_iterations, 0);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
@@ -564,6 +566,68 @@ test("workbench projection exposes scheduler dispatch continuation readiness", (
   assert.equal(projection.one_screen.counters.scheduler_continuation_ready, 1);
   assert.equal(mobile.scheduler_continuation.ready, true);
   assert.equal(mobile.scheduler_continuation.enqueue_status, "queued");
+});
+
+test("workbench projection exposes autonomous scheduler loop runs", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "autonomous-scheduler-loop-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-loop://run/run-projection/cycle-20260521/autonomous-scheduler-loop-run-projection-cycle-20260521-001",
+    producer: "autonomous-scheduler-loop",
+    created_at: "2026-05-22T00:45:00.000Z",
+    metadata: {
+      type: "autonomous_scheduler_loop_run",
+      version: "autonomous-scheduler-loop-run.v1",
+      status: "pass",
+      phase: "iteration_limit_reached",
+      result: {
+        status: "pass",
+        phase: "iteration_limit_reached",
+        issues: [],
+        iterations: [
+          {
+            index: 1,
+            projection_id: "current",
+            status: "queued",
+            next_projection_id: "workbench-loop-current-01"
+          }
+        ]
+      }
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "autonomous_scheduler_loop_run",
+        status: "pass",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.scheduler_loop.status, "pass");
+  assert.equal(projection.scheduler_loop.phase, "iteration_limit_reached");
+  assert.equal(projection.scheduler_loop.iteration_count, 1);
+  assert.equal(projection.scheduler_loop.latest_iteration_status, "queued");
+  assert.equal(projection.scheduler_loop.latest_projection_id, "workbench-loop-current-01");
+  assert.equal(projection.one_screen.counters.scheduler_loop_iterations, 1);
+  assert.equal(mobile.scheduler_loop.status, "pass");
+  assert.equal(mobile.scheduler_loop.latest_projection_id, "workbench-loop-current-01");
 });
 
 test("workbench projection exposes scheduler dispatch policy blockers", () => {

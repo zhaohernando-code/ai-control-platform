@@ -251,6 +251,29 @@ test("projection source enqueues scheduler next cycle", async () => {
   assert.match(calls[0].options.body, /snapshot_id/);
 });
 
+test("projection source runs autonomous scheduler loop", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    autonomousSchedulerLoopUrl: "/api/workbench/autonomous-scheduler-loop",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", projection: validProjection() };
+        }
+      };
+    }
+  });
+
+  const result = await source.runAutonomousSchedulerLoop({ max_iterations: 1 });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.autonomousSchedulerLoopUrl, "/api/workbench/autonomous-scheduler-loop");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /max_iterations/);
+});
+
 test("projection source rejects failed scheduler dispatch", async () => {
   const projection = validProjection();
   const source = createProjectionSource({
@@ -287,6 +310,26 @@ test("projection source rejects failed scheduler next-cycle enqueue", async () =
     source.enqueueSchedulerNextCycle({}),
     /Scheduler next cycle enqueue failed: 400/
   );
+});
+
+test("projection source rejects failed autonomous scheduler loop", async () => {
+  const projection = validProjection();
+  const source = createProjectionSource({
+    autonomousSchedulerLoopUrl: "/api/workbench/autonomous-scheduler-loop",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "loop failed", projection };
+      }
+    })
+  });
+
+  await assert.rejects(source.runAutonomousSchedulerLoop({ max_iterations: 9 }), (error) => {
+    assert.match(error.message, /Autonomous scheduler loop failed: 400/);
+    assert.equal(error.projection, projection);
+    return true;
+  });
 });
 
 test("projection source rejects failed scheduler dispatch plan creation", async () => {

@@ -250,6 +250,37 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
   });
 }
 
+async function verifyAutonomousSchedulerLoopClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-autonomous-scheduler-loop="bounded"]');
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="bounded"]')?.textContent.includes("Loop 已记录"));
+
+    const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
+    const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(schedulerLoopStatus === "pass", "autonomous scheduler loop click must render loop pass");
+    assert(schedulerLoopIterations === "1", "autonomous scheduler loop click must render one loop iteration");
+    assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "autonomous_scheduler_loop_click",
+      scheduler_loop_status: schedulerLoopStatus,
+      scheduler_loop_iterations: schedulerLoopIterations,
+      dimensions
+    }, null, 2));
+  });
+}
+
 async function verifyMobileProjectionLoad(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -271,6 +302,7 @@ async function verifyMobileProjectionLoad(browser) {
     const schedulerDispatchStatus = await page.textContent('[data-bind="scheduler_dispatch_status"]');
     const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
     const schedulerContinuationReady = await page.textContent('[data-bind="scheduler_continuation_ready"]');
+    const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
@@ -280,6 +312,7 @@ async function verifyMobileProjectionLoad(browser) {
     assert(schedulerDispatchStatus, "mobile workbench must render scheduler dispatch status");
     assert(schedulerDispatchSteps !== null, "mobile workbench must render scheduler dispatch steps");
     assert(schedulerContinuationReady, "mobile workbench must render scheduler continuation readiness");
+    assert(schedulerLoopStatus, "mobile workbench must render scheduler loop status");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -291,6 +324,7 @@ async function verifyMobileProjectionLoad(browser) {
       scheduler_dispatch_status: schedulerDispatchStatus,
       scheduler_dispatch_steps: schedulerDispatchSteps,
       scheduler_continuation_ready: schedulerContinuationReady,
+      scheduler_loop_status: schedulerLoopStatus,
       dimensions
     }, null, 2));
   });
@@ -303,6 +337,7 @@ try {
   await verifyProviderHealthClick(browser);
   await verifySchedulerDispatchClick(browser);
   await verifyApprovedMockSchedulerDispatchClick(browser);
+  await verifyAutonomousSchedulerLoopClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();
