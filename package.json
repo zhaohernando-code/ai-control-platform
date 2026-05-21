@@ -14,7 +14,8 @@
     "check:autonomous-closeout-loop-run": "node tools/run-with-node18.mjs tools/check-autonomous-closeout-loop-run.mjs",
     "check:closeout": "node tools/run-with-node18.mjs tools/check-closeout.mjs",
     "run:closeout-plan": "node tools/run-with-node18.mjs tools/run-closeout-plan.mjs",
-    "run:autonomous-closeout-loop": "node tools/run-with-node18.mjs tools/run-autonomous-closeout-loop.mjs"
+    "run:autonomous-closeout-loop": "node tools/run-with-node18.mjs tools/run-autonomous-closeout-loop.mjs",
+    "record:reviewer-provider-health": "node tools/run-with-node18.mjs tools/record-reviewer-provider-health.mjs"
   },
   "devDependencies": {
     "playwright": "^1.60.0"

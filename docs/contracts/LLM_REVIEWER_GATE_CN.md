@@ -84,6 +84,12 @@ Reviewer timeout 不得直接变成人工阻塞，也不得无限重试同一个
 
 持久化必须原子完成：manifest 与 artifact ledger 的 run/cycle identity 不一致时，不能写入半状态。
 
+`tools/record-reviewer-provider-health.mjs` / `npm run record:reviewer-provider-health` 是当前 CLI 入口，用于把 DS smoke 结果或 reviewer timeout recovery 写回 workflow state。CLI 必须：
+
+- 要求 `--input` 和 `--output`，或显式 `--in-place`。
+- 输入不可读、JSON 损坏或 workflow identity 不一致时非零退出。
+- 成功时输出 artifact id、provider health、retry strategy 和 scheduled actions。
+
 ## 5. 工作台状态
 
 `summarizeReviewerGate` 输出工作台可展示状态：

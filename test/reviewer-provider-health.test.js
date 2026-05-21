@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { createArtifactLedger } from "../src/workflow/artifact-ledger.js";
@@ -142,4 +146,48 @@ test("provider health persistence fails closed on manifest and ledger mismatch",
   assert.equal(result.status, "fail");
   assert.ok(result.issues.some((issue) => issue.code === "workflow_state_run_mismatch"));
   assert.equal(result.workflow_state, undefined);
+});
+
+test("record-reviewer-provider-health CLI writes durable provider health facts", () => {
+  const dir = mkdtempSync(join(tmpdir(), "reviewer-provider-health-cli-"));
+  const inputPath = join(dir, "input.json");
+  const outputPath = join(dir, "output.json");
+  writeFileSync(inputPath, JSON.stringify({
+    ...workflowState(),
+    reviewer_gate: { request: reviewerRequest() }
+  }));
+
+  const output = execFileSync(process.execPath, [
+    "tools/record-reviewer-provider-health.mjs",
+    "--input",
+    inputPath,
+    "--output",
+    outputPath,
+    "--tools",
+    "Read,Grep",
+    "--smoke-status",
+    "pass",
+    "--created-at",
+    "2026-05-21T12:10:00.000Z"
+  ], { encoding: "utf8" });
+  const summary = JSON.parse(output);
+  const state = JSON.parse(readFileSync(outputPath, "utf8"));
+
+  assert.equal(summary.status, "pass");
+  assert.deepEqual(summary.scheduled_actions, ["rerun_without_tools", "split_scope"]);
+  assert.equal(state.manifest.events.at(-1).type, "reviewer_provider_health");
+  assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.provider_health, "healthy");
+});
+
+test("record-reviewer-provider-health CLI fails closed on unreadable input", () => {
+  const result = spawnSync(process.execPath, [
+    "tools/record-reviewer-provider-health.mjs",
+    "--input",
+    "/no/such/file.json",
+    "--output",
+    "/tmp/unused.json"
+  ], { encoding: "utf8" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /workflow_state_read_failed/);
 });

@@ -134,6 +134,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Reviewer provider health facts must generate continuation work packages; showing retry/fallback state without scheduling follow-up leaves autonomous development stuck."
+    },
+    {
+      "id": "reviewer-provider-health-manual-recording",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Reviewer provider health facts need a reusable CLI/API recording path; one-off scripts reintroduce chat-only state and manual intervention."
     }
   ],
   "hardening_items": [
@@ -287,6 +294,14 @@
       "enforcement_target": "src/workflow/autonomous-continuation.js; test/autonomous-continuation.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
       "regression_test": "reviewer provider health facts generate scheduler follow-up work packages; provider health fallback schedules model fallback work package",
       "verification": "node --test test/autonomous-continuation.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-provider-health-manual-recording",
+      "invariant": "Provider health facts must be recordable through a reusable CLI that fails closed on unreadable input and writes durable manifest/artifact state on success.",
+      "enforcement_target": "tools/record-reviewer-provider-health.mjs; package.json; test/reviewer-provider-health.test.js",
+      "regression_test": "record-reviewer-provider-health CLI writes durable provider health facts; record-reviewer-provider-health CLI fails closed on unreadable input",
+      "verification": "node --test test/reviewer-provider-health.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]
