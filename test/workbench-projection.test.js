@@ -435,6 +435,60 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
   assert.equal(mobile.shard_review.latest_executor_kind, "claude_deepseek");
 });
 
+test("workbench projection advances next reviewer shard after partial result", () => {
+  const input = baseInput();
+  const splitArtifact = {
+    id: "reviewer-scope-split-partial",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://reviewer-scope-split/partial",
+    producer: "reviewer-scope-split",
+    created_at: "2026-05-21T12:05:00.000Z",
+    metadata: {
+      type: "reviewer_scope_split",
+      status: "pass",
+      shard_count: 2,
+      pending_shards: 2,
+      shards: [
+        { id: "reviewer-scope-shard-001", status: "pending" },
+        { id: "reviewer-scope-shard-002", status: "pending" }
+      ]
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "event-reviewer-scope-split-partial",
+        type: "reviewer_scope_split",
+        status: "pass",
+        artifact_id: splitArtifact.id,
+        created_at: splitArtifact.created_at,
+        metadata: splitArtifact.metadata
+      },
+      {
+        id: "event-reviewer-scope-shard-partial-001",
+        type: "reviewer_shard_result",
+        status: "pass",
+        created_at: "2026-05-21T12:06:00.000Z",
+        metadata: { shard_id: "reviewer-scope-shard-001", status: "pass" }
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, splitArtifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, splitArtifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.reviewer_shard_review.completed_shards, 1);
+  assert.equal(projection.reviewer_shard_review.pending_shards, 1);
+  assert.equal(projection.reviewer_shard_review.next_shard, "reviewer-scope-shard-002");
+});
+
 test("workbench projection exposes scheduler dispatch run status", () => {
   const input = baseInput();
   const artifact = {

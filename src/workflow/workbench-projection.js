@@ -241,6 +241,7 @@ function summarizeReviewerScopeSplit(manifest = {}, artifactLedger = {}) {
     shard_count: metadata.shard_count || shards.length,
     pending_shards: metadata.pending_shards || pendingShards.length,
     next_shard: pendingShards[0]?.id || null,
+    shard_ids: shards.map((shard) => normalizeString(shard?.id)).filter(Boolean),
     split_required: Boolean(metadata.split_required),
     provider: metadata.provider || null,
     model: metadata.model || null,
@@ -292,6 +293,7 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
 
   const completedIds = new Set(resultEvents.map((event) => normalizeString(event?.metadata?.shard_id)).filter(Boolean));
   const pendingFromSplit = Math.max(0, (split.shard_count || 0) - completedIds.size);
+  const pendingShardIds = asArray(split.shard_ids).filter((id) => !completedIds.has(normalizeString(id)));
 
   return {
     status: aggregate?.status || (pendingFromSplit > 0 ? "pending" : "pass"),
@@ -300,7 +302,7 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
     pending_shards: aggregate?.pending_shards ?? pendingFromSplit,
     failed_finding_count: aggregate?.failed_finding_count || 0,
     finding_count: aggregate?.finding_count || 0,
-    next_shard: aggregate?.pending_shard_ids?.[0] || (pendingFromSplit > 0 ? split.next_shard : null),
+    next_shard: aggregate?.pending_shard_ids?.[0] || pendingShardIds[0] || (pendingFromSplit > 0 ? split.next_shard : null),
     latest_executor_kind: provenance.executor_kind || null,
     latest_execution_profile: provenance.execution_profile || null,
     latest_provider: provenance.provider || resultMetadata.provider || null,

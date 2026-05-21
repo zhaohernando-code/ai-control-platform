@@ -337,6 +337,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Provider-health preflight evidence must not be appended as the latest automation driver immediately before projected loop execution; otherwise the loop may follow provider recovery instead of the intended reviewer shard next action."
+    },
+    {
+      "id": "partial-shard-next-readout-stale",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Workbench projection must derive next reviewer shard from pending shard ids after completed shard results; otherwise real reviewer loops can keep pointing at an already completed shard."
     }
   ],
   "hardening_items": [
@@ -898,6 +905,14 @@
       "enforcement_target": "test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
       "regression_test": "workbench server can run projected real reviewer loop with injected executor",
       "verification": "node --test test/workbench-server.test.js test/autonomous-scheduler-loop.test.js test/reviewer-execution-policy.test.js test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "partial-shard-next-readout-stale",
+      "invariant": "When reviewer shard results exist without an aggregate, workbench projection must compute next_shard from split shard ids minus completed result shard ids, not reuse the split plan's initial next shard.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/evaluations/20260522_REAL_DS_PROJECTED_LOOP_SMOKE_CN.md",
+      "regression_test": "workbench projection advances next reviewer shard after partial result",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-fixture.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

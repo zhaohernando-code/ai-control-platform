@@ -179,6 +179,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Reviewer shard result 的 executor provenance 必须进入 workbench projection 和 PC/mobile readout，至少包含 `executor_kind`、`execution_profile`、provider/model 和 external call budget used。看板必须能直接区分 mock trial 与 bounded real reviewer run，不能要求操作者打开 raw artifact 判断。
 - PC/mobile 可以提供 `Projected Real Loop` 控制，但它只能发送 `approved_bounded_real_reviewer`、`execution_strategy=projected_next_action`、`max_external_reviewer_calls=1`、`provider_cost_mode=bounded` 和 bounded timeout。服务端在选择真实 executor 前必须检查最新 reviewer provider health fact 为 healthy；缺失或 unhealthy 时必须失败闭合，不得触发 Claude/DeepSeek。
 - Provider health preflight 是读取条件，不应在 projected loop 即将执行前追加一个新的 automation driver；否则 `next_action_readout` 可能改为 provider recovery。真实 reviewer loop smoke 必须证明 reviewer shard 仍是当前推荐动作。
+- Reviewer shard projection 在尚未 aggregate 时，必须根据 split shard ids 减去已完成 shard result ids 计算 `next_shard`；不能在 partial result 后继续展示 split plan 的初始 shard。
 
 ## 5. 与工作台关系
 

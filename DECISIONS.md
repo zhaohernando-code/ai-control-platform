@@ -904,3 +904,11 @@ Injected real-loop smoke 暴露了一个流程细节：如果为了预检把 pro
 - Provider health preflight 只读取已有健康事实，不在同一 projected loop 执行前追加新的 automation driver。
 - 真实 reviewer loop smoke 使用已有 healthy fact，同时保持 `next_action_readout=run_reviewer_scope_shard`。
 - 后续如果需要刷新 provider health，应作为独立前置 cycle 完成，再进入 reviewer projected loop。
+
+[2026-05-22T05:20:00+08:00] Partial reviewer shard readout must skip completed shards:
+真实 DS 单片 smoke 成功后暴露了 projection bug：完成 shard 001 后，工作台仍显示 next shard 为 001。
+
+决策：
+- `reviewer_scope_split` projection 保留 `shard_ids`。
+- `reviewer_shard_review.next_shard` 在 partial result 状态下从 `shard_ids - completedIds` 计算。
+- 增加 partial result 回归，防止真实 loop 恢复时重复调度已完成 shard。

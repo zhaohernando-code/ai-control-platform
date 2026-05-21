@@ -82,6 +82,10 @@
     "shard_count": 2,
     "pending_shards": 2,
     "next_shard": "reviewer-scope-shard-001",
+    "shard_ids": [
+      "reviewer-scope-shard-001",
+      "reviewer-scope-shard-002"
+    ],
     "split_required": true,
     "provider": "claude-code",
     "model": "deepseek-v4-pro",
