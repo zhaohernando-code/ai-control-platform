@@ -295,7 +295,40 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
 function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
   const events = asArray(manifest?.events).filter((event) => event?.type === "scheduler_dispatch_run");
   const latestEvent = events.at(-1) || null;
+  const policyEvents = asArray(manifest?.events).filter((event) => event?.type === "scheduler_dispatch_policy");
+  const latestPolicyEvent = policyEvents.at(-1) || null;
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const policyArtifact = latestPolicyEvent
+    ? artifacts.find((entry) => entry.id === latestPolicyEvent.artifact_id) || null
+    : null;
+  const policyMetadata = policyArtifact?.metadata || latestPolicyEvent?.metadata || {};
+  const policyIssues = asArray(policyMetadata.issues);
+  const policySummary = {
+    policy_status: latestPolicyEvent?.status || policyMetadata.status || null,
+    policy_execution_mode: policyMetadata.execution_mode || null,
+    policy_issue_count: policyIssues.length,
+    policy_latest_issue: policyIssues[0]?.message || policyIssues[0]?.code || null,
+    policy_artifact_id: latestPolicyEvent?.artifact_id || policyArtifact?.id || null
+  };
+
   if (!latestEvent) {
+    if (latestPolicyEvent) {
+      return {
+        status: policySummary.policy_status === "fail" ? "blocked" : "policy_pass",
+        phase: "policy",
+        step_count: 0,
+        failed_step_count: 0,
+        dry_run: policySummary.policy_execution_mode === "dry_run",
+        event_id: null,
+        artifact_id: null,
+        created_at: latestPolicyEvent.created_at || policyArtifact?.created_at || null,
+        ...policySummary
+      };
+    }
+
     return {
       status: "not_configured",
       phase: null,
@@ -304,14 +337,11 @@ function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
       dry_run: false,
       event_id: null,
       artifact_id: null,
-      created_at: null
+      created_at: null,
+      ...policySummary
     };
   }
 
-  const artifacts = [
-    ...asArray(artifactLedger?.artifacts),
-    ...asArray(manifest?.artifacts)
-  ];
   const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
   const metadata = artifact?.metadata || latestEvent.metadata || {};
   const steps = asArray(metadata.result?.steps || metadata.steps);
@@ -324,7 +354,8 @@ function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
     dry_run: steps.length > 0 && steps.every((step) => step?.dry_run === true),
     event_id: latestEvent.id || null,
     artifact_id: latestEvent.artifact_id || artifact?.id || null,
-    created_at: latestEvent.created_at || artifact?.created_at || null
+    created_at: latestEvent.created_at || artifact?.created_at || null,
+    ...policySummary
   };
 }
 
@@ -511,7 +542,11 @@ export function createMobileWorkbenchProjection(input = {}) {
       phase: projection.scheduler_dispatch.phase,
       step_count: projection.scheduler_dispatch.step_count,
       failed_step_count: projection.scheduler_dispatch.failed_step_count,
-      dry_run: projection.scheduler_dispatch.dry_run
+      dry_run: projection.scheduler_dispatch.dry_run,
+      policy_status: projection.scheduler_dispatch.policy_status,
+      policy_execution_mode: projection.scheduler_dispatch.policy_execution_mode,
+      policy_issue_count: projection.scheduler_dispatch.policy_issue_count,
+      policy_latest_issue: projection.scheduler_dispatch.policy_latest_issue
     },
     model: {
       selected_model: projection.model_routing.selected_model,

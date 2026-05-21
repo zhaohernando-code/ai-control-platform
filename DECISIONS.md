@@ -643,3 +643,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - 非 dry-run 必须提供 `max_steps`，并且不能超过当前三步调度链。
 - reviewer 成本必须显式声明：mocked reviewer 要求外部 reviewer call budget 为 0；非 mocked reviewer 要求 bounded provider cost mode 与 shard 数以内的 call budget。
 - Workbench server 在执行 `/api/workbench/scheduler-dispatch` 前先评估 policy；policy 失败时不执行、不写回。
+
+[2026-05-21T23:27:50+08:00] Scheduler dispatch policy decisions must be durable projection facts:
+只在接口响应里返回 policy 拒绝原因不够，下一轮恢复、工作台刷新或长任务重启后会丢失“为什么没有执行”的证据。
+
+决策：
+- 新增 `scheduler_dispatch_policy` manifest event 和 `scheduler-dispatch-policy.v1` artifact。
+- Workbench server 在执行或拒绝 scheduler dispatch 前必须先记录 policy decision。
+- policy 拒绝时可以写入 policy 证据，但不得执行计划或写入 scheduler dispatch run artifact。
+- Workbench projection 必须展示 latest policy status、execution mode、issue count 和首个 issue。
+- PC/mobile 工作台必须从 projection 渲染 policy 状态，不能只依赖按钮失败文本。

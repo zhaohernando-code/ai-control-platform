@@ -119,6 +119,10 @@ function renderProjection(projection) {
   setText("scheduler_dispatch_failed", schedulerDispatch.failed_step_count ?? 0);
   setText("scheduler_dispatch_dry_run", schedulerDispatch.dry_run === true ? "yes" : "no");
   setText("scheduler_dispatch_artifact", schedulerDispatch.artifact_id);
+  setText("scheduler_policy_status", schedulerDispatch.policy_status);
+  setText("scheduler_policy_mode", schedulerDispatch.policy_execution_mode);
+  setText("scheduler_policy_issues", schedulerDispatch.policy_issue_count ?? 0);
+  setText("scheduler_policy_reason", schedulerDispatch.policy_latest_issue);
 
   renderNextActions(projection);
   renderModelRoles(projection);
@@ -259,7 +263,13 @@ qsa("[data-scheduler-dispatch]").forEach((button) => {
         currentProjection = result.projection;
         renderProjection(result.projection);
       }
-    } catch {
+    } catch (error) {
+      if (error.projection) {
+        currentProjection = error.projection;
+        renderProjection(error.projection);
+        button.textContent = "调度已拦截";
+        return;
+      }
       button.dataset.eventState = "failed";
       button.textContent = "调度失败";
     }

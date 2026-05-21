@@ -109,7 +109,12 @@
     "dry_run": false,
     "event_id": null,
     "artifact_id": null,
-    "created_at": null
+    "created_at": null,
+    "policy_status": null,
+    "policy_execution_mode": null,
+    "policy_issue_count": 0,
+    "policy_latest_issue": null,
+    "policy_artifact_id": null
   },
   "model_routing": {
     "status": "pass",

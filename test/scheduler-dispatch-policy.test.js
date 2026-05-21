@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
-import { evaluateSchedulerDispatchControlPolicy } from "../src/workflow/scheduler-dispatch-policy.js";
+import {
+  evaluateSchedulerDispatchControlPolicy,
+  recordSchedulerDispatchPolicyDecision
+} from "../src/workflow/scheduler-dispatch-policy.js";
 
 function workflowState() {
   return JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
@@ -73,4 +76,21 @@ test("scheduler dispatch control policy bounds non-mocked reviewer cost", () => 
 
   assert.equal(policy.status, "fail");
   assert.ok(policy.issues.some((entry) => entry.code === "invalid_reviewer_budget"));
+});
+
+test("scheduler dispatch policy decisions are durable workflow facts", () => {
+  const state = workflowState();
+  const policy = evaluateSchedulerDispatchControlPolicy({ dry_run: false }, plan());
+  const recorded = recordSchedulerDispatchPolicyDecision(state, policy, {
+    plan: plan(),
+    created_at: "2026-05-21T23:40:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.artifact.metadata.type, "scheduler_dispatch_policy");
+  assert.equal(recorded.artifact.status, "fail");
+  assert.equal(recorded.artifact.metadata.execution_mode, "blocked");
+  assert.ok(recorded.artifact.metadata.issues.some((entry) => entry.code === "missing_operator_authorization"));
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "scheduler_dispatch_policy");
+  assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).producer, "scheduler-dispatch-policy");
 });

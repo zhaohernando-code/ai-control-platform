@@ -6,7 +6,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
-import { evaluateSchedulerDispatchControlPolicy } from "../src/workflow/scheduler-dispatch-policy.js";
+import {
+  evaluateSchedulerDispatchControlPolicy,
+  recordSchedulerDispatchPolicyDecision
+} from "../src/workflow/scheduler-dispatch-policy.js";
 import { recordReviewerProviderHealthFact } from "../src/workflow/reviewer-provider-health.js";
 import {
   recordReviewerShardAggregate,
@@ -435,8 +438,24 @@ export function createWorkbenchServer(options = {}) {
         }
 
         const policy = evaluateSchedulerDispatchControlPolicy(input, plan);
+        const policyRecorded = recordSchedulerDispatchPolicyDecision(workflowState, policy, {
+          created_at: input.created_at || input.createdAt,
+          plan
+        });
+        if (policyRecorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch policy record failed", issues: policyRecorded.issues });
+          return;
+        }
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...policyRecorded.workflow_state }, null, 2)}\n`);
+
         if (policy.status !== "pass") {
-          jsonResponse(res, 400, { error: "scheduler dispatch policy rejected", issues: policy.issues });
+          jsonResponse(res, 400, {
+            error: "scheduler dispatch policy rejected",
+            issues: policy.issues,
+            policy,
+            artifact: policyRecorded.artifact,
+            projection: createWorkbenchProjection(policyRecorded.workflow_state)
+          });
           return;
         }
 
@@ -444,7 +463,7 @@ export function createWorkbenchServer(options = {}) {
         const runArtifact = createSchedulerDispatchRunArtifact(plan, runResult, {
           created_at: input.created_at || input.createdAt
         });
-        const recorded = recordSchedulerDispatchRunArtifact(workflowState, runArtifact, {
+        const recorded = recordSchedulerDispatchRunArtifact(policyRecorded.workflow_state, runArtifact, {
           created_at: input.created_at || input.createdAt
         });
         if (recorded.status !== "pass") {

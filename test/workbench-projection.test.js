@@ -467,6 +467,63 @@ test("workbench projection exposes scheduler dispatch run status", () => {
   assert.equal(mobile.scheduler_dispatch.step_count, 3);
 });
 
+test("workbench projection exposes scheduler dispatch policy blockers", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "scheduler-dispatch-policy-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "fail",
+    uri: "scheduler-dispatch://policy/run-projection/cycle-20260521/scheduler-dispatch-policy-run-projection-cycle-20260521-001",
+    producer: "scheduler-dispatch-policy",
+    created_at: "2026-05-21T23:40:00.000Z",
+    metadata: {
+      type: "scheduler_dispatch_policy",
+      version: "scheduler-dispatch-policy.v1",
+      status: "fail",
+      execution_mode: "blocked",
+      issues: [
+        {
+          code: "missing_operator_authorization",
+          message: "non-dry-run scheduler dispatch requires approved_non_dry_run authorization",
+          path: "operator_authorization"
+        }
+      ],
+      plan_step_count: 3
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "scheduler_dispatch_policy",
+        status: "fail",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.scheduler_dispatch.status, "blocked");
+  assert.equal(projection.scheduler_dispatch.phase, "policy");
+  assert.equal(projection.scheduler_dispatch.policy_status, "fail");
+  assert.equal(projection.scheduler_dispatch.policy_execution_mode, "blocked");
+  assert.equal(projection.scheduler_dispatch.policy_issue_count, 1);
+  assert.match(projection.scheduler_dispatch.policy_latest_issue, /approved_non_dry_run/);
+  assert.equal(mobile.scheduler_dispatch.policy_status, "fail");
+  assert.equal(mobile.scheduler_dispatch.policy_issue_count, 1);
+});
+
 test("workbench projection ingests operator events before summarizing run state", () => {
   const input = baseInput({
     operator_event_ledger: {

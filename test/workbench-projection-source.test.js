@@ -229,21 +229,23 @@ test("projection source runs guarded scheduler dispatch", async () => {
 });
 
 test("projection source rejects failed scheduler dispatch", async () => {
+  const projection = validProjection();
   const source = createProjectionSource({
     schedulerDispatchUrl: "/api/workbench/scheduler-dispatch",
     fetch: async () => ({
       ok: false,
       status: 400,
       async json() {
-        return { error: "scheduler dispatch failed" };
+        return { error: "scheduler dispatch failed", projection };
       }
     })
   });
 
-  await assert.rejects(
-    source.runSchedulerDispatch({ dry_run: false }),
-    /Scheduler dispatch failed: 400/
-  );
+  await assert.rejects(source.runSchedulerDispatch({ dry_run: false }), (error) => {
+    assert.match(error.message, /Scheduler dispatch failed: 400/);
+    assert.equal(error.projection, projection);
+    return true;
+  });
 });
 
 test("projection source rejects failed scheduler dispatch plan creation", async () => {

@@ -404,7 +404,10 @@ test("workbench server runs guarded scheduler dispatch dry-run from projection h
     assert.equal(created.policy.execution_mode, "dry_run");
     assert.equal(created.result.status, "pass");
     assert.equal(created.projection.scheduler_dispatch.status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.policy_status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.policy_execution_mode, "dry_run");
     assert.equal(created.projection.scheduler_dispatch.step_count, 3);
+    assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_policy");
     assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
   }, { historyPath, snapshotsRoot });
 });
@@ -598,10 +601,15 @@ test("workbench server rejects unauthorized non-dry-run scheduler dispatch from 
       body: JSON.stringify({ dry_run: false })
     });
     const rejected = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
 
     assert.equal(response.status, 400);
     assert.equal(rejected.error, "scheduler dispatch policy rejected");
     assert.ok(rejected.issues.some((entry) => entry.code === "missing_operator_authorization"));
+    assert.equal(rejected.projection.scheduler_dispatch.status, "blocked");
+    assert.equal(rejected.projection.scheduler_dispatch.policy_status, "fail");
+    assert.equal(rejected.projection.scheduler_dispatch.policy_issue_count, rejected.issues.length);
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_policy");
   }, { historyPath, snapshotsRoot });
 });
 

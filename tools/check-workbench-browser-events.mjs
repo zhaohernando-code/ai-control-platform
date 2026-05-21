@@ -179,6 +179,8 @@ async function verifySchedulerDispatchClick(browser) {
 
     const schedulerDispatchStatus = await page.textContent('[data-bind="scheduler_dispatch_status"]');
     const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
+    const schedulerPolicyStatus = await page.textContent('[data-bind="scheduler_policy_status"]');
+    const schedulerPolicyMode = await page.textContent('[data-bind="scheduler_policy_mode"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -187,12 +189,16 @@ async function verifySchedulerDispatchClick(browser) {
 
     assert(schedulerDispatchStatus === "pass", "scheduler dispatch click must update rendered scheduler status");
     assert(schedulerDispatchSteps === "3", "scheduler dispatch click must render scheduler step count");
+    assert(schedulerPolicyStatus === "pass", "scheduler dispatch click must render policy pass");
+    assert(schedulerPolicyMode === "dry_run", "scheduler dispatch click must render policy execution mode");
     assert(dimensions.scrollWidth <= dimensions.width, "scheduler dispatch click must not create horizontal overflow");
 
     console.log(JSON.stringify({
       scenario: "scheduler_dispatch_click",
       scheduler_dispatch_status: schedulerDispatchStatus,
       scheduler_dispatch_steps: schedulerDispatchSteps,
+      scheduler_policy_status: schedulerPolicyStatus,
+      scheduler_policy_mode: schedulerPolicyMode,
       dimensions
     }, null, 2));
   });

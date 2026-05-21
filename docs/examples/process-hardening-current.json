@@ -573,6 +573,14 @@
       "regression_test": "scheduler dispatch control policy allows dry-run without execution authorization; scheduler dispatch control policy rejects non-dry-run without operator authorization; scheduler dispatch control policy allows mocked non-dry-run with explicit zero reviewer budget; scheduler dispatch control policy bounds non-mocked reviewer cost; workbench server rejects unauthorized non-dry-run scheduler dispatch from workbench control",
       "verification": "node --test test/scheduler-dispatch-policy.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-policy-decision-not-durable",
+      "invariant": "Scheduler dispatch policy decisions must be recorded as durable workflow facts before execution or rejection, and PC/mobile projections must show policy status, execution mode, issue count, and the first rejection reason.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-policy.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; apps/workbench/projection-source.js; apps/workbench/desktop.html; apps/workbench/mobile.html; apps/workbench/workbench.js; test/scheduler-dispatch-policy.test.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/workbench-projection-source.test.js; test/workbench-shell.test.js; tools/check-workbench-browser-events.mjs; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch policy decisions are durable workflow facts; workbench projection exposes scheduler dispatch policy blockers; workbench server rejects unauthorized non-dry-run scheduler dispatch from workbench control; projection source rejects failed scheduler dispatch while preserving returned projection; workbench shell has separate desktop and mobile entries; scheduler_dispatch_click browser scenario renders policy status and mode",
+      "verification": "node --test test/scheduler-dispatch-policy.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

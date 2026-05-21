@@ -166,12 +166,16 @@ export function createProjectionSource(options = {}) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(input)
       });
+      const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(`Scheduler dispatch failed: ${response.status}`);
+        const error = new Error(`Scheduler dispatch failed: ${response.status}`);
+        error.response = payload;
+        error.projection = payload?.projection || null;
+        throw error;
       }
 
-      return response.json();
+      return payload;
     },
     async recordSchedulerDispatchRun(input) {
       if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
