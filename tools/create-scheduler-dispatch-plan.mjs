@@ -21,6 +21,9 @@ function usage() {
     "  --history-path <path>",
     "  --snapshots-root <path>",
     "  --closeout-loop-artifact <path>",
+    "  --workbench-writeback-mode <none|service>",
+    "  --workbench-base-url <url>",
+    "  --projection-id <id>",
     "  --reviewer-mock-status <pass|fail>",
     "  --reviewer-mock-findings-json <json>"
   ].join("\n");
@@ -50,6 +53,9 @@ try {
     history_path: valueAfter("--history-path", args),
     snapshots_root: valueAfter("--snapshots-root", args),
     closeout_loop_artifact_path: valueAfter("--closeout-loop-artifact", args),
+    workbench_writeback_mode: valueAfter("--workbench-writeback-mode", args),
+    workbench_base_url: valueAfter("--workbench-base-url", args),
+    projection_id: valueAfter("--projection-id", args),
     reviewer_mock_status: valueAfter("--reviewer-mock-status", args),
     reviewer_mock_findings_json: valueAfter("--reviewer-mock-findings-json", args),
     next_step: valueAfter("--next-step", args)

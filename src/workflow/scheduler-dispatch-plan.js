@@ -38,6 +38,27 @@ function reviewerMockArgs(options = {}) {
   return args;
 }
 
+function writebackConfig(options = {}, issues = []) {
+  const mode = normalizeToken(options.workbench_writeback_mode || options.workbenchWritebackMode || (options.workbench_base_url || options.workbenchBaseUrl ? "service" : "none"));
+  const baseUrl = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
+  const projectionId = normalizeString(options.projection_id || options.projectionId);
+
+  if (!["none", "service"].includes(mode)) {
+    issues.push(issue("unsupported_workbench_writeback_mode", "workbench writeback mode must be none or service", "workbench_writeback_mode"));
+  }
+  if (mode === "service" && !baseUrl) {
+    issues.push(issue("missing_workbench_base_url", "service writeback requires workbench_base_url", "workbench_base_url"));
+  }
+
+  return mode === "service"
+    ? {
+      mode: "service",
+      base_url: baseUrl,
+      projection_id: projectionId || null
+    }
+    : { mode: "none" };
+}
+
 export function createSchedulerDispatchPlan(input = {}, options = {}) {
   const decision = input?.next_work_packages ? input : decideContinuation(input);
   const shardPackages = reviewerShardWorkPackages(decision);
@@ -62,6 +83,7 @@ export function createSchedulerDispatchPlan(input = {}, options = {}) {
   const historyPath = pathOrDefault(options, "history_path", `tmp/scheduler/${runId}/projection-history.json`);
   const snapshotsRoot = pathOrDefault(options, "snapshots_root", `tmp/scheduler/${runId}/snapshots`);
   const closeoutArtifactPath = pathOrDefault(options, "closeout_loop_artifact_path", `tmp/scheduler/${runId}/autonomous-closeout-loop-run.json`);
+  const writeback = writebackConfig(options, issues);
 
   if (!inputPath) {
     issues.push(issue("missing_workflow_state_input_path", "scheduler dispatch plan requires workflow_state_input_path for reviewer shard execution", "workflow_state_input_path"));
@@ -141,6 +163,7 @@ export function createSchedulerDispatchPlan(input = {}, options = {}) {
     phase: "scheduler_dispatch_plan",
     issues,
     decision,
+    writeback,
     steps
   };
 }

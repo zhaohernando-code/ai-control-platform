@@ -601,3 +601,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - 读取服务端 projection，要求 `scheduler_dispatch.status = pass` 且 step_count 为 3。
 - 使用 Playwright 打开 PC/mobile 工作台，要求页面可见调度状态为 pass、step 为 3，并无横向溢出。
 - `check:closeout` 纳入该 e2e gate，避免未来只改 JSON 不改实际工作台显示。
+
+[2026-05-21T23:08:56+08:00] Scheduler writeback mode belongs in the dispatch plan:
+只靠 `run-scheduler-dispatch-plan` 的命令行参数会让 scheduler 输出和工作台写回策略分离，后续自动调度仍可能忘记传参。
+
+决策：
+- `scheduler-dispatch-plan` 增加 `writeback` 配置。
+- 支持 `mode: none | service`，service 模式必须有 `workbench_base_url`。
+- planner CLI 支持 `--workbench-writeback-mode`、`--workbench-base-url`、`--projection-id`。
+- runner CLI 在命令行参数缺省时读取 plan.writeback。
+- scheduler writeback e2e 改为只传 `--plan/--output/--dry-run`，证明写回策略来自计划本身。

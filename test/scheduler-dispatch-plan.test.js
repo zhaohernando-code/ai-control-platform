@@ -32,6 +32,9 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
     history_path: "tmp/scheduler/projection-history.json",
     snapshots_root: "tmp/scheduler/snapshots",
     closeout_loop_artifact_path: "tmp/scheduler/autonomous-closeout-loop-run.json",
+    workbench_writeback_mode: "service",
+    workbench_base_url: "http://127.0.0.1:4180",
+    projection_id: "current-session",
     reviewer_mock_status: "pass",
     next_step: "Continue after scheduler dispatch."
   });
@@ -48,6 +51,21 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
   assert.equal(plan.steps[1].depends_on[0], "run-reviewer-shard-loop");
   assert.equal(plan.steps[2].action, "run_autonomous_closeout_loop");
   assert.equal(plan.steps[2].depends_on[0], "prepare-reviewer-shard-loop-continuation");
+  assert.deepEqual(plan.writeback, {
+    mode: "service",
+    base_url: "http://127.0.0.1:4180",
+    projection_id: "current-session"
+  });
+});
+
+test("scheduler dispatch plan fails closed when service writeback lacks base url", () => {
+  const plan = createSchedulerDispatchPlan(continuationInput(), {
+    workflow_state_input_path: "tmp/scheduler/input.json",
+    workbench_writeback_mode: "service"
+  });
+
+  assert.equal(plan.status, "fail");
+  assert.ok(plan.issues.some((entry) => entry.code === "missing_workbench_base_url"));
 });
 
 test("scheduler dispatch plan fails closed without workflow state input path", () => {
@@ -69,6 +87,12 @@ test("scheduler dispatch plan CLI writes reviewer shard dispatch plan", () => {
     inputPath,
     "--workflow-state-input",
     "tmp/scheduler/input.json",
+    "--workbench-writeback-mode",
+    "service",
+    "--workbench-base-url",
+    "http://127.0.0.1:4180",
+    "--projection-id",
+    "current-session",
     "--reviewer-mock-status",
     "pass",
     "--output",
@@ -82,4 +106,7 @@ test("scheduler dispatch plan CLI writes reviewer shard dispatch plan", () => {
   assert.equal(summary.step_count, 3);
   assert.equal(plan.steps[0].action, "run_reviewer_shard_loop");
   assert.ok(plan.steps[0].args.includes("--mock-status"));
+  assert.equal(plan.writeback.mode, "service");
+  assert.equal(plan.writeback.base_url, "http://127.0.0.1:4180");
+  assert.equal(plan.writeback.projection_id, "current-session");
 });

@@ -79,8 +79,8 @@ if (args.includes("--help") || args.includes("-h")) {
 
 const planPath = valueAfter("--plan", args);
 const outputPath = valueAfter("--output", args);
-const workbenchBaseUrl = valueAfter("--workbench-base-url", args);
-const projectionId = valueAfter("--projection-id", args);
+let workbenchBaseUrl = valueAfter("--workbench-base-url", args);
+let projectionId = valueAfter("--projection-id", args);
 if (!planPath || !outputPath) {
   console.error(usage());
   process.exit(1);
@@ -90,6 +90,12 @@ let plan;
 let result;
 try {
   plan = JSON.parse(readFileSync(resolve(planPath), "utf8"));
+  if (!workbenchBaseUrl && plan?.writeback?.mode === "service") {
+    workbenchBaseUrl = plan.writeback.base_url || "";
+  }
+  if (!projectionId && plan?.writeback?.mode === "service") {
+    projectionId = plan.writeback.projection_id || "";
+  }
   result = await runSchedulerDispatchPlan(plan, {
     dry_run: hasFlag("--dry-run", args)
   });

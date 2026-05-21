@@ -541,6 +541,14 @@
       "regression_test": "check-scheduler-dispatch-writeback launches workbench service, runs scheduler dispatch dry-run writeback, and verifies PC/mobile rendered scheduler dispatch pass state",
       "verification": "npm run check:scheduler-dispatch-writeback; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-writeback-only-cli-flags",
+      "invariant": "Scheduler writeback strategy must be encoded in scheduler dispatch plans so autonomous dispatch can opt into service writeback without relying on manual CLI flags.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-plan.js; tools/create-scheduler-dispatch-plan.mjs; tools/run-scheduler-dispatch-plan.mjs; tools/check-scheduler-dispatch-writeback.mjs; test/scheduler-dispatch-plan.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands; scheduler dispatch plan fails closed when service writeback lacks base url; scheduler dispatch plan CLI writes reviewer shard dispatch plan; check-scheduler-dispatch-writeback uses plan writeback config without manual writeback CLI flags",
+      "verification": "node --test test/scheduler-dispatch-plan.test.js; npm run check:scheduler-dispatch-writeback; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

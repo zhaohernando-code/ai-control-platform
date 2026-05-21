@@ -119,31 +119,30 @@ writeFileSync(historyPath, JSON.stringify({
   ]
 }, null, 2));
 
-const plan = createSchedulerDispatchPlan({
-  project_status: {
-    project: "ai-control-platform",
-    blockers: [],
-    next_step: "deterministic scheduler writeback trial"
-  },
-  run_evaluation: { status: "pass" },
-  workflow_state: workflowState
-}, {
-  workflow_state_input_path: relative(process.cwd(), inputPath)
-});
-writeFileSync(planPath, JSON.stringify(plan, null, 2));
-
 await withWorkbenchServer({ historyPath, snapshotsRoot }, async (baseUrl) => {
+  const plan = createSchedulerDispatchPlan({
+    project_status: {
+      project: "ai-control-platform",
+      blockers: [],
+      next_step: "deterministic scheduler writeback trial"
+    },
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  }, {
+    workflow_state_input_path: relative(process.cwd(), inputPath),
+    workbench_writeback_mode: "service",
+    workbench_base_url: baseUrl,
+    projection_id: projectionId
+  });
+  writeFileSync(planPath, JSON.stringify(plan, null, 2));
+
   const cli = await runNode([
     "tools/run-scheduler-dispatch-plan.mjs",
     "--plan",
     planPath,
     "--output",
     outputPath,
-    "--dry-run",
-    "--workbench-base-url",
-    baseUrl,
-    "--projection-id",
-    projectionId
+    "--dry-run"
   ]);
   assert(cli.status === 0, cli.stderr || cli.stdout);
   const summary = JSON.parse(cli.stdout);
