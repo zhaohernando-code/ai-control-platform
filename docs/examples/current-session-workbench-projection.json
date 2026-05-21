@@ -97,6 +97,11 @@
     "failed_finding_count": 0,
     "finding_count": 0,
     "next_shard": "reviewer-scope-shard-001",
+    "latest_executor_kind": null,
+    "latest_execution_profile": null,
+    "latest_provider": null,
+    "latest_model": null,
+    "latest_external_call_budget_used": 0,
     "event_id": null,
     "artifact_id": null,
     "created_at": null

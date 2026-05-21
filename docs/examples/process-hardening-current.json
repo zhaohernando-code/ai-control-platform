@@ -316,6 +316,13 @@
       "category": "reviewer_timeout",
       "severity": "p1",
       "message": "Reviewer shard execution must be gated by an explicit reviewer execution policy; a mock profile must not fall through to real Claude/DeepSeek calls just because mock output fields are absent."
+    },
+    {
+      "id": "reviewer-execution-source-hidden-in-artifacts",
+      "status": "fail",
+      "category": "observability",
+      "severity": "p1",
+      "message": "Reviewer execution source, profile, and external call budget must be visible in workbench projection and PC/mobile shells; otherwise operators cannot distinguish mock trials from bounded real reviewer runs without inspecting raw artifacts."
     }
   ],
   "hardening_items": [
@@ -853,6 +860,14 @@
       "enforcement_target": "src/workflow/reviewer-execution-policy.js; src/workflow/autonomous-scheduler-loop.js; src/workflow/reviewer-shard-runner.js; src/workflow/reviewer-shard-results.js; src/workflow/claude-deepseek-shard-executor.js; tools/workbench-server.mjs; test/reviewer-execution-policy.test.js; test/autonomous-scheduler-loop.test.js; test/workbench-server.test.js; test/reviewer-shard-runner.test.js; test/claude-deepseek-shard-executor.test.js",
       "regression_test": "reviewer execution policy requires mock output for mock profile; reviewer execution policy allows bounded real reviewer profile; workbench server blocks reviewer shard execution when mock profile has no mock output; workbench server runs bounded real reviewer profile only with explicit budget; scheduler loop real reviewer profile requires projected strategy and passes reviewer controls; reviewer shard runner records executor provenance",
       "verification": "node --test test/reviewer-execution-policy.test.js test/autonomous-scheduler-loop.test.js test/workbench-server.test.js test/reviewer-shard-runner.test.js test/claude-deepseek-shard-executor.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-execution-source-hidden-in-artifacts",
+      "invariant": "Reviewer shard execution provenance must be promoted from raw shard result artifacts into PC/mobile workbench projection and rendered readouts, including latest executor kind, execution profile, provider/model, and external call budget used.",
+      "enforcement_target": "src/workflow/workbench-projection.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-shell.test.js; test/workbench-projection-fixture.test.js; docs/examples/current-session-workbench-projection.json",
+      "regression_test": "workbench projection exposes reviewer shard executor provenance; workbench shell renders shard_review_executor/profile/budget bindings; projected_mock_loop_click browser scenario renders mock executor and zero external budget",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-shell.test.js test/workbench-projection-fixture.test.js test/workbench-projection-schema.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

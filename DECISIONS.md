@@ -878,3 +878,12 @@ Projected mock loop 暴露在工作台后，操作者仍需要知道当前读数
 - `approved_bounded_real_reviewer` 必须显式提供 bounded cost mode、单次外部调用预算和 bounded timeout，并记录 model routing 读数。
 - `/api/workbench/reviewer-shard-run` 与 projected `run_reviewer_scope_shard` 都必须先通过该 policy，再选择 executor。
 - Reviewer shard result 与 Claude/DeepSeek executor 返回 executor provenance，避免后续评估只看到 finding 而不知道执行来源。
+
+[2026-05-22T04:58:00+08:00] Reviewer execution provenance must be workbench-visible:
+后端 policy 只能防止误触发，但如果工作台不显示 executor 来源，操作者仍无法一眼判断当前 shard 结果是 mock 试运行还是真实外部 reviewer。
+
+决策：
+- `reviewer_shard_review` projection 摘要暴露 latest executor kind、execution profile、provider/model 和 external call budget used。
+- Mobile projection 保留同一组关键读数，避免手机端成为降级观察面。
+- PC/mobile shell 显示 executor 和 budget，PC 额外显示 profile。
+- 浏览器门禁在 projected mock loop 场景验证 executor=`mock` 且 budget=`0`。

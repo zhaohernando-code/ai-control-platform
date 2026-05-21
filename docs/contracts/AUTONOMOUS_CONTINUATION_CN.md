@@ -176,6 +176,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Projected loop 遇到 `inspect_*`、`wait_for_driver_event` 或非 ready 推荐动作时，必须把 `terminal_action` 和 `terminal_reason` 写入 loop iteration，并由 workbench projection 的 `scheduler_loop` 摘要暴露。停止原因不能只存在于 transient phase 字符串。
 - `autonomous-scheduler-loop-run.v1`、PC/mobile workbench projection 和 projection history readout 都必须暴露 `execution_strategy` 与 `execution_profile`。工作台不能只通过按钮文案暗示当前运行是 `scheduler_dispatch_chain`、`projected_next_action`、mock profile 还是未来真实 reviewer profile。
 - `run_reviewer_scope_shard` 的 executor 选择必须先通过 reviewer execution policy。`approved_mock_non_dry_run` 必须显式提供 mock reviewer 输出并保持 `max_external_reviewer_calls=0`；`approved_bounded_real_reviewer` 必须显式提供 `max_external_reviewer_calls=1`、`provider_cost_mode=bounded` 和 30-120 秒 timeout，并由 model routing 记录 DeepSeek/GPT 协作读数。禁止通过“缺少 mock 字段”隐式触发真实 Claude/DeepSeek 调用。
+- Reviewer shard result 的 executor provenance 必须进入 workbench projection 和 PC/mobile readout，至少包含 `executor_kind`、`execution_profile`、provider/model 和 external call budget used。看板必须能直接区分 mock trial 与 bounded real reviewer run，不能要求操作者打开 raw artifact 判断。
 
 ## 5. 与工作台关系
 

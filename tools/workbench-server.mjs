@@ -488,7 +488,7 @@ function reviewerShardExecutorFromInput(input = {}, options = {}) {
     return {
       policy,
       executor: async () => ({
-      status: mockStatus || "pass",
+        status: mockStatus || "pass",
         findings: mockFindingsJson ? JSON.parse(mockFindingsJson) : [],
         provenance: {
           executor_kind: "mock",
@@ -504,12 +504,24 @@ function reviewerShardExecutorFromInput(input = {}, options = {}) {
   }
 
   const timeoutSeconds = policy.controls.timeout_seconds;
+  const baseExecutor = options.realReviewerExecutor || createClaudeDeepSeekShardExecutor({
+    cwd: root,
+    timeout_seconds: timeoutSeconds
+  });
   return {
     policy,
-    executor: options.realReviewerExecutor || createClaudeDeepSeekShardExecutor({
-      cwd: root,
-      timeout_seconds: timeoutSeconds
-    })
+    executor: async (request) => {
+      const result = await baseExecutor(request);
+      return {
+        ...result,
+        provenance: {
+          ...(result?.provenance || {}),
+          execution_profile: policy.profile,
+          policy_execution_mode: policy.execution_mode,
+          model_routing_selected_model: policy.controls.model_routing?.selected_model || null
+        }
+      };
+    }
   };
 }
 

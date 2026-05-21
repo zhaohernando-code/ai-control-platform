@@ -301,6 +301,8 @@ async function verifyProjectedMockLoopClick(browser) {
     const schedulerLoopStrategy = await page.textContent('[data-bind="scheduler_loop_strategy"]');
     const shardReviewCompleted = await page.textContent('[data-bind="shard_review_completed"]');
     const shardReviewStatus = await page.textContent('[data-bind="shard_review_status"]');
+    const shardReviewExecutor = await page.textContent('[data-bind="shard_review_executor"]');
+    const shardReviewBudget = await page.textContent('[data-bind="shard_review_budget"]');
     const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
@@ -313,6 +315,8 @@ async function verifyProjectedMockLoopClick(browser) {
     assert(schedulerLoopStrategy === "projected_next_action", "projected mock loop must render projected strategy");
     assert(shardReviewCompleted === "2", "projected mock loop must render completed reviewer shards");
     assert(shardReviewStatus === "pass", "projected mock loop must aggregate reviewer shard status");
+    assert(shardReviewExecutor === "mock", "projected mock loop must render mock reviewer executor");
+    assert(shardReviewBudget === "0", "projected mock loop must render zero external reviewer budget");
     assert(nextActionReadout, "projected mock loop must render a follow-up next-action readout");
     assert(dimensions.scrollWidth <= dimensions.width, "projected mock loop must not create horizontal overflow");
 
@@ -323,6 +327,8 @@ async function verifyProjectedMockLoopClick(browser) {
       scheduler_loop_strategy: schedulerLoopStrategy,
       shard_review_completed: shardReviewCompleted,
       shard_review_status: shardReviewStatus,
+      shard_review_executor: shardReviewExecutor,
+      shard_review_budget: shardReviewBudget,
       next_action_readout: nextActionReadout,
       dimensions
     }, null, 2));

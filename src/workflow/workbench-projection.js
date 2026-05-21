@@ -254,11 +254,17 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
   const split = summarizeReviewerScopeSplit(manifest, artifactLedger);
   const resultEvents = asArray(manifest?.events).filter((event) => event?.type === "reviewer_shard_result");
   const aggregateEvents = asArray(manifest?.events).filter((event) => event?.type === "reviewer_shard_aggregate");
+  const latestResult = resultEvents.at(-1) || null;
   const latestAggregate = aggregateEvents.at(-1) || null;
   const artifacts = [
     ...asArray(artifactLedger?.artifacts),
     ...asArray(manifest?.artifacts)
   ];
+  const resultArtifact = latestResult
+    ? artifacts.find((entry) => entry.id === latestResult.artifact_id) || null
+    : null;
+  const resultMetadata = resultArtifact?.metadata || latestResult?.metadata || {};
+  const provenance = resultMetadata.executor_provenance || {};
   const aggregateArtifact = latestAggregate
     ? artifacts.find((entry) => entry.id === latestAggregate.artifact_id) || null
     : null;
@@ -273,6 +279,11 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
       failed_finding_count: 0,
       finding_count: 0,
       next_shard: split.next_shard || null,
+      latest_executor_kind: null,
+      latest_execution_profile: null,
+      latest_provider: null,
+      latest_model: null,
+      latest_external_call_budget_used: 0,
       event_id: null,
       artifact_id: null,
       created_at: null
@@ -290,6 +301,11 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
     failed_finding_count: aggregate?.failed_finding_count || 0,
     finding_count: aggregate?.finding_count || 0,
     next_shard: aggregate?.pending_shard_ids?.[0] || (pendingFromSplit > 0 ? split.next_shard : null),
+    latest_executor_kind: provenance.executor_kind || null,
+    latest_execution_profile: provenance.execution_profile || null,
+    latest_provider: provenance.provider || resultMetadata.provider || null,
+    latest_model: provenance.model || resultMetadata.model || null,
+    latest_external_call_budget_used: provenance.external_call_budget_used ?? 0,
     event_id: latestAggregate?.id || null,
     artifact_id: latestAggregate?.artifact_id || aggregateArtifact?.id || null,
     created_at: latestAggregate?.created_at || aggregateArtifact?.created_at || null
@@ -927,7 +943,12 @@ export function createMobileWorkbenchProjection(input = {}) {
       total_shards: projection.reviewer_shard_review.total_shards,
       completed_shards: projection.reviewer_shard_review.completed_shards,
       pending_shards: projection.reviewer_shard_review.pending_shards,
-      failed_finding_count: projection.reviewer_shard_review.failed_finding_count
+      failed_finding_count: projection.reviewer_shard_review.failed_finding_count,
+      latest_executor_kind: projection.reviewer_shard_review.latest_executor_kind,
+      latest_execution_profile: projection.reviewer_shard_review.latest_execution_profile,
+      latest_provider: projection.reviewer_shard_review.latest_provider,
+      latest_model: projection.reviewer_shard_review.latest_model,
+      latest_external_call_budget_used: projection.reviewer_shard_review.latest_external_call_budget_used
     },
     scheduler_dispatch: {
       status: projection.scheduler_dispatch.status,

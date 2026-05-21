@@ -392,7 +392,17 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
         type: "reviewer_shard_result",
         status: "fail",
         created_at: "2026-05-21T12:11:00.000Z",
-        metadata: { shard_id: "reviewer-scope-shard-002", status: "fail" }
+        metadata: {
+          shard_id: "reviewer-scope-shard-002",
+          status: "fail",
+          executor_provenance: {
+            executor_kind: "claude_deepseek",
+            execution_profile: "approved_bounded_real_reviewer",
+            provider: "deepseek",
+            model: "deepseek-v4-pro",
+            external_call_budget_used: 1
+          }
+        }
       },
       {
         id: `event-${aggregateArtifact.id}`,
@@ -417,8 +427,12 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
   assert.equal(projection.reviewer_shard_review.completed_shards, 2);
   assert.equal(projection.reviewer_shard_review.pending_shards, 0);
   assert.equal(projection.reviewer_shard_review.failed_finding_count, 1);
+  assert.equal(projection.reviewer_shard_review.latest_executor_kind, "claude_deepseek");
+  assert.equal(projection.reviewer_shard_review.latest_execution_profile, "approved_bounded_real_reviewer");
+  assert.equal(projection.reviewer_shard_review.latest_external_call_budget_used, 1);
   assert.equal(projection.one_screen.counters.reviewer_shards_completed, 2);
   assert.equal(mobile.shard_review.failed_finding_count, 1);
+  assert.equal(mobile.shard_review.latest_executor_kind, "claude_deepseek");
 });
 
 test("workbench projection exposes scheduler dispatch run status", () => {
