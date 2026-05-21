@@ -1,8 +1,11 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
-import { runAutonomousCloseoutLoop } from "../src/workflow/autonomous-orchestrator.js";
+import {
+  createAutonomousLoopRunArtifact,
+  runAutonomousCloseoutLoop
+} from "../src/workflow/autonomous-orchestrator.js";
 
 function valueAfter(flag, args) {
   const index = args.indexOf(flag);
@@ -15,7 +18,8 @@ function usage() {
     "",
     "Options:",
     "  --history-path <path>",
-    "  --snapshots-root <path>"
+    "  --snapshots-root <path>",
+    "  --output <path>  Write replayable input/output envelope JSON"
   ].join("\n");
 }
 
@@ -32,8 +36,20 @@ const result = await runAutonomousCloseoutLoop(input, {
   historyPath: valueAfter("--history-path", args) || undefined,
   snapshotsRoot: valueAfter("--snapshots-root", args) || undefined
 });
+const artifact = createAutonomousLoopRunArtifact(input, result);
+const outputPath = valueAfter("--output", args);
 
-console.log(JSON.stringify(result, null, 2));
+if (outputPath) {
+  const resolvedOutputPath = resolve(outputPath);
+  mkdirSync(dirname(resolvedOutputPath), { recursive: true });
+  writeFileSync(resolvedOutputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+}
+
+console.log(JSON.stringify(outputPath ? {
+  status: artifact.status,
+  phase: artifact.phase,
+  output: outputPath
+} : result, null, 2));
 if (result.status !== "pass") {
   process.exit(1);
 }

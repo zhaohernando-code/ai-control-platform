@@ -80,6 +80,8 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 它必须返回当前 decision、closeout 结果、projection 和下一轮 decision。只要下一轮仍有 `next_step` 且无人工阻塞，结果必须保持 `status=pass` / `phase=next_continuation`。
 
+`tools/run-autonomous-closeout-loop.mjs --output <path>` 会写出 `autonomous-closeout-loop-run.v1` envelope，包含原始 input 和结构化 result。该文件是后续重放、审计和工作台问题定位的 durable artifact。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。

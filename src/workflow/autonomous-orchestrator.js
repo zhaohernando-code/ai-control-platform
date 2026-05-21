@@ -23,6 +23,27 @@ function continuationInputFromProjection(input, workflowState, projection) {
   };
 }
 
+function createAutonomousLoopRunArtifact(input = {}, result = {}, options = {}) {
+  return {
+    version: "autonomous-closeout-loop-run.v1",
+    run_id: result.projection?.run_id || input.workflow_state?.manifest?.run_id || null,
+    cycle_id: result.projection?.cycle_id || input.workflow_state?.manifest?.cycle_id || null,
+    status: result.status || "fail",
+    phase: result.phase || null,
+    created_at: options.created_at || new Date().toISOString(),
+    input,
+    result: {
+      status: result.status,
+      phase: result.phase,
+      issues: result.issues || [],
+      decision: result.decision || null,
+      closeout: result.closeout || null,
+      projection: result.projection || null,
+      next_decision: result.next_decision || null
+    }
+  };
+}
+
 async function runAutonomousCloseoutLoop(input = {}, options = {}) {
   if (!isObject(input)) {
     return {
@@ -75,4 +96,4 @@ async function runAutonomousCloseoutLoop(input = {}, options = {}) {
   };
 }
 
-export { runAutonomousCloseoutLoop };
+export { createAutonomousLoopRunArtifact, runAutonomousCloseoutLoop };

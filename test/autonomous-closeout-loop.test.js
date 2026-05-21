@@ -4,7 +4,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { decideContinuation } from "../src/workflow/autonomous-continuation.js";
-import { runAutonomousCloseoutLoop } from "../src/workflow/autonomous-orchestrator.js";
+import {
+  createAutonomousLoopRunArtifact,
+  runAutonomousCloseoutLoop
+} from "../src/workflow/autonomous-orchestrator.js";
 import { runCloseoutPlan } from "../src/workflow/closeout-runner.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
@@ -87,4 +90,35 @@ test("runAutonomousCloseoutLoop executes the reusable closeout orchestration", a
   assert.equal(result.projection.closeout.status, "pass");
   assert.equal(result.next_decision.should_continue, true);
   assert.equal(result.next_decision.snapshot_publish_plan.action, "publish_workbench_snapshot");
+});
+
+test("createAutonomousLoopRunArtifact stores replayable input and output", async () => {
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/orchestrator-artifact-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(process.cwd(), "tmp/orchestrator-artifact-snapshots");
+  const input = {
+    project_status: projectStatus("Publish closeout evidence and continue."),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  };
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  const result = await runAutonomousCloseoutLoop(input, {
+    root: process.cwd(),
+    historyPath,
+    snapshotsRoot,
+    created_at: "2026-05-21T10:55:00.000Z"
+  });
+  const artifact = createAutonomousLoopRunArtifact(input, result, {
+    created_at: "2026-05-21T10:56:00.000Z"
+  });
+
+  assert.equal(artifact.version, "autonomous-closeout-loop-run.v1");
+  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.phase, "next_continuation");
+  assert.equal(artifact.input.workflow_state.manifest.run_id, "run-20260521-platform-self-trial");
+  assert.equal(artifact.result.projection.closeout.status, "pass");
+  assert.equal(artifact.result.next_decision.should_continue, true);
 });
