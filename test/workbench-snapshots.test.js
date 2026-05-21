@@ -65,6 +65,28 @@ test("publishWorkbenchSnapshot writes input and updates history latest", () => {
   assert.equal(snapshot.manifest.run_id, "run-20260521-platform-self-trial");
 });
 
+test("publishWorkbenchSnapshot initializes missing history for scheduler-owned roots", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-snapshot-missing-history-"));
+  const historyPath = join(dir, "nested", "projection-history.json");
+  const snapshotsRoot = join(dir, "nested", "snapshots");
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+
+  const result = publishWorkbenchSnapshot({
+    id: "scheduler-created-history",
+    input: workflowState
+  }, {
+    root: dir,
+    historyPath,
+    snapshotsRoot
+  });
+  const history = readJson(historyPath);
+
+  assert.equal(result.status, "created");
+  assert.equal(history.version, "projection-history.v1");
+  assert.equal(history.latest, "scheduler-created-history");
+  assert.equal(history.items[0].id, "scheduler-created-history");
+});
+
 test("publishWorkbenchSnapshot rejects workflow state that is not projection-ready", () => {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-snapshot-"));
   const historyPath = join(dir, "projection-history.json");

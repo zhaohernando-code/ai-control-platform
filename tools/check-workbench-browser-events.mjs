@@ -204,6 +204,43 @@ async function verifySchedulerDispatchClick(browser) {
   });
 }
 
+async function verifyApprovedMockSchedulerDispatchClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-scheduler-dispatch="approved-mock"]');
+    await page.waitForFunction(() => document.querySelector('[data-scheduler-dispatch="approved-mock"]')?.textContent.includes("调度已记录"));
+
+    const schedulerDispatchStatus = await page.textContent('[data-bind="scheduler_dispatch_status"]');
+    const schedulerDispatchDryRun = await page.textContent('[data-bind="scheduler_dispatch_dry_run"]');
+    const schedulerPolicyStatus = await page.textContent('[data-bind="scheduler_policy_status"]');
+    const schedulerPolicyMode = await page.textContent('[data-bind="scheduler_policy_mode"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(schedulerDispatchStatus === "pass", "approved mock dispatch must render scheduler pass");
+    assert(schedulerDispatchDryRun === "no", "approved mock dispatch must render non-dry-run");
+    assert(schedulerPolicyStatus === "pass", "approved mock dispatch must render policy pass");
+    assert(schedulerPolicyMode === "execute", "approved mock dispatch must render execute policy mode");
+    assert(dimensions.scrollWidth <= dimensions.width, "approved mock dispatch must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "scheduler_dispatch_approved_mock_click",
+      scheduler_dispatch_status: schedulerDispatchStatus,
+      scheduler_dispatch_dry_run: schedulerDispatchDryRun,
+      scheduler_policy_status: schedulerPolicyStatus,
+      scheduler_policy_mode: schedulerPolicyMode,
+      dimensions
+    }, null, 2));
+  });
+}
+
 async function verifyMobileProjectionLoad(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -253,6 +290,7 @@ try {
   await verifyFailedClickDoesNotShowSuccess(browser);
   await verifyProviderHealthClick(browser);
   await verifySchedulerDispatchClick(browser);
+  await verifyApprovedMockSchedulerDispatchClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();

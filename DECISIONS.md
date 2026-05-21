@@ -653,3 +653,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - policy 拒绝时可以写入 policy 证据，但不得执行计划或写入 scheduler dispatch run artifact。
 - Workbench projection 必须展示 latest policy status、execution mode、issue count 和首个 issue。
 - PC/mobile 工作台必须从 projection 渲染 policy 状态，不能只依赖按钮失败文本。
+
+[2026-05-21T23:39:44+08:00] Approved non-dry-run dispatch must use named bounded profiles:
+让前端或调用方直接拼 `operator_authorization/max_steps/provider_cost_mode` 会把安全边界扩散到多个入口，后续容易漏配或绕过。
+
+决策：
+- 新增 `approved_mock_non_dry_run` scheduler dispatch profile。
+- 服务端先 normalize profile，再生成 plan 和评估 policy；未知 profile 必须失败闭合。
+- `approved_mock_non_dry_run` 展开为非 dry-run、`approved_non_dry_run`、`max_steps=3`、`max_external_reviewer_calls=0`、`provider_cost_mode=mocked`、`reviewer_mock_status=pass`。
+- PC/mobile 工作台新增“批准 Mock 执行”控制，但只发送 profile，不直接拼安全参数。
+- 非 dry-run 试运行暴露了两个底座缺口：reviewer shard CLI 必须创建输出目录；snapshot publisher 必须能在受控路径内初始化缺失的 projection history。

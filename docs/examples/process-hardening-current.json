@@ -581,6 +581,14 @@
       "regression_test": "scheduler dispatch policy decisions are durable workflow facts; workbench projection exposes scheduler dispatch policy blockers; workbench server rejects unauthorized non-dry-run scheduler dispatch from workbench control; projection source rejects failed scheduler dispatch while preserving returned projection; workbench shell has separate desktop and mobile entries; scheduler_dispatch_click browser scenario renders policy status and mode",
       "verification": "node --test test/scheduler-dispatch-policy.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "approved-non-dry-run-without-named-profile",
+      "invariant": "Workbench non-dry-run scheduler dispatch must use named bounded profiles, and scheduler-owned output/history paths must be self-initializing so approved runs do not depend on manual directory setup.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-policy.js; tools/workbench-server.mjs; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/run-reviewer-shard.mjs; src/workflow/workbench-snapshots.js; tools/check-workbench-browser-events.mjs; test/scheduler-dispatch-policy.test.js; test/workbench-server.test.js; test/workbench-shell.test.js; test/reviewer-shard-runner.test.js; test/workbench-snapshots.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch approved mock profile expands to bounded non-dry-run controls; scheduler dispatch control request rejects unsupported profiles; workbench server runs approved mocked non-dry-run scheduler dispatch from profile; workbench server rejects unsupported scheduler dispatch execution profiles; run-reviewer-shard CLI can execute all pending shards with mock executor; publishWorkbenchSnapshot initializes missing history for scheduler-owned roots; scheduler_dispatch_approved_mock_click browser scenario",
+      "verification": "node --test test/workbench-snapshots.test.js test/reviewer-shard-runner.test.js test/scheduler-dispatch-policy.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

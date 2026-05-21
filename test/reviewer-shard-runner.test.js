@@ -349,8 +349,8 @@ test("run-reviewer-shard CLI records provider health on timeout findings", () =>
 test("run-reviewer-shard CLI can execute all pending shards with mock executor", () => {
   const dir = mkdtempSync(join(tmpdir(), "reviewer-shard-runner-all-cli-"));
   const inputPath = join(dir, "input.json");
-  const outputPath = join(dir, "output.json");
-  const artifactPath = join(dir, "loop-run.json");
+  const outputPath = join(dir, "nested", "output.json");
+  const artifactPath = join(dir, "nested", "loop-run.json");
   const continuationPath = join(dir, "continuation.json");
   writeFileSync(inputPath, JSON.stringify(workflowState(), null, 2));
 

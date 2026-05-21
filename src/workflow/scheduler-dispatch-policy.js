@@ -2,6 +2,7 @@ import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
 
 const SCHEDULER_DISPATCH_POLICY_VERSION = "scheduler-dispatch-policy.v1";
+const APPROVED_MOCK_NON_DRY_RUN_PROFILE = "approved_mock_non_dry_run";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -63,6 +64,46 @@ function nextPolicyArtifactId(workflowState = {}, options = {}) {
     id = `${prefix}-${String(index).padStart(3, "0")}`;
   }
   return id;
+}
+
+export function normalizeSchedulerDispatchControlRequest(input = {}) {
+  if (!isObject(input)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_scheduler_dispatch_request", "scheduler dispatch control request must be an object", "request")]
+    };
+  }
+
+  const executionProfile = normalizeToken(input.execution_profile ?? input.executionProfile ?? input.profile);
+  if (!executionProfile) {
+    return {
+      status: "pass",
+      input: { ...input },
+      issues: []
+    };
+  }
+
+  if (executionProfile !== APPROVED_MOCK_NON_DRY_RUN_PROFILE) {
+    return {
+      status: "fail",
+      issues: [issue("unsupported_scheduler_dispatch_profile", "scheduler dispatch execution_profile is not supported", "execution_profile")]
+    };
+  }
+
+  return {
+    status: "pass",
+    input: {
+      ...input,
+      execution_profile: APPROVED_MOCK_NON_DRY_RUN_PROFILE,
+      dry_run: false,
+      operator_authorization: "approved_non_dry_run",
+      max_steps: 3,
+      max_external_reviewer_calls: 0,
+      provider_cost_mode: "mocked",
+      reviewer_mock_status: input.reviewer_mock_status ?? input.reviewerMockStatus ?? "pass"
+    },
+    issues: []
+  };
 }
 
 export function evaluateSchedulerDispatchControlPolicy(input = {}, plan = {}) {
@@ -203,3 +244,4 @@ export function recordSchedulerDispatchPolicyDecision(workflowState = {}, policy
 }
 
 export { SCHEDULER_DISPATCH_POLICY_VERSION };
+export { APPROVED_MOCK_NON_DRY_RUN_PROFILE };

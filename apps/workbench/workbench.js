@@ -249,14 +249,20 @@ qsa("[data-provider-health]").forEach((button) => {
 
 qsa("[data-scheduler-dispatch]").forEach((button) => {
   button.addEventListener("click", async () => {
+    const dispatchMode = button.dataset.schedulerDispatch;
     button.dataset.eventState = "pending";
     button.textContent = "调度中";
 
     try {
-      const result = await source.runSchedulerDispatch({
-        dry_run: true,
-        created_at: new Date().toISOString()
-      });
+      const result = await source.runSchedulerDispatch(dispatchMode === "approved-mock"
+        ? {
+          execution_profile: "approved_mock_non_dry_run",
+          created_at: new Date().toISOString()
+        }
+        : {
+          dry_run: true,
+          created_at: new Date().toISOString()
+        });
       button.dataset.eventState = "recorded";
       button.textContent = "调度已记录";
       if (result.projection) {

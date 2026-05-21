@@ -101,6 +101,7 @@ if (result.status !== "pass") {
 }
 
 const destination = resolve(inPlace ? inputPath : outputPath);
+mkdirSync(dirname(destination), { recursive: true });
 writeFileSync(destination, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
 const runArtifactOutput = valueAfter("--run-artifact-output", args);
 if (runArtifactOutput) {

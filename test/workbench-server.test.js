@@ -412,6 +412,46 @@ test("workbench server runs guarded scheduler dispatch dry-run from projection h
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server runs approved mocked non-dry-run scheduler dispatch from profile", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-approved-mock-"));
+  const inputPath = join(snapshotsRoot, "scheduler-approved-mock-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-approved-mock",
+    items: [
+      {
+        id: "scheduler-approved-mock",
+        label: "Scheduler approved mock",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch?id=scheduler-approved-mock`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ execution_profile: "approved_mock_non_dry_run" })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.control.input.execution_profile, "approved_mock_non_dry_run");
+    assert.equal(created.policy.execution_mode, "execute");
+    assert.equal(created.policy.controls.max_external_reviewer_calls, 0);
+    assert.equal(created.result.status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.dry_run, false);
+    assert.equal(created.projection.scheduler_dispatch.policy_execution_mode, "execute");
+    assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_policy");
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server records scheduler dispatch runs into workflow state input", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-dispatch-"));
@@ -610,6 +650,41 @@ test("workbench server rejects unauthorized non-dry-run scheduler dispatch from 
     assert.equal(rejected.projection.scheduler_dispatch.policy_status, "fail");
     assert.equal(rejected.projection.scheduler_dispatch.policy_issue_count, rejected.issues.length);
     assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_policy");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects unsupported scheduler dispatch execution profiles", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-profile-reject-"));
+  const inputPath = join(snapshotsRoot, "scheduler-profile-reject-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-profile-reject",
+    items: [
+      {
+        id: "scheduler-profile-reject",
+        label: "Scheduler profile reject",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ execution_profile: "unbounded_real_model" })
+    });
+    const rejected = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "scheduler dispatch control request rejected");
+    assert.ok(rejected.issues.some((entry) => entry.code === "unsupported_scheduler_dispatch_profile"));
+    assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
   }, { historyPath, snapshotsRoot });
 });
 

@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { validateWorkbenchProjectionSchema } from "./workbench-projection-schema.js";
@@ -14,6 +14,17 @@ function isWithinPath(basePath, filePath) {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function readHistory(path) {
+  try {
+    return readJson(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return { version: "projection-history.v1", latest: null, items: [] };
+    }
+    throw error;
+  }
 }
 
 function safeSnapshotId(id) {
@@ -100,7 +111,7 @@ export function publishWorkbenchSnapshot(input = {}, options = {}) {
   }
 
   const filePath = snapshotPath(snapshotsRoot, id);
-  const history = readJson(historyPath);
+  const history = readHistory(historyPath);
   const item = {
     id,
     label: input.label || id,
@@ -112,6 +123,7 @@ export function publishWorkbenchSnapshot(input = {}, options = {}) {
   const nextHistory = historyWithSnapshot(history, item);
 
   mkdirSync(snapshotsRoot, { recursive: true });
+  mkdirSync(dirname(historyPath), { recursive: true });
   writeFileSync(filePath, `${JSON.stringify(workflowState, null, 2)}\n`);
   writeFileSync(historyPath, `${JSON.stringify(nextHistory, null, 2)}\n`);
 

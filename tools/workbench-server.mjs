@@ -8,6 +8,7 @@ import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbe
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import {
   evaluateSchedulerDispatchControlPolicy,
+  normalizeSchedulerDispatchControlRequest,
   recordSchedulerDispatchPolicyDecision
 } from "../src/workflow/scheduler-dispatch-policy.js";
 import { recordReviewerProviderHealthFact } from "../src/workflow/reviewer-provider-health.js";
@@ -426,20 +427,26 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
+        const normalizedControl = normalizeSchedulerDispatchControlRequest(input);
+        if (normalizedControl.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch control request rejected", issues: normalizedControl.issues });
+          return;
+        }
+        const controlInput = normalizedControl.input;
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
         const plan = createSchedulerDispatchPlan(
-          schedulerPlanInputFromWorkflowState(workflowState, input),
-          schedulerPlanOptionsFromRequest(req, item, selectedId, input)
+          schedulerPlanInputFromWorkflowState(workflowState, controlInput),
+          schedulerPlanOptionsFromRequest(req, item, selectedId, controlInput)
         );
         if (plan.status !== "pass") {
           jsonResponse(res, 400, { error: "scheduler dispatch plan failed", issues: plan.issues });
           return;
         }
 
-        const policy = evaluateSchedulerDispatchControlPolicy(input, plan);
+        const policy = evaluateSchedulerDispatchControlPolicy(controlInput, plan);
         const policyRecorded = recordSchedulerDispatchPolicyDecision(workflowState, policy, {
-          created_at: input.created_at || input.createdAt,
+          created_at: controlInput.created_at || controlInput.createdAt,
           plan
         });
         if (policyRecorded.status !== "pass") {
@@ -453,6 +460,7 @@ export function createWorkbenchServer(options = {}) {
             error: "scheduler dispatch policy rejected",
             issues: policy.issues,
             policy,
+            control: normalizedControl,
             artifact: policyRecorded.artifact,
             projection: createWorkbenchProjection(policyRecorded.workflow_state)
           });
@@ -461,10 +469,10 @@ export function createWorkbenchServer(options = {}) {
 
         const runResult = await runSchedulerDispatchPlan(plan, { dry_run: policy.execution_mode === "dry_run" });
         const runArtifact = createSchedulerDispatchRunArtifact(plan, runResult, {
-          created_at: input.created_at || input.createdAt
+          created_at: controlInput.created_at || controlInput.createdAt
         });
         const recorded = recordSchedulerDispatchRunArtifact(policyRecorded.workflow_state, runArtifact, {
-          created_at: input.created_at || input.createdAt
+          created_at: controlInput.created_at || controlInput.createdAt
         });
         if (recorded.status !== "pass") {
           jsonResponse(res, 400, { error: "scheduler dispatch run record failed", issues: recorded.issues });
@@ -477,6 +485,7 @@ export function createWorkbenchServer(options = {}) {
           item,
           plan,
           policy,
+          control: normalizedControl,
           result: runResult,
           artifact: recorded.artifact,
           projection: createWorkbenchProjection(recorded.workflow_state)

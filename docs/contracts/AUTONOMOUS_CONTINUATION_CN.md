@@ -153,6 +153,8 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 工作台控制面可以触发受控 scheduler dispatch dry-run。服务端必须先生成计划、执行 dry-run、写回 artifact 并返回新 projection；前端不得在服务成功前乐观刷新状态。
 - 非 dry-run scheduler dispatch 必须先通过 execution policy：明确 operator authorization、step 上限、reviewer call budget 和 provider cost mode。policy 失败时不得执行计划或写回 scheduler dispatch run artifact。
 - 每一次工作台 scheduler dispatch policy 决策都必须写入 `scheduler_dispatch_policy` 事件和 `scheduler-dispatch-policy.v1` artifact；projection 必须展示 latest policy status、execution mode、issue count 和首个 issue，便于工作台解释为什么执行或拦截。
+- 工作台非 dry-run 入口必须使用命名 profile，不允许前端拼散落的授权字段。当前允许的最小 profile 是 `approved_mock_non_dry_run`：零外部 reviewer 调用、mocked provider cost、最多三步、执行前仍写 policy decision。
+- Scheduler dispatch 生成的输出路径必须自给自足：runner CLI 要创建输出目录；snapshot publisher 在受控路径内可以初始化缺失的 projection history，避免长任务因为空目录停住。
 
 ## 5. 与工作台关系
 

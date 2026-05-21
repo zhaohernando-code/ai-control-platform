@@ -5,6 +5,7 @@ import test from "node:test";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import {
   evaluateSchedulerDispatchControlPolicy,
+  normalizeSchedulerDispatchControlRequest,
   recordSchedulerDispatchPolicyDecision
 } from "../src/workflow/scheduler-dispatch-policy.js";
 
@@ -63,6 +64,34 @@ test("scheduler dispatch control policy allows mocked non-dry-run with explicit 
   assert.equal(policy.execution_mode, "execute");
   assert.equal(policy.controls.max_external_reviewer_calls, 0);
   assert.equal(policy.controls.reviewer_cost_mode, "mocked");
+});
+
+test("scheduler dispatch approved mock profile expands to bounded non-dry-run controls", () => {
+  const normalized = normalizeSchedulerDispatchControlRequest({
+    execution_profile: "approved_mock_non_dry_run"
+  });
+  const policy = evaluateSchedulerDispatchControlPolicy(normalized.input, plan({
+    reviewer_mock_status: normalized.input.reviewer_mock_status
+  }));
+
+  assert.equal(normalized.status, "pass");
+  assert.equal(normalized.input.dry_run, false);
+  assert.equal(normalized.input.operator_authorization, "approved_non_dry_run");
+  assert.equal(normalized.input.max_steps, 3);
+  assert.equal(normalized.input.max_external_reviewer_calls, 0);
+  assert.equal(normalized.input.provider_cost_mode, "mocked");
+  assert.equal(normalized.input.reviewer_mock_status, "pass");
+  assert.equal(policy.status, "pass");
+  assert.equal(policy.execution_mode, "execute");
+});
+
+test("scheduler dispatch control request rejects unsupported profiles", () => {
+  const normalized = normalizeSchedulerDispatchControlRequest({
+    execution_profile: "unbounded_real_model"
+  });
+
+  assert.equal(normalized.status, "fail");
+  assert.ok(normalized.issues.some((entry) => entry.code === "unsupported_scheduler_dispatch_profile"));
 });
 
 test("scheduler dispatch control policy bounds non-mocked reviewer cost", () => {
