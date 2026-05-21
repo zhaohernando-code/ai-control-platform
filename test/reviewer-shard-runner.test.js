@@ -11,7 +11,8 @@ import { recordReviewerScopeSplitPlan } from "../src/workflow/reviewer-scope-spl
 import {
   createReviewerShardPrompt,
   getPendingReviewerShards,
-  runReviewerShard
+  runReviewerShard,
+  runReviewerShardsUntilAggregate
 } from "../src/workflow/reviewer-shard-runner.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
 
@@ -152,6 +153,47 @@ test("reviewer shard runner records provider health for timeout findings", async
   assert.equal(result.workflow_state.manifest.events.at(-1).type, "reviewer_provider_health");
 });
 
+test("reviewer shard loop runs pending shards until aggregate", async () => {
+  const seen = [];
+  const result = await runReviewerShardsUntilAggregate(workflowState(), {
+    created_at: "2026-05-21T21:05:00.000Z",
+    executor: async ({ shard }) => {
+      seen.push(shard.id);
+      return { status: "pass", findings: [] };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "aggregated");
+  assert.deepEqual(seen, ["reviewer-scope-shard-001", "reviewer-scope-shard-002"]);
+  assert.equal(result.runs.length, 2);
+  assert.equal(result.aggregate.status, "pass");
+});
+
+test("reviewer shard loop stops after provider health recovery fact", async () => {
+  const result = await runReviewerShardsUntilAggregate(workflowState(), {
+    created_at: "2026-05-21T21:06:00.000Z",
+    record_provider_health_on_timeout: true,
+    executor: async () => ({
+      status: "fail",
+      findings: [
+        {
+          id: "loop-timeout",
+          status: "fail",
+          severity: "medium",
+          category: "reviewer_timeout",
+          message: "timeout"
+        }
+      ]
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "provider_health_recorded");
+  assert.equal(result.runs.length, 1);
+  assert.equal(result.provider_health.recovery_status, "needs_smoke_check");
+});
+
 test("reviewer shard runner fails closed without executor or pending shard", async () => {
   const missingExecutor = await runReviewerShard(workflowState(), {
     shard_id: "reviewer-scope-shard-001"
@@ -245,6 +287,34 @@ test("run-reviewer-shard CLI records provider health on timeout findings", () =>
   assert.equal(summary.provider_health.provider_health, "unknown");
   assert.deepEqual(summary.provider_health.scheduled_actions, ["provider_smoke_check"]);
   assert.equal(state.manifest.events.at(-1).type, "reviewer_provider_health");
+});
+
+test("run-reviewer-shard CLI can execute all pending shards with mock executor", () => {
+  const dir = mkdtempSync(join(tmpdir(), "reviewer-shard-runner-all-cli-"));
+  const inputPath = join(dir, "input.json");
+  const outputPath = join(dir, "output.json");
+  writeFileSync(inputPath, JSON.stringify(workflowState(), null, 2));
+
+  const output = execFileSync(process.execPath, [
+    "tools/run-reviewer-shard.mjs",
+    "--input",
+    inputPath,
+    "--output",
+    outputPath,
+    "--all",
+    "--mock-status",
+    "pass",
+    "--created-at",
+    "2026-05-21T21:13:00.000Z"
+  ], { encoding: "utf8" });
+  const summary = JSON.parse(output);
+  const state = JSON.parse(readFileSync(outputPath, "utf8"));
+
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.phase, "aggregated");
+  assert.equal(summary.runs.length, 2);
+  assert.equal(summary.aggregate.status, "pass");
+  assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_aggregate");
 });
 
 test("run-reviewer-shard CLI fails closed on unreadable input", () => {

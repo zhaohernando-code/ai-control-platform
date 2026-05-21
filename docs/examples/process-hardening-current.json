@@ -204,6 +204,13 @@
       "category": "reviewer_timeout",
       "severity": "p1",
       "message": "Reviewer shard runner timeouts must publish provider health facts; otherwise DS runner failures look like ordinary review findings and do not trigger smoke or fallback recovery."
+    },
+    {
+      "id": "reviewer-shard-runner-no-loop",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Reviewer shard execution must support autonomous loop execution through pending shards; one-shard-at-a-time CLI calls still leave orchestration work to the operator."
     }
   ],
   "hardening_items": [
@@ -436,6 +443,14 @@
       "invariant": "When reviewer shard execution returns reviewer_timeout and provider-health recording is enabled, the runner must append reviewer_provider_health facts and schedule provider smoke unless a smoke result is already supplied.",
       "enforcement_target": "src/workflow/reviewer-shard-runner.js; tools/run-reviewer-shard.mjs; test/reviewer-shard-runner.test.js; docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md",
       "regression_test": "reviewer shard runner records provider health for timeout findings; run-reviewer-shard CLI records provider health on timeout findings; real DS reviewer shard run records pass without false provider health",
+      "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-runner-no-loop",
+      "invariant": "Reviewer shard runner must support a bounded loop that continues pending shards until aggregate, stops on provider-health recovery when configured, and exposes the same behavior through the scheduler CLI.",
+      "enforcement_target": "src/workflow/reviewer-shard-runner.js; tools/run-reviewer-shard.mjs; test/reviewer-shard-runner.test.js",
+      "regression_test": "reviewer shard loop runs pending shards until aggregate; reviewer shard loop stops after provider health recovery fact; run-reviewer-shard CLI can execute all pending shards with mock executor",
       "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }

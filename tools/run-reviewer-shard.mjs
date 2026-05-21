@@ -3,7 +3,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
-import { runReviewerShard } from "../src/workflow/reviewer-shard-runner.js";
+import {
+  runReviewerShard,
+  runReviewerShardsUntilAggregate
+} from "../src/workflow/reviewer-shard-runner.js";
 
 function usage() {
   return [
@@ -11,6 +14,8 @@ function usage() {
     "",
     "Options:",
     "  --shard-id <id>               Pending shard id; defaults to the first pending shard",
+    "  --all                         Continue pending shards until aggregate or provider health stop",
+    "  --max-shards <n>              Safety cap for --all",
     "  --cwd <path>                  Project cwd for external reviewer",
     "  --timeout-seconds <seconds>   External reviewer timeout override",
     "  --created-at <iso>            Fact timestamp",
@@ -75,14 +80,18 @@ try {
   process.exit(1);
 }
 
-const result = await runReviewerShard(workflowState, {
+const runnerInput = {
   shard_id: valueAfter("--shard-id", args),
   created_at: valueAfter("--created-at", args),
   aggregate_created_at: valueAfter("--aggregate-created-at", args),
   record_provider_health_on_timeout: hasFlag("--record-provider-health", args),
   provider_smoke_status: valueAfter("--provider-smoke-status", args),
+  max_shards: valueAfter("--max-shards", args),
   executor
-});
+};
+const result = hasFlag("--all", args)
+  ? await runReviewerShardsUntilAggregate(workflowState, runnerInput)
+  : await runReviewerShard(workflowState, runnerInput);
 
 if (result.status !== "pass") {
   console.error(JSON.stringify(result, null, 2));
@@ -95,8 +104,9 @@ console.log(JSON.stringify({
   status: "pass",
   output: destination,
   phase: result.phase,
-  shard_id: result.result.shard_id,
-  shard_status: result.result.status,
+  shard_id: result.result?.shard_id || result.runs?.at(-1)?.shard_id || null,
+  shard_status: result.result?.status || result.runs?.at(-1)?.shard_status || null,
+  runs: result.runs || undefined,
   provider_health: result.provider_health ? {
     status: result.provider_health.status,
     provider_health: result.provider_health.provider_health,

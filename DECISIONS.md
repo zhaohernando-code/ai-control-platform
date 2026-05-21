@@ -480,3 +480,14 @@ runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚
 - 未提供 smoke status 时，provider health 进入 `needs_smoke_check`，scheduled action 为 `provider_smoke_check`。
 - 成功 shard 不写 provider health，避免健康事实噪音。
 - 真实 DS shard 成功记录在 `docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md`。
+
+[2026-05-21T22:08:20+08:00] Reviewer shard execution needs a bounded self-progress loop:
+只提供“执行一个 pending shard”的 CLI 仍会让调度器在每个分片后停下来等待主进程选择下一步，不符合中台低人工介入目标。平台需要把“继续到 aggregate 或可恢复故障点”代码化。
+
+决策：
+- 新增 `runReviewerShardsUntilAggregate`，连续消费 pending reviewer shard。
+- loop 默认最多执行 20 个 shard，可通过 `--max-shards` 缩小或扩大。
+- 任一 shard 写入 provider health recovery fact 后，默认停止并返回 `provider_health_recorded`，让调度器先跑 smoke/fallback，而不是继续消耗同一问题路径。
+- `tools/run-reviewer-shard.mjs --all` 暴露同一语义，供 scheduler/closeout 直接调用。
+- 显式传入 `--shard-id` 时，即使使用 `--all` 也只执行该 shard，避免指定范围被自动扩大。
+- 确定性 mock 测试覆盖 aggregate loop 与 timeout recovery stop。

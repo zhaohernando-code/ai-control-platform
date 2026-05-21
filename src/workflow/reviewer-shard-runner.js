@@ -214,3 +214,73 @@ export async function runReviewerShard(workflowState = {}, input = {}) {
     workflow_state: nextWorkflowState
   };
 }
+
+export async function runReviewerShardsUntilAggregate(workflowState = {}, input = {}) {
+  const maxShards = Math.max(1, Number(input.max_shards || input.maxShards || 20) || 20);
+  const stopOnProviderHealth = input.stop_on_provider_health !== false && input.stopOnProviderHealth !== false;
+  let state = workflowState;
+  const runs = [];
+
+  for (let index = 0; index < maxShards; index += 1) {
+    const pending = getPendingReviewerShards(state);
+    if (pending.status !== "pass") return pending;
+    if (pending.pending_shards === 0) {
+      return {
+        status: "pass",
+        phase: "no_pending_shards",
+        runs,
+        workflow_state: state
+      };
+    }
+
+    const result = await runReviewerShard(state, {
+      ...input,
+      shard_id: input.shard_id || input.shardId || pending.shards[0]?.id
+    });
+    if (result.status !== "pass") return result;
+    runs.push({
+      phase: result.phase,
+      shard_id: result.result?.shard_id,
+      shard_status: result.result?.status,
+      provider_health: result.provider_health || null,
+      aggregate: result.aggregate || null
+    });
+    state = result.workflow_state;
+
+    if (result.phase === "aggregated") {
+      return {
+        status: "pass",
+        phase: "aggregated",
+        runs,
+        aggregate: result.aggregate,
+        workflow_state: state
+      };
+    }
+
+    if (stopOnProviderHealth && result.provider_health) {
+      return {
+        status: "pass",
+        phase: "provider_health_recorded",
+        runs,
+        provider_health: result.provider_health,
+        workflow_state: state
+      };
+    }
+
+    if (input.shard_id || input.shardId) {
+      return {
+        status: "pass",
+        phase: result.phase,
+        runs,
+        workflow_state: state
+      };
+    }
+  }
+
+  return {
+    status: "fail",
+    issues: [issue("reviewer_shard_loop_exhausted", `reviewer shard loop exceeded ${maxShards} shard(s)`, "max_shards")],
+    runs,
+    workflow_state: state
+  };
+}
