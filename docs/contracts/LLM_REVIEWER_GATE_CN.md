@@ -184,6 +184,13 @@ DeepSeek/Claude Code executor adapter 约束：
 - `phase=provider_health_recorded` 时必须包含 provider health fact。
 - pass artifact 必须包含输出 workflow state，供后续 closeout/continuation 复用。
 
+`tools/prepare-reviewer-shard-loop-continuation.mjs` / `npm run prepare:reviewer-shard-loop-continuation` 是 artifact 复用入口：
+
+- 只接受通过 validation 的 `reviewer-shard-loop-run.v1`。
+- 只把 pass artifact 转成 continuation input。
+- continuation input 必须包含 `project_status.project=ai-control-platform`、`run_evaluation.source=reviewer-shard-loop-run.v1` 和 artifact 输出 workflow state。
+- 失败 artifact、版本错误或 identity drift 必须非零退出，不能生成半可信 continuation input。
+
 ## 7. 工作台状态
 
 `summarizeReviewerGate` 输出工作台可展示状态：

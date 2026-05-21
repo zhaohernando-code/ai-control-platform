@@ -469,6 +469,14 @@
       "regression_test": "reviewer shard loop run artifact is replay-valid; run-reviewer-shard CLI can execute all pending shards with mock executor",
       "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-loop-manual-continuation-input",
+      "invariant": "Validated reviewer shard loop artifacts must be reusable through a scheduler CLI that emits closeout/continuation input without manual JSON assembly and fails closed on invalid artifacts.",
+      "enforcement_target": "src/workflow/reviewer-shard-runner.js; tools/prepare-reviewer-shard-loop-continuation.mjs; package.json; test/reviewer-shard-runner.test.js; docs/contracts/LLM_REVIEWER_GATE_CN.md",
+      "regression_test": "reviewer shard loop artifact prepares continuation input; run-reviewer-shard CLI can execute all pending shards with mock executor",
+      "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

@@ -412,4 +412,57 @@ export function validateReviewerShardLoopRunArtifact(artifact = {}) {
   };
 }
 
+export function prepareReviewerShardLoopContinuationInput(artifact = {}, options = {}) {
+  const validation = validateReviewerShardLoopRunArtifact(artifact);
+  if (validation.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "reviewer_shard_loop_replay_validation",
+      should_continue: false,
+      issues: validation.issues,
+      continuation_input: null
+    };
+  }
+
+  if (artifact.status !== "pass" || !isObject(artifact.result?.workflow_state)) {
+    return {
+      status: "blocked",
+      phase: "reviewer_shard_loop_replay_validation",
+      should_continue: false,
+      issues: [issue("non_reusable_reviewer_shard_loop_artifact", "only pass artifacts with result.workflow_state can prepare continuation input", "status")],
+      continuation_input: null
+    };
+  }
+
+  const nextStep = normalizeString(options.next_step || options.nextStep) ||
+    "Continue after reviewer shard loop artifact validation.";
+  return {
+    status: "ready",
+    phase: "reviewer_shard_loop_continuation",
+    should_continue: true,
+    issues: [],
+    continuation_input: {
+      project_status: {
+        project: "ai-control-platform",
+        blockers: [],
+        next_step: nextStep
+      },
+      run_evaluation: {
+        status: "pass",
+        source: REVIEWER_SHARD_LOOP_ARTIFACT_VERSION,
+        artifact_phase: artifact.phase
+      },
+      workflow_state: artifact.result.workflow_state
+    },
+    reviewer_shard_loop: {
+      run_id: artifact.run_id,
+      cycle_id: artifact.cycle_id,
+      phase: artifact.phase,
+      aggregate_status: artifact.result.aggregate?.status || null,
+      provider_health_status: artifact.result.provider_health?.provider_health || null,
+      run_count: asArray(artifact.result.runs).length
+    }
+  };
+}
+
 export { REVIEWER_SHARD_LOOP_ARTIFACT_VERSION };
