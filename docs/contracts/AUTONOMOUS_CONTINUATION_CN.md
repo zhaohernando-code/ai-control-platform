@@ -127,6 +127,16 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 这保证 smoke 通过但 DS tool review 超时时，下一轮会沿着“生成 split plan -> 分片复审 -> 汇总 findings”继续，而不是原样重跑同一个会超时的工具请求。
 
+`tools/create-scheduler-dispatch-plan.mjs` / `npm run plan:scheduler-dispatch` 是当前最小 scheduler dispatch planner：
+
+- 输入 continuation input 或 continuation decision。
+- 发现 `run_reviewer_scope_shard` work packages 时，生成三步计划：
+  - `run-reviewer-shard --all --record-provider-health --run-artifact-output ...`
+  - `prepare-reviewer-shard-loop-continuation`
+  - `run-autonomous-closeout-loop`
+- 缺少 `workflow_state_input_path` 时必须失败闭合，因为 reviewer shard runner 需要明确输入/输出文件。
+- dispatch plan 只生成可审计命令，不直接绕过 artifact validation 或 closeout validation。
+
 ## 5. 与工作台关系
 
 Workbench Projection 展示当前轮状态；Autonomous Continuation 决定下一轮是否必须继续。后续任务创建时，如果 projection 显示 `pass` 但 `PROJECT_STATUS.next_step` 仍存在，调度器必须继续创建下一轮 Context Pack，而不是等待用户说“继续”。

@@ -477,6 +477,14 @@
       "regression_test": "reviewer shard loop artifact prepares continuation input; run-reviewer-shard CLI can execute all pending shards with mock executor",
       "verification": "node --test test/reviewer-shard-runner.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-shard-work-package-no-dispatch-plan",
+      "invariant": "run_reviewer_scope_shard work packages must map to an auditable scheduler dispatch plan that runs reviewer shard loop, prepares continuation input, and executes autonomous closeout without manual command assembly.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-plan.js; tools/create-scheduler-dispatch-plan.mjs; package.json; test/scheduler-dispatch-plan.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands; scheduler dispatch plan fails closed without workflow state input path; scheduler dispatch plan CLI writes reviewer shard dispatch plan",
+      "verification": "node --test test/scheduler-dispatch-plan.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }
