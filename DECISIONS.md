@@ -13,3 +13,7 @@
 - `local-control-server` 与 `dashboard-ui` 是可迁移组件，不是新能力默认落点。
 - `stock_dashboard` 是被纳管项目和反例 fixture，不再承载平台能力。
 
+[2026-05-21T15:45:00+08:00] Platform intent overrides cwd/default hook routing:
+会话 cwd、历史线程、默认 hook 或 init skill 可能把任务错误路由到 `stock_dashboard` 等业务项目。后续平台类请求必须以用户文本中的强平台意图为准：只要命中“新中台、中台、自动化平台、平台基座、任务编排、Recovery Engine、LLM Reviewer、CI/CD 门禁、跨项目体检”等平台本体语义，就覆盖 cwd 路由到 `ai-control-platform`。
+
+本轮根级 `agent-workflow-guard` 已加入回归：即使 cwd 位于 `stock_dashboard` worktree，明确的新中台请求也会解析到 `ai-control-platform`。
