@@ -501,6 +501,14 @@
       "regression_test": "scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands; scheduler dispatch plan CLI writes reviewer shard dispatch plan",
       "verification": "node --test test/scheduler-dispatch-plan.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-dispatch-evidence-not-visible",
+      "invariant": "Scheduler dispatch run artifacts must be recordable into workflow state and visible in PC/mobile workbench projection with status, phase, step counts, failed steps, and dry-run signal.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-runner.js; src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; test/scheduler-dispatch-runner.test.js; test/workbench-projection.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md",
+      "regression_test": "scheduler dispatch run artifact records into workflow state; workbench projection exposes scheduler dispatch run status",
+      "verification": "node --test test/scheduler-dispatch-runner.test.js test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

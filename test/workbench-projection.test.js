@@ -113,8 +113,10 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.one_screen.counters.closeout_publishes, 0);
   assert.equal(projection.resume_health.status, "not_configured");
   assert.equal(projection.reviewer_provider_health.status, "not_configured");
+  assert.equal(projection.scheduler_dispatch.status, "not_configured");
   assert.equal(projection.one_screen.counters.resume_blockers, 0);
   assert.equal(projection.one_screen.counters.provider_health_events, 0);
+  assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 0);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
@@ -409,6 +411,60 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
   assert.equal(projection.reviewer_shard_review.failed_finding_count, 1);
   assert.equal(projection.one_screen.counters.reviewer_shards_completed, 2);
   assert.equal(mobile.shard_review.failed_finding_count, 1);
+});
+
+test("workbench projection exposes scheduler dispatch run status", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "scheduler-dispatch-run-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "scheduler-dispatch://run/run-projection/cycle-20260521/scheduler-dispatch-run-run-projection-cycle-20260521-001",
+    producer: "scheduler-dispatch-runner",
+    created_at: "2026-05-21T22:38:00.000Z",
+    metadata: {
+      type: "scheduler_dispatch_run",
+      status: "pass",
+      phase: "completed",
+      result: {
+        steps: [
+          { id: "run-reviewer-shard-loop", status: "pass", dry_run: false },
+          { id: "prepare-reviewer-shard-loop-continuation", status: "pass", dry_run: false },
+          { id: "run-autonomous-closeout-loop", status: "pass", dry_run: false }
+        ]
+      }
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "scheduler_dispatch_run",
+        status: "pass",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.scheduler_dispatch.status, "pass");
+  assert.equal(projection.scheduler_dispatch.phase, "completed");
+  assert.equal(projection.scheduler_dispatch.step_count, 3);
+  assert.equal(projection.scheduler_dispatch.failed_step_count, 0);
+  assert.equal(projection.scheduler_dispatch.dry_run, false);
+  assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 3);
+  assert.equal(mobile.scheduler_dispatch.step_count, 3);
 });
 
 test("workbench projection ingests operator events before summarizing run state", () => {

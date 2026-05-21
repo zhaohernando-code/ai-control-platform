@@ -8,6 +8,7 @@ import test from "node:test";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import {
   createSchedulerDispatchRunArtifact,
+  recordSchedulerDispatchRunArtifact,
   runSchedulerDispatchPlan,
   validateSchedulerDispatchPlan
 } from "../src/workflow/scheduler-dispatch-runner.js";
@@ -99,6 +100,21 @@ test("scheduler dispatch run artifact captures dry-run result", async () => {
   assert.equal(artifact.status, "pass");
   assert.equal(artifact.phase, "completed");
   assert.ok(artifact.result.steps.every((step) => step.dry_run === true));
+});
+
+test("scheduler dispatch run artifact records into workflow state", async () => {
+  const plan = dispatchPlan();
+  const result = await runSchedulerDispatchPlan(plan, { dry_run: true });
+  const artifact = createSchedulerDispatchRunArtifact(plan, result, {
+    created_at: "2026-05-21T22:36:00.000Z"
+  });
+  const recorded = recordSchedulerDispatchRunArtifact(workflowState(), artifact, {
+    created_at: "2026-05-21T22:37:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+  assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).producer, "scheduler-dispatch-runner");
 });
 
 test("run-scheduler-dispatch-plan CLI writes dry-run artifact", () => {

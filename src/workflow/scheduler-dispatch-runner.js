@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { recordArtifact } from "./artifact-ledger.js";
+import { appendRunEvent } from "./run-manifest.js";
 
 const SCHEDULER_DISPATCH_RUN_VERSION = "scheduler-dispatch-run.v1";
 const ALLOWED_NPM_SCRIPTS = new Set([
@@ -21,6 +23,25 @@ function issue(code, message, path) {
 
 function isObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function safeIdPart(value) {
+  return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function planWorkflowState(plan = {}) {
+  return plan?.decision?.snapshot_publish_plan?.input ||
+    plan?.input?.workflow_state ||
+    plan?.workflow_state ||
+    null;
+}
+
+function planIdentity(plan = {}) {
+  const workflowState = planWorkflowState(plan);
+  return {
+    run_id: normalizeString(workflowState?.manifest?.run_id),
+    cycle_id: normalizeString(workflowState?.manifest?.cycle_id)
+  };
 }
 
 function stepId(step, index) {
@@ -159,8 +180,11 @@ export async function runSchedulerDispatchPlan(plan = {}, options = {}) {
 }
 
 export function createSchedulerDispatchRunArtifact(plan = {}, result = {}, options = {}) {
+  const identity = planIdentity(plan);
   return {
     version: SCHEDULER_DISPATCH_RUN_VERSION,
+    run_id: identity.run_id || null,
+    cycle_id: identity.cycle_id || null,
     status: result.status || "fail",
     phase: result.phase || null,
     created_at: options.created_at || new Date().toISOString(),
@@ -172,6 +196,88 @@ export function createSchedulerDispatchRunArtifact(plan = {}, result = {}, optio
       phase: result.phase || null,
       issues: result.issues || [],
       steps: result.steps || []
+    }
+  };
+}
+
+function nextSchedulerDispatchArtifactId(workflowState = {}, options = {}) {
+  const explicit = normalizeString(options.artifact_id || options.artifactId);
+  if (explicit) return explicit;
+
+  const prefix = `scheduler-dispatch-run-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`;
+  const used = new Set([
+    ...asArray(workflowState?.manifest?.events).map((event) => normalizeString(event?.artifact_id)).filter(Boolean),
+    ...asArray(workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts)
+      .map((artifact) => normalizeString(artifact?.id))
+      .filter(Boolean)
+  ]);
+  let index = 1;
+  let id = `${prefix}-${String(index).padStart(3, "0")}`;
+  while (used.has(id)) {
+    index += 1;
+    id = `${prefix}-${String(index).padStart(3, "0")}`;
+  }
+  return id;
+}
+
+export function recordSchedulerDispatchRunArtifact(workflowState = {}, runArtifact = {}, options = {}) {
+  if (!isObject(workflowState)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_workflow_state", "workflow state must be an object", "workflow_state")]
+    };
+  }
+
+  const runId = normalizeString(workflowState?.manifest?.run_id);
+  const cycleId = normalizeString(workflowState?.manifest?.cycle_id);
+  if (!runId || !cycleId) {
+    return {
+      status: "fail",
+      issues: [issue("missing_workflow_identity", "workflow state manifest run_id and cycle_id are required", "workflow_state.manifest")]
+    };
+  }
+
+  const id = nextSchedulerDispatchArtifactId(workflowState, options);
+  const createdAt = normalizeString(options.created_at || options.createdAt || runArtifact.created_at) || new Date().toISOString();
+  const artifact = {
+    id,
+    type: "evaluation",
+    status: runArtifact.status || "fail",
+    uri: `scheduler-dispatch://run/${encodeURIComponent(runId)}/${encodeURIComponent(cycleId)}/${encodeURIComponent(id)}`,
+    producer: "scheduler-dispatch-runner",
+    created_at: createdAt,
+    metadata: {
+      type: "scheduler_dispatch_run",
+      run_id: runId,
+      cycle_id: cycleId,
+      ...runArtifact
+    }
+  };
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${id}`,
+    type: "scheduler_dispatch_run",
+    status: artifact.status,
+    artifact_id: id,
+    message: `scheduler dispatch ${runArtifact.phase || "run"} ${artifact.status}`,
+    created_at: createdAt,
+    metadata: artifact.metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    status: "pass",
+    artifact,
+    workflow_state: {
+      ...workflowState,
+      manifest: {
+        ...manifest,
+        artifacts: [...asArray(manifest.artifacts), artifact]
+      },
+      artifact_ledger: artifactLedger
     }
   };
 }

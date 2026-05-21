@@ -292,6 +292,42 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "scheduler_dispatch_run");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      phase: null,
+      step_count: 0,
+      failed_step_count: 0,
+      dry_run: false,
+      event_id: null,
+      artifact_id: null,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const steps = asArray(metadata.result?.steps || metadata.steps);
+
+  return {
+    status: latestEvent.status || metadata.status || "unknown",
+    phase: metadata.phase || metadata.result?.phase || null,
+    step_count: steps.length,
+    failed_step_count: steps.filter((step) => step?.status === "fail").length,
+    dry_run: steps.length > 0 && steps.every((step) => step?.dry_run === true),
+    event_id: latestEvent.id || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    created_at: latestEvent.created_at || artifact?.created_at || null
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -356,6 +392,7 @@ export function createWorkbenchProjection(input = {}) {
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
   const reviewerShardReview = summarizeReviewerShardReview(manifest, artifactLedger);
+  const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -388,6 +425,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewer_provider_health: reviewerProviderHealth,
     reviewer_scope_split: reviewerScopeSplit,
     reviewer_shard_review: reviewerShardReview,
+    scheduler_dispatch: schedulerDispatch,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -416,7 +454,8 @@ export function createWorkbenchProjection(input = {}) {
         resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
-        reviewer_shards_completed: reviewerShardReview.completed_shards || 0
+        reviewer_shards_completed: reviewerShardReview.completed_shards || 0,
+        scheduler_dispatch_steps: schedulerDispatch.step_count || 0
       }
     }
   };
@@ -467,6 +506,13 @@ export function createMobileWorkbenchProjection(input = {}) {
       pending_shards: projection.reviewer_shard_review.pending_shards,
       failed_finding_count: projection.reviewer_shard_review.failed_finding_count
     },
+    scheduler_dispatch: {
+      status: projection.scheduler_dispatch.status,
+      phase: projection.scheduler_dispatch.phase,
+      step_count: projection.scheduler_dispatch.step_count,
+      failed_step_count: projection.scheduler_dispatch.failed_step_count,
+      dry_run: projection.scheduler_dispatch.dry_run
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -484,5 +530,6 @@ export {
   summarizeResumeHealth,
   summarizeReviewerProviderHealth,
   summarizeReviewerScopeSplit,
-  summarizeReviewerShardReview
+  summarizeReviewerShardReview,
+  summarizeSchedulerDispatch
 };

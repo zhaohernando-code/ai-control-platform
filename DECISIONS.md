@@ -550,3 +550,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - CLI 暴露 `--reviewer-mock-status` / `--reviewer-mock-findings-json`。
 - mock 参数写入计划的 reviewer shard loop step。
 - runner 仍只执行计划，不在执行阶段隐式改命令。
+
+[2026-05-21T22:44:02+08:00] Scheduler dispatch evidence must be visible in the workbench:
+调度链即使成功执行，如果结果只存在于 CLI artifact 文件中，operator 工作台仍无法判断自动流程是否真的推进。
+
+决策：
+- `scheduler-dispatch-runner` 支持把 `scheduler-dispatch-run.v1` 记录回 workflow state。
+- 写入 `scheduler_dispatch_run` manifest event 和 `scheduler-dispatch-runner` evaluation artifact。
+- Workbench Projection 增加 `scheduler_dispatch`。
+- PC/mobile schema 都要求 scheduler dispatch summary。
+- one-screen counters 增加 `scheduler_dispatch_steps`。
