@@ -94,6 +94,7 @@ function renderProjection(projection) {
   const schedulerDispatch = projection.scheduler_dispatch || {};
   const schedulerContinuation = projection.scheduler_continuation || {};
   const schedulerLoop = projection.scheduler_loop || {};
+  const nextActionReadout = projection.next_action_readout || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -160,6 +161,9 @@ function renderProjection(projection) {
   setText("scheduler_loop_recovery", schedulerLoop.recovery_status);
   setText("scheduler_loop_action", schedulerLoop.recovery_action);
   setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
+  setText("next_action_readout_status", nextActionReadout.status);
+  setText("next_action_readout_action", nextActionReadout.action || projection.one_screen?.recommended_action);
+  setText("next_action_readout_source", nextActionReadout.source_type);
 
   renderNextActions(projection);
   renderOperationsTimeline(projection);

@@ -253,6 +253,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Operations timeline entries must distinguish scheduler operations from reviewer recovery and automation-driving events from operator-only observability; otherwise schedulers may treat every visible fact as a next-action trigger."
+    },
+    {
+      "id": "scheduler-next-action-hidden-in-timeline",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Schedulers need a single next_action_readout derived from the latest automation driver; otherwise they must parse the full operations timeline and can drift on action selection."
     }
   ],
   "hardening_items": [
@@ -718,6 +725,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; test/workbench-projection.test.js; test/workbench-projection-fixture.test.js; tools/check-workbench-browser-events.mjs",
       "regression_test": "workbench projection exposes compact operations timeline with scheduler and reviewer_recovery groups, automation_driver/operator_observable roles, driver counts, and latest_driver",
       "verification": "node --test test/workbench-projection.test.js test/workbench-projection-fixture.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-next-action-hidden-in-timeline",
+      "invariant": "Workbench projection must expose next_action_readout derived from operations_timeline.latest_driver, and PC/mobile shells must render it so schedulers and operators can consume a single recommended autonomous continuation action.",
+      "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/workbench-projection-fixture.test.js; test/workbench-shell.test.js",
+      "regression_test": "workbench projection exposes next_action_readout from reviewer_provider_health latest_driver; schema requires next_action_readout; browser gate renders next-action readout",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-projection-fixture.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

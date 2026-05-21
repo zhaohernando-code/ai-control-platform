@@ -271,6 +271,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     const resumedLoopAttempt = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
     const operationEventCount = await page.textContent('[data-bind="counter_operation_events"]');
     const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
+    const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -285,6 +286,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(resumedLoopAttempt === "not_configured", "resume target projection should not claim the source resume attempt");
     assert(Number(operationEventCount) >= 1, "autonomous scheduler loop resume must render operation event count");
     assert(operationRows >= 1, "autonomous scheduler loop resume must render operation timeline rows");
+    assert(nextActionReadout, "autonomous scheduler loop resume must render next-action readout");
     assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
 
     console.log(JSON.stringify({
@@ -297,6 +299,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       resumed_loop_attempt: resumedLoopAttempt,
       operation_events: operationEventCount,
       operation_rows: operationRows,
+      next_action_readout: nextActionReadout,
       dimensions
     }, null, 2));
   });
@@ -327,6 +330,7 @@ async function verifyMobileProjectionLoad(browser) {
     const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const schedulerLoopResumeStatus = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
     const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
+    const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
@@ -340,6 +344,7 @@ async function verifyMobileProjectionLoad(browser) {
     assert(schedulerLoopRecovery, "mobile workbench must render scheduler loop recovery");
     assert(schedulerLoopResumeStatus, "mobile workbench must render scheduler loop resume attempt status");
     assert(operationRows >= 1, "mobile workbench must render operation timeline rows");
+    assert(nextActionReadout, "mobile workbench must render next-action readout");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -355,6 +360,7 @@ async function verifyMobileProjectionLoad(browser) {
       scheduler_loop_recovery: schedulerLoopRecovery,
       scheduler_loop_resume_status: schedulerLoopResumeStatus,
       operation_rows: operationRows,
+      next_action_readout: nextActionReadout,
       dimensions
     }, null, 2));
   });

@@ -60,6 +60,7 @@ function validatePcProjection(projection, issues) {
     "scheduler_continuation",
     "scheduler_loop",
     "operations_timeline",
+    "next_action_readout",
     "model_routing",
     "reviewer_gate",
     "autonomous_run",
@@ -85,7 +86,7 @@ function validateMobileProjection(projection, issues) {
     requireString(projection, field, issues);
   }
 
-  for (const field of ["counters", "closeout", "resume_health", "provider_health", "scope_split", "shard_review", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "operations_timeline", "model", "reviewer"]) {
+  for (const field of ["counters", "closeout", "resume_health", "provider_health", "scope_split", "shard_review", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "operations_timeline", "next_action_readout", "model", "reviewer"]) {
     requireObject(projection, field, issues);
   }
 

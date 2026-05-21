@@ -623,6 +623,110 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
+  const driver = operationsTimeline.latest_driver || null;
+  if (!driver) {
+    return {
+      status: "not_configured",
+      action: "wait_for_driver_event",
+      source_event_id: null,
+      source_type: null,
+      target_projection_id: null,
+      reason: "no automation driver event is available",
+      requires_operator: false
+    };
+  }
+
+  if (driver.type === "scheduler_dispatch_continuation") {
+    return {
+      status: "ready",
+      action: "enqueue_scheduler_next_cycle",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "scheduler_next_cycle_enqueue") {
+    return {
+      status: "ready",
+      action: "run_autonomous_scheduler_loop",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "autonomous_scheduler_loop_run") {
+    const loop = summaries.schedulerLoop || {};
+    return {
+      status: loop.recovery_status === "ready" ? "ready" : loop.recovery_status || "ready",
+      action: loop.recovery_status === "ready" ? "resume_autonomous_scheduler_loop" : "inspect_scheduler_loop",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: loop.resume_projection_id || loop.latest_projection_id || null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "scheduler_loop_resume_attempt") {
+    return {
+      status: "ready",
+      action: "inspect_resume_target",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: summaries.schedulerLoop?.latest_resume_target || null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "reviewer_provider_health") {
+    return {
+      status: "ready",
+      action: summaries.reviewerProviderHealth?.next_action || "run_reviewer_recovery",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "reviewer_scope_split") {
+    return {
+      status: "ready",
+      action: "run_reviewer_scope_shard",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "reviewer_shard_aggregate") {
+    return {
+      status: "ready",
+      action: "continue_after_reviewer_aggregate",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: driver.summary,
+      requires_operator: false
+    };
+  }
+
+  return {
+    status: "pending",
+    action: "inspect_latest_driver",
+    source_event_id: driver.event_id,
+    source_type: driver.type,
+    target_projection_id: null,
+    reason: driver.summary,
+    requires_operator: false
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -691,6 +795,10 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
+  const nextActionReadout = createNextActionReadout(operationsTimeline, {
+    schedulerLoop,
+    reviewerProviderHealth
+  });
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -727,6 +835,7 @@ export function createWorkbenchProjection(input = {}) {
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
     operations_timeline: operationsTimeline,
+    next_action_readout: nextActionReadout,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -760,7 +869,8 @@ export function createWorkbenchProjection(input = {}) {
         scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0,
         scheduler_loop_iterations: schedulerLoop.iteration_count || 0,
         operation_events: operationsTimeline.count || 0
-      }
+      },
+      recommended_action: nextActionReadout.action
     }
   };
 }
@@ -857,6 +967,13 @@ export function createMobileWorkbenchProjection(input = {}) {
       latest: projection.operations_timeline.latest,
       items: projection.operations_timeline.items.slice(-5)
     },
+    next_action_readout: {
+      status: projection.next_action_readout.status,
+      action: projection.next_action_readout.action,
+      source_type: projection.next_action_readout.source_type,
+      target_projection_id: projection.next_action_readout.target_projection_id,
+      requires_operator: projection.next_action_readout.requires_operator
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -879,5 +996,6 @@ export {
   summarizeAutonomousSchedulerLoop,
   summarizeSchedulerLoopResumeAttempt,
   summarizeOperationsTimeline,
+  createNextActionReadout,
   summarizeSchedulerDispatch
 };

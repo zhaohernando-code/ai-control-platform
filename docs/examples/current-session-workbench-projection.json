@@ -202,6 +202,15 @@
       }
     ]
   },
+  "next_action_readout": {
+    "status": "ready",
+    "action": "run_reviewer_scope_shard",
+    "source_event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "source_type": "reviewer_scope_split",
+    "target_projection_id": null,
+    "reason": "2 shard(s)",
+    "requires_operator": false
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -338,6 +347,7 @@
       "scheduler_continuation_ready": 0,
       "scheduler_loop_iterations": 0,
       "operation_events": 2
-    }
+    },
+    "recommended_action": "run_reviewer_scope_shard"
   }
 }

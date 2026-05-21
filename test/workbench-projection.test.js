@@ -117,6 +117,8 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.scheduler_continuation.status, "not_configured");
   assert.equal(projection.scheduler_loop.status, "not_configured");
   assert.equal(projection.operations_timeline.status, "not_configured");
+  assert.equal(projection.next_action_readout.status, "not_configured");
+  assert.equal(projection.next_action_readout.action, "wait_for_driver_event");
   assert.equal(projection.one_screen.counters.resume_blockers, 0);
   assert.equal(projection.one_screen.counters.provider_health_events, 0);
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 0);
@@ -865,9 +867,14 @@ test("workbench projection exposes compact operations timeline", () => {
   assert.equal(projection.operations_timeline.latest.type, "reviewer_provider_health");
   assert.equal(projection.operations_timeline.latest.group, "reviewer_recovery");
   assert.equal(projection.operations_timeline.latest_driver.type, "reviewer_provider_health");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "split_scope");
+  assert.equal(projection.next_action_readout.source_type, "reviewer_provider_health");
   assert.equal(projection.one_screen.counters.operation_events, 3);
+  assert.equal(projection.one_screen.recommended_action, "split_scope");
   assert.equal(mobile.operations_timeline.status, "available");
   assert.equal(mobile.operations_timeline.latest.type, "reviewer_provider_health");
+  assert.equal(mobile.next_action_readout.action, "split_scope");
 });
 
 test("workbench projection exposes scheduler dispatch policy blockers", () => {
