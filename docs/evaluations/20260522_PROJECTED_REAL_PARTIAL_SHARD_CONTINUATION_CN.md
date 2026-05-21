@@ -46,6 +46,12 @@ Closeout 证据：
 - `tools/check-closeout.mjs` 读取该 artifact，校验 `projected_real_partial_shard_readout`、`next_action_readout=run_reviewer_scope_shard` 和无横向溢出
 - 本轮 artifact smoke：`version=workbench-browser-events-run.v1`，`status=pass`，`scenario_count=10`
 
+Projection 证据：
+
+- `workbench_browser_events_run` fact 进入 `workbench_browser_events` projection 摘要
+- 摘要包含 `artifact_id`、`scenario_count`、`partial_shard_ready`、`overflow_count`
+- PC/mobile 工作台可渲染 UI verification 状态，避免 scheduler/closeout 只能读取 raw artifact
+
 ## 结论
 
 单片预算真实 reviewer loop 可以通过重复 bounded projected loop 自主推进，不需要人工选择 shard，也不会重复调用已完成 shard。

@@ -174,6 +174,67 @@ test("workbench projection exposes latest closeout publication evidence", () => 
   assert.equal(mobile.closeout.snapshot_id, "run-projection");
 });
 
+test("workbench projection exposes browser event artifact evidence", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "workbench-browser-events-run-projection",
+    type: "evaluation",
+    status: "pass",
+    uri: "codex://workbench-browser-events/run-projection",
+    producer: "workbench-browser-events",
+    created_at: "2026-05-22T06:10:00.000Z",
+    metadata: {
+      type: "workbench_browser_events_run",
+      version: "workbench-browser-events-run.v1",
+      status: "pass",
+      scenario_count: 2,
+      scenarios: [
+        {
+          scenario: "projected_real_partial_shard_readout",
+          shard_review_next: "reviewer-scope-shard-002",
+          next_action_readout: "run_reviewer_scope_shard",
+          dimensions: { width: 1440, scrollWidth: 1440 }
+        },
+        {
+          scenario: "mobile_projection",
+          dimensions: { width: 390, scrollWidth: 390 }
+        }
+      ]
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "event-workbench-browser-events-run-projection",
+        type: "workbench_browser_events_run",
+        status: "pass",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.workbench_browser_events.status, "pass");
+  assert.equal(projection.workbench_browser_events.artifact_id, artifact.id);
+  assert.equal(projection.workbench_browser_events.scenario_count, 2);
+  assert.equal(projection.workbench_browser_events.partial_shard_ready, true);
+  assert.equal(projection.workbench_browser_events.overflow_count, 0);
+  assert.equal(projection.one_screen.counters.browser_event_scenarios, 2);
+  assert.equal(mobile.workbench_browser_events.partial_shard_ready, true);
+  assert.equal(mobile.workbench_browser_events.scenario_count, 2);
+});
+
 test("workbench projection exposes replay validation blockers as resume health", () => {
   const input = baseInput();
   const artifact = {

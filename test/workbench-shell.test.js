@@ -23,6 +23,11 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-history-select/);
   assert.match(desktop, /data-bind="closeout_status"/);
   assert.match(mobile, /data-bind="closeout_status"/);
+  assert.match(desktop, /data-bind="ui_verification_status"/);
+  assert.match(mobile, /data-bind="ui_verification_status"/);
+  assert.match(desktop, /data-bind="ui_verification_scenarios"/);
+  assert.match(desktop, /data-bind="ui_verification_artifact"/);
+  assert.match(mobile, /data-bind="ui_verification_partial"/);
   assert.match(desktop, /data-bind="resume_health_status"/);
   assert.match(mobile, /data-bind="resume_health_status"/);
   assert.match(desktop, /data-bind="provider_health_value"/);
@@ -84,6 +89,8 @@ test("workbench shell consumes projection json instead of logs", () => {
 
   assert.match(script, /createProjectionSource/);
   assert.match(script, /closeout_status/);
+  assert.match(script, /ui_verification_status/);
+  assert.match(script, /ui_verification_partial/);
   assert.match(script, /resume_health_status/);
   assert.match(script, /provider_health_value/);
   assert.match(script, /scheduler_dispatch_status/);

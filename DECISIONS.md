@@ -923,3 +923,4 @@ Injected real-loop smoke 暴露了一个流程细节：如果为了预检把 pro
 - 回归验证两轮单片 projected real loop 依次执行 shard 001/002，并在 durable state 中聚合，不重复 001。
 - PC/mobile 工作台渲染 reviewer shard 的 next shard；浏览器门禁用 injected real reviewer 验证单片真实预算后可见 `next_shard=reviewer-scope-shard-002`、budget=1 和 `next_action=run_reviewer_scope_shard`。
 - 浏览器门禁可写出 `workbench-browser-events-run.v1`；closeout 读取该 artifact 校验 partial-shard readiness 和无横向溢出，避免 UI 恢复态证据只停留在 stdout。
+- Workbench projection 支持 `workbench_browser_events_run` fact 摘要，PC/mobile 可以直接显示最新 UI verification 状态、场景数、partial shard readiness 和 artifact id。

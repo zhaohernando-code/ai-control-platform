@@ -87,6 +87,7 @@ function renderProjection(projection) {
   const reviewer = projection.reviewer_gate || projection.reviewer || {};
   const model = projection.model_routing || projection.model || {};
   const closeout = projection.closeout || {};
+  const browserEvents = projection.workbench_browser_events || {};
   const resumeHealth = projection.resume_health || {};
   const providerHealth = projection.reviewer_provider_health || projection.provider_health || {};
   const scopeSplit = projection.reviewer_scope_split || projection.scope_split || {};
@@ -121,6 +122,10 @@ function renderProjection(projection) {
   setText("closeout_publish_status", closeout.publish_status);
   setText("closeout_snapshot", closeout.snapshot_id);
   setText("closeout_artifact", closeout.artifact_id || closeout.path || closeout.uri);
+  setText("ui_verification_status", browserEvents.status);
+  setText("ui_verification_scenarios", browserEvents.scenario_count ?? 0);
+  setText("ui_verification_partial", browserEvents.partial_shard_ready === true ? "ready" : "not ready");
+  setText("ui_verification_artifact", browserEvents.artifact_id);
   setText("resume_health_status", resumeHealth.status);
   setText("resume_replay_status", resumeHealth.replay_status);
   setText("resume_issue_count", resumeHealth.issue_count ?? 0);

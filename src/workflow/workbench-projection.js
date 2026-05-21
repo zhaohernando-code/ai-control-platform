@@ -130,6 +130,46 @@ function summarizeCloseoutEvidence(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeWorkbenchBrowserEvents(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "workbench_browser_events_run");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      artifact_id: null,
+      scenario_count: 0,
+      partial_shard_ready: false,
+      latest_scenario: null,
+      overflow_count: 0,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const scenarios = asArray(metadata.scenarios);
+  const partialReadout = scenarios.find((scenario) => scenario?.scenario === "projected_real_partial_shard_readout") || {};
+  const overflowCount = scenarios.filter((scenario) => {
+    const dimensions = scenario?.dimensions || {};
+    return Number(dimensions.scrollWidth || 0) > Number(dimensions.width || 0);
+  }).length;
+
+  return {
+    status: artifact?.status || latestEvent.status || metadata.status || "unknown",
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    scenario_count: Number(metadata.scenario_count || scenarios.length || 0),
+    partial_shard_ready: partialReadout.shard_review_next === "reviewer-scope-shard-002" &&
+      partialReadout.next_action_readout === "run_reviewer_scope_shard",
+    latest_scenario: scenarios.at(-1)?.scenario || null,
+    overflow_count: overflowCount,
+    created_at: latestEvent.created_at || artifact?.created_at || metadata.created_at || null
+  };
+}
+
 function summarizeResumeHealth(manifest = {}, artifactLedger = {}) {
   const events = asArray(manifest?.events).filter((event) => event?.type === "autonomous_loop_replay_validation");
   const latestEvent = events.at(-1) || null;
@@ -552,7 +592,8 @@ const OPERATION_EVENT_TYPES = new Set([
   "reviewer_provider_health",
   "reviewer_scope_split",
   "reviewer_shard_result",
-  "reviewer_shard_aggregate"
+  "reviewer_shard_aggregate",
+  "workbench_browser_events_run"
 ]);
 
 function operationSummary(type, metadata = {}) {
@@ -582,6 +623,9 @@ function operationSummary(type, metadata = {}) {
   }
   if (type === "reviewer_shard_aggregate") {
     return `${metadata.status || "aggregate"} / ${metadata.failed_finding_count || 0} failed`;
+  }
+  if (type === "workbench_browser_events_run") {
+    return `${metadata.status || "unknown"} / ${metadata.scenario_count || 0} scenario(s)`;
   }
   return metadata.status || "recorded";
 }
@@ -830,6 +874,7 @@ export function createWorkbenchProjection(input = {}) {
   const manifestSummary = manifest ? summarizeManifest(manifest) : { status: "fail", issues: [] };
   const artifactSummary = summarizeArtifactLedger(artifactLedger);
   const closeoutSummary = summarizeCloseoutEvidence(manifest, artifactLedger);
+  const browserEventsSummary = summarizeWorkbenchBrowserEvents(manifest, artifactLedger);
   const resumeHealth = summarizeResumeHealth(manifest, artifactLedger);
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
@@ -871,6 +916,7 @@ export function createWorkbenchProjection(input = {}) {
     operator_events: operatorEventSummary,
     artifacts: artifactSummary,
     closeout: closeoutSummary,
+    workbench_browser_events: browserEventsSummary,
     resume_health: resumeHealth,
     reviewer_provider_health: reviewerProviderHealth,
     reviewer_scope_split: reviewerScopeSplit,
@@ -905,6 +951,7 @@ export function createWorkbenchProjection(input = {}) {
         reviewer_findings: reviewerSummary.counts?.total || 0,
         dispatchable_tasks: dagSummary.dispatchable.length,
         closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1,
+        browser_event_scenarios: browserEventsSummary.scenario_count || 0,
         resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
@@ -937,6 +984,13 @@ export function createMobileWorkbenchProjection(input = {}) {
       publish_status: projection.closeout.publish_status,
       artifact_id: projection.closeout.artifact_id,
       snapshot_id: projection.closeout.snapshot_id
+    },
+    workbench_browser_events: {
+      status: projection.workbench_browser_events.status,
+      artifact_id: projection.workbench_browser_events.artifact_id,
+      scenario_count: projection.workbench_browser_events.scenario_count,
+      partial_shard_ready: projection.workbench_browser_events.partial_shard_ready,
+      overflow_count: projection.workbench_browser_events.overflow_count
     },
     resume_health: {
       status: projection.resume_health.status,
@@ -1039,6 +1093,7 @@ export function createMobileWorkbenchProjection(input = {}) {
 
 export {
   summarizeCloseoutEvidence,
+  summarizeWorkbenchBrowserEvents,
   summarizeResumeHealth,
   summarizeReviewerProviderHealth,
   summarizeReviewerScopeSplit,
