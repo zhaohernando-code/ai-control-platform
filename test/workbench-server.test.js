@@ -330,6 +330,47 @@ test("workbench server records reviewer shard results into workflow state input"
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server creates scheduler dispatch plans from projection history input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-plan-"));
+  const inputPath = join(snapshotsRoot, "scheduler-plan-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-plan",
+    items: [
+      {
+        id: "scheduler-plan",
+        label: "Scheduler plan",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch-plan?id=scheduler-plan`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        next_step: "Continue from generated scheduler plan.",
+        reviewer_mock_status: "pass"
+      })
+    });
+    const created = response.json();
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.plan.status, "pass");
+    assert.equal(created.plan.writeback.mode, "service");
+    assert.equal(created.plan.writeback.base_url, baseUrl);
+    assert.equal(created.plan.writeback.projection_id, "scheduler-plan");
+    assert.ok(created.plan.steps[0].args.includes(relative(process.cwd(), inputPath)));
+    assert.ok(created.plan.steps[0].args.includes("--mock-status"));
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server records scheduler dispatch runs into workflow state input", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-dispatch-"));
@@ -477,6 +518,55 @@ test("workbench server rejects scheduler dispatch runs without workflow state in
     assert.equal(response.status, 400);
     assert.match(rejected.error, /workflow state input not found/);
   });
+});
+
+test("workbench server rejects scheduler dispatch plans without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch-plan?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({})
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
+});
+
+test("workbench server rejects scheduler dispatch plan creation with unsafe host", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-plan-host-"));
+  const inputPath = join(snapshotsRoot, "scheduler-plan-host-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-plan-host",
+    items: [
+      {
+        id: "scheduler-plan-host",
+        label: "Scheduler plan host",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch-plan`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "bad/host"
+      },
+      body: JSON.stringify({})
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /request host is required/);
+  }, { historyPath, snapshotsRoot });
 });
 
 test("workbench server rejects scheduler dispatch run identity drift", async () => {

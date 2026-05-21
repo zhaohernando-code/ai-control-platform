@@ -182,6 +182,47 @@ test("projection source records scheduler dispatch runs", async () => {
   assert.match(calls[0].options.body, /scheduler-dispatch-run\.v1/);
 });
 
+test("projection source creates scheduler dispatch plans", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    schedulerDispatchPlanUrl: "/api/workbench/scheduler-dispatch-plan",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", plan: { writeback: { mode: "service" } } };
+        }
+      };
+    }
+  });
+
+  const result = await source.createSchedulerDispatchPlan({ reviewer_mock_status: "pass" });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.schedulerDispatchPlanUrl, "/api/workbench/scheduler-dispatch-plan");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /reviewer_mock_status/);
+});
+
+test("projection source rejects failed scheduler dispatch plan creation", async () => {
+  const source = createProjectionSource({
+    schedulerDispatchPlanUrl: "/api/workbench/scheduler-dispatch-plan",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "scheduler plan failed" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.createSchedulerDispatchPlan({}),
+    /Scheduler dispatch plan create failed: 400/
+  );
+});
+
 test("projection source rejects failed scheduler dispatch run writes", async () => {
   const source = createProjectionSource({
     schedulerDispatchRunUrl: "/api/workbench/scheduler-dispatch-run",

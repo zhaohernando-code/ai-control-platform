@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
+import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import { recordReviewerProviderHealthFact } from "../src/workflow/reviewer-provider-health.js";
 import {
   recordReviewerShardAggregate,
@@ -102,6 +103,16 @@ function normalizeEvent(input = {}, projectionId = null) {
     created_at: createdAt,
     metadata: input.metadata && typeof input.metadata === "object" ? input.metadata : {}
   };
+}
+
+function workbenchBaseUrlFromRequest(req) {
+  const host = String(req.headers.host || "").trim();
+  if (!host || !/^[a-zA-Z0-9.:-]+$/.test(host)) {
+    const error = new Error("request host is required for scheduler dispatch writeback planning");
+    error.code = "INVALID_WORKBENCH_HOST";
+    throw error;
+  }
+  return `http://${host}`;
 }
 
 function operatorEventIssues(input = {}) {
@@ -329,6 +340,56 @@ export function createWorkbenchServer(options = {}) {
         return;
       }
 
+      if (url.pathname === "/api/workbench/scheduler-dispatch-plan" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const plan = createSchedulerDispatchPlan({
+          project_status: {
+            project: "ai-control-platform",
+            blockers: [],
+            next_step: input.next_step || input.nextStep || ""
+          },
+          run_evaluation: input.run_evaluation || input.runEvaluation || { status: "pass" },
+          workflow_state: workflowState
+        }, {
+          workflow_state_input_path: item.input_path,
+          workbench_writeback_mode: "service",
+          workbench_base_url: workbenchBaseUrlFromRequest(req),
+          projection_id: selectedId,
+          reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+          reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+          next_step: input.next_step || input.nextStep
+        });
+        if (plan.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch plan failed", issues: plan.issues });
+          return;
+        }
+
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          plan
+        });
+        return;
+      }
+
       if (url.pathname === "/api/workbench/scheduler-dispatch-run" && req.method === "POST") {
         const history = readJson(serverHistoryPath);
         const selectedId = url.searchParams.get("id") || history.latest;
@@ -419,6 +480,11 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (error.code === "INVALID_HISTORY_PATH") {
+        jsonResponse(res, 400, { error: error.message });
+        return;
+      }
+
+      if (error.code === "INVALID_WORKBENCH_HOST") {
         jsonResponse(res, 400, { error: error.message });
         return;
       }

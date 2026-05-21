@@ -549,6 +549,14 @@
       "regression_test": "scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands; scheduler dispatch plan fails closed when service writeback lacks base url; scheduler dispatch plan CLI writes reviewer shard dispatch plan; check-scheduler-dispatch-writeback uses plan writeback config without manual writeback CLI flags",
       "verification": "node --test test/scheduler-dispatch-plan.test.js; npm run check:scheduler-dispatch-writeback; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-plan-context-manual-assembly",
+      "invariant": "Workbench service must be able to generate scheduler dispatch plans from projection history input_path and inject guarded service writeback context so operators do not manually assemble workflow paths, projection ids, or service URLs.",
+      "enforcement_target": "tools/workbench-server.mjs; apps/workbench/projection-source.js; test/workbench-server.test.js; test/workbench-projection-source.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "workbench server creates scheduler dispatch plans from projection history input; workbench server rejects scheduler dispatch plans without workflow state input; workbench server rejects scheduler dispatch plan creation with unsafe host; projection source creates scheduler dispatch plans",
+      "verification": "node --test test/workbench-server.test.js test/workbench-projection-source.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

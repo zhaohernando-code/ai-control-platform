@@ -611,3 +611,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - planner CLI 支持 `--workbench-writeback-mode`、`--workbench-base-url`、`--projection-id`。
 - runner CLI 在命令行参数缺省时读取 plan.writeback。
 - scheduler writeback e2e 改为只传 `--plan/--output/--dry-run`，证明写回策略来自计划本身。
+
+[2026-05-21T23:11:54+08:00] Workbench service can generate scheduler dispatch plans from history context:
+让外部流程手工传 workflow state input path、projection id 和 service URL 仍然容易跑偏。工作台服务已经持有 projection history，应由它生成带正确上下文的计划。
+
+决策：
+- Workbench server 增加 `POST /api/workbench/scheduler-dispatch-plan`。
+- 计划生成必须基于 history item 的 `input_path`，没有 input_path 的静态 projection 不允许生成计划。
+- service writeback 的 `base_url` 由当前请求 Host 推导，并对 Host 做字符白名单校验。
+- 生成计划自动填入 `projection_id` 为当前 history id。
+- Projection Source 增加 `createSchedulerDispatchPlan`，为工作台控制面后续触发调度计划预留稳定接口。
