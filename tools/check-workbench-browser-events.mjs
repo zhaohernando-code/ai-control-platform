@@ -286,6 +286,46 @@ async function verifyGuardedNextActionClick(browser) {
   });
 }
 
+async function verifyProjectedMockLoopClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    await page.click('[data-autonomous-scheduler-loop="projected-mock"]');
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-mock"]')?.textContent.includes("Projected Loop 已记录"));
+
+    const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
+    const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
+    const shardReviewCompleted = await page.textContent('[data-bind="shard_review_completed"]');
+    const shardReviewStatus = await page.textContent('[data-bind="shard_review_status"]');
+    const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(schedulerLoopStatus === "pass", "projected mock loop must render loop pass");
+    assert(schedulerLoopIterations === "2", "projected mock loop must run two reviewer shard iterations");
+    assert(shardReviewCompleted === "2", "projected mock loop must render completed reviewer shards");
+    assert(shardReviewStatus === "pass", "projected mock loop must aggregate reviewer shard status");
+    assert(nextActionReadout, "projected mock loop must render a follow-up next-action readout");
+    assert(dimensions.scrollWidth <= dimensions.width, "projected mock loop must not create horizontal overflow");
+
+    console.log(JSON.stringify({
+      scenario: "projected_mock_loop_click",
+      scheduler_loop_status: schedulerLoopStatus,
+      scheduler_loop_iterations: schedulerLoopIterations,
+      shard_review_completed: shardReviewCompleted,
+      shard_review_status: shardReviewStatus,
+      next_action_readout: nextActionReadout,
+      dimensions
+    }, null, 2));
+  });
+}
+
 async function verifyAutonomousSchedulerLoopClick(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -410,6 +450,7 @@ try {
   await verifySchedulerDispatchClick(browser);
   await verifyApprovedMockSchedulerDispatchClick(browser);
   await verifyGuardedNextActionClick(browser);
+  await verifyProjectedMockLoopClick(browser);
   await verifyAutonomousSchedulerLoopClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {

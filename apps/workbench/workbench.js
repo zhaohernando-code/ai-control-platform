@@ -330,19 +330,23 @@ qsa("[data-scheduler-dispatch]").forEach((button) => {
 
 qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
   button.addEventListener("click", async () => {
+    const loopMode = button.dataset.autonomousSchedulerLoop;
+    const projectedMock = loopMode === "projected-mock";
     button.dataset.eventState = "pending";
-    button.textContent = "Loop 运行中";
+    button.textContent = projectedMock ? "Projected Loop 运行中" : "Loop 运行中";
 
     try {
       const result = await source.runAutonomousSchedulerLoop({
         projection_id: currentProjectionId,
-        max_iterations: 1,
+        max_iterations: projectedMock ? 2 : 1,
         execution_profile: "approved_mock_non_dry_run",
-        snapshot_prefix: "workbench-loop",
+        execution_strategy: projectedMock ? "projected_next_action" : "scheduler_dispatch_chain",
+        reviewer_mock_status: projectedMock ? "pass" : undefined,
+        snapshot_prefix: projectedMock ? "workbench-projected-loop" : "workbench-loop",
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      button.textContent = "Loop 已记录";
+      button.textContent = projectedMock ? "Projected Loop 已记录" : "Loop 已记录";
       currentProjectionId = result.item?.id || currentProjectionId;
       if (result.projection) {
         currentProjection = result.projection;

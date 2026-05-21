@@ -103,7 +103,7 @@ function projectedNextProjectionId(actionResult = {}, fallbackProjectionId = nul
   return actionResult?.result?.next_item?.id ||
     actionResult?.result?.item?.id ||
     actionResult?.item?.id ||
-    fallbackProjectionId;
+    null;
 }
 
 function isTerminalProjectedAction(action = "") {
@@ -187,7 +187,7 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
         });
         iteration.status = actionResult.status || "executed";
         iteration.next_projection_id = projectedNextProjectionId(actionResult, currentProjectionId);
-        currentProjectionId = iteration.next_projection_id;
+        currentProjectionId = iteration.next_projection_id || currentProjectionId;
         continue;
       }
 
@@ -328,8 +328,8 @@ export function validateSchedulerLoopRunArtifact(artifact = {}) {
     if (!normalizeString(iteration?.projection_id)) {
       issues.push(issue("missing_scheduler_loop_iteration_projection", "iteration.projection_id is required", `result.iterations.${index}.projection_id`));
     }
-    if (!["pending", "stopped", "blocked", "queued"].includes(normalizeString(iteration?.status))) {
-      issues.push(issue("invalid_scheduler_loop_iteration_status", "iteration.status must be pending, stopped, blocked, or queued", `result.iterations.${index}.status`));
+    if (!["pending", "stopped", "blocked", "queued", "executed"].includes(normalizeString(iteration?.status))) {
+      issues.push(issue("invalid_scheduler_loop_iteration_status", "iteration.status must be pending, stopped, blocked, queued, or executed", `result.iterations.${index}.status`));
     }
     if (iteration?.status === "queued" && !normalizeString(iteration?.next_projection_id)) {
       issues.push(issue("missing_scheduler_loop_next_projection", "queued iteration must include next_projection_id", `result.iterations.${index}.next_projection_id`));
