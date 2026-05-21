@@ -569,7 +569,12 @@ test("workbench server runs bounded autonomous scheduler loop from projection hi
     assert.equal(created.result.phase, "iteration_limit_reached");
     assert.equal(created.projection.scheduler_loop.status, "pass");
     assert.equal(created.projection.scheduler_loop.iteration_count, 1);
+    assert.equal(created.projection.scheduler_loop.recovery_status, "ready");
     assert.equal(history.latest, "server-loop-autonomous-loop-01");
+    const sourceItem = history.items.find((entry) => entry.id === "autonomous-loop");
+    assert.equal(sourceItem.scheduler_loop.status, "pass");
+    assert.equal(sourceItem.scheduler_loop.recovery_status, "ready");
+    assert.equal(sourceItem.scheduler_loop.resume_projection_id, "server-loop-autonomous-loop-01");
     assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
   }, { historyPath, snapshotsRoot });
 });

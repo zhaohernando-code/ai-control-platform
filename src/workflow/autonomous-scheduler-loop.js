@@ -23,6 +23,13 @@ function isObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function manifestIdentity(workflowState = {}) {
+  return {
+    run_id: normalizeString(workflowState?.manifest?.run_id),
+    cycle_id: normalizeString(workflowState?.manifest?.cycle_id)
+  };
+}
+
 function boundedMaxIterations(value) {
   const parsed = Number(value || 1);
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 5) {
@@ -213,6 +220,194 @@ export function createSchedulerLoopRunArtifact(input = {}, result = {}, options 
       issues: result.issues || [],
       iterations: result.iterations || []
     }
+  };
+}
+
+export function validateSchedulerLoopRunArtifact(artifact = {}) {
+  const issues = [];
+  if (!isObject(artifact)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_scheduler_loop_artifact", "artifact must be an object", "")]
+    };
+  }
+
+  if (artifact.version !== AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION) {
+    issues.push(issue("invalid_scheduler_loop_version", `version must be ${AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION}`, "version"));
+  }
+  if (!["pass", "fail"].includes(artifact.status)) {
+    issues.push(issue("invalid_scheduler_loop_status", "status must be pass or fail", "status"));
+  }
+  if (!normalizeString(artifact.phase)) {
+    issues.push(issue("missing_scheduler_loop_phase", "phase is required", "phase"));
+  }
+  if (!normalizeString(artifact.created_at)) {
+    issues.push(issue("missing_scheduler_loop_created_at", "created_at is required", "created_at"));
+  }
+  if (!isObject(artifact.input)) {
+    issues.push(issue("missing_scheduler_loop_input", "input must be an object", "input"));
+  }
+  if (!isObject(artifact.result)) {
+    issues.push(issue("missing_scheduler_loop_result", "result must be an object", "result"));
+  }
+
+  const result = artifact.result || {};
+  if (result.status !== artifact.status) {
+    issues.push(issue("scheduler_loop_status_mismatch", "artifact status must match result.status", "result.status"));
+  }
+  if (result.phase !== artifact.phase) {
+    issues.push(issue("scheduler_loop_phase_mismatch", "artifact phase must match result.phase", "result.phase"));
+  }
+  if (!Array.isArray(result.iterations)) {
+    issues.push(issue("missing_scheduler_loop_iterations", "result.iterations must be an array", "result.iterations"));
+  }
+  asArray(result.iterations).forEach((iteration, index) => {
+    if (!Number.isInteger(iteration?.index)) {
+      issues.push(issue("invalid_scheduler_loop_iteration_index", "iteration.index must be an integer", `result.iterations.${index}.index`));
+    }
+    if (!normalizeString(iteration?.projection_id)) {
+      issues.push(issue("missing_scheduler_loop_iteration_projection", "iteration.projection_id is required", `result.iterations.${index}.projection_id`));
+    }
+    if (!["pending", "stopped", "blocked", "queued"].includes(normalizeString(iteration?.status))) {
+      issues.push(issue("invalid_scheduler_loop_iteration_status", "iteration.status must be pending, stopped, blocked, or queued", `result.iterations.${index}.status`));
+    }
+    if (iteration?.status === "queued" && !normalizeString(iteration?.next_projection_id)) {
+      issues.push(issue("missing_scheduler_loop_next_projection", "queued iteration must include next_projection_id", `result.iterations.${index}.next_projection_id`));
+    }
+    if (iteration?.status === "blocked" && asArray(iteration?.issues).length === 0) {
+      issues.push(issue("missing_scheduler_loop_blocker_issues", "blocked iteration must include issues", `result.iterations.${index}.issues`));
+    }
+  });
+
+  return {
+    status: issues.length ? "fail" : "pass",
+    issues
+  };
+}
+
+function artifactFromLoopEvent(event = {}, artifacts = []) {
+  const artifact = artifacts.find((entry) => entry.id === event.artifact_id) || null;
+  const metadata = artifact?.metadata || event.metadata || {};
+  if (metadata.version === AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION) {
+    return {
+      ...metadata,
+      created_at: metadata.created_at || event.created_at || artifact?.created_at || null,
+      status: metadata.status || event.status || artifact?.status || "fail"
+    };
+  }
+  return metadata;
+}
+
+function runReadoutFromEvent(event = {}, artifact = {}) {
+  const validation = validateSchedulerLoopRunArtifact(artifact);
+  const result = artifact.result || {};
+  const iterations = asArray(result.iterations);
+  const latestIteration = iterations.at(-1) || null;
+  const issues = validation.status === "pass" ? asArray(result.issues) : validation.issues;
+
+  return {
+    event_id: event.id || null,
+    artifact_id: event.artifact_id || null,
+    status: validation.status === "pass" ? artifact.status : "invalid",
+    phase: validation.status === "pass" ? artifact.phase : "replay_validation",
+    created_at: event.created_at || artifact.created_at || null,
+    validation_status: validation.status,
+    issue_count: issues.length,
+    latest_issue: issues[0]?.message || issues[0]?.code || null,
+    iteration_count: iterations.length,
+    latest_iteration_status: latestIteration?.status || null,
+    latest_projection_id: latestIteration?.next_projection_id || latestIteration?.projection_id || null,
+    resume_projection_id: latestIteration?.next_projection_id || null,
+    issues
+  };
+}
+
+export function buildSchedulerLoopRunRegistry(workflowState = {}) {
+  const manifest = workflowState?.manifest || {};
+  const ledger = workflowState?.artifact_ledger || workflowState?.artifactLedger || {};
+  const identity = manifestIdentity(workflowState);
+  const artifacts = [
+    ...asArray(ledger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const events = asArray(manifest?.events).filter((event) => event?.type === "autonomous_scheduler_loop_run");
+  const runs = events.map((event) => runReadoutFromEvent(event, artifactFromLoopEvent(event, artifacts)));
+  const latest = runs.at(-1) || null;
+  const invalidRuns = runs.filter((run) => run.validation_status !== "pass");
+
+  return {
+    status: invalidRuns.length > 0 ? "blocked" : "pass",
+    run_id: identity.run_id || null,
+    cycle_id: identity.cycle_id || null,
+    total_runs: runs.length,
+    pass_count: runs.filter((run) => run.status === "pass").length,
+    fail_count: runs.filter((run) => run.status === "fail").length,
+    invalid_count: invalidRuns.length,
+    latest,
+    latest_resume_projection_id: latest?.resume_projection_id || null,
+    runs,
+    issues: invalidRuns.flatMap((run) => run.issues.map((entry) => ({
+      ...entry,
+      artifact_id: run.artifact_id || null,
+      event_id: run.event_id || null
+    })))
+  };
+}
+
+export function evaluateSchedulerLoopRecovery(registry = {}) {
+  const latest = registry.latest || null;
+  if (!latest) {
+    return {
+      status: "not_configured",
+      action: "start_bounded_loop",
+      resumable: false,
+      resume_projection_id: null,
+      issues: []
+    };
+  }
+  if (registry.invalid_count > 0 || latest.validation_status !== "pass") {
+    return {
+      status: "blocked",
+      action: "quarantine_invalid_loop_artifact",
+      resumable: false,
+      resume_projection_id: null,
+      issues: registry.issues || latest.issues || []
+    };
+  }
+  if (latest.status === "pass" && latest.resume_projection_id) {
+    return {
+      status: "ready",
+      action: "resume_from_latest_projection",
+      resumable: true,
+      resume_projection_id: latest.resume_projection_id,
+      issues: []
+    };
+  }
+  if (latest.status === "pass" && latest.phase === "no_dispatchable_scheduler_actions") {
+    return {
+      status: "idle",
+      action: "wait_for_new_work",
+      resumable: false,
+      resume_projection_id: null,
+      issues: []
+    };
+  }
+  if (latest.status === "fail") {
+    return {
+      status: "recoverable",
+      action: "rerun_bounded_loop_after_state_reload",
+      resumable: false,
+      resume_projection_id: null,
+      issues: latest.issues || []
+    };
+  }
+
+  return {
+    status: "pending",
+    action: "inspect_latest_loop_run",
+    resumable: false,
+    resume_projection_id: latest.resume_projection_id || null,
+    issues: latest.issues || []
   };
 }
 

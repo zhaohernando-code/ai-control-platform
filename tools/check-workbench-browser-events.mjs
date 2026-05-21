@@ -262,6 +262,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
+    const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -270,12 +271,14 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
 
     assert(schedulerLoopStatus === "pass", "autonomous scheduler loop click must render loop pass");
     assert(schedulerLoopIterations === "1", "autonomous scheduler loop click must render one loop iteration");
+    assert(schedulerLoopRecovery === "ready", "autonomous scheduler loop click must render recovery readiness");
     assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
 
     console.log(JSON.stringify({
       scenario: "autonomous_scheduler_loop_click",
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_iterations: schedulerLoopIterations,
+      scheduler_loop_recovery: schedulerLoopRecovery,
       dimensions
     }, null, 2));
   });
@@ -303,6 +306,7 @@ async function verifyMobileProjectionLoad(browser) {
     const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
     const schedulerContinuationReady = await page.textContent('[data-bind="scheduler_continuation_ready"]');
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
+    const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
@@ -313,6 +317,7 @@ async function verifyMobileProjectionLoad(browser) {
     assert(schedulerDispatchSteps !== null, "mobile workbench must render scheduler dispatch steps");
     assert(schedulerContinuationReady, "mobile workbench must render scheduler continuation readiness");
     assert(schedulerLoopStatus, "mobile workbench must render scheduler loop status");
+    assert(schedulerLoopRecovery, "mobile workbench must render scheduler loop recovery");
 
     console.log(JSON.stringify({
       scenario: "mobile_projection",
@@ -325,6 +330,7 @@ async function verifyMobileProjectionLoad(browser) {
       scheduler_dispatch_steps: schedulerDispatchSteps,
       scheduler_continuation_ready: schedulerContinuationReady,
       scheduler_loop_status: schedulerLoopStatus,
+      scheduler_loop_recovery: schedulerLoopRecovery,
       dimensions
     }, null, 2));
   });

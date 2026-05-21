@@ -7,10 +7,13 @@ import { join, relative } from "node:path";
 import test from "node:test";
 
 import {
+  buildSchedulerLoopRunRegistry,
   createSchedulerLoopRunArtifact,
+  evaluateSchedulerLoopRecovery,
   recordAutonomousSchedulerLoopRunArtifact,
   runSchedulerLoopDriver,
-  schedulerLoopInput
+  schedulerLoopInput,
+  validateSchedulerLoopRunArtifact
 } from "../src/workflow/autonomous-scheduler-loop.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
@@ -164,6 +167,29 @@ test("scheduler loop run artifact captures iterations", async () => {
   assert.equal(artifact.version, "autonomous-scheduler-loop-run.v1");
   assert.equal(artifact.status, "pass");
   assert.equal(artifact.result.iterations.length, 1);
+  assert.equal(validateSchedulerLoopRunArtifact(artifact).status, "pass");
+});
+
+test("scheduler loop run artifact validation rejects damaged run history", async () => {
+  const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
+  const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result);
+  const damaged = {
+    ...artifact,
+    result: {
+      ...artifact.result,
+      status: "fail",
+      iterations: [{
+        ...artifact.result.iterations[0],
+        status: "queued",
+        next_projection_id: ""
+      }]
+    }
+  };
+  const validation = validateSchedulerLoopRunArtifact(damaged);
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((entry) => entry.code === "scheduler_loop_status_mismatch"));
+  assert.ok(validation.issues.some((entry) => entry.code === "missing_scheduler_loop_next_projection"));
 });
 
 test("scheduler loop run artifact records into workflow state", async () => {
@@ -177,6 +203,63 @@ test("scheduler loop run artifact records into workflow state", async () => {
   assert.equal(recorded.status, "pass");
   assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
   assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).metadata.version, "autonomous-scheduler-loop-run.v1");
+});
+
+test("scheduler loop registry and recovery policy resume from latest queued projection", async () => {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
+  const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result, {
+    created_at: "2026-05-22T01:05:00.000Z"
+  });
+  const recorded = recordAutonomousSchedulerLoopRunArtifact(workflowState, artifact, {
+    created_at: "2026-05-22T01:05:00.000Z"
+  });
+  const registry = buildSchedulerLoopRunRegistry(recorded.workflow_state);
+  const recovery = evaluateSchedulerLoopRecovery(registry);
+
+  assert.equal(registry.status, "pass");
+  assert.equal(registry.total_runs, 1);
+  assert.equal(registry.latest.iteration_count, 1);
+  assert.equal(registry.latest.resume_projection_id, "current-next");
+  assert.equal(recovery.status, "ready");
+  assert.equal(recovery.action, "resume_from_latest_projection");
+  assert.equal(recovery.resume_projection_id, "current-next");
+});
+
+test("scheduler loop registry blocks invalid durable artifacts", async () => {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
+  const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result);
+  const recorded = recordAutonomousSchedulerLoopRunArtifact(workflowState, artifact, {
+    created_at: "2026-05-22T01:10:00.000Z"
+  });
+  const artifactId = recorded.artifact.id;
+  const damagedState = {
+    ...recorded.workflow_state,
+    artifact_ledger: {
+      ...recorded.workflow_state.artifact_ledger,
+      artifacts: recorded.workflow_state.artifact_ledger.artifacts.map((entry) => entry.id === artifactId
+        ? {
+          ...entry,
+          metadata: {
+            ...entry.metadata,
+            result: {
+              ...entry.metadata.result,
+              status: "fail"
+            }
+          }
+        }
+        : entry)
+    }
+  };
+  const registry = buildSchedulerLoopRunRegistry(damagedState);
+  const recovery = evaluateSchedulerLoopRecovery(registry);
+
+  assert.equal(registry.status, "blocked");
+  assert.equal(registry.invalid_count, 1);
+  assert.equal(recovery.status, "blocked");
+  assert.equal(recovery.action, "quarantine_invalid_loop_artifact");
+  assert.ok(recovery.issues.some((entry) => entry.code === "scheduler_loop_status_mismatch"));
 });
 
 test("run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url", () => {

@@ -4,6 +4,10 @@ import { buildRunResultFromManifest, validateRunManifest } from "./run-manifest.
 import { summarizeReviewerGate } from "./llm-reviewer-gate.js";
 import { summarizeModelRouting } from "./model-router.js";
 import { applyOperatorEventsToWorkflowState } from "./operator-events.js";
+import {
+  buildSchedulerLoopRunRegistry,
+  evaluateSchedulerLoopRecovery
+} from "./autonomous-scheduler-loop.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 
 function asArray(value) {
@@ -420,43 +424,48 @@ function summarizeSchedulerDispatchContinuation(manifest = {}, artifactLedger = 
 }
 
 function summarizeAutonomousSchedulerLoop(manifest = {}, artifactLedger = {}) {
-  const events = asArray(manifest?.events).filter((event) => event?.type === "autonomous_scheduler_loop_run");
-  const latestEvent = events.at(-1) || null;
-  if (!latestEvent) {
+  const registry = buildSchedulerLoopRunRegistry({
+    manifest,
+    artifact_ledger: artifactLedger
+  });
+  const recovery = evaluateSchedulerLoopRecovery(registry);
+  const latest = registry.latest || null;
+  if (!latest) {
     return {
       status: "not_configured",
       phase: null,
       artifact_id: null,
+      run_count: 0,
+      invalid_count: 0,
       iteration_count: 0,
       latest_iteration_status: null,
       latest_projection_id: null,
+      recovery_status: recovery.status,
+      recovery_action: recovery.action,
+      resumable: false,
+      resume_projection_id: null,
       issue_count: 0,
       latest_issue: null,
       created_at: null
     };
   }
 
-  const artifacts = [
-    ...asArray(artifactLedger?.artifacts),
-    ...asArray(manifest?.artifacts)
-  ];
-  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
-  const metadata = artifact?.metadata || latestEvent.metadata || {};
-  const result = metadata.result || {};
-  const iterations = asArray(result.iterations);
-  const latestIteration = iterations.at(-1) || null;
-  const issues = asArray(result.issues);
-
   return {
-    status: latestEvent.status || metadata.status || result.status || "unknown",
-    phase: metadata.phase || result.phase || null,
-    artifact_id: latestEvent.artifact_id || artifact?.id || null,
-    iteration_count: iterations.length,
-    latest_iteration_status: latestIteration?.status || null,
-    latest_projection_id: latestIteration?.next_projection_id || latestIteration?.projection_id || null,
-    issue_count: issues.length,
-    latest_issue: issues[0]?.message || issues[0]?.code || null,
-    created_at: latestEvent.created_at || artifact?.created_at || metadata.created_at || null
+    status: latest.status,
+    phase: latest.phase,
+    artifact_id: latest.artifact_id,
+    run_count: registry.total_runs,
+    invalid_count: registry.invalid_count,
+    iteration_count: latest.iteration_count,
+    latest_iteration_status: latest.latest_iteration_status,
+    latest_projection_id: latest.latest_projection_id,
+    recovery_status: recovery.status,
+    recovery_action: recovery.action,
+    resumable: recovery.resumable,
+    resume_projection_id: recovery.resume_projection_id,
+    issue_count: latest.issue_count,
+    latest_issue: latest.latest_issue,
+    created_at: latest.created_at
   };
 }
 
@@ -669,9 +678,15 @@ export function createMobileWorkbenchProjection(input = {}) {
     scheduler_loop: {
       status: projection.scheduler_loop.status,
       phase: projection.scheduler_loop.phase,
+      run_count: projection.scheduler_loop.run_count,
+      invalid_count: projection.scheduler_loop.invalid_count,
       iteration_count: projection.scheduler_loop.iteration_count,
       latest_iteration_status: projection.scheduler_loop.latest_iteration_status,
-      latest_projection_id: projection.scheduler_loop.latest_projection_id
+      latest_projection_id: projection.scheduler_loop.latest_projection_id,
+      recovery_status: projection.scheduler_loop.recovery_status,
+      recovery_action: projection.scheduler_loop.recovery_action,
+      resumable: projection.scheduler_loop.resumable,
+      resume_projection_id: projection.scheduler_loop.resume_projection_id
     },
     model: {
       selected_model: projection.model_routing.selected_model,

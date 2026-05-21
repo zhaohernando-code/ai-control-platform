@@ -202,6 +202,19 @@ function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRo
             next_continuation_action: projection.scheduler_dispatch.next_continuation_action,
             next_work_package_count: projection.scheduler_continuation.next_work_package_count || projection.scheduler_dispatch.next_work_package_count,
             latest_issue: projection.scheduler_continuation.latest_issue
+          },
+          scheduler_loop: {
+            status: projection.scheduler_loop.status,
+            phase: projection.scheduler_loop.phase,
+            run_count: projection.scheduler_loop.run_count,
+            invalid_count: projection.scheduler_loop.invalid_count,
+            iteration_count: projection.scheduler_loop.iteration_count,
+            recovery_status: projection.scheduler_loop.recovery_status,
+            recovery_action: projection.scheduler_loop.recovery_action,
+            resumable: projection.scheduler_loop.resumable,
+            resume_projection_id: projection.scheduler_loop.resume_projection_id,
+            latest_projection_id: projection.scheduler_loop.latest_projection_id,
+            latest_issue: projection.scheduler_loop.latest_issue
           }
         };
       } catch (error) {
@@ -211,6 +224,13 @@ function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRo
             status: "history_read_failed",
             continuation_ready: false,
             enqueue_available: false,
+            latest_issue: error.message
+          },
+          scheduler_loop: {
+            status: "history_read_failed",
+            recovery_status: "blocked",
+            recovery_action: "repair_history_input",
+            resumable: false,
             latest_issue: error.message
           }
         };

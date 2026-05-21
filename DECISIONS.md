@@ -731,3 +731,13 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - PC/mobile 工作台展示 loop status、iteration count 和 latest projection id。
 - 前端按钮只发送 `max_iterations=1`、`execution_profile=approved_mock_non_dry_run` 和 snapshot prefix，不拼底层 policy 控制。
 - 浏览器门禁增加 `autonomous_scheduler_loop_click`，验证页面点击能完成一轮 loop 且不产生横向溢出。
+
+[2026-05-22T01:18:00+08:00] Autonomous scheduler loop recovery must be registry-driven:
+用户要求长任务在断网、睡眠、重启后仍能继续，这不能依赖当前会话记忆。上一段 loop 运行虽然能写入 fact，但缺少从 durable facts 重建历史、校验 artifact、判断恢复动作的代码路径。
+
+决策：
+- 在 `src/workflow/autonomous-scheduler-loop.js` 增加 `validateSchedulerLoopRunArtifact`，校验 loop artifact version、status/phase/result 一致性、iteration schema 和 queued next projection。
+- 增加 `buildSchedulerLoopRunRegistry`，只从 manifest events 与 artifact ledger 构建 loop history readout，不解析 stdout、tmp 日志或当前聊天上下文。
+- 增加 `evaluateSchedulerLoopRecovery`，把 registry 映射为 `ready/resume_from_latest_projection`、`blocked/quarantine_invalid_loop_artifact`、`idle/wait_for_new_work` 或 recoverable retry。
+- Workbench projection 和 `/api/workbench/projections` history readout 展示 run count、invalid count、recovery status/action、resumable、resume projection id。
+- PC/mobile 工作台渲染 recovery 状态，浏览器门禁验证 loop 点击后 recovery 进入 ready。

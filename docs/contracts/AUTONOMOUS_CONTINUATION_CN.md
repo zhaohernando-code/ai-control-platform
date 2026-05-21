@@ -164,6 +164,8 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - `tools/run-autonomous-scheduler-loop.mjs` / `npm run run:autonomous-scheduler-loop` 是当前最小自运行 loop driver。它只能连接本机 HTTP workbench server，只允许命名 profile `approved_mock_non_dry_run`，`max_iterations` 必须在 1-5 之间，并且每轮都按 `scheduler-dispatch-plan -> scheduler-dispatch -> scheduler-next-cycle` 推进；没有 dispatchable scheduler steps、continuation 未 ready、enqueue 未返回 next history id 或达到迭代上限时必须停止并输出 `autonomous-scheduler-loop-run.v1` artifact。
 - 自运行 loop 的服务端集成测试不得用同步子进程阻塞同一进程里的 workbench server；必须使用异步 child process，让本地 server 仍能处理 loop driver 的 HTTP 请求。
 - 工作台服务必须能通过 `POST /api/workbench/autonomous-scheduler-loop` 触发一轮 bounded loop，并把 `autonomous_scheduler_loop_run` fact 写回发起的 history input；PC/mobile projection 必须展示 loop status、phase、iteration count 和 latest projection id，前端只能发送 bounded 参数，不能拼底层 scheduler policy 字段。
+- `autonomous-scheduler-loop-run.v1` 不得作为普通摘要直接复用；恢复器和 projection history 必须先从 manifest events + artifact ledger 构建 loop run registry，校验 version、status/phase/result 一致性、iteration schema 和 queued next projection，再输出 recovery policy。invalid registry 必须 `blocked/quarantine_invalid_loop_artifact`，ready registry 才能从 latest queued projection resume。
+- 工作台 projection 与 `/api/workbench/projections` history readout 必须展示 loop run count、invalid count、recovery status/action、resumable 和 resume projection id，避免进程重启后只能依赖当前聊天上下文判断是否继续。
 
 ## 5. 与工作台关系
 
