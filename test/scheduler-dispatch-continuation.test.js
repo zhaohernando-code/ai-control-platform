@@ -8,6 +8,7 @@ import {
   createAutonomousLoopRunArtifact,
   runAutonomousCloseoutLoop
 } from "../src/workflow/autonomous-orchestrator.js";
+import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import { prepareSchedulerDispatchContinuationFromRunArtifact } from "../src/workflow/scheduler-dispatch-continuation.js";
 
 function workflowInput() {
@@ -116,5 +117,51 @@ test("prepare-scheduler-dispatch-continuation CLI writes continuation input", as
 
   assert.equal(summary.status, "ready");
   assert.equal(summary.scheduler_dispatch.next_work_package_count, 3);
+  assert.equal(continuation.project_status.project, "ai-control-platform");
+});
+
+test("run-scheduler-dispatch-plan CLI can write next continuation input", () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/scheduler-dispatch-continuation-run-cli-"));
+  const inputPath = join(dir, "workflow-state.json");
+  const planPath = join(dir, "dispatch-plan.json");
+  const runArtifactPath = join(dir, "scheduler-dispatch-run.json");
+  const continuationOutputPath = join(dir, "next", "continuation-input.json");
+  writeFileSync(inputPath, `${JSON.stringify(workflowInput(), null, 2)}\n`);
+  const plan = createSchedulerDispatchPlan({
+    project_status: {
+      project: "ai-control-platform",
+      blockers: [],
+      next_step: ""
+    },
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowInput()
+  }, {
+    workflow_state_input_path: inputPath,
+    workflow_state_output_path: join(dir, "workflow-state-after-reviewer-shards.json"),
+    reviewer_shard_loop_artifact_path: join(dir, "reviewer-shard-loop-run.json"),
+    continuation_input_path: join(dir, "reviewer-continuation-input.json"),
+    history_path: join(dir, "projection-history.json"),
+    snapshots_root: join(dir, "snapshots"),
+    closeout_loop_artifact_path: join(dir, "autonomous-closeout-loop-run.json"),
+    reviewer_mock_status: "pass"
+  });
+  writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+  const stdout = execFileSync(process.execPath, [
+    "tools/run-scheduler-dispatch-plan.mjs",
+    "--plan",
+    planPath,
+    "--output",
+    runArtifactPath,
+    "--continuation-output",
+    continuationOutputPath
+  ], { encoding: "utf8" });
+  const summary = JSON.parse(stdout);
+  const continuation = JSON.parse(readFileSync(continuationOutputPath, "utf8"));
+
+  assert.equal(summary.status, "pass");
+  assert.equal(summary.continuation_status, "ready");
+  assert.equal(summary.continuation_next_work_packages, 3);
   assert.equal(continuation.project_status.project, "ai-control-platform");
 });

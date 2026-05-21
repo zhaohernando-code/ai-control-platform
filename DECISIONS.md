@@ -682,3 +682,12 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - 读取 closeout loop artifact 后复用 `prepareAutonomousContinuationFromLoopArtifact`。
 - 新增 `prepare:scheduler-dispatch-continuation` CLI，输出下一轮 continuation input。
 - 缺失路径、非 pass scheduler run、不可复用 closeout artifact 都必须 blocked，不得生成下一轮输入。
+
+[2026-05-21T23:54:05+08:00] Scheduler dispatch runner may emit next continuation input directly:
+独立 adapter 解决了复用问题，但如果 `run-scheduler-dispatch-plan` 完成后还要外部再手工调用 adapter，长任务仍然可能停在中间。
+
+决策：
+- `tools/run-scheduler-dispatch-plan.mjs` 增加 `--continuation-output`。
+- 当该参数存在时，runner 写出 scheduler dispatch run artifact 后立即调用 replay-validating adapter。
+- continuation 生成失败时 runner 必须非零退出，不能把 artifact pass 伪装成整体 pass。
+- CLI summary 必须包含 continuation status、output 和 next work package count。

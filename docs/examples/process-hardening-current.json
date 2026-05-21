@@ -601,8 +601,8 @@
     {
       "finding_id": "scheduler-dispatch-continuation-without-replay-validation",
       "invariant": "Scheduler dispatch run artifacts must not directly produce next continuation input unless the declared closeout loop artifact is reread and accepted by the autonomous closeout loop replay validator.",
-      "enforcement_target": "src/workflow/scheduler-dispatch-continuation.js; tools/prepare-scheduler-dispatch-continuation.mjs; package.json; test/scheduler-dispatch-continuation.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
-      "regression_test": "scheduler dispatch continuation prepares next input from closeout output; scheduler dispatch continuation blocks missing closeout output; prepare-scheduler-dispatch-continuation CLI writes continuation input",
+      "enforcement_target": "src/workflow/scheduler-dispatch-continuation.js; tools/prepare-scheduler-dispatch-continuation.mjs; tools/run-scheduler-dispatch-plan.mjs; package.json; test/scheduler-dispatch-continuation.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch continuation prepares next input from closeout output; scheduler dispatch continuation blocks missing closeout output; prepare-scheduler-dispatch-continuation CLI writes continuation input; run-scheduler-dispatch-plan CLI can write next continuation input",
       "verification": "node --test test/scheduler-dispatch-continuation.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }

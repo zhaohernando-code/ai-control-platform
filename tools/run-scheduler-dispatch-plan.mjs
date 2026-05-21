@@ -8,6 +8,7 @@ import {
   createSchedulerDispatchRunArtifact,
   runSchedulerDispatchPlan
 } from "../src/workflow/scheduler-dispatch-runner.js";
+import { prepareSchedulerDispatchContinuationFromRunArtifact } from "../src/workflow/scheduler-dispatch-continuation.js";
 
 function valueAfter(flag, args) {
   const index = args.indexOf(flag);
@@ -24,6 +25,7 @@ function usage() {
     "",
     "Options:",
     "  --dry-run  Validate and record steps without executing commands",
+    "  --continuation-output <path>  Validate scheduler dispatch outputs and write next continuation input",
     "  --workbench-base-url <url>  POST the run artifact to the workbench scheduler dispatch writeback API",
     "  --projection-id <id>  Optional workbench projection history id for writeback"
   ].join("\n");
@@ -79,6 +81,7 @@ if (args.includes("--help") || args.includes("-h")) {
 
 const planPath = valueAfter("--plan", args);
 const outputPath = valueAfter("--output", args);
+const continuationOutputPath = valueAfter("--continuation-output", args);
 let workbenchBaseUrl = valueAfter("--workbench-base-url", args);
 let projectionId = valueAfter("--projection-id", args);
 if (!planPath || !outputPath) {
@@ -114,6 +117,26 @@ const resolvedOutput = resolve(outputPath);
 mkdirSync(dirname(resolvedOutput), { recursive: true });
 writeFileSync(resolvedOutput, `${JSON.stringify(artifact, null, 2)}\n`);
 
+let continuation = null;
+if (continuationOutputPath) {
+  continuation = prepareSchedulerDispatchContinuationFromRunArtifact(artifact);
+  if (continuation.status === "ready") {
+    const resolvedContinuationOutput = resolve(continuationOutputPath);
+    mkdirSync(dirname(resolvedContinuationOutput), { recursive: true });
+    writeFileSync(resolvedContinuationOutput, `${JSON.stringify(continuation.continuation_input, null, 2)}\n`);
+    continuation = {
+      status: "ready",
+      output: resolvedContinuationOutput,
+      next_work_package_count: continuation.scheduler_dispatch?.next_work_package_count ?? null
+    };
+  } else {
+    continuation = {
+      status: "blocked",
+      issues: continuation.issues || []
+    };
+  }
+}
+
 let record = null;
 if (workbenchBaseUrl) {
   try {
@@ -144,12 +167,16 @@ console.log(JSON.stringify({
   phase: artifact.phase,
   output: resolvedOutput,
   step_count: artifact.result.steps.length,
+  continuation_status: continuation?.status || "not_requested",
+  continuation_output: continuation?.output || null,
+  continuation_next_work_packages: continuation?.next_work_package_count ?? null,
+  continuation_issues: continuation?.issues || [],
   record_status: record?.status || "not_requested",
   record_response_status: record?.response_status || null,
   projection_scheduler_status: record?.projection_status || null,
   projection_scheduler_steps: record?.scheduler_dispatch_steps ?? null,
   record_error: record?.error || null
 }, null, 2));
-if (artifact.status !== "pass" || record?.status === "fail") {
+if (artifact.status !== "pass" || record?.status === "fail" || continuation?.status === "blocked") {
   process.exit(1);
 }
