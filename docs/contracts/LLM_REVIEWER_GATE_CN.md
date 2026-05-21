@@ -90,6 +90,12 @@ Reviewer timeout 不得直接变成人工阻塞，也不得无限重试同一个
 - 输入不可读、JSON 损坏或 workflow identity 不一致时非零退出。
 - 成功时输出 artifact id、provider health、retry strategy 和 scheduled actions。
 
+`POST /api/workbench/reviewer-provider-health` 是工作台服务入口，用于浏览器或 operator action 写入同一类 fact。服务端必须：
+
+- 只写入 projection history item 的 `input_path` workflow state。
+- 没有 `input_path` 时失败闭合，不能修改静态 projection。
+- 成功后返回 fact 和重新生成的 projection。
+
 ## 5. 工作台状态
 
 `summarizeReviewerGate` 输出工作台可展示状态：

@@ -141,6 +141,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Reviewer provider health facts need a reusable CLI/API recording path; one-off scripts reintroduce chat-only state and manual intervention."
+    },
+    {
+      "id": "reviewer-provider-health-no-api",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Workbench/operator-triggered provider health updates need a server API path; otherwise browser-visible workflows cannot persist DS smoke outcomes."
     }
   ],
   "hardening_items": [
@@ -302,6 +309,14 @@
       "enforcement_target": "tools/record-reviewer-provider-health.mjs; package.json; test/reviewer-provider-health.test.js",
       "regression_test": "record-reviewer-provider-health CLI writes durable provider health facts; record-reviewer-provider-health CLI fails closed on unreadable input",
       "verification": "node --test test/reviewer-provider-health.test.js; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "reviewer-provider-health-no-api",
+      "invariant": "Workbench server must expose reviewer provider health recording for workflow-state input history items and reject static projection-only items.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/contracts/LLM_REVIEWER_GATE_CN.md",
+      "regression_test": "workbench server records reviewer provider health into workflow state input; workbench server rejects provider health recording without workflow state input",
+      "verification": "node --test test/workbench-server.test.js; npm run check:closeout",
       "status": "completed"
     }
   ]

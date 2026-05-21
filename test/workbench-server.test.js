@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import test from "node:test";
 
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
@@ -184,6 +184,62 @@ test("workbench server persists workflow state snapshots and updates history", a
     assert.equal(projection.operator_events.status, "pass");
     assert.equal(snapshot.manifest.run_id, "run-20260521-platform-self-trial");
   }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server records reviewer provider health into workflow state input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-provider-health-"));
+  const inputPath = join(snapshotsRoot, "provider-health-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "provider-health",
+    items: [
+      {
+        id: "provider-health",
+        label: "Provider health",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/reviewer-provider-health`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        smoke_status: "timeout",
+        tools: ["Read", "Grep"],
+        created_at: "2026-05-21T12:20:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.fact.provider_health, "unhealthy");
+    assert.equal(created.fact.scheduled_actions[0], "fallback_model_or_defer_external_review");
+    assert.equal(created.projection.reviewer_provider_health.provider_health, "unhealthy");
+    assert.equal(state.manifest.events.at(-1).type, "reviewer_provider_health");
+    assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.provider_health, "unhealthy");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects provider health recording without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/reviewer-provider-health?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ smoke_status: "pass" })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
 });
 
 test("workbench server rejects unsafe workflow state snapshot ids", async () => {

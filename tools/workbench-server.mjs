@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
+import { recordReviewerProviderHealthFact } from "../src/workflow/reviewer-provider-health.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -197,6 +198,47 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
         jsonResponse(res, 201, { status: result.status, item: result.item, projection: result.projection });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/reviewer-provider-health" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const result = recordReviewerProviderHealthFact(workflowState, {
+          request: workflowState.reviewer_gate?.request || workflowState.reviewerGate?.request || workflowState.reviewer_gate || workflowState.reviewerGate,
+          smoke_status: input.smoke_status || input.smokeStatus || input.provider_smoke_status,
+          tools: input.tools || input.allowed_tools || input.allowedTools,
+          created_at: input.created_at
+        });
+        if (result.status !== "pass") {
+          jsonResponse(res, 400, { error: "reviewer provider health record failed", issues: result.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          fact: result.fact,
+          projection: createWorkbenchProjection(result.workflow_state)
+        });
         return;
       }
 
