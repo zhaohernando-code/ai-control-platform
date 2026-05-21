@@ -11,6 +11,7 @@
     "check:onboarding": "node tools/check-project-onboarding-sync.mjs project-manifest.json /Users/hernando_zhao/codex/WORKSPACE_INDEX.json",
     "check:process-hardening": "node tools/check-process-hardening.mjs docs/examples/process-hardening-current.json",
     "check:workbench:browser-events": "node tools/run-with-node18.mjs tools/check-workbench-browser-events.mjs",
+    "check:scheduler-dispatch-writeback": "node tools/run-with-node18.mjs tools/check-scheduler-dispatch-writeback.mjs",
     "check:autonomous-closeout-loop-run": "node tools/run-with-node18.mjs tools/check-autonomous-closeout-loop-run.mjs",
     "check:closeout": "node tools/run-with-node18.mjs tools/check-closeout.mjs",
     "run:closeout-plan": "node tools/run-with-node18.mjs tools/run-closeout-plan.mjs",

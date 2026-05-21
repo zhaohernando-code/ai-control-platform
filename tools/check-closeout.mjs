@@ -24,5 +24,6 @@ run("unit tests", ["--test", ...testFiles]);
 run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
 run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
 run("workbench browser events", ["tools/check-workbench-browser-events.mjs"]);
+run("scheduler dispatch writeback", ["tools/check-scheduler-dispatch-writeback.mjs"]);
 
 console.log("\n[closeout] pass");

@@ -590,3 +590,14 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - CLI 先写本地 `scheduler-dispatch-run.v1` artifact，再 POST 到 `/api/workbench/scheduler-dispatch-run`。
 - 只要 artifact 执行失败或服务写回失败，CLI 都以失败退出。
 - 集成测试必须证明 CLI dry-run 后 workflow snapshot 和 projection 都显示 `scheduler_dispatch.status = pass`。
+
+[2026-05-21T23:05:54+08:00] Scheduler writeback must have an executable browser-visible e2e gate:
+单元测试能证明 API 和 CLI 接通，但不能证明 operator 打开的 PC/mobile 工作台真的显示更新后的调度状态。
+
+决策：
+- 新增 `check:scheduler-dispatch-writeback`。
+- 门禁启动真实 workbench server，创建临时 workflow snapshot 和 projection history。
+- 运行 `run-scheduler-dispatch-plan --dry-run --workbench-base-url --projection-id`。
+- 读取服务端 projection，要求 `scheduler_dispatch.status = pass` 且 step_count 为 3。
+- 使用 Playwright 打开 PC/mobile 工作台，要求页面可见调度状态为 pass、step 为 3，并无横向溢出。
+- `check:closeout` 纳入该 e2e gate，避免未来只改 JSON 不改实际工作台显示。

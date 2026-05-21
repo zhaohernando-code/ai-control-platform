@@ -531,7 +531,15 @@
       "invariant": "Scheduler dispatch CLI runs must optionally write their artifact through the workbench service and fail closed when either execution or service writeback fails.",
       "enforcement_target": "tools/run-scheduler-dispatch-plan.mjs; test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
       "regression_test": "run-scheduler-dispatch-plan CLI records scheduler dispatch run through workbench service",
-      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "verification": "node --test test/workbench-server.test.js; npm run check:scheduler-dispatch-writeback; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-dispatch-writeback-not-browser-visible",
+      "invariant": "Scheduler dispatch service writeback must be verified through a deterministic e2e gate that renders updated scheduler_dispatch pass state in both PC and mobile workbench shells without horizontal overflow.",
+      "enforcement_target": "tools/check-scheduler-dispatch-writeback.mjs; tools/check-closeout.mjs; package.json",
+      "regression_test": "check-scheduler-dispatch-writeback launches workbench service, runs scheduler dispatch dry-run writeback, and verifies PC/mobile rendered scheduler dispatch pass state",
+      "verification": "npm run check:scheduler-dispatch-writeback; npm run check:closeout",
       "status": "completed"
     }
   ]
