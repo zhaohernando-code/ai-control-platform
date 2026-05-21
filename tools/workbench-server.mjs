@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
+import { evaluateSchedulerDispatchControlPolicy } from "../src/workflow/scheduler-dispatch-policy.js";
 import { recordReviewerProviderHealthFact } from "../src/workflow/reviewer-provider-health.js";
 import {
   recordReviewerShardAggregate,
@@ -422,11 +423,6 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-        if (input.dry_run === false || input.dryRun === false) {
-          jsonResponse(res, 400, { error: "workbench scheduler dispatch currently requires dry_run" });
-          return;
-        }
-
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
         const plan = createSchedulerDispatchPlan(
@@ -438,7 +434,13 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const runResult = await runSchedulerDispatchPlan(plan, { dry_run: true });
+        const policy = evaluateSchedulerDispatchControlPolicy(input, plan);
+        if (policy.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch policy rejected", issues: policy.issues });
+          return;
+        }
+
+        const runResult = await runSchedulerDispatchPlan(plan, { dry_run: policy.execution_mode === "dry_run" });
         const runArtifact = createSchedulerDispatchRunArtifact(plan, runResult, {
           created_at: input.created_at || input.createdAt
         });
@@ -455,6 +457,7 @@ export function createWorkbenchServer(options = {}) {
           status: "created",
           item,
           plan,
+          policy,
           result: runResult,
           artifact: recorded.artifact,
           projection: createWorkbenchProjection(recorded.workflow_state)

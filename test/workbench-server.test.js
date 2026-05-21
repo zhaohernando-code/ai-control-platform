@@ -401,6 +401,7 @@ test("workbench server runs guarded scheduler dispatch dry-run from projection h
 
     assert.equal(response.status, 201);
     assert.equal(created.status, "created");
+    assert.equal(created.policy.execution_mode, "dry_run");
     assert.equal(created.result.status, "pass");
     assert.equal(created.projection.scheduler_dispatch.status, "pass");
     assert.equal(created.projection.scheduler_dispatch.step_count, 3);
@@ -571,7 +572,7 @@ test("workbench server rejects scheduler dispatch plans without workflow state i
   });
 });
 
-test("workbench server rejects non-dry-run scheduler dispatch from workbench control", async () => {
+test("workbench server rejects unauthorized non-dry-run scheduler dispatch from workbench control", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-control-reject-"));
   const inputPath = join(snapshotsRoot, "scheduler-control-reject-input.json");
@@ -599,7 +600,8 @@ test("workbench server rejects non-dry-run scheduler dispatch from workbench con
     const rejected = response.json();
 
     assert.equal(response.status, 400);
-    assert.match(rejected.error, /requires dry_run/);
+    assert.equal(rejected.error, "scheduler dispatch policy rejected");
+    assert.ok(rejected.issues.some((entry) => entry.code === "missing_operator_authorization"));
   }, { historyPath, snapshotsRoot });
 });
 

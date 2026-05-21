@@ -632,3 +632,14 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - PC/mobile shell 增加 `data-scheduler-dispatch="dry-run"` 控制。
 - `workbench.js` 只在服务返回 projection 后调用 `renderProjection`；失败时显示“调度失败”。
 - `check-workbench-browser-events` 增加 scheduler dispatch click 场景，验证按钮点击后页面显示 pass/3 steps 且无横向溢出。
+
+[2026-05-21T23:18:42+08:00] Non-dry-run scheduler dispatch requires an explicit execution policy:
+非 dry-run 不能从工作台按钮直接放开，否则会把外部 reviewer 调用、npm 执行链和成本消耗都暴露成一个普通 UI 开关。
+
+决策：
+- 新增 `scheduler-dispatch-policy`。
+- dry-run 默认允许，execution mode 为 `dry_run`。
+- 非 dry-run 必须提供 `approved_non_dry_run` operator authorization。
+- 非 dry-run 必须提供 `max_steps`，并且不能超过当前三步调度链。
+- reviewer 成本必须显式声明：mocked reviewer 要求外部 reviewer call budget 为 0；非 mocked reviewer 要求 bounded provider cost mode 与 shard 数以内的 call budget。
+- Workbench server 在执行 `/api/workbench/scheduler-dispatch` 前先评估 policy；policy 失败时不执行、不写回。

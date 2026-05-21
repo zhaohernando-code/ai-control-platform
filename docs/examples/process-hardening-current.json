@@ -565,6 +565,14 @@
       "regression_test": "workbench server runs guarded scheduler dispatch dry-run from projection history input; workbench server rejects non-dry-run scheduler dispatch from workbench control; projection source runs guarded scheduler dispatch; workbench shell consumes projection json instead of logs; scheduler_dispatch_click browser scenario",
       "verification": "node --test test/workbench-server.test.js test/workbench-projection-source.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-non-dry-run-without-execution-policy",
+      "invariant": "Non-dry-run scheduler dispatch must be blocked unless an execution policy verifies explicit operator authorization, step limits, reviewer call budget, and provider cost mode before running or writing artifacts.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-policy.js; tools/workbench-server.mjs; test/scheduler-dispatch-policy.test.js; test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch control policy allows dry-run without execution authorization; scheduler dispatch control policy rejects non-dry-run without operator authorization; scheduler dispatch control policy allows mocked non-dry-run with explicit zero reviewer budget; scheduler dispatch control policy bounds non-mocked reviewer cost; workbench server rejects unauthorized non-dry-run scheduler dispatch from workbench control",
+      "verification": "node --test test/scheduler-dispatch-policy.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }
