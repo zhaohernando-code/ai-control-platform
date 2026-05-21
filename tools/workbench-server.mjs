@@ -40,6 +40,7 @@ import {
   evaluateReviewerExecutionPolicy,
   evaluateReviewerProviderHealthPreflight
 } from "../src/workflow/reviewer-execution-policy.js";
+import { recordWorkbenchBrowserEventsRunArtifact } from "../src/workflow/workbench-browser-events.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -788,6 +789,49 @@ export function createWorkbenchServer(options = {}) {
           fact: result.fact,
           aggregate: aggregate?.fact || null,
           projection: createWorkbenchProjection(nextState)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/workbench-browser-events-run" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const result = recordWorkbenchBrowserEventsRunArtifact(
+          workflowState,
+          input.artifact || input.run_artifact || input.runArtifact || input,
+          {
+            artifact_id: input.artifact_id || input.artifactId,
+            created_at: input.created_at || input.createdAt
+          }
+        );
+        if (result.status !== "pass") {
+          jsonResponse(res, 400, { error: "workbench browser events run record failed", issues: result.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          artifact: result.artifact,
+          projection: createWorkbenchProjection(result.workflow_state)
         });
         return;
       }

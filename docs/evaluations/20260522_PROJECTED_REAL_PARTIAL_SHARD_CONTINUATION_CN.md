@@ -51,6 +51,7 @@ Projection 证据：
 - `workbench_browser_events_run` fact 进入 `workbench_browser_events` projection 摘要
 - 摘要包含 `artifact_id`、`scenario_count`、`partial_shard_ready`、`overflow_count`
 - PC/mobile 工作台可渲染 UI verification 状态，避免 scheduler/closeout 只能读取 raw artifact
+- `POST /api/workbench/workbench-browser-events-run` 可以把 `workbench-browser-events-run.v1` 写入 workflow state；回归验证写入后 projection 中 `partial_shard_ready=true`
 
 ## 结论
 

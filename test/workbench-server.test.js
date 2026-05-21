@@ -333,6 +333,56 @@ test("workbench server records reviewer shard results into workflow state input"
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server records workbench browser event run artifacts", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-browser-events-"));
+  const inputPath = join(snapshotsRoot, "browser-events-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "browser-events",
+    items: [
+      {
+        id: "browser-events",
+        label: "Browser events",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/workbench-browser-events-run?id=browser-events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        version: "workbench-browser-events-run.v1",
+        status: "pass",
+        created_at: "2026-05-22T06:45:00.000Z",
+        scenario_count: 1,
+        scenarios: [
+          {
+            scenario: "projected_real_partial_shard_readout",
+            shard_review_next: "reviewer-scope-shard-002",
+            next_action_readout: "run_reviewer_scope_shard",
+            dimensions: { width: 1440, scrollWidth: 1440 }
+          }
+        ]
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.projection.workbench_browser_events.status, "pass");
+    assert.equal(created.projection.workbench_browser_events.partial_shard_ready, true);
+    assert.equal(state.manifest.events.at(-1).type, "workbench_browser_events_run");
+    assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.version, "workbench-browser-events-run.v1");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server creates scheduler dispatch plans from projection history input", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-plan-"));

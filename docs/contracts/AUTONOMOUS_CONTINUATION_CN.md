@@ -184,6 +184,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - PC/mobile 工作台必须把 reviewer shard review 的 `next_shard` 渲染为独立读数；浏览器门禁必须覆盖真实 reviewer 单片预算后的 partial shard readout，验证 next shard、executor、external budget 和推荐动作同时可见。
 - `tools/check-workbench-browser-events.mjs --output <path>` 必须写出 `workbench-browser-events-run.v1` artifact；closeout 必须读取该 artifact 并校验 `projected_real_partial_shard_readout`、`run_reviewer_scope_shard` 和无横向溢出，不能只依赖 stdout。
 - 当 workflow state 中存在 `workbench_browser_events_run` fact 时，workbench projection 必须输出 `workbench_browser_events` 摘要，包含 status、artifact_id、scenario_count、partial_shard_ready 和 overflow_count；PC/mobile 工作台必须能展示最新 UI verification 状态。
+- 工作台服务必须提供 `POST /api/workbench/workbench-browser-events-run`，接收 `workbench-browser-events-run.v1` artifact，校验 version、partial-shard readiness 和无横向溢出后写入 `workbench_browser_events_run` 事件与 artifact ledger。无受控 `input_path`、artifact 缺失关键场景或出现横向溢出时必须失败闭合。
 
 ## 5. 与工作台关系
 
