@@ -45,6 +45,17 @@
       "fail": 1
     }
   },
+  "closeout": {
+    "status": "not_configured",
+    "publish_status": null,
+    "event_id": null,
+    "artifact_id": null,
+    "snapshot_id": null,
+    "path": null,
+    "uri": null,
+    "created_at": null,
+    "issues": []
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",
@@ -170,7 +181,8 @@
       "work_packages": 3,
       "artifacts": 3,
       "reviewer_findings": 1,
-      "dispatchable_tasks": 0
+      "dispatchable_tasks": 0,
+      "closeout_publishes": 0
     }
   }
 }

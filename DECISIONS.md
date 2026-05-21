@@ -263,3 +263,11 @@ closeout runner 不能只把发布结果打印到 CLI。无人值守流程的下
 - `runCloseoutPlan` 成功发布原始 workflow state 后，追加 closeout evidence。
 - 默认再次执行 snapshot publish，把带 evidence 的 workflow state 写入同一 history item。
 - 如果 evidence snapshot publish 失败，runner 返回失败，不把 closeout 误报为完成。
+
+[2026-05-21T18:36:43+08:00] Workbench projection must surface closeout evidence:
+closeout evidence 进入 workflow state 后，工作台 projection 不能只通过 artifact 总数间接展示。PC/mobile 状态输入都需要明确暴露最近一次 closeout publish 事件与 artifact。
+
+决策：
+- `createWorkbenchProjection` 新增 `closeout` 摘要。
+- `createMobileWorkbenchProjection` 保留 closeout 的移动端摘要。
+- Projection schema gate 要求 PC/mobile 都包含 `closeout` 对象。

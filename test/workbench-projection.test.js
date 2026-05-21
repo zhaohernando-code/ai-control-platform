@@ -104,11 +104,60 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.decision, "rerun");
   assert.equal(projection.manifest.status, "pass");
   assert.equal(projection.artifacts.total, 1);
+  assert.equal(projection.closeout.status, "not_configured");
   assert.equal(projection.model_routing.selected_model, "gpt");
   assert.equal(projection.model_routing.has_independent_reviewer, true);
   assert.equal(projection.reviewer_gate.recommended_decision_signal, "rerun");
   assert.equal(projection.task_dag.status, "pass");
   assert.equal(projection.one_screen.counters.reviewer_findings, 1);
+  assert.equal(projection.one_screen.counters.closeout_publishes, 0);
+});
+
+test("workbench projection exposes latest closeout publication evidence", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "closeout-snapshot-run-projection",
+    type: "evaluation",
+    status: "pass",
+    path: "docs/examples/snapshots/run-projection.workbench-input.json",
+    producer: "closeout-runner",
+    created_at: "2026-05-21T10:30:00.000Z",
+    metadata: {
+      snapshot_id: "run-projection",
+      closeout_status: "created",
+      issues: []
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "event-closeout-snapshot-run-projection",
+        type: "closeout_snapshot_publish",
+        status: "created",
+        artifact_id: artifact.id,
+        snapshot_id: "run-projection",
+        created_at: "2026-05-21T10:30:00.000Z"
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.closeout.status, "pass");
+  assert.equal(projection.closeout.publish_status, "created");
+  assert.equal(projection.closeout.artifact_id, "closeout-snapshot-run-projection");
+  assert.equal(projection.closeout.path, "docs/examples/snapshots/run-projection.workbench-input.json");
+  assert.equal(projection.one_screen.counters.closeout_publishes, 1);
+  assert.equal(mobile.closeout.status, "pass");
+  assert.equal(mobile.closeout.snapshot_id, "run-projection");
 });
 
 test("workbench projection ingests operator events before summarizing run state", () => {

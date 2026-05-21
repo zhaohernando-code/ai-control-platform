@@ -90,6 +90,42 @@ function summarizeOperatorEvents(application = null, ledger = null) {
   };
 }
 
+function summarizeCloseoutEvidence(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "closeout_snapshot_publish");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      publish_status: null,
+      event_id: null,
+      artifact_id: null,
+      snapshot_id: null,
+      path: null,
+      uri: null,
+      created_at: null,
+      issues: []
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+
+  return {
+    status: artifact?.status || "unknown",
+    publish_status: latestEvent.status || artifact?.metadata?.closeout_status || null,
+    event_id: latestEvent.id || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    snapshot_id: latestEvent.snapshot_id || artifact?.metadata?.snapshot_id || null,
+    path: artifact?.path || null,
+    uri: artifact?.uri || null,
+    created_at: latestEvent.created_at || artifact?.created_at || null,
+    issues: artifact?.metadata?.issues || latestEvent.metadata?.issues || []
+  };
+}
+
 export function validateWorkbenchProjectionInput(input = {}) {
   const issues = [];
 
@@ -149,6 +185,7 @@ export function createWorkbenchProjection(input = {}) {
   const runEvaluation = operatorEventLedger ? evaluateRunResult(runResult) : (input.run_evaluation || input.runEvaluation || evaluateRunResult(runResult));
   const manifestSummary = manifest ? summarizeManifest(manifest) : { status: "fail", issues: [] };
   const artifactSummary = summarizeArtifactLedger(artifactLedger);
+  const closeoutSummary = summarizeCloseoutEvidence(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
@@ -176,6 +213,7 @@ export function createWorkbenchProjection(input = {}) {
     manifest: manifestSummary,
     operator_events: operatorEventSummary,
     artifacts: artifactSummary,
+    closeout: closeoutSummary,
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -199,7 +237,8 @@ export function createWorkbenchProjection(input = {}) {
         work_packages: manifestSummary.work_package_count,
         artifacts: artifactSummary.total,
         reviewer_findings: reviewerSummary.counts?.total || 0,
-        dispatchable_tasks: dagSummary.dispatchable.length
+        dispatchable_tasks: dagSummary.dispatchable.length,
+        closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1
       }
     }
   };
@@ -218,6 +257,12 @@ export function createMobileWorkbenchProjection(input = {}) {
     counters: projection.one_screen.counters,
     next_actions: projection.one_screen.next_actions.slice(0, 3),
     blockers: projection.blockers.slice(0, 3),
+    closeout: {
+      status: projection.closeout.status,
+      publish_status: projection.closeout.publish_status,
+      artifact_id: projection.closeout.artifact_id,
+      snapshot_id: projection.closeout.snapshot_id
+    },
     model: {
       selected_model: projection.model_routing.selected_model,
       has_independent_reviewer: projection.model_routing.has_independent_reviewer
@@ -229,3 +274,5 @@ export function createMobileWorkbenchProjection(input = {}) {
     }
   };
 }
+
+export { summarizeCloseoutEvidence };
