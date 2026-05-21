@@ -237,6 +237,15 @@ export function recordSchedulerDispatchRunArtifact(workflowState = {}, runArtifa
     };
   }
 
+  const artifactRunId = normalizeString(runArtifact.run_id || runArtifact.runId);
+  const artifactCycleId = normalizeString(runArtifact.cycle_id || runArtifact.cycleId);
+  if ((artifactRunId && artifactRunId !== runId) || (artifactCycleId && artifactCycleId !== cycleId)) {
+    return {
+      status: "fail",
+      issues: [issue("scheduler_dispatch_identity_mismatch", "scheduler dispatch run identity must match workflow state", "run_artifact")]
+    };
+  }
+
   const id = nextSchedulerDispatchArtifactId(workflowState, options);
   const createdAt = normalizeString(options.created_at || options.createdAt || runArtifact.created_at) || new Date().toISOString();
   const artifact = {
@@ -248,9 +257,9 @@ export function recordSchedulerDispatchRunArtifact(workflowState = {}, runArtifa
     created_at: createdAt,
     metadata: {
       type: "scheduler_dispatch_run",
+      ...runArtifact,
       run_id: runId,
-      cycle_id: cycleId,
-      ...runArtifact
+      cycle_id: cycleId
     }
   };
   const manifest = appendRunEvent(workflowState.manifest, {

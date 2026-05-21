@@ -570,3 +570,13 @@ continuation 生成 `run_reviewer_scope_shard` work packages 后，如果 schedu
 - `workbench.js` 统一绑定 PC/mobile 的 scheduler dispatch status、phase、step、failed、dry-run 和 artifact。
 - `check-workbench-browser-events` 必须验证 PC/mobile 都实际渲染 scheduler dispatch 字段，并继续检查无横向溢出。
 - Browser 可视复查发现的布局问题必须在同轮修复，不把“测试通过但视觉压缩”留到后续补丁。
+
+[2026-05-21T23:00:04+08:00] Scheduler dispatch recording must be service-backed and identity-checked:
+调度执行结果如果只能通过手工 JSON 写回 workflow state，自动流程仍会在“执行完成 -> 工作台刷新”之间断开。服务端写入又必须防止 run/cycle 漂移污染当前 snapshot。
+
+决策：
+- Workbench server 增加 `POST /api/workbench/scheduler-dispatch-run`。
+- 只允许写入带 `scheduler-dispatch-run.v1` version、明确 pass/fail status 和 result.steps 的 artifact。
+- 写入前要求 history item 有 `input_path`，禁止写入静态 projection fallback。
+- `recordSchedulerDispatchRunArtifact` 拒绝 artifact run/cycle 与 workflow state manifest 不一致。
+- Projection Source 增加 `recordSchedulerDispatchRun`，供后续调度执行器或工作台控制面复用。

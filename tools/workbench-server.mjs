@@ -10,6 +10,7 @@ import {
   recordReviewerShardAggregate,
   recordReviewerShardResult
 } from "../src/workflow/reviewer-shard-results.js";
+import { recordSchedulerDispatchRunArtifact } from "../src/workflow/scheduler-dispatch-runner.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -116,6 +117,33 @@ function operatorEventIssues(input = {}) {
   if (input.metadata !== undefined && (!input.metadata || typeof input.metadata !== "object" || Array.isArray(input.metadata))) {
     issues.push("metadata must be an object when provided");
   }
+  return issues;
+}
+
+function schedulerDispatchRunArtifactFromInput(input = {}) {
+  return input.artifact || input.run_artifact || input.runArtifact || input;
+}
+
+function schedulerDispatchRunIssues(input = {}) {
+  const artifact = schedulerDispatchRunArtifactFromInput(input);
+  const issues = [];
+
+  if (!artifact || typeof artifact !== "object" || Array.isArray(artifact)) {
+    return ["scheduler dispatch run artifact must be an object"];
+  }
+  if (artifact.version !== "scheduler-dispatch-run.v1") {
+    issues.push("scheduler dispatch run artifact version must be scheduler-dispatch-run.v1");
+  }
+  if (!["pass", "fail"].includes(String(artifact.status || ""))) {
+    issues.push("scheduler dispatch run artifact status must be pass or fail");
+  }
+  if (!artifact.result || typeof artifact.result !== "object" || Array.isArray(artifact.result)) {
+    issues.push("scheduler dispatch run artifact result is required");
+  }
+  if (artifact.result && !Array.isArray(artifact.result.steps)) {
+    issues.push("scheduler dispatch run artifact result.steps must be an array");
+  }
+
   return issues;
 }
 
@@ -297,6 +325,52 @@ export function createWorkbenchServer(options = {}) {
           fact: result.fact,
           aggregate: aggregate?.fact || null,
           projection: createWorkbenchProjection(nextState)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/scheduler-dispatch-run" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const issues = schedulerDispatchRunIssues(input);
+        if (issues.length > 0) {
+          jsonResponse(res, 400, { error: "invalid scheduler dispatch run artifact", issues });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const result = recordSchedulerDispatchRunArtifact(
+          workflowState,
+          schedulerDispatchRunArtifactFromInput(input),
+          { created_at: input.created_at }
+        );
+        if (result.status !== "pass") {
+          jsonResponse(res, 400, { error: "scheduler dispatch run record failed", issues: result.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          artifact: result.artifact,
+          projection: createWorkbenchProjection(result.workflow_state)
         });
         return;
       }

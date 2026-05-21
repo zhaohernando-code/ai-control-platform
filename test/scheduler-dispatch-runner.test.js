@@ -117,6 +117,19 @@ test("scheduler dispatch run artifact records into workflow state", async () => 
   assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).producer, "scheduler-dispatch-runner");
 });
 
+test("scheduler dispatch run artifact recording rejects identity drift", async () => {
+  const plan = dispatchPlan();
+  const result = await runSchedulerDispatchPlan(plan, { dry_run: true });
+  const artifact = {
+    ...createSchedulerDispatchRunArtifact(plan, result),
+    run_id: "wrong-run"
+  };
+  const recorded = recordSchedulerDispatchRunArtifact(workflowState(), artifact);
+
+  assert.equal(recorded.status, "fail");
+  assert.ok(recorded.issues.some((entry) => entry.code === "scheduler_dispatch_identity_mismatch"));
+});
+
 test("run-scheduler-dispatch-plan CLI writes dry-run artifact", () => {
   const dir = mkdtempSync(join(tmpdir(), "scheduler-dispatch-runner-"));
   const planPath = join(dir, "dispatch-plan.json");

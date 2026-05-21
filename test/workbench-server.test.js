@@ -6,6 +6,11 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import test from "node:test";
 
+import {
+  createSchedulerDispatchRunArtifact,
+  runSchedulerDispatchPlan
+} from "../src/workflow/scheduler-dispatch-runner.js";
+import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
 async function withServer(fn, options = {}) {
@@ -304,6 +309,60 @@ test("workbench server records reviewer shard results into workflow state input"
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server records scheduler dispatch runs into workflow state input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-dispatch-"));
+  const inputPath = join(snapshotsRoot, "scheduler-dispatch-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const plan = createSchedulerDispatchPlan({
+    project_status: {
+      project: "ai-control-platform",
+      blockers: [],
+      next_step: ""
+    },
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  }, {
+    workflow_state_input_path: "tmp/workbench-server-scheduler-dispatch/input.json"
+  });
+  const artifact = createSchedulerDispatchRunArtifact(
+    plan,
+    await runSchedulerDispatchPlan(plan, { dry_run: true }),
+    { created_at: "2026-05-21T23:01:00.000Z" }
+  );
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-dispatch",
+    items: [
+      {
+        id: "scheduler-dispatch",
+        label: "Scheduler dispatch",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch-run`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ artifact })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.artifact.producer, "scheduler-dispatch-runner");
+    assert.equal(created.projection.scheduler_dispatch.status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.step_count, 3);
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+    assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.version, "scheduler-dispatch-run.v1");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server rejects reviewer shard results without workflow state input", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/reviewer-shard-result?id=bootstrap`, {
@@ -316,6 +375,66 @@ test("workbench server rejects reviewer shard results without workflow state inp
     assert.equal(response.status, 400);
     assert.match(rejected.error, /workflow state input not found/);
   });
+});
+
+test("workbench server rejects scheduler dispatch runs without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch-run?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        artifact: {
+          version: "scheduler-dispatch-run.v1",
+          status: "pass",
+          result: { steps: [] }
+        }
+      })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
+});
+
+test("workbench server rejects scheduler dispatch run identity drift", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-drift-"));
+  const inputPath = join(snapshotsRoot, "scheduler-drift-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-drift",
+    items: [
+      {
+        id: "scheduler-drift",
+        label: "Scheduler drift",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch-run`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        artifact: {
+          version: "scheduler-dispatch-run.v1",
+          run_id: "wrong-run",
+          status: "pass",
+          result: { steps: [] }
+        }
+      })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(rejected.error, "scheduler dispatch run record failed");
+    assert.ok(rejected.issues.some((entry) => entry.code === "scheduler_dispatch_identity_mismatch"));
+  }, { historyPath, snapshotsRoot });
 });
 
 test("workbench server rejects unsafe workflow state snapshot ids", async () => {

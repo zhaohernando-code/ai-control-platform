@@ -153,6 +153,53 @@ test("projection source records reviewer shard results", async () => {
   assert.match(calls[0].options.body, /reviewer-scope-shard-001/);
 });
 
+test("projection source records scheduler dispatch runs", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    schedulerDispatchRunUrl: "/api/workbench/scheduler-dispatch-run",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", projection: validProjection() };
+        }
+      };
+    }
+  });
+
+  const result = await source.recordSchedulerDispatchRun({
+    artifact: {
+      version: "scheduler-dispatch-run.v1",
+      status: "pass",
+      result: { steps: [] }
+    }
+  });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.schedulerDispatchRunUrl, "/api/workbench/scheduler-dispatch-run");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /scheduler-dispatch-run\.v1/);
+});
+
+test("projection source rejects failed scheduler dispatch run writes", async () => {
+  const source = createProjectionSource({
+    schedulerDispatchRunUrl: "/api/workbench/scheduler-dispatch-run",
+    fetch: async () => ({
+      ok: false,
+      status: 400,
+      async json() {
+        return { error: "scheduler dispatch failed" };
+      }
+    })
+  });
+
+  await assert.rejects(
+    source.recordSchedulerDispatchRun({ artifact: {} }),
+    /Scheduler dispatch run write failed: 400/
+  );
+});
+
 test("projection source rejects failed provider health writes", async () => {
   const source = createProjectionSource({
     providerHealthUrl: "/api/workbench/reviewer-provider-health",

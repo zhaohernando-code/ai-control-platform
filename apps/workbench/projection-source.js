@@ -47,6 +47,7 @@ export function createProjectionSource(options = {}) {
   const eventsUrl = options.eventsUrl || "/api/workbench/events";
   const providerHealthUrl = options.providerHealthUrl || "/api/workbench/reviewer-provider-health";
   const shardResultUrl = options.shardResultUrl || "/api/workbench/reviewer-shard-result";
+  const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || "/api/workbench/scheduler-dispatch-run";
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
@@ -55,6 +56,7 @@ export function createProjectionSource(options = {}) {
     eventsUrl,
     providerHealthUrl,
     shardResultUrl,
+    schedulerDispatchRunUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -133,6 +135,21 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         throw new Error(`Reviewer shard result write failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    async recordSchedulerDispatchRun(input) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(schedulerDispatchRunUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Scheduler dispatch run write failed: ${response.status}`);
       }
 
       return response.json();

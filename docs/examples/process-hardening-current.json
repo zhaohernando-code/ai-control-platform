@@ -517,6 +517,14 @@
       "regression_test": "workbench shell has separate desktop and mobile entries; workbench shell consumes projection json instead of logs",
       "verification": "node --test test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-dispatch-manual-snapshot-writeback",
+      "invariant": "Scheduler dispatch run artifacts must be persistable through the workbench service with version/status/result shape checks, input_path ownership, and run/cycle identity validation before refreshing projection.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-runner.js; tools/workbench-server.mjs; apps/workbench/projection-source.js; test/scheduler-dispatch-runner.test.js; test/workbench-server.test.js; test/workbench-projection-source.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "scheduler dispatch run artifact recording rejects identity drift; workbench server records scheduler dispatch runs into workflow state input; projection source records scheduler dispatch runs",
+      "verification": "node --test test/scheduler-dispatch-runner.test.js test/workbench-server.test.js test/workbench-projection-source.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }
