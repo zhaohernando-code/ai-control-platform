@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ops Workbench PC 视觉稿</title>
+    <style>
+      :root {
+        --bg: #f6f8fb;
+        --surface: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --line: #dbe3ef;
+        --blue: #1769ff;
+        --blue-soft: #e8f1ff;
+        --teal: #0f9f8f;
+        --amber: #d97706;
+        --amber-soft: #fff3d8;
+        --red: #dc2626;
+        --red-soft: #ffe8e8;
+        --green: #16a34a;
+        --green-soft: #e7f7ed;
+        --shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+        font-family: Inter, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      .app {
+        width: 100vw;
+        height: 100dvh;
+        padding: clamp(12px, 1.5vw, 24px);
+        display: grid;
+        grid-template-columns: minmax(156px, 196px) minmax(0, 1fr);
+        gap: clamp(10px, 1.2vw, 16px);
+      }
+
+      .sidebar,
+      .workbench,
+      .panel,
+      .metric,
+      .topbar {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+      }
+
+      .sidebar {
+        min-height: 0;
+        border-radius: 12px;
+        padding: 18px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .mark,
+      .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .mark {
+        background: var(--blue);
+      }
+
+      .brand strong,
+      .operator strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      .brand span,
+      .operator span,
+      small,
+      .section-title span,
+      .delta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .nav {
+        display: grid;
+        gap: 6px;
+      }
+
+      .nav a {
+        min-width: 0;
+        height: 38px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+        color: #263449;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .nav a.active {
+        background: var(--blue);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(23, 105, 255, 0.22);
+      }
+
+      .nav-icon {
+        width: 18px;
+        text-align: center;
+        font-weight: 800;
+      }
+
+      .operator {
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .avatar {
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--blue), var(--teal));
+      }
+
+      .workbench {
+        min-width: 0;
+        min-height: 0;
+        border-radius: 12px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+      }
+
+      .topbar {
+        border-width: 0 0 1px 0;
+        box-shadow: none;
+        border-radius: 0;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(88px, 1fr)) minmax(132px, auto);
+      }
+
+      .top-item,
+      .refresh {
+        min-width: 0;
+        min-height: 58px;
+        padding: 11px clamp(10px, 1.1vw, 16px);
+        border-right: 1px solid var(--line);
+      }
+
+      .top-item strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 18px;
+        white-space: nowrap;
+      }
+
+      .refresh {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        border-right: 0;
+      }
+
+      button {
+        height: 32px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        padding: 0 12px;
+        color: #263449;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .primary {
+        border-color: var(--blue);
+        background: var(--blue);
+        color: #fff;
+      }
+
+      .content {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 14px;
+        scrollbar-gutter: stable;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+        gap: 12px;
+      }
+
+      .metric {
+        min-width: 0;
+        min-height: 104px;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: none;
+      }
+
+      .metric-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 26px;
+        line-height: 1;
+      }
+
+      .delta {
+        margin-top: 12px;
+      }
+
+      .delta b {
+        color: var(--green);
+      }
+
+      .grid,
+      .lower-grid {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .lower-grid {
+        grid-template-columns: minmax(420px, 1.18fr) minmax(300px, 0.82fr);
+      }
+
+      .lower-grid .panel:nth-child(3) {
+        grid-column: 1 / -1;
+      }
+
+      .lower-grid .bar {
+        width: 46px;
+      }
+
+      .panel {
+        min-width: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: none;
+      }
+
+      .section-title {
+        height: 48px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .section-title h2 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        height: 36px;
+        padding: 0 14px;
+        border-bottom: 1px solid #edf1f7;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        display: inline-block;
+        border-radius: 999px;
+        margin-right: 6px;
+        background: var(--green);
+      }
+
+      .bar {
+        width: 68px;
+        height: 6px;
+        border-radius: 999px;
+        background: #edf2f8;
+        display: inline-block;
+        overflow: hidden;
+        vertical-align: middle;
+      }
+
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--blue);
+      }
+
+      .link {
+        color: var(--blue);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .flow {
+        padding: 16px;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .step {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .node {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: var(--blue);
+        color: #fff;
+        font-size: 11px;
+      }
+
+      .flow-rows {
+        display: grid;
+        gap: 12px;
+      }
+
+      .flow-row {
+        display: grid;
+        grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        font-size: 13px;
+      }
+
+      .flow-row > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .track {
+        height: 9px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr 1.2fr 0.7fr 0.5fr 0.4fr;
+        gap: 5px;
+        border-radius: 999px;
+        background: #edf2f8;
+        overflow: hidden;
+      }
+
+      .seg {
+        border-radius: 999px;
+      }
+
+      .cap-list {
+        padding: 8px 14px 14px;
+      }
+
+      .cap {
+        min-height: 35px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid #edf1f7;
+        font-size: 13px;
+      }
+
+      .chip {
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 6px;
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .scaffold { background: var(--blue-soft); color: var(--blue); }
+      .partial { background: var(--amber-soft); color: var(--amber); }
+      .usable, .production { background: var(--green-soft); color: var(--green); }
+      .none { background: #eef2f7; color: var(--muted); }
+      .risk-high { background: var(--red-soft); color: var(--red); }
+      .risk-mid { background: var(--amber-soft); color: var(--amber); }
+
+      .action-cell {
+        display: flex;
+        gap: 8px;
+      }
+
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          min-height: auto;
+          flex-direction: row;
+          align-items: center;
+          overflow: hidden;
+        }
+
+        .nav {
+          grid-auto-flow: column;
+          grid-auto-columns: max-content;
+          overflow: hidden;
+        }
+
+        .operator {
+          margin-top: 0;
+          margin-left: auto;
+        }
+
+        .lower-grid {
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app {
+          height: 100dvh;
+          grid-template-rows: auto minmax(0, 1fr);
+          overflow: hidden;
+          padding: 10px;
+        }
+
+        .workbench {
+          min-height: 0;
+        }
+
+        .content {
+          overflow-y: auto;
+        }
+
+        .topbar,
+        .metrics,
+        .steps,
+        .lower-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-row {
+          grid-template-columns: 1fr;
+        }
+
+        th,
+        td {
+          padding: 0 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="mark">AI</div>
+          <div><strong>AI 开发平台</strong><span>Ops Workbench</span></div>
+        </div>
+        <nav class="nav">
+          <a class="active" href="#"><span class="nav-icon">□</span>总览</a>
+          <a href="#"><span class="nav-icon">P</span>项目</a>
+          <a href="#"><span class="nav-icon">F</span>任务流</a>
+          <a href="#"><span class="nav-icon">A</span>Agents</a>
+          <a href="#"><span class="nav-icon">R</span>风险</a>
+          <a href="#"><span class="nav-icon">G</span>治理</a>
+        </nav>
+        <div class="operator">
+          <div class="avatar">OP</div>
+          <div><strong>operator</strong><span>平台运营</span></div>
+        </div>
+      </aside>
+
+      <main class="workbench">
+        <div class="topbar">
+          <div class="top-item"><small>平台健康</small><strong><span class="dot"></span>健康</strong></div>
+          <div class="top-item"><small>API 延迟</small><strong>132 ms</strong></div>
+          <div class="top-item"><small>错误率</small><strong>0.43%</strong></div>
+          <div class="top-item"><small>可用性</small><strong>99.95%</strong></div>
+          <div class="top-item"><small>活跃 Agents</small><strong>48 / 60</strong></div>
+          <div class="refresh"><button>自动刷新</button><button>30s</button></div>
+        </div>
+
+        <div class="content">
+          <section class="metrics">
+            <div class="metric"><div class="metric-row"><small>项目总数</small><span class="icon" style="background:var(--blue)">P</span></div><strong>23</strong><div class="delta">较昨日 <b>+2</b></div></div>
+            <div class="metric"><div class="metric-row"><small>进行中项目</small><span class="icon" style="background:var(--teal)">✓</span></div><strong>9</strong><div class="delta">较昨日 <b>+1</b></div></div>
+            <div class="metric"><div class="metric-row"><small>任务总数</small><span class="icon" style="background:var(--blue)">T</span></div><strong>256</strong><div class="delta">较昨日 <b>+18</b></div></div>
+            <div class="metric"><div class="metric-row"><small>进行中任务</small><span class="icon" style="background:#f59e0b">⌛</span></div><strong>64</strong><div class="delta">较昨日 -5</div></div>
+            <div class="metric"><div class="metric-row"><small>已发布服务</small><span class="icon" style="background:#7c3aed">◆</span></div><strong>14</strong><div class="delta">较昨日 <b>+3</b></div></div>
+            <div class="metric"><div class="metric-row"><small>需人工决策</small><span class="icon" style="background:var(--teal)">!</span></div><strong>7</strong><div class="delta">较昨日 -2</div></div>
+          </section>
+
+          <section class="grid">
+            <div class="panel">
+              <div class="section-title"><h2>活跃工作</h2><span>按更新时间排序</span></div>
+              <table>
+                <thead><tr><th>项目</th><th>阶段</th><th>当前任务</th><th>Agent</th><th>进度</th><th>更新</th></tr></thead>
+                <tbody>
+                  <tr><td>智能客服平台</td><td><span class="dot"></span>开发</td><td>实现会话路由逻辑</td><td>impl-07</td><td><span class="bar"><i style="width:78%"></i></span> 78%</td><td>10:23</td></tr>
+                  <tr><td>风控规则引擎</td><td><span class="dot" style="background:var(--blue)"></span>Review</td><td>规则冲突检测</td><td>rev-03</td><td><span class="bar"><i style="width:42%"></i></span> 42%</td><td>10:22</td></tr>
+                  <tr><td>数据中台重构</td><td><span class="dot" style="background:#f59e0b"></span>测试</td><td>集成测试执行</td><td>impl-02</td><td><span class="bar"><i style="width:61%"></i></span> 61%</td><td>10:21</td></tr>
+                  <tr><td>营销推荐系统</td><td><span class="dot" style="background:#7c3aed"></span>发布</td><td>灰度发布验证</td><td>pub-01</td><td><span class="bar"><i style="width:33%"></i></span> 33%</td><td>10:18</td></tr>
+                  <tr><td>BI 报表平台</td><td><span class="dot" style="background:#94a3b8"></span>需求</td><td>需求澄清</td><td>plan-04</td><td><span class="bar"><i style="width:15%"></i></span> 15%</td><td>10:17</td></tr>
+                </tbody>
+              </table>
+              <div class="section-title"><a class="link" href="#">查看全部项目 -></a></div>
+            </div>
+
+            <div class="panel">
+              <div class="section-title"><h2>任务流</h2><span>端到端门禁</span></div>
+              <div class="flow">
+                <div class="steps">
+                  <div class="step"><span class="node">1</span>需求 23</div>
+                  <div class="step"><span class="node">2</span>拆解 23</div>
+                  <div class="step"><span class="node">3</span>子任务 128</div>
+                  <div class="step"><span class="node">4</span>Review 34</div>
+                  <div class="step"><span class="node">5</span>发布 9</div>
+                  <div class="step"><span class="node">6</span>Live 验证 5</div>
+                </div>
+                <div class="flow-rows">
+                  <div class="flow-row"><span>智能客服平台</span><div class="track"><span class="seg" style="background:var(--blue)"></span><span class="seg" style="background:#0ea5e9"></span><span class="seg" style="background:var(--green)"></span><span class="seg" style="background:#f59e0b"></span><span class="seg" style="background:#c4b5fd"></span><span></span></div></div>
+                  <div class="flow-row"><span>风控规则引擎</span><div class="track"><span class="seg" style="background:var(--blue)"></span><span class="seg" style="background:#0ea5e9"></span><span class="seg" style="background:var(--green)"></span><span></span><span></span><span></span></div></div>
+                  <div class="flow-row"><span>数据中台重构</span><div class="track"><span class="seg" style="background:var(--blue)"></span><span class="seg" style="background:#0ea5e9"></span><span class="seg" style="background:var(--green)"></span><span class="seg" style="background:#f59e0b"></span><span></span><span></span></div></div>
+                  <div class="flow-row"><span>营销推荐系统</span><div class="track"><span class="seg" style="background:var(--blue)"></span><span class="seg" style="background:#0ea5e9"></span><span class="seg" style="background:var(--green)"></span><span class="seg" style="background:#f59e0b"></span><span class="seg" style="background:#8b5cf6"></span><span></span></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="lower-grid">
+            <div class="panel">
+              <div class="section-title"><h2>Agents 池</h2><span>按负载排序</span></div>
+              <table>
+                <thead><tr><th>Agent</th><th>角色</th><th>模型</th><th>状态</th><th>负载</th></tr></thead>
+                <tbody>
+                  <tr><td><a class="link">plan-01</a></td><td>planner</td><td>gpt-5.5</td><td><span class="dot"></span>运行中</td><td><span class="bar"><i style="width:6%"></i></span> 6%</td></tr>
+                  <tr><td><a class="link">impl-07</a></td><td>implementer</td><td>gpt-5.4</td><td><span class="dot"></span>运行中</td><td><span class="bar"><i style="width:72%"></i></span> 72%</td></tr>
+                  <tr><td><a class="link">rev-03</a></td><td>reviewer</td><td>deepseek-v4</td><td><span class="dot"></span>运行中</td><td><span class="bar"><i style="width:34%"></i></span> 34%</td></tr>
+                  <tr><td><a class="link">rec-02</a></td><td>recovery</td><td>gpt-5.4</td><td><span class="dot" style="background:#94a3b8"></span>空闲</td><td><span class="bar"><i style="width:0%"></i></span> 0%</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="panel">
+              <div class="section-title"><h2>能力成熟度</h2><span>真实能力标注</span></div>
+              <div class="cap-list">
+                <div class="cap"><span>需求管理</span><span class="chip scaffold">scaffold</span></div>
+                <div class="cap"><span>任务拆解</span><span class="chip partial">partial</span></div>
+                <div class="cap"><span>代码生成</span><span class="chip usable">usable</span></div>
+                <div class="cap"><span>测试验证</span><span class="chip partial">partial</span></div>
+                <div class="cap"><span>发布部署</span><span class="chip usable">usable</span></div>
+                <div class="cap"><span>监控告警</span><span class="chip production">production</span></div>
+                <div class="cap"><span>知识管理</span><span class="chip scaffold">scaffold</span></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="section-title"><h2>风险队列</h2><span>系统先自愈</span></div>
+              <table>
+                <thead><tr><th>风险</th><th>严重度</th><th>证据</th><th>状态</th></tr></thead>
+                <tbody>
+                  <tr><td>接口变更未兼容</td><td><span class="chip risk-high">高</span></td><td>api_diff_20260518</td><td><span class="chip partial">待处理</span></td></tr>
+                  <tr><td>测试覆盖率不足</td><td><span class="chip risk-mid">中</span></td><td>coverage_report</td><td><span class="chip partial">待处理</span></td></tr>
+                  <tr><td>依赖漏洞</td><td><span class="chip risk-high">高</span></td><td>sast_scan</td><td><span class="chip scaffold">分析中</span></td></tr>
+                  <tr><td>配置漂移</td><td><span class="chip risk-mid">中</span></td><td>config_diff</td><td><span class="chip none">已忽略</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel" style="margin-top:12px">
+            <div class="section-title"><h2>需人工决策</h2><span>只保留真实外部决策</span></div>
+            <table>
+              <thead><tr><th>项目</th><th>决策事项</th><th>上下文</th><th>建议</th><th>影响范围</th><th>Agent</th><th>等待</th><th>操作</th></tr></thead>
+              <tbody>
+                <tr><td>风控规则引擎</td><td>是否合并冲突规则</td><td>2 条规则冲突</td><td>合并为更高优先级规则</td><td>生产规则变更</td><td>rev-03</td><td>25 分钟</td><td class="action-cell"><button>查看</button><button class="primary">处理</button></td></tr>
+                <tr><td>数据中台重构</td><td>是否升级数据模型版本</td><td>模型 v2 兼容性需确认</td><td>升级到 v2</td><td>5 个下游服务</td><td>impl-02</td><td>42 分钟</td><td class="action-cell"><button>查看</button><button class="primary">处理</button></td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

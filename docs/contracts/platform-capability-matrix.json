@@ -1,0 +1,126 @@
+{
+  "updatedAt": "2026-05-20",
+  "maturityLevels": ["none", "scaffold", "partial", "usable", "production"],
+  "capabilities": [
+    {
+      "id": "ops_workbench",
+      "name": "Ops Workbench 中台",
+      "maturity": "partial",
+      "evidence": ["projects/dashboard-ui/src", "docs/design/ops-workbench-visual.html", "docs/design/ops-workbench-mobile.html"],
+      "gaps": ["缺少统一总览、任务流、Agent 池、风险、待人工决策的单页工作台实现"],
+      "nextStep": "基于 PC/手机视觉稿重构 dashboard 首页"
+    },
+    {
+      "id": "project_registry_runtime",
+      "name": "项目目录与运行态登记",
+      "maturity": "usable",
+      "evidence": ["WORKSPACE_INDEX.json", "projects/local-control-server/state-store.js", "projects/local-control-server/project-local-runtime.js"],
+      "gaps": ["缺少统一项目健康模型和运行时漂移视图"],
+      "nextStep": "增加 project health snapshot"
+    },
+    {
+      "id": "requirement_task_intake",
+      "name": "需求与任务入口",
+      "maturity": "usable",
+      "evidence": ["projects/local-control-server/task-domain.js", "projects/local-control-server/task-runtime.js"],
+      "gaps": ["需求版本、关键输入、批准计划尚未形成不可变 artifact"],
+      "nextStep": "建立 requirement/artifact contract"
+    },
+    {
+      "id": "task_dag",
+      "name": "任务 DAG 与拆解",
+      "maturity": "partial",
+      "evidence": ["projects/local-control-server/project-flow.js", "projects/local-control-server/plan-runtime.js", "projects/local-control-server/state-store.js"],
+      "gaps": ["缺少通用 DAG 节点、依赖、ownership 和 aggregator 决策模型"],
+      "nextStep": "设计 work_packages/dependencies/aggregation_result 结构"
+    },
+    {
+      "id": "scheduler_locks",
+      "name": "调度锁与并行",
+      "maturity": "partial",
+      "evidence": ["projects/local-control-server/worker-runtime.js", "projects/local-control-server/workflow-gates.js"],
+      "gaps": ["缺少 path/runtime/db/launchd/edge/publish 等冲突域自动推断"],
+      "nextStep": "增加 lock domain 推断器"
+    },
+    {
+      "id": "worker_execution_worktree",
+      "name": "Worker 执行与隔离 worktree",
+      "maturity": "usable",
+      "evidence": ["projects/local-control-server/workspace-runtime.js", "projects/local-control-server/local-worker.js", "projects/local-control-server/workflow-gates.js"],
+      "gaps": ["多 agent DAG ownership、汇总和冲突调停不完整"],
+      "nextStep": "补 DAG ownership 与 aggregator"
+    },
+    {
+      "id": "model_routing",
+      "name": "多模型路由",
+      "maturity": "partial",
+      "evidence": ["projects/local-control-server/task-domain.js", "projects/local-control-server/local-worker.js", "projects/dashboard-ui/src/dashboardProjectUtils.ts"],
+      "gaps": ["缺少按角色、成本、准确度、上下文窗口和失败重试策略的统一路由器"],
+      "nextStep": "增加 model_profiles 与 role-based routing policy"
+    },
+    {
+      "id": "watchdog_recovery",
+      "name": "Watchdog / Recovery",
+      "maturity": "scaffold",
+      "evidence": ["projects/local-control-server/config-runtime.js", "projects/local-control-server/watchdog-runtime.js", "projects/local-control-server/execution-runtime.js"],
+      "gaps": ["watchdog 实际是开关且默认关闭", "过去实践中看护结果质量差，不能作为 Recovery Engine 底座", "缺少统一 retryable/repairable/needs_review/human_required 分类、确定性动作、验证和恢复状态机"],
+      "nextStep": "重新设计独立 Recovery Engine；watchdog 只作为历史样本、临时观察器和反例库"
+    },
+    {
+      "id": "state_events_artifacts",
+      "name": "状态存储与事件",
+      "maturity": "partial",
+      "evidence": ["projects/local-control-server/state-store.js", "projects/local-control-server/task-lifecycle.js"],
+      "gaps": ["task_events 还不是唯一状态迁移真值，缺少 artifact ledger"],
+      "nextStep": "建立 event-sourced task state 和 artifact ledger"
+    },
+    {
+      "id": "cicd_verification",
+      "name": "发布与真实验收",
+      "maturity": "partial",
+      "evidence": ["projects/local-control-server/verification-gate-runtime.js", "projects/local-control-server/publish-runtime.js", "projects/local-control-server/workflow-gates.js", "projects/dashboard-ui/.codex.deploy.json"],
+      "gaps": ["缺少统一安全、secret scan、contract、visual smoke、live verify 门禁 schema"],
+      "nextStep": "定义 .codex.deploy.json v2 门禁 schema"
+    },
+    {
+      "id": "llm_reviewer",
+      "name": "LLM Reviewer",
+      "maturity": "scaffold",
+      "evidence": ["projects/local-control-server/watchdog-runtime.js", "KNOWN_TRAPS.md"],
+      "gaps": ["缺少独立 reviewer runtime、结构化 findings、规则库和阻塞策略"],
+      "nextStep": "新建 reviewer contract"
+    },
+    {
+      "id": "periodic_inspection",
+      "name": "周期项目体检",
+      "maturity": "scaffold",
+      "evidence": ["projects/dashboard-ui/src/dashboardUsageUtils.ts", "projects/local-control-server/watchdog-runtime.js", "plan.md"],
+      "gaps": ["没有定时 job、检查维度、报告格式、趋势存储和风险升级规则"],
+      "nextStep": "设计 periodic inspection job 与 risk report artifact"
+    },
+    {
+      "id": "code_locator_skill",
+      "name": "快速定位 skill / 代码地图",
+      "maturity": "scaffold",
+      "evidence": ["WORKSPACE_INDEX.json", "WORKSPACE_PROMPT.md"],
+      "gaps": ["缺少 file/domain/owner/tests/route/failure 代码地图和 skill 输出协议"],
+      "nextStep": "生成项目级 CODEMAP.json 并封装定位 skill"
+    },
+    {
+      "id": "frontend_design_gate",
+      "name": "前端设计门禁",
+      "maturity": "scaffold",
+      "evidence": ["CODEX.md", "KNOWN_TRAPS.md", "PROCESS.md"],
+      "gaps": ["规则尚未接入任务创建、reviewer 或 CI visual smoke"],
+      "nextStep": "增加 design_required 判定与视觉 QA checklist"
+    },
+    {
+      "id": "human_intervention",
+      "name": "人工介入模型",
+      "maturity": "partial",
+      "evidence": ["projects/local-control-server/approval-plan-runtime.js", "projects/local-control-server/watchdog-runtime.js", "projects/dashboard-ui/src/components/dashboardApprovalCard.tsx"],
+      "gaps": ["缺少统一介入分类和系统自愈/人工决策的中台分层视图"],
+      "nextStep": "建立 intervention taxonomy 并接入 Ops Workbench"
+    }
+  ]
+}

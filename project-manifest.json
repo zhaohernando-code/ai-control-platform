@@ -1,0 +1,23 @@
+{
+  "project_id": "ai-control-platform",
+  "display_name": "AI Control Platform",
+  "project_type": "platform-core",
+  "aliases": [
+    "新中台",
+    "中台",
+    "AI中台",
+    "自动化平台",
+    "开发平台",
+    "ops workbench",
+    "ai control platform"
+  ],
+  "managed_project_examples": [
+    "stock_dashboard",
+    "lobechat"
+  ],
+  "component_sources": [
+    "local-control-server",
+    "dashboard-ui"
+  ]
+}
+

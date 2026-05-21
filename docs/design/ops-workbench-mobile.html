@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ops Workbench 手机视觉稿</title>
+    <style>
+      :root {
+        --bg: #eef3f8;
+        --surface: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --line: #dbe3ef;
+        --blue: #1769ff;
+        --green: #16a34a;
+        --red: #dc2626;
+        --amber: #d97706;
+        font-family: Inter, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      .stage {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+      }
+
+      .phone {
+        width: min(100%, 390px);
+        height: min(844px, calc(100dvh - 36px));
+        min-height: 620px;
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background: #f7f9fc;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) 64px;
+      }
+
+      .screen {
+        min-height: 0;
+        overflow-y: auto;
+        padding: 18px 16px;
+        scrollbar-gutter: stable;
+      }
+
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .title strong {
+        display: block;
+        font-size: 22px;
+      }
+
+      .title span,
+      small,
+      p {
+        color: var(--muted);
+      }
+
+      .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: linear-gradient(135deg, var(--blue), #0f9f8f);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .metric,
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .metric {
+        padding: 12px 10px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 20px;
+      }
+
+      section {
+        margin-top: 16px;
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .card {
+        padding: 13px;
+        margin-bottom: 8px;
+      }
+
+      .row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .row strong {
+        font-size: 14px;
+      }
+
+      p {
+        margin: 5px 0 0;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .chip {
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        border-radius: 6px;
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .risk { background: #ffe8e8; color: var(--red); }
+      .warn { background: #fff3d8; color: var(--amber); }
+      .ok { background: #e7f7ed; color: var(--green); }
+      .idle { background: #eef2f7; color: var(--muted); }
+
+      button {
+        height: 32px;
+        border: 0;
+        border-radius: 6px;
+        padding: 0 12px;
+        background: var(--blue);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 12px;
+        margin-top: 10px;
+      }
+
+      .rail {
+        width: 2px;
+        margin: 7px auto 0;
+        background: #cbd5e1;
+      }
+
+      .steps {
+        display: grid;
+        gap: 8px;
+      }
+
+      .step {
+        min-height: 42px;
+        border: 1px solid #e3eaf4;
+        border-radius: 8px;
+        background: #fff;
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .bottom {
+        border-top: 1px solid var(--line);
+        background: #fff;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        place-items: center;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .bottom b {
+        color: var(--blue);
+      }
+
+      @media (max-width: 420px) {
+        .stage {
+          padding: 0;
+        }
+
+        .phone {
+          width: 100vw;
+          height: 100dvh;
+          min-height: 100dvh;
+          border-radius: 0;
+          border: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <main class="phone">
+        <div class="screen">
+          <div class="top">
+            <div class="title"><strong>平台总览</strong><span>10:24 自动刷新</span></div>
+            <div class="avatar">OP</div>
+          </div>
+
+          <div class="summary">
+            <div class="metric"><small>健康</small><strong style="color:var(--green)">正常</strong></div>
+            <div class="metric"><small>阻塞</small><strong style="color:var(--red)">3</strong></div>
+            <div class="metric"><small>待决策</small><strong>7</strong></div>
+          </div>
+
+          <section>
+            <h2>今日关注</h2>
+            <div class="card">
+              <div class="row">
+                <div><strong>接口变更未兼容</strong><p>影响 3 个服务，系统已创建 reviewer 任务。</p></div>
+                <span class="chip risk">高</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row">
+                <div><strong>风控规则合并决策</strong><p>需要确认生产规则优先级。</p></div>
+                <button>处理</button>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2>任务流快照</h2>
+            <div class="card">
+              <div class="row"><strong>智能客服平台</strong><span class="chip ok">Live 验证</span></div>
+              <div class="flow">
+                <div class="rail"></div>
+                <div class="steps">
+                  <div class="step">需求通过 · 23 项</div>
+                  <div class="step">子任务执行 · 128 项</div>
+                  <div class="step">Review 中 · 34 项</div>
+                  <div class="step">发布验证 · 5 项</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2>Agent 状态</h2>
+            <div class="card"><div class="row"><div><strong>impl-07</strong><p>implementer · gpt-5.4 · 负载 72%</p></div><span class="chip ok">运行中</span></div></div>
+            <div class="card"><div class="row"><div><strong>rec-02</strong><p>recovery · 等待自愈任务</p></div><span class="chip idle">空闲</span></div></div>
+          </section>
+        </div>
+
+        <nav class="bottom">
+          <b>总览</b><span>任务</span><span>风险</span><span>Agents</span><span>治理</span>
+        </nav>
+      </main>
+    </div>
+  </body>
+</html>
