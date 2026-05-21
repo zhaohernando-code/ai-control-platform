@@ -266,12 +266,14 @@ test("projection source runs autonomous scheduler loop", async () => {
     }
   });
 
-  const result = await source.runAutonomousSchedulerLoop({ max_iterations: 1 });
+  const result = await source.runAutonomousSchedulerLoop({ projection_id: "current", max_iterations: 1 });
 
   assert.equal(result.status, "created");
   assert.equal(source.autonomousSchedulerLoopUrl, "/api/workbench/autonomous-scheduler-loop");
+  assert.equal(calls[0].url, "/api/workbench/autonomous-scheduler-loop?id=current");
   assert.equal(calls[0].options.method, "POST");
   assert.match(calls[0].options.body, /max_iterations/);
+  assert.doesNotMatch(calls[0].options.body, /projection_id/);
 });
 
 test("projection source resumes autonomous scheduler loop", async () => {
@@ -289,12 +291,14 @@ test("projection source resumes autonomous scheduler loop", async () => {
     }
   });
 
-  const result = await source.resumeAutonomousSchedulerLoop({ max_iterations: 1 });
+  const result = await source.resumeAutonomousSchedulerLoop({ projection_id: "current", max_iterations: 1 });
 
   assert.equal(result.status, "created");
   assert.equal(source.autonomousSchedulerLoopResumeUrl, "/api/workbench/autonomous-scheduler-loop-resume");
+  assert.equal(calls[0].url, "/api/workbench/autonomous-scheduler-loop-resume?id=current");
   assert.equal(calls[0].options.method, "POST");
   assert.match(calls[0].options.body, /max_iterations/);
+  assert.doesNotMatch(calls[0].options.body, /projection_id/);
 });
 
 test("projection source rejects failed scheduler dispatch", async () => {

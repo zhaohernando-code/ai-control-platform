@@ -2,6 +2,7 @@ import { createProjectionSource } from "./projection-source.js";
 
 const source = createProjectionSource();
 let currentProjection = null;
+let currentProjectionId = null;
 
 function text(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
@@ -158,18 +159,21 @@ async function renderHistorySelect() {
 
   try {
     const history = await source.loadHistory();
+    currentProjectionId = currentProjectionId || history.latest || null;
     for (const select of selects) {
       select.replaceChildren(
         ...history.items.map((item) => {
           const option = document.createElement("option");
           option.value = projectionUrlForHistoryItem(item);
+          option.dataset.projectionId = item.id || "";
           option.textContent = `${item.label} · ${item.status}`;
           option.selected = item.id === history.latest;
           return option;
         })
       );
       select.addEventListener("change", async () => {
-        await main(select.value);
+        currentProjectionId = select.selectedOptions[0]?.dataset.projectionId || null;
+        await main(select.value, currentProjectionId);
       });
     }
   } catch {
@@ -179,10 +183,11 @@ async function renderHistorySelect() {
   }
 }
 
-async function main(url = null) {
+async function main(url = null, projectionId = null) {
   try {
     const projection = url ? await createProjectionSource({ url }).load() : await source.load();
     currentProjection = projection;
+    if (projectionId) currentProjectionId = projectionId;
     renderProjection(projection);
   } catch (error) {
     renderProjection({
@@ -304,6 +309,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
 
     try {
       const result = await source.runAutonomousSchedulerLoop({
+        projection_id: currentProjectionId,
         max_iterations: 1,
         execution_profile: "approved_mock_non_dry_run",
         snapshot_prefix: "workbench-loop",
@@ -311,6 +317,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
       });
       button.dataset.eventState = "recorded";
       button.textContent = "Loop 已记录";
+      currentProjectionId = result.item?.id || currentProjectionId;
       if (result.projection) {
         currentProjection = result.projection;
         renderProjection(result.projection);
@@ -322,6 +329,37 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
       }
       button.dataset.eventState = "failed";
       button.textContent = "Loop 失败";
+    }
+  });
+});
+
+qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    button.dataset.eventState = "pending";
+    button.textContent = "Resume 运行中";
+
+    try {
+      const result = await source.resumeAutonomousSchedulerLoop({
+        projection_id: currentProjectionId,
+        max_iterations: 1,
+        execution_profile: "approved_mock_non_dry_run",
+        snapshot_prefix: "workbench-resume",
+        created_at: new Date().toISOString()
+      });
+      button.dataset.eventState = "recorded";
+      button.textContent = "Resume 已记录";
+      currentProjectionId = result.item?.id || currentProjectionId;
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch (error) {
+      if (error.projection) {
+        currentProjection = error.projection;
+        renderProjection(error.projection);
+      }
+      button.dataset.eventState = "failed";
+      button.textContent = "Resume 失败";
     }
   });
 });

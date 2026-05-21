@@ -751,3 +751,13 @@ approved dispatch 产生下一轮 continuation input 时，不能直接信任 sc
 - 服务端用 registry 选出的 `resume_projection_id` 作为 loop 起点，不接受前端拼底层 scheduler id。
 - 新 loop artifact 写入 resume projection 的 workflow state，而不是写回源 projection，避免跨轮状态混淆。
 - 没有 ready recovery、resume projection 缺少受控 `input_path` 或 loop 记录失败时必须失败闭合。
+
+[2026-05-22T01:48:00+08:00] Workbench resume control may pass only source history context:
+直接给前端一个“恢复到某个 projection id”的能力会绕开 registry recovery policy，等价于把恢复策略移回 UI。UI 需要能触发恢复，但不能决定真正的恢复目标。
+
+决策：
+- PC/mobile 增加 `恢复 Loop` 控制。
+- Projection source 允许把 `projection_id` 作为 query `id` 传给服务端，但会从 JSON body 中移除，避免混入执行输入。
+- `运行 Loop` 和 `恢复 Loop` 都只使用当前 history item id 作为 source context。
+- 服务端 resume endpoint 仍负责选择真正的 `resume_projection_id`。
+- 浏览器门禁在同一场景中执行 `运行 Loop -> 恢复 Loop`，并验证恢复后状态为 pass/idle 且无横向溢出。

@@ -257,12 +257,17 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
       { waitUntil: "networkidle" }
     );
+    await page.waitForFunction(() => document.querySelector("[data-history-select]")?.options.length > 0);
     await page.click('[data-autonomous-scheduler-loop="bounded"]');
     await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="bounded"]')?.textContent.includes("Loop 已记录"));
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
     const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
+    await page.click('[data-autonomous-scheduler-loop-resume="bounded"]');
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop-resume="bounded"]')?.textContent.includes("Resume 已记录"));
+    const resumedLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
+    const resumedLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth
@@ -272,6 +277,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(schedulerLoopStatus === "pass", "autonomous scheduler loop click must render loop pass");
     assert(schedulerLoopIterations === "1", "autonomous scheduler loop click must render one loop iteration");
     assert(schedulerLoopRecovery === "ready", "autonomous scheduler loop click must render recovery readiness");
+    assert(resumedLoopStatus === "pass", "autonomous scheduler loop resume must render loop pass");
+    assert(resumedLoopRecovery === "idle", "autonomous scheduler loop resume must render idle recovery when no actions remain");
     assert(dimensions.scrollWidth <= dimensions.width, "autonomous scheduler loop click must not create horizontal overflow");
 
     console.log(JSON.stringify({
@@ -279,6 +286,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_iterations: schedulerLoopIterations,
       scheduler_loop_recovery: schedulerLoopRecovery,
+      resumed_loop_status: resumedLoopStatus,
+      resumed_loop_recovery: resumedLoopRecovery,
       dimensions
     }, null, 2));
   });

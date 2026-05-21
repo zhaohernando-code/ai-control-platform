@@ -41,6 +41,20 @@ function validateProjectionShape(projection) {
   return { status: issues.length ? "fail" : "pass", issues };
 }
 
+function urlWithProjectionId(url, projectionId) {
+  if (!projectionId) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}id=${encodeURIComponent(projectionId)}`;
+}
+
+function requestBodyWithoutProjectionId(input = {}) {
+  const { projection_id, projectionId, ...body } = input;
+  return {
+    projectionId: projection_id || projectionId || null,
+    body
+  };
+}
+
 export function createProjectionSource(options = {}) {
   const url = options.url || projectionUrlFromLocation(options.location);
   const historyUrl = options.historyUrl || historyUrlFromLocation(options.location);
@@ -215,11 +229,12 @@ export function createProjectionSource(options = {}) {
     },
     async runAutonomousSchedulerLoop(input = {}) {
       if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+      const request = requestBodyWithoutProjectionId(input);
 
-      const response = await fetchImpl(autonomousSchedulerLoopUrl, {
+      const response = await fetchImpl(urlWithProjectionId(autonomousSchedulerLoopUrl, request.projectionId), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(input)
+        body: JSON.stringify(request.body)
       });
       const payload = await response.json();
 
@@ -234,11 +249,12 @@ export function createProjectionSource(options = {}) {
     },
     async resumeAutonomousSchedulerLoop(input = {}) {
       if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+      const request = requestBodyWithoutProjectionId(input);
 
-      const response = await fetchImpl(autonomousSchedulerLoopResumeUrl, {
+      const response = await fetchImpl(urlWithProjectionId(autonomousSchedulerLoopResumeUrl, request.projectionId), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(input)
+        body: JSON.stringify(request.body)
       });
       const payload = await response.json();
 

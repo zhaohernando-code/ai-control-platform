@@ -167,6 +167,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - `autonomous-scheduler-loop-run.v1` 不得作为普通摘要直接复用；恢复器和 projection history 必须先从 manifest events + artifact ledger 构建 loop run registry，校验 version、status/phase/result 一致性、iteration schema 和 queued next projection，再输出 recovery policy。invalid registry 必须 `blocked/quarantine_invalid_loop_artifact`，ready registry 才能从 latest queued projection resume。
 - 工作台 projection 与 `/api/workbench/projections` history readout 必须展示 loop run count、invalid count、recovery status/action、resumable 和 resume projection id，避免进程重启后只能依赖当前聊天上下文判断是否继续。
 - 工作台服务必须提供 `POST /api/workbench/autonomous-scheduler-loop-resume`：它只能读取所选 history input 的 loop registry/recovery policy，必须由服务端选择 `resume_projection_id` 作为新的 loop 起点，把新 loop artifact 写入该 resume projection 的 workflow state；recovery 不是 ready 或 resume projection 缺少受控 input_path 时必须失败闭合，不得要求操作者手工选择下一轮 id。
+- PC/mobile 工作台可以传当前 history item id 作为 source context，但不得传或拼接 raw resume projection id、scheduler policy 字段或底层执行授权；resume target selection 必须保留在服务端 recovery policy。浏览器门禁必须覆盖“运行 loop -> 恢复 loop”的连续操作，并验证恢复后仍无横向溢出。
 
 ## 5. 与工作台关系
 
