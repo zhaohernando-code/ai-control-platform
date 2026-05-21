@@ -8,3 +8,14 @@
 - `projection-source.js`：projection 数据源抽象，默认读取本地 fixture，也支持 `?projection=/api/workbench/projection` 指向服务接口。
 
 本 shell 只负责展示已经通过 schema gate 的 projection JSON。后续接真实服务时，接口返回也必须先通过 `tools/check-workbench-projection.mjs` 同等校验。
+
+本地服务模式：
+
+```bash
+node tools/workbench-server.mjs 4180
+```
+
+- `GET /api/workbench/projection`
+- `GET /api/workbench/projections`
+- `GET /apps/workbench/desktop.html?projection=/api/workbench/projection`
+- `GET /apps/workbench/mobile.html?projection=/api/workbench/projection`

@@ -80,3 +80,12 @@
 - 拒绝 `javascript:` 和协议相对 URL。
 - projection 加载后先做最小 shape validation，避免空对象进入 UI。
 - 下一步应增加本地 projection API/server adapter 和 projection history index。
+
+[2026-05-21T16:48:16+08:00] Local workbench server is the first service-backed projection adapter:
+`tools/workbench-server.mjs` 提供本地 projection API 和静态工作台服务，作为未来真实后端接入前的最小 adapter。
+
+决策：
+- `GET /api/workbench/projection` 返回当前 latest projection。
+- `GET /api/workbench/projections` 返回 projection history index。
+- PC/mobile 工作台可通过 `?projection=/api/workbench/projection` 切换到 API 模式。
+- 浏览器回归必须覆盖 fixture 模式和 API 模式，检查 projection 加载与横向溢出。

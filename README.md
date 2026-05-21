@@ -35,6 +35,7 @@ npm test
 npm run check:onboarding
 node tools/build-workbench-projection.mjs docs/examples/current-session-workbench-input.json docs/examples/current-session-workbench-projection.json
 node tools/check-workbench-projection.mjs docs/examples/current-session-workbench-projection.json
+node tools/workbench-server.mjs 4180
 ```
 
 ## Workbench Shell
@@ -43,6 +44,7 @@ node tools/check-workbench-projection.mjs docs/examples/current-session-workbenc
 - Mobile: `apps/workbench/mobile.html`
 
 两个入口都只消费已验证的 `docs/examples/current-session-workbench-projection.json`。
+服务模式可使用 `?projection=/api/workbench/projection` 切换到本地 projection API。
 
 ## 迁移区
 
