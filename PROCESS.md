@@ -25,3 +25,4 @@
 - **本轮最小验收**：新增能力必须能从机器可读输入中判断：需求属于哪个宿主、子任务是否允许执行、执行结果是否需要重跑，以及哪些证据要进入工作台状态。
 - **多模型协同要先路由再调用**：GPT、DeepSeek V4 Pro、DeepSeek V4 Flash 不是固定替代关系。每次使用前必须根据 stage、risk、budget、host 和 tags 生成 model routing plan；高风险平台任务需要独立 reviewer，低风险分类和摘要优先低成本模型。
 - **外部 reviewer 是 gate，不是临时 skill**：Claude Code + DeepSeek V4 Pro 这类审查方式必须进入 reviewer gate request、review findings、run manifest 和工作台 projection。只读审查是默认约束，写入型工具必须被 gate 拦截。
+- **工作台只消费 projection，不解析零散日志**：PC 和 mobile 工作台必须以 Workbench Projection 为一屏状态输入。任务、模型、reviewer、artifact 和 DAG 状态先汇总成 projection，再进入 UI。

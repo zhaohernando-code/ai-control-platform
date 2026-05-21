@@ -29,7 +29,7 @@
 3. 建立 artifact ledger，保存需求、Context Pack、patch、测试、reviewer 和评估证据。（已落地 `src/workflow/artifact-ledger.js`）
 4. 建立 goal guard，保证整体目标、宿主和 changed files 不跑偏。（已落地 `src/workflow/goal-guard.js`）
 5. 建立 LLM reviewer gate 与 model router，让 GPT / DeepSeek V4 Pro / DeepSeek V4 Flash 按任务风险和成本协同。（已落地 `src/workflow/llm-reviewer-gate.js`、`src/workflow/model-router.js`）
-6. 再接入 Ops Workbench projection，而不是先做孤立 UI。
+6. 再接入 Ops Workbench projection，而不是先做孤立 UI。（已落地 `src/workflow/workbench-projection.js`）
 
 ## P2：Ops Workbench
 

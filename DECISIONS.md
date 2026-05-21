@@ -44,3 +44,12 @@
 - `gpt` 优先用于高风险平台核心实现、复杂规划、Recovery、架构和最终仲裁。
 - 高风险平台任务必须包含独立 reviewer；预算降级必须记录 preferred model、selected model 和 downgrade reason。
 - Claude Code + DeepSeek V4 Pro 只是 reviewer gate 的一个 provider/model 组合，不能作为唯一审查方案写死。
+
+[2026-05-21T16:20:18+08:00] Workbench consumes projection, not logs:
+工作台的 PC 和 mobile 页面不应直接解析运行日志、聊天总结或某个 agent 的临时输出。中台先把 run manifest、artifact ledger、model routing、reviewer gate、autonomous-run decision 和 task DAG 汇总为 Workbench Projection，再由 UI 消费。
+
+决策：
+- `workbench.v1` 是 PC 工作台的一屏状态输入。
+- `workbench.mobile.v1` 是移动端独立信息架构的状态子集，不是 PC 页面缩放。
+- projection 只汇总事实，不直接调用 agent、模型、CI 或发布系统。
+- 缺少 manifest、artifact ledger 或 model plan 时，projection 进入 `human_intervention`，因为系统缺少足够事实继续自动判断。
