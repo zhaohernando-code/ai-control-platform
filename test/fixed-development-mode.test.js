@@ -79,15 +79,17 @@ test("process hardening fixture records direct implementation drift as completed
   assert.match(hardening?.verification || "", /npm run check:process-hardening/);
 });
 
-test("project status keeps next work on provider model-routed adapters", () => {
+test("project status keeps fixed development mode on the current next work", () => {
   const status = JSON.parse(read("PROJECT_STATUS.json"));
 
   assert.match(status.latest_update, /Fixed development mode/);
   assert.match(status.latest_update, /main process/);
   assert.match(status.latest_update, /child processes/);
-  assert.match(status.next_step, /provider\/model-routed multi-agent execution adapters/);
   assert.match(status.next_step, /fixed main-process\/child-process loop/);
-  assert.match(status.next_step, /fixed-development-mode dispatch gate/);
+  assert.match(status.next_step, /agent lifecycle/);
+  assert.match(status.next_step, /fact recording/);
+  assert.match(status.next_step, /cleanup execution/);
+  assert.match(status.next_step, /spawned child processes/);
 });
 
 test("fixed development mode runtime gate evaluates dispatch inputs", () => {

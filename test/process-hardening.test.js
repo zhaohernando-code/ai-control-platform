@@ -62,6 +62,33 @@ test("process hardening passes only with completed gate and verification evidenc
   assert.equal(evaluation.issues.length, 0);
 });
 
+test("completed hardening item covers spawned child process lifecycle cleanup", () => {
+  const finding = {
+    id: "agent-lifecycle-pool-cleanup-gap",
+    status: "fail",
+    category: "continuation_gap",
+    severity: "p1",
+    message: "Spawned child processes can be left without durable evaluate and close facts."
+  };
+  const evaluation = evaluateProcessHardening({
+    findings: [finding],
+    hardening_items: [
+      {
+        finding_id: "agent-lifecycle-pool-cleanup-gap",
+        invariant: "Every spawned child process must be tracked, evaluated, closed, and exposed as durable agent lifecycle pool facts before the main process advances.",
+        enforcement_target: "src/workflow/agent-lifecycle-pool.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js",
+        regression_test: "agent lifecycle summary; continuation schedules cleanup; workbench projection exposes agent lifecycle pool cleanup readout",
+        verification: "node --test test/agent-lifecycle-pool.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js; npm run check:process-hardening",
+        status: "completed"
+      }
+    ]
+  });
+
+  assert.equal(evaluation.status, "pass");
+  assert.equal(evaluation.required_count, 1);
+  assert.equal(evaluation.completed_count, 1);
+});
+
 test("non-blocking reviewer nits do not require process hardening", () => {
   const evaluation = evaluateProcessHardening({
     findings: [

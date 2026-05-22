@@ -89,6 +89,49 @@ test("reviewer provider health facts generate scheduler follow-up work packages"
   assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-provider-rerun-without-tools"));
 });
 
+test("agent lifecycle pool gaps schedule cleanup without human intervention", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    workflow_state: {
+      manifest: {
+        events: [
+          {
+            id: "spawn-worker",
+            type: "WorkerSpawned",
+            status: "pass",
+            metadata: {
+              pool_id: "pool-main-child",
+              worker_id: "child-implementation-1"
+            }
+          },
+          {
+            id: "complete-worker",
+            type: "WorkerCompleted",
+            status: "pass",
+            metadata: {
+              pool_id: "pool-main-child",
+              worker_id: "child-implementation-1"
+            }
+          }
+        ]
+      },
+      artifact_ledger: { artifacts: [] }
+    }
+  });
+
+  const cleanupPackage = decision.next_work_packages.find((workPackage) => {
+    return workPackage.action === "cleanup_agent_lifecycle_pool";
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.should_continue, true);
+  assert.ok(cleanupPackage);
+  assert.ok(cleanupPackage.owned_files.includes("src/workflow/agent-lifecycle-pool.js"));
+  assert.ok(cleanupPackage.owned_files.includes("src/workflow/workbench-projection.js"));
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === cleanupPackage.id));
+});
+
 test("reviewer scope split facts generate concrete shard work packages", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),

@@ -10,6 +10,7 @@ import {
 } from "./autonomous-scheduler-loop.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
+import { summarizeAgentLifecyclePool } from "./agent-lifecycle-pool.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -583,6 +584,20 @@ function summarizeSchedulerLoopResumeAttempt(manifest = {}, artifactLedger = {})
   };
 }
 
+const AGENT_LIFECYCLE_EVENT_TYPES = new Set([
+  "WorkerSpawned",
+  "WorkerCompleted",
+  "WorkerEvaluation",
+  "WorkerClosed",
+  "PoolIterationClosed",
+  "worker_spawned",
+  "worker_completed",
+  "worker_evaluation",
+  "worker_closed",
+  "pool_iteration_closed",
+  "agent_lifecycle_pool"
+]);
+
 const OPERATION_EVENT_TYPES = new Set([
   "scheduler_dispatch_policy",
   "scheduler_dispatch_run",
@@ -598,7 +613,8 @@ const OPERATION_EVENT_TYPES = new Set([
   "reviewer_scope_split",
   "reviewer_shard_result",
   "reviewer_shard_aggregate",
-  "workbench_browser_events_run"
+  "workbench_browser_events_run",
+  ...AGENT_LIFECYCLE_EVENT_TYPES
 ]);
 
 function operationSummary(type, metadata = {}) {
@@ -644,10 +660,14 @@ function operationSummary(type, metadata = {}) {
   if (type === "workbench_browser_events_run") {
     return `${metadata.status || "unknown"} / ${metadata.scenario_count || 0} scenario(s)`;
   }
+  if (AGENT_LIFECYCLE_EVENT_TYPES.has(type)) {
+    return metadata.worker_id || metadata.workerId || metadata.status || "agent lifecycle pool";
+  }
   return metadata.status || "recorded";
 }
 
 function operationGroup(type) {
+  if (AGENT_LIFECYCLE_EVENT_TYPES.has(type)) return "agent_lifecycle_pool";
   if (String(type || "").startsWith("reviewer_")) return "reviewer_recovery";
   return "scheduler";
 }
@@ -666,6 +686,9 @@ function operationNextActionRole(type, metadata = {}) {
   if (type === "project_status_continuation") return "operator_observable";
   if (type === "context_pack_cycle_materialized" || type === "context_pack_cycle_created" || type === "context_work_packages_run") return "operator_observable";
   if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
+    return "automation_driver";
+  }
+  if (AGENT_LIFECYCLE_EVENT_TYPES.has(type)) {
     return "automation_driver";
   }
   return "operator_observable";
@@ -714,6 +737,19 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
 }
 
 function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
+  const lifecyclePool = summaries.agentLifecyclePool || {};
+  if (lifecyclePool.next_action === "cleanup_agent_lifecycle_pool") {
+    return {
+      status: lifecyclePool.status === "blocked" ? "blocked" : "ready",
+      action: "cleanup_agent_lifecycle_pool",
+      source_event_id: lifecyclePool.event_id || null,
+      source_type: "agent_lifecycle_pool",
+      target_projection_id: null,
+      reason: lifecyclePool.latest_issue || `agent lifecycle pool requires cleanup: open=${lifecyclePool.open || 0}, unevaluated=${lifecyclePool.unevaluated || 0}, unclosed=${lifecyclePool.unclosed || 0}`,
+      requires_operator: false
+    };
+  }
+
   const driver = operationsTimeline.latest_driver || null;
   if (!driver) {
     const latest = operationsTimeline.latest || null;
@@ -952,6 +988,7 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
+  const agentLifecyclePool = summarizeAgentLifecyclePool(manifest, artifactLedger);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
@@ -961,6 +998,7 @@ export function createWorkbenchProjection(input = {}) {
     schedulerLoop,
     reviewerProviderHealth,
     reviewerShardReview,
+    agentLifecyclePool,
     globalGoalCompletion,
     taskDag: dagSummary
   });
@@ -997,6 +1035,7 @@ export function createWorkbenchProjection(input = {}) {
     scheduler_dispatch: schedulerDispatch,
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
+    agent_lifecycle_pool: agentLifecyclePool,
     global_goal_completion: globalGoalCompletion,
     operations_timeline: operationsTimeline,
     next_action_readout: nextActionReadout,
@@ -1033,6 +1072,9 @@ export function createWorkbenchProjection(input = {}) {
         scheduler_dispatch_steps: schedulerDispatch.step_count || 0,
         scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0,
         scheduler_loop_iterations: schedulerLoop.iteration_count || 0,
+        agent_lifecycle_open: agentLifecyclePool.open || 0,
+        agent_lifecycle_unevaluated: agentLifecyclePool.unevaluated || 0,
+        agent_lifecycle_unclosed: agentLifecyclePool.unclosed || 0,
         global_goals_pending: globalGoalCompletion.pending || 0,
         global_goals_completed: globalGoalCompletion.completed || 0,
         operation_events: operationsTimeline.count || 0
@@ -1138,6 +1180,19 @@ export function createMobileWorkbenchProjection(input = {}) {
       latest_resume_status: projection.scheduler_loop.latest_resume_status,
       latest_resume_target: projection.scheduler_loop.latest_resume_target
     },
+    agent_lifecycle_pool: {
+      status: projection.agent_lifecycle_pool.status,
+      pool_id: projection.agent_lifecycle_pool.pool_id,
+      spawned: projection.agent_lifecycle_pool.spawned,
+      completed: projection.agent_lifecycle_pool.completed,
+      evaluated: projection.agent_lifecycle_pool.evaluated,
+      closed: projection.agent_lifecycle_pool.closed,
+      open: projection.agent_lifecycle_pool.open,
+      unevaluated: projection.agent_lifecycle_pool.unevaluated,
+      unclosed: projection.agent_lifecycle_pool.unclosed,
+      next_action: projection.agent_lifecycle_pool.next_action,
+      latest_issue: projection.agent_lifecycle_pool.latest_issue
+    },
     global_goal_completion: {
       status: projection.global_goal_completion.status,
       total: projection.global_goal_completion.total,
@@ -1185,6 +1240,7 @@ export {
   summarizeSchedulerDispatchContinuation,
   summarizeAutonomousSchedulerLoop,
   summarizeSchedulerLoopResumeAttempt,
+  summarizeAgentLifecyclePool,
   summarizeOperationsTimeline,
   createNextActionReadout,
   summarizeSchedulerDispatch

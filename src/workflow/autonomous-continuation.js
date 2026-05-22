@@ -2,6 +2,7 @@ import { projectionPublishIssues, snapshotIssues } from "./workbench-snapshots.j
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { evaluateRunResult } from "./autonomous-run.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
+import { summarizeAgentLifecyclePool } from "./agent-lifecycle-pool.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -84,6 +85,7 @@ function nextWorkPackagesFrom(input) {
   const runEvaluation = runEvaluationFrom(input);
   const providerPackages = reviewerProviderWorkPackagesFrom(input);
   const scopeSplitPackages = reviewerScopeSplitWorkPackagesFrom(input);
+  const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const directPackages = [
     ...asArray(input?.next_work_packages),
@@ -91,7 +93,8 @@ function nextWorkPackagesFrom(input) {
     ...asArray(runEvaluation?.next_work_packages),
     ...asArray(runEvaluation?.projection?.next_work_packages),
     ...providerPackages,
-    ...scopeSplitPackages
+    ...scopeSplitPackages,
+    ...lifecyclePoolPackages
   ];
   if (directPackages.length > 0 || nextStepFrom(input)) {
     return directPackages;
@@ -219,6 +222,48 @@ function reviewerScopeSplitWorkPackagesFrom(input = {}) {
       }
     }))
     .filter((workPackage) => workPackage.id);
+}
+
+function agentLifecyclePoolFrom(input = {}) {
+  const explicit = input?.agent_lifecycle_pool || input?.agentLifecyclePool || input?.workflow_state?.agent_lifecycle_pool;
+  if (explicit) return explicit;
+  const workflowState = workflowStateFrom(input);
+  return summarizeAgentLifecyclePool(workflowState?.manifest, workflowState?.artifact_ledger || workflowState?.artifactLedger);
+}
+
+function agentLifecyclePoolWorkPackagesFrom(input = {}) {
+  const pool = agentLifecyclePoolFrom(input);
+  const status = normalizeToken(pool?.status);
+  const needsCleanup = status === "cleanup_required" ||
+    status === "blocked" ||
+    status === "open" ||
+    status === "unevaluated" ||
+    status === "unclosed" ||
+    Number(pool?.open || 0) > 0 ||
+    Number(pool?.unevaluated || 0) > 0 ||
+    Number(pool?.unclosed || 0) > 0;
+
+  if (!needsCleanup) return [];
+
+  return [
+    {
+      id: `agent-lifecycle-pool-cleanup-${normalizeString(pool.pool_id || "latest").replace(/[^a-zA-Z0-9_-]+/g, "-")}`,
+      title: "Clean up agent lifecycle pool",
+      action: "cleanup_agent_lifecycle_pool",
+      owned_files: [
+        "src/workflow/agent-lifecycle-pool.js",
+        "src/workflow/workbench-projection.js",
+        "src/workflow/autonomous-continuation.js",
+        "src/workflow/process-hardening.js",
+        "docs/examples/process-hardening-current.json",
+        "test/agent-lifecycle-pool.test.js",
+        "test/autonomous-continuation.test.js",
+        "test/workbench-projection.test.js",
+        "test/process-hardening.test.js"
+      ],
+      reason: pool.latest_issue || `agent lifecycle pool ${status || "cleanup_required"}: open=${pool.open || 0}, unevaluated=${pool.unevaluated || 0}, unclosed=${pool.unclosed || 0}`
+    }
+  ];
 }
 
 function projectStatus(input) {

@@ -173,6 +173,23 @@
     "latest_issue": null,
     "created_at": null
   },
+  "agent_lifecycle_pool": {
+    "status": "not_configured",
+    "pool_id": null,
+    "spawned": 0,
+    "completed": 0,
+    "evaluated": 0,
+    "closed": 0,
+    "open": 0,
+    "unevaluated": 0,
+    "unclosed": 0,
+    "iteration_closed": false,
+    "next_action": null,
+    "latest_issue": null,
+    "event_id": null,
+    "artifact_id": null,
+    "created_at": null
+  },
   "global_goal_completion": {
     "status": "in_progress",
     "total": 3,
@@ -442,6 +459,9 @@
       "scheduler_dispatch_steps": 0,
       "scheduler_continuation_ready": 0,
       "scheduler_loop_iterations": 0,
+      "agent_lifecycle_open": 0,
+      "agent_lifecycle_unevaluated": 0,
+      "agent_lifecycle_unclosed": 0,
       "global_goals_pending": 3,
       "global_goals_completed": 0,
       "operation_events": 2
