@@ -365,6 +365,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Workbench browser verification must not stop at stdout or a local artifact file; the browser-events runner and closeout gate need to prove the workbench API writes the artifact back into workflow state."
+    },
+    {
+      "id": "project-status-continuation-manual-assembly",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "The scheduler must not require manual JSON assembly to continue from repository PROJECT_STATUS/global_goals; a reusable generator must turn durable repo status into continuation input and decision evidence."
     }
   ],
   "hardening_items": [
@@ -958,6 +965,14 @@
       "enforcement_target": "tools/check-workbench-browser-events.mjs; tools/check-closeout.mjs; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
       "regression_test": "check-workbench-browser-events --record-temp-workflow writes workbench_browser_events_run into workflow state through /api/workbench/workbench-browser-events-run; npm run check:closeout exercises the temp workflow API writeback path",
       "verification": "npm run check:workbench:browser-events -- --output <artifact> --record-temp-workflow; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "project-status-continuation-manual-assembly",
+      "invariant": "Repository PROJECT_STATUS/global_goals must be convertible into a standard continuation input through a reusable module and CLI, and the generated decision must still use decideContinuation for host, blocker, next-step, and global-goal completion rules.",
+      "enforcement_target": "src/workflow/project-status-continuation.js; tools/prepare-project-status-continuation.mjs; package.json; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/project-status-continuation.test.js",
+      "regression_test": "project status continuation keeps next step and global goals in durable input; project status continuation is ready while global goals are pending; project status continuation completes only when configured goals are complete; prepare-project-status-continuation CLI writes continuation input",
+      "verification": "node --test test/project-status-continuation.test.js test/autonomous-continuation.test.js; npm run prepare:project-status-continuation -- --project-status PROJECT_STATUS.json --output tmp/project-status-continuation-current.json; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

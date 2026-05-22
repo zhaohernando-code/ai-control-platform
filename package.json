@@ -19,6 +19,7 @@
     "run:reviewer-shard": "node tools/run-with-node18.mjs tools/run-reviewer-shard.mjs",
     "prepare:reviewer-shard-loop-continuation": "node tools/run-with-node18.mjs tools/prepare-reviewer-shard-loop-continuation.mjs",
     "prepare:scheduler-dispatch-continuation": "node tools/run-with-node18.mjs tools/prepare-scheduler-dispatch-continuation.mjs",
+    "prepare:project-status-continuation": "node tools/run-with-node18.mjs tools/prepare-project-status-continuation.mjs",
     "plan:scheduler-dispatch": "node tools/run-with-node18.mjs tools/create-scheduler-dispatch-plan.mjs",
     "run:autonomous-scheduler-loop": "node tools/run-with-node18.mjs tools/run-autonomous-scheduler-loop.mjs",
     "run:scheduler-dispatch": "node tools/run-with-node18.mjs tools/run-scheduler-dispatch-plan.mjs",
