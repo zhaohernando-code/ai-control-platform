@@ -11,6 +11,7 @@ import {
 export const CONTEXT_WORK_PACKAGE_PROVIDER_EXECUTOR_VERSION = "context-work-package-provider-executor.v1";
 export const DEFAULT_DEEPSEEK_REVIEW_SCRIPT = "/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py";
 export const DEFAULT_MODEL = "deepseek-v4-pro[1m]";
+export const DEFAULT_FALLBACK_MODEL = "deepseek-v4-flash";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -150,6 +151,44 @@ function failureResult({ selectedWorkPackages = [], reason, issueCode, command, 
   };
 }
 
+function fallbackModelFrom(options = {}, primaryModel) {
+  const explicit = normalizeString(options.fallback_model ?? options.fallbackModel);
+  const fallback = explicit || DEFAULT_FALLBACK_MODEL;
+  return fallback && fallback !== primaryModel ? fallback : "";
+}
+
+function providerAttemptEvidence({ command, result, status, issueCode, workflowOutputWritten = false }) {
+  const stdout = normalizeString(result?.stdout);
+  const stderr = normalizeString(result?.stderr);
+  const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
+  const timedOut = exitCode === 124 || result?.error?.code === "ETIMEDOUT" || /CLAUDE_DEEPSEEK_TIMEOUT/.test(stderr);
+  return {
+    model: command.model,
+    timeout_seconds: command.timeout_seconds,
+    command_runner_kind: command.command_runner_kind,
+    status,
+    issue: issueCode || null,
+    external_calls: 1,
+    timed_out: timedOut,
+    workflow_output_written: workflowOutputWritten,
+    exit_code: exitCode,
+    command: commandAuditFor(command)
+  };
+}
+
+function withAttempts(result = {}, attempts = []) {
+  const totalExternalCalls = attempts.reduce((count, attempt) => count + Number(attempt.external_calls || 0), 0);
+  return {
+    ...result,
+    provider_attempts: attempts,
+    executor_provenance: {
+      ...(result.executor_provenance || {}),
+      external_calls: totalExternalCalls,
+      provider_attempts: attempts
+    }
+  };
+}
+
 function promptForProviderExecution(input = {}) {
   const workflowState = input.workflow_state || {};
   const selectedWorkPackages = asArray(input.selected_work_packages);
@@ -272,50 +311,93 @@ export function createClaudeDeepSeekContextWorkPackageProviderExecutor(options =
       execution_plan
     }));
 
-    const command = createClaudeDeepSeekProviderCommand({
+    const primaryCommand = createClaudeDeepSeekProviderCommand({
       ...options,
       prompt_file: promptFile,
       command_runner_kind: commandRunnerKind
     });
-    const result = commandRunner(command.command, command.args, {
-      cwd: command.cwd,
-      encoding: "utf8",
-      timeout: (command.timeout_seconds + 5) * 1000
-    });
-    const stdout = normalizeString(result?.stdout);
-    const stderr = normalizeString(result?.stderr);
-    const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
-    const timedOut = exitCode === 124 || result?.error?.code === "ETIMEDOUT" || /CLAUDE_DEEPSEEK_TIMEOUT/.test(stderr);
+    const fallbackModel = fallbackModelFrom(options, primaryCommand.model);
+    const commands = [
+      primaryCommand,
+      ...(fallbackModel ? [
+        createClaudeDeepSeekProviderCommand({
+          ...options,
+          model: fallbackModel,
+          prompt_file: promptFile,
+          command_runner_kind: commandRunnerKind
+        })
+      ] : [])
+    ];
+    const attempts = [];
+    let lastFailure = null;
 
-    if (exitCode !== 0 || result?.error) {
-      return failureResult({
-        selectedWorkPackages: selected_work_packages,
-        reason: timedOut
-          ? `Claude+DeepSeek provider executor timed out after ${command.timeout_seconds}s`
-          : `Claude+DeepSeek provider executor failed with exit code ${exitCode}`,
-        issueCode: timedOut ? "provider_executor_timeout" : "provider_executor_command_failed",
-        command,
-        stdout,
-        stderr,
-        exitCode,
-        timedOut
+    for (const [index, command] of commands.entries()) {
+      const result = commandRunner(command.command, command.args, {
+        cwd: command.cwd,
+        encoding: "utf8",
+        timeout: (command.timeout_seconds + 5) * 1000
       });
+      const stdout = normalizeString(result?.stdout);
+      const stderr = normalizeString(result?.stderr);
+      const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
+      const timedOut = exitCode === 124 || result?.error?.code === "ETIMEDOUT" || /CLAUDE_DEEPSEEK_TIMEOUT/.test(stderr);
+
+      if (exitCode !== 0 || result?.error) {
+        const issueCode = timedOut ? "provider_executor_timeout" : "provider_executor_command_failed";
+        attempts.push(providerAttemptEvidence({
+          command,
+          result,
+          status: "fail",
+          issueCode
+        }));
+        lastFailure = failureResult({
+          selectedWorkPackages: selected_work_packages,
+          reason: timedOut
+            ? `Claude+DeepSeek provider executor timed out after ${command.timeout_seconds}s`
+            : `Claude+DeepSeek provider executor failed with exit code ${exitCode}`,
+          issueCode,
+          command,
+          stdout,
+          stderr,
+          exitCode,
+          timedOut
+        });
+        if (timedOut && index < commands.length - 1) continue;
+        return withAttempts(lastFailure, attempts);
+      }
+
+      const parsed = parseProviderExecutorOutput(stdout);
+      if (!parsed) {
+        const issueCode = "provider_executor_unstructured_output";
+        attempts.push(providerAttemptEvidence({
+          command,
+          result,
+          status: "fail",
+          issueCode
+        }));
+        lastFailure = failureResult({
+          selectedWorkPackages: selected_work_packages,
+          reason: "Claude+DeepSeek provider executor returned non-structured output; completion was not trusted",
+          issueCode,
+          command,
+          stdout,
+          stderr,
+          exitCode,
+          timedOut: false
+        });
+        if (index < commands.length - 1) continue;
+        return withAttempts(lastFailure, attempts);
+      }
+
+      attempts.push(providerAttemptEvidence({
+        command,
+        result,
+        status: "pass",
+        issueCode: null
+      }));
+      return withAttempts(normalizeProviderPass(parsed, command), attempts);
     }
 
-    const parsed = parseProviderExecutorOutput(stdout);
-    if (!parsed) {
-      return failureResult({
-        selectedWorkPackages: selected_work_packages,
-        reason: "Claude+DeepSeek provider executor returned non-structured output; completion was not trusted",
-        issueCode: "provider_executor_unstructured_output",
-        command,
-        stdout,
-        stderr,
-        exitCode,
-        timedOut: false
-      });
-    }
-
-    return normalizeProviderPass(parsed, command);
+    return withAttempts(lastFailure, attempts);
   };
 }

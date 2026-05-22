@@ -11,6 +11,10 @@ import {
   createClaudeDeepSeekProviderCommand,
   parseProviderExecutorOutput
 } from "../src/workflow/context-work-package-provider-executor.js";
+import {
+  latestContextWorkPackagesRunArtifactId,
+  withProviderAttemptsInWorkflowState
+} from "../src/workflow/context-work-package-provider-trial-artifact.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
 
 function workflowState() {
@@ -90,6 +94,12 @@ function providerPassJson(workPackageId = "provider-runtime") {
   });
 }
 
+function latestContextRunArtifact(workflowState = {}) {
+  return [...(workflowState.manifest?.artifacts || [])]
+    .reverse()
+    .find((artifact) => artifact?.metadata?.type === "context_work_packages_run");
+}
+
 test("provider command records bounded audit fields", () => {
   const command = createClaudeDeepSeekProviderCommand({
     cwd: process.cwd(),
@@ -117,6 +127,50 @@ test("provider output parser requires structured JSON object", () => {
   assert.deepEqual(parseProviderExecutorOutput(`noise\n\`\`\`json\n${providerPassJson()}\n\`\`\``), JSON.parse(providerPassJson()));
   assert.equal(parseProviderExecutorOutput("plain provider prose without json"), null);
   assert.equal(parseProviderExecutorOutput("[1,2,3]"), null);
+});
+
+test("provider attempt helper updates ledger artifact when manifest artifact is missing", () => {
+  const attempts = [
+    {
+      model: "deepseek-v4-pro[1m]",
+      status: "fail",
+      timed_out: true,
+      workflow_output_written: false
+    },
+    {
+      model: "deepseek-v4-flash",
+      status: "pass",
+      timed_out: false,
+      workflow_output_written: true
+    }
+  ];
+  const state = {
+    manifest: {
+      artifacts: []
+    },
+    artifact_ledger: {
+      artifacts: [
+        {
+          id: "context-work-packages-run-ledger-only",
+          metadata: {
+            type: "context_work_packages_run",
+            executor_provenance: {
+              provider_attempts: []
+            }
+          }
+        }
+      ]
+    }
+  };
+
+  assert.equal(latestContextWorkPackagesRunArtifactId(state), "context-work-packages-run-ledger-only");
+  const updated = withProviderAttemptsInWorkflowState(state, attempts);
+
+  assert.deepEqual(updated.manifest.artifacts, []);
+  assert.deepEqual(
+    updated.artifact_ledger.artifacts[0].metadata.executor_provenance.provider_attempts,
+    attempts
+  );
 });
 
 test("fake command runner output is structured but cannot complete work packages", () => {
@@ -187,6 +241,252 @@ test("external provider command runner provenance can complete with structured e
   assert.equal(result.artifact.metadata.executor_provenance.command_runner_kind, "external_provider_command_runner");
   assert.equal(result.artifact.metadata.executor_provenance.no_tools, true);
   assert.equal(result.artifact.metadata.completion_authority.allows_work_package_completion, true);
+});
+
+test("primary provider timeout falls back to external provider runner and completes with attempt evidence", () => {
+  const calls = [];
+  const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
+    cwd: process.cwd(),
+    timeout_seconds: 60,
+    model: "deepseek-v4-pro[1m]",
+    fallback_model: "deepseek-v4-flash",
+    no_tools: true,
+    command_runner_kind: "external_provider_command_runner",
+    commandRunner: (command, args) => {
+      calls.push({ command, args });
+      if (calls.length === 1) {
+        return {
+          status: 124,
+          stdout: "",
+          stderr: "CLAUDE_DEEPSEEK_TIMEOUT"
+        };
+      }
+      return {
+        status: 0,
+        stdout: providerPassJson(),
+        stderr: "external_provider_command_runner"
+      };
+    }
+  });
+
+  const result = runContextWorkPackages(workflowState(), {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T06:03:00.000Z",
+    provider_executor: executor
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_count, 1);
+  assert.equal(calls.length, 2);
+  assert.ok(calls[0].args.includes("deepseek-v4-pro[1m]"));
+  assert.ok(calls[1].args.includes("deepseek-v4-flash"));
+  assert.equal(result.artifact.metadata.executor_provenance.model, "deepseek-v4-flash");
+  assert.equal(result.artifact.metadata.executor_provenance.external_calls, 2);
+  assert.equal(result.artifact.metadata.executor_provenance.provider_attempts.length, 2);
+  assert.deepEqual(result.artifact.metadata.executor_provenance.provider_attempts.map((attempt) => attempt.status), ["fail", "pass"]);
+  assert.deepEqual(result.artifact.metadata.executor_provenance.provider_attempts.map((attempt) => attempt.model), [
+    "deepseek-v4-pro[1m]",
+    "deepseek-v4-flash"
+  ]);
+  assert.equal(result.artifact.metadata.executor_provenance.provider_attempts[0].timed_out, true);
+  assert.equal(result.artifact.metadata.executor_provenance.provider_attempts[0].issue, "provider_executor_timeout");
+  assert.equal(result.workflow_state.manifest.work_packages.find((item) => item.id === "provider-runtime").status, "completed");
+});
+
+test("primary provider unstructured output falls back to external provider runner and completes with attempt evidence", () => {
+  const calls = [];
+  const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
+    cwd: process.cwd(),
+    timeout_seconds: 60,
+    model: "deepseek-v4-pro[1m]",
+    fallback_model: "deepseek-v4-flash",
+    no_tools: true,
+    command_runner_kind: "external_provider_command_runner",
+    commandRunner: (command, args) => {
+      calls.push({ command, args });
+      if (calls.length === 1) {
+        return {
+          status: 0,
+          stdout: "<bash>echo not-json</bash>",
+          stderr: ""
+        };
+      }
+      return {
+        status: 0,
+        stdout: providerPassJson(),
+        stderr: "external_provider_command_runner"
+      };
+    }
+  });
+
+  const result = runContextWorkPackages(workflowState(), {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T06:03:30.000Z",
+    provider_executor: executor
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_count, 1);
+  assert.equal(calls.length, 2);
+  assert.ok(calls[0].args.includes("deepseek-v4-pro[1m]"));
+  assert.ok(calls[1].args.includes("deepseek-v4-flash"));
+  assert.equal(result.artifact.metadata.executor_provenance.model, "deepseek-v4-flash");
+  assert.equal(result.artifact.metadata.executor_provenance.external_calls, 2);
+  assert.deepEqual(result.artifact.metadata.executor_provenance.provider_attempts.map((attempt) => attempt.status), ["fail", "pass"]);
+  assert.deepEqual(result.artifact.metadata.executor_provenance.provider_attempts.map((attempt) => attempt.issue), [
+    "provider_executor_unstructured_output",
+    null
+  ]);
+  assert.equal(result.artifact.metadata.executor_provenance.provider_attempts[0].timed_out, false);
+  assert.equal(result.workflow_state.manifest.work_packages.find((item) => item.id === "provider-runtime").status, "completed");
+});
+
+test("primary timeout plus fake fallback remains blocked and non-completing", () => {
+  const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
+    cwd: process.cwd(),
+    timeout_seconds: 60,
+    model: "deepseek-v4-pro[1m]",
+    fallback_model: "deepseek-v4-flash",
+    no_tools: true,
+    command_runner_kind: "fake_test_command_runner",
+    commandRunner: (() => {
+      let calls = 0;
+      return () => {
+        calls += 1;
+        if (calls === 1) {
+          return {
+            status: 124,
+            stdout: "",
+            stderr: "CLAUDE_DEEPSEEK_TIMEOUT"
+          };
+        }
+        return {
+          status: 0,
+          stdout: providerPassJson(),
+          stderr: "fake_test_command_runner"
+        };
+      };
+    })()
+  });
+
+  const result = runContextWorkPackages(workflowState(), {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T06:04:00.000Z",
+    provider_executor: executor
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.workflow_state, undefined);
+  assert.equal(result.artifact, undefined);
+  assert.equal(result.executor_provenance.external_calls, 2);
+  assert.equal(result.executor_provenance.provider_attempts.length, 2);
+  assert.deepEqual(result.executor_provenance.provider_attempts.map((attempt) => attempt.status), ["fail", "pass"]);
+  assert.equal(result.executor_provenance.provider_attempts[1].command_runner_kind, "fake_test_command_runner");
+  assert.equal(result.package_results[0].status, "pass");
+  assert.equal(result.package_results[0].allows_work_package_completion, false);
+  assert.ok(result.issues.some((issue) => issue.code === "non_external_command_runner_provenance_not_allowed"));
+});
+
+test("primary unstructured output plus fake fallback remains blocked and non-completing", () => {
+  const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
+    cwd: process.cwd(),
+    timeout_seconds: 60,
+    model: "deepseek-v4-pro[1m]",
+    fallback_model: "deepseek-v4-flash",
+    no_tools: true,
+    command_runner_kind: "fake_test_command_runner",
+    commandRunner: (() => {
+      let calls = 0;
+      return () => {
+        calls += 1;
+        if (calls === 1) {
+          return {
+            status: 0,
+            stdout: "<bash>echo not-json</bash>",
+            stderr: ""
+          };
+        }
+        return {
+          status: 0,
+          stdout: providerPassJson(),
+          stderr: "fake_test_command_runner"
+        };
+      };
+    })()
+  });
+
+  const result = runContextWorkPackages(workflowState(), {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T06:04:15.000Z",
+    provider_executor: executor
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.workflow_state, undefined);
+  assert.equal(result.artifact, undefined);
+  assert.equal(result.executor_provenance.external_calls, 2);
+  assert.deepEqual(result.executor_provenance.provider_attempts.map((attempt) => attempt.issue), [
+    "provider_executor_unstructured_output",
+    null
+  ]);
+  assert.equal(result.package_results[0].status, "pass");
+  assert.equal(result.package_results[0].allows_work_package_completion, false);
+  assert.ok(result.issues.some((issue) => issue.code === "non_external_command_runner_provenance_not_allowed"));
+});
+
+test("all provider attempts fail without workflow output or completion artifact", () => {
+  const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
+    cwd: process.cwd(),
+    timeout_seconds: 30,
+    model: "deepseek-v4-pro[1m]",
+    fallback_model: "deepseek-v4-flash",
+    command_runner_kind: "external_provider_command_runner",
+    commandRunner: (() => {
+      let calls = 0;
+      return () => {
+        calls += 1;
+        if (calls === 1) {
+          return {
+            status: 124,
+            stdout: "",
+            stderr: "CLAUDE_DEEPSEEK_TIMEOUT"
+          };
+        }
+        return {
+          status: 2,
+          stdout: "",
+          stderr: "provider failed"
+        };
+      };
+    })()
+  });
+
+  const result = runContextWorkPackages(workflowState(), {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T06:04:30.000Z",
+    provider_executor: executor
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.workflow_state, undefined);
+  assert.equal(result.artifact, undefined);
+  assert.equal(result.executor_provenance.external_calls, 2);
+  assert.equal(result.executor_provenance.provider_attempts.length, 2);
+  assert.deepEqual(result.executor_provenance.provider_attempts.map((attempt) => attempt.issue), [
+    "provider_executor_timeout",
+    "provider_executor_command_failed"
+  ]);
+  assert.equal(result.package_results[0].completion_evidence.evidence.issue_code, "provider_executor_command_failed");
 });
 
 test("provider executor fails closed on command failure, timeout, or non-structured output", () => {
@@ -269,8 +569,116 @@ test("provider trial CLI writes fake-test provenance without HTTP/body executor 
   assert.equal(artifact.runner_options.command_runner_kind, "fake_test_command_runner");
   assert.equal(artifact.result.executor_provenance.command_runner_kind, "fake_test_command_runner");
   assert.equal(artifact.result.executor_provenance.no_tools, true);
+  assert.equal(artifact.result.provider_attempts.length, 1);
+  assert.equal(artifact.result.provider_attempts[0].model, "deepseek-v4-pro[1m]");
+  assert.equal(artifact.result.provider_attempts[0].workflow_output_written, false);
   assert.equal(artifact.result.completion_authority.allows_work_package_completion, false);
   assert.ok(artifact.result.issues.some((issue) => issue.code === "non_external_command_runner_provenance_not_allowed"));
   assert.equal(artifact.workflow_output_path, null);
   assert.equal(existsSync(workflowOutputPath), false);
+});
+
+test("provider trial CLI explicit fake opt-in remains blocked without workflow output", () => {
+  const dir = mkdtempSync(join(tmpdir(), "context-provider-trial-fake-opt-in-"));
+  const inputPath = join(dir, "workflow-state.json");
+  const outputPath = join(dir, "provider-trial.json");
+  const workflowOutputPath = join(dir, "workflow-output.json");
+  writeFileSync(inputPath, `${JSON.stringify(workflowState(), null, 2)}\n`);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-context-work-package-provider-trial.mjs",
+    "--input",
+    inputPath,
+    "--output",
+    outputPath,
+    "--workflow-output",
+    workflowOutputPath,
+    "--created-at",
+    "2026-05-22T06:11:00.000Z",
+    "--no-tools"
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      AI_CONTROL_PLATFORM_ALLOW_FAKE_PROVIDER_TRIAL: "1",
+      AI_CONTROL_PLATFORM_PROVIDER_TRIAL_FAKE_STDOUT_JSON: providerPassJson()
+    }
+  });
+
+  assert.notEqual(result.status, 0);
+  const artifact = JSON.parse(readFileSync(outputPath, "utf8"));
+
+  assert.equal(artifact.status, "blocked");
+  assert.equal(artifact.runner_options.command_runner_kind, "fake_test_command_runner");
+  assert.equal(artifact.result.executor_provenance.command_runner_kind, "fake_test_command_runner");
+  assert.ok(artifact.result.issues.some((issue) => issue.code === "non_external_command_runner_provenance_not_allowed"));
+  assert.equal(artifact.workflow_output_path, null);
+  assert.equal(existsSync(workflowOutputPath), false);
+});
+
+test("provider trial CLI writes fallback attempt evidence into workflow output artifacts", () => {
+  const dir = mkdtempSync(join(tmpdir(), "context-provider-trial-fallback-"));
+  const inputPath = join(dir, "workflow-state.json");
+  const outputPath = join(dir, "provider-trial.json");
+  const workflowOutputPath = join(dir, "workflow-output.json");
+  const scriptPath = join(dir, "provider-runner.mjs");
+  writeFileSync(inputPath, `${JSON.stringify(workflowState(), null, 2)}\n`);
+  writeFileSync(scriptPath, `
+const model = process.argv[process.argv.indexOf("--model") + 1];
+if (model === "deepseek-v4-pro[1m]") {
+  console.error("CLAUDE_DEEPSEEK_TIMEOUT");
+  process.exit(124);
+}
+console.log(${JSON.stringify(providerPassJson())});
+`);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-context-work-package-provider-trial.mjs",
+    "--input",
+    inputPath,
+    "--output",
+    outputPath,
+    "--workflow-output",
+    workflowOutputPath,
+    "--created-at",
+    "2026-05-22T06:12:00.000Z",
+    "--no-tools",
+    "--python",
+    process.execPath,
+    "--script-path",
+    scriptPath,
+    "--model",
+    "deepseek-v4-pro[1m]",
+    "--fallback-model",
+    "deepseek-v4-flash"
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      NODE_ENV: "test"
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const artifact = JSON.parse(readFileSync(outputPath, "utf8"));
+  const outputWorkflowState = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
+  const outputRunArtifact = latestContextRunArtifact(outputWorkflowState);
+  const ledgerRunArtifact = outputWorkflowState.artifact_ledger.artifacts.find((item) => item.id === outputRunArtifact.id);
+  const workflowAttempts = outputRunArtifact.metadata.executor_provenance.provider_attempts;
+  const ledgerAttempts = ledgerRunArtifact.metadata.executor_provenance.provider_attempts;
+
+  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.workflow_output_path, workflowOutputPath);
+  assert.deepEqual(artifact.result.provider_attempts.map((attempt) => attempt.workflow_output_written), [false, true]);
+  assert.deepEqual(artifact.workflow_state.manifest.artifacts.at(-1).metadata.executor_provenance.provider_attempts, artifact.result.provider_attempts);
+  assert.deepEqual(workflowAttempts, artifact.result.provider_attempts);
+  assert.deepEqual(ledgerAttempts, artifact.result.provider_attempts);
+  assert.equal(workflowAttempts[0].model, "deepseek-v4-pro[1m]");
+  assert.equal(workflowAttempts[0].timed_out, true);
+  assert.equal(workflowAttempts[0].workflow_output_written, false);
+  assert.equal(workflowAttempts[1].model, "deepseek-v4-flash");
+  assert.equal(workflowAttempts[1].workflow_output_written, true);
 });

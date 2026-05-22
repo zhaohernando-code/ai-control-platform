@@ -4,6 +4,10 @@ import { dirname, resolve } from "node:path";
 
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { createClaudeDeepSeekContextWorkPackageProviderExecutor } from "../src/workflow/context-work-package-provider-executor.js";
+import {
+  withProviderAttemptsInRunArtifact,
+  withProviderAttemptsInWorkflowState
+} from "../src/workflow/context-work-package-provider-trial-artifact.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
 
 const TRIAL_ARTIFACT_VERSION = "context-work-package-provider-trial.v1";
@@ -19,6 +23,7 @@ function usage() {
     "  --cwd <path>                  Provider command cwd; defaults to current working directory",
     "  --timeout-seconds <seconds>   Bounded provider command timeout",
     "  --model <model>               Provider model; defaults to deepseek-v4-pro[1m]",
+    "  --fallback-model <model>      Provider timeout fallback model; defaults to deepseek-v4-flash",
     "  --tools <tool-list>           Claude Code tools list, for example Read,Edit",
     "  --no-tools                    Pass an empty tools list to the provider command",
     "  --created-at <iso>            Stable timestamp for runner artifacts",
@@ -97,6 +102,7 @@ const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
   cwd: valueAfter("--cwd", args) || process.cwd(),
   timeout_seconds: valueAfter("--timeout-seconds", args),
   model: valueAfter("--model", args),
+  fallback_model: valueAfter("--fallback-model", args),
   tools: valueAfter("--tools", args),
   no_tools: hasFlag("--no-tools", args),
   script_path: valueAfter("--script-path", args),
@@ -115,6 +121,27 @@ const runnerOptions = {
   provider_executor: executor
 };
 const result = runContextWorkPackages(workflowState, runnerOptions);
+const rawProviderAttempts = result.executor_provenance?.provider_attempts ||
+  result.artifact?.metadata?.executor_provenance?.provider_attempts ||
+  [];
+const shouldWriteWorkflowOutput = result.status === "pass" && result.workflow_state && (workflowOutputPath || inPlace);
+const providerAttempts = rawProviderAttempts.map((attempt) => ({
+  ...attempt,
+  workflow_output_written: attempt.status === "pass" && Boolean(shouldWriteWorkflowOutput)
+}));
+const finalWorkflowState = shouldWriteWorkflowOutput
+  ? withProviderAttemptsInWorkflowState(result.workflow_state, providerAttempts)
+  : result.workflow_state || null;
+const finalRunArtifact = withProviderAttemptsInRunArtifact(result.artifact, providerAttempts);
+const rawExecutorProvenance = result.executor_provenance ||
+  finalRunArtifact?.metadata?.executor_provenance ||
+  null;
+const finalExecutorProvenance = rawExecutorProvenance
+  ? {
+      ...rawExecutorProvenance,
+      provider_attempts: providerAttempts
+    }
+  : null;
 const artifact = {
   version: TRIAL_ARTIFACT_VERSION,
   status: result.status,
@@ -126,7 +153,9 @@ const artifact = {
     execution_mode: runnerOptions.execution_mode,
     execution_profile: runnerOptions.execution_profile,
     provider_executor_injection: "runner_options",
-    command_runner_kind: fakeRunner ? "fake_test_command_runner" : "spawn_sync"
+    command_runner_kind: fakeRunner ? "fake_test_command_runner" : "spawn_sync",
+    model: valueAfter("--model", args) || "deepseek-v4-pro[1m]",
+    fallback_model: valueAfter("--fallback-model", args) || "deepseek-v4-flash"
   },
   result: {
     status: result.status,
@@ -135,19 +164,20 @@ const artifact = {
     executed_work_packages: result.executed_work_packages || [],
     selected_work_package_ids: result.selected_work_package_ids || [],
     issues: result.issues || [],
-    artifact: result.artifact || null,
+    artifact: finalRunArtifact || null,
     fixed_development_mode_gate: result.fixed_development_mode_gate || result.gate_result || null,
     execution_plan: result.execution_plan || null,
-    model_routing: result.artifact?.metadata?.model_routing || null,
-    package_results: result.package_results || result.artifact?.metadata?.package_results || [],
-    executor_provenance: result.executor_provenance || result.artifact?.metadata?.executor_provenance || null,
+    model_routing: finalRunArtifact?.metadata?.model_routing || null,
+    package_results: result.package_results || finalRunArtifact?.metadata?.package_results || [],
+    executor_provenance: finalExecutorProvenance,
+    provider_attempts: providerAttempts,
     completion_authority: result.completion_authority || result.artifact?.metadata?.completion_authority || null
   },
-  workflow_state: result.workflow_state || null
+  workflow_state: finalWorkflowState
 };
 
-if (result.status === "pass" && result.workflow_state && (workflowOutputPath || inPlace)) {
-  artifact.workflow_output_path = writeJson(inPlace ? inputPath : workflowOutputPath, result.workflow_state);
+if (shouldWriteWorkflowOutput) {
+  artifact.workflow_output_path = writeJson(inPlace ? inputPath : workflowOutputPath, finalWorkflowState);
 }
 
 const artifactPath = writeJson(outputPath, artifact);
