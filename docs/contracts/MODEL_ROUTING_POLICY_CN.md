@@ -75,6 +75,10 @@ Context Pack
 - 显式请求 provider/model-routed mode 时，必须提供已注册的 `execution_profile`；缺失或未知 profile 必须 blocked closed，不能把 work package 标为完成。
 - `bounded_mock_multi_agent`、`deterministic_mock_multi_agent` 以及任何 mock/simulation 类 execution token 都是非完成证据；即使调用方漏传 `execution_mode=provider_model_routed`，也必须进入 blocked/validated non-completing 路径，不得写 completed。
 - 当前平台内置的 deterministic profile 是 `bounded_mock_multi_agent`。它只生成模型路由计划和模拟校验结果，`external_calls=0`，用于测试和工作台试跑；它没有 completion authority，不能作为 work package 完成证据。
+- 当前真实 provider seam profile 是 `verified_provider_multi_agent`。它不在 adapter 内直接调用网络或模型；真实 GPT/DeepSeek/Claude 后续必须通过 runner/server 注入的 executor 函数接入。
+- `verified_provider_multi_agent` 缺少 executor 时必须 blocked closed；executor 只能来自 `runContextWorkPackages` / `createWorkbenchServer` 的配置选项，不能从 `/api/workbench/context-work-packages-run` 或 `/api/workbench/next-action` 的 HTTP body 注入。
+- 真实 executor 的返回必须经 adapter 标准化：顶层 `status=pass`、每个 selected package result `status=pass`、合法外部 provider call provenance、顶层和 package completion evidence 全部存在时，adapter 才能合成顶层与 package result 两层 completion authority。
+- 缺少 external-call provenance、completion evidence、package result，或 executor provenance 指向 local/mock/simulation 时，真实 profile 只能返回 blocked/fail non-completing 结果，不得写 `work_packages[].status=completed`。
 - provider/model-routed adapter 必须在顶层结果和每个 package result 上显式声明 `completion_authority` / `allows_work_package_completion`。runner 只能使用两层都具备完成授权且 `status=pass` 的 package result 写 completed。
 - non-completing profile 必须返回 `validated` / `simulated_execution` 语义，暴露 execution plan、package results、executor provenance 和 issues 供工作台展示，但不得返回 `workflow_state` 或 pass completion artifact。
 - 真实 GPT/DeepSeek/Claude provider adapter 后续只能挂在同一接口后，不得绕过 fixed-development-mode gate 或直接写业务项目状态。

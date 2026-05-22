@@ -12,6 +12,7 @@ import {
   runSchedulerDispatchPlan
 } from "../src/workflow/scheduler-dispatch-runner.js";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
+import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
 mkdirSync("tmp", { recursive: true });
@@ -74,6 +75,61 @@ function runNode(args, options = {}) {
     child.on("error", reject);
     child.on("close", (status) => resolveRun({ status, stdout, stderr }));
   });
+}
+
+function providerContextWorkPackageWorkflowState() {
+  const workPackages = [
+    {
+      id: "provider-runtime",
+      title: "Provider runtime",
+      status: "pending",
+      owned_files: ["src/workflow/context-work-package-execution-adapter.js"]
+    }
+  ];
+  return {
+    manifest: {
+      run_id: "run-workbench-provider",
+      cycle_id: "cycle-workbench-provider",
+      goal: "verify provider-routed workbench execution",
+      context_pack: {
+        requirement_summary: "中台工作台 provider adapter seam",
+        host: "platform_core",
+        target_project_id: "ai-control-platform",
+        non_goals: ["不修改业务项目"],
+        forbidden_actions: ["不得从 HTTP body 注入 executor"],
+        owned_files: ["src/workflow/context-work-package-execution-adapter.js"],
+        acceptance_gates: ["node --test test/workbench-server.test.js"],
+        rollback_conditions: ["provider executor provenance invalid"],
+        subtasks: [
+          {
+            id: "provider-runtime",
+            title: "Provider runtime",
+            owned_files: ["src/workflow/context-work-package-execution-adapter.js"]
+          }
+        ]
+      },
+      work_packages: workPackages,
+      events: [
+        {
+          id: "event-provider-context-cycle",
+          type: "context_pack_cycle_materialized",
+          status: "pass",
+          message: "provider context cycle materialized",
+          created_at: "2026-05-22T05:19:00.000Z"
+        }
+      ],
+      artifacts: [],
+      gate_results: [],
+      review_findings: [],
+      recovery_attempts: []
+    },
+    artifact_ledger: {
+      run_id: "run-workbench-provider",
+      cycle_id: "cycle-workbench-provider",
+      artifacts: []
+    },
+    task_dag: workPackages
+  };
 }
 
 test("workbench server returns latest projection", async () => {
@@ -394,6 +450,97 @@ test("workbench server executes project status continuation next action", async 
     assert.equal(stateAfterLocalRun.manifest.work_packages[0].status, "completed");
     assert.equal(stateAfterLocalRun.artifact_ledger.artifacts.at(-1).metadata.execution_profile, "local_bounded");
   }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
+test("workbench server only completes verified provider profile with configured executor", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-provider-context-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "provider-context-input.json");
+  writeFileSync(inputPath, JSON.stringify(providerContextWorkPackageWorkflowState(), null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "provider-context",
+    items: [
+      {
+        id: "provider-context",
+        label: "Provider context",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/context-work-packages-run?id=provider-context`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_package_count: 1,
+        execution_mode: "provider_model_routed",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        provider_executor: "http-body-must-not-be-used",
+        created_at: "2026-05-22T05:20:00.000Z"
+      })
+    });
+    const rejected = response.json();
+    const stateAfterRejected = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 409);
+    assert.equal(rejected.error, "context work package run failed");
+    assert.ok(rejected.issues.some((issue) => issue.code === "missing_provider_executor"));
+    assert.notEqual(stateAfterRejected.manifest.work_packages[0].status, "completed");
+    assert.equal(stateAfterRejected.artifact_ledger.artifacts.length, 0);
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=provider-context`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "run_context_work_packages",
+        max_package_count: 1,
+        execution_mode: "provider_model_routed",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        created_at: "2026-05-22T05:21:00.000Z"
+      })
+    });
+    const created = response.json();
+    const stateAfterCreated = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "executed");
+    assert.equal(created.result.status, "created");
+    assert.equal(stateAfterCreated.manifest.work_packages[0].status, "completed");
+    assert.equal(stateAfterCreated.artifact_ledger.artifacts.at(-1).metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
+    assert.equal(stateAfterCreated.artifact_ledger.artifacts.at(-1).metadata.executor_provenance.external_calls, 2);
+    assert.equal(stateAfterCreated.artifact_ledger.artifacts.at(-1).metadata.completion_authority.allows_work_package_completion, true);
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath: null,
+    contextWorkPackageProviderExecutor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "configured workbench executor completed provider context package"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `workbench-provider-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "configured_workbench_provider_executor",
+        provider: "multi_provider",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 2,
+        deterministic: false
+      }
+    })
+  });
 });
 
 test("workbench server returns projection history index", async () => {

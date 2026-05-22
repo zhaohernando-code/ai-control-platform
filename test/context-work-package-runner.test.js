@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
+import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
 import {
   prepareContinuationFromProjectStatus,
@@ -392,4 +393,49 @@ test("context work package runner blocks provider routed mode without supported 
   assert.ok(result.issues.some((item) => item.code === "unsupported_execution_profile"));
   assert.notEqual(workflowState.manifest.work_packages.find((item) => item.id === "runtime")?.status, "completed");
   assert.equal(result.workflow_state, undefined);
+});
+
+test("context work package runner completes verified provider profile with durable provenance and authority", () => {
+  const workflowState = workflowStateWithContextCycle();
+
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T04:06:30.000Z",
+    provider_executor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "verified provider executor completed selected package"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `provider-package-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "gpt_deepseek_claude_provider_executor",
+        provider: "multi_provider",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 3,
+        deterministic: false
+      }
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_count, 1);
+  assert.equal(result.workflow_state.manifest.work_packages.find((item) => item.id === "runtime").status, "completed");
+  assert.equal(result.artifact.metadata.execution_mode, "provider_model_routed");
+  assert.equal(result.artifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
+  assert.equal(result.artifact.metadata.executor_provenance.executor_kind, "gpt_deepseek_claude_provider_executor");
+  assert.equal(result.artifact.metadata.executor_provenance.external_calls, 3);
+  assert.equal(result.artifact.metadata.completion_authority.allows_work_package_completion, true);
+  assert.equal(result.artifact.metadata.package_results[0].allows_work_package_completion, true);
+  assert.equal(result.artifact.metadata.model_routing.strategy, "per_work_package_buildModelCollaborationPlan");
 });

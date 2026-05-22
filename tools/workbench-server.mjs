@@ -733,6 +733,11 @@ export function createWorkbenchServer(options = {}) {
   const snapshotsRoot = resolve(options.snapshotsRoot || defaultSnapshotsRoot);
   const allowedHistoryRoots = [examplesRoot, snapshotsRoot];
   const realReviewerExecutor = options.realReviewerExecutor;
+  const contextWorkPackageProviderExecutor = typeof options.contextWorkPackageProviderExecutor === "function"
+    ? options.contextWorkPackageProviderExecutor
+    : typeof options.context_work_package_provider_executor === "function"
+      ? options.context_work_package_provider_executor
+      : null;
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath)
   );
@@ -1132,7 +1137,10 @@ export function createWorkbenchServer(options = {}) {
 
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
-        const result = runContextWorkPackages(workflowState, contextWorkPackageRunOptions(input));
+        const result = runContextWorkPackages(workflowState, {
+          ...contextWorkPackageRunOptions(input),
+          provider_executor: contextWorkPackageProviderExecutor
+        });
         if (result.status !== "pass") {
           jsonResponse(res, 409, {
             status: result.status,

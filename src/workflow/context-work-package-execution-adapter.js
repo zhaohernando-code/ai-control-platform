@@ -2,12 +2,13 @@ import { buildModelCollaborationPlan, summarizeModelRouting } from "./model-rout
 
 export const CONTEXT_WORK_PACKAGE_EXECUTION_ADAPTER_VERSION = "context-work-package-execution-adapter.v1";
 export const BOUNDED_MOCK_MULTI_AGENT_PROFILE = "bounded_mock_multi_agent";
+export const VERIFIED_PROVIDER_MULTI_AGENT_PROFILE = "verified_provider_multi_agent";
 export const LOCAL_BOUNDED_EXECUTION_PROFILE = "local_bounded";
 export const PROVIDER_MODEL_ROUTED_MODE = "provider_model_routed";
 export const COMPLETION_AUTHORITY_NONE = "none";
 export const COMPLETION_AUTHORITY_EXECUTOR = "executor";
 
-const SUPPORTED_PROFILES = new Set([BOUNDED_MOCK_MULTI_AGENT_PROFILE]);
+const SUPPORTED_PROFILES = new Set([BOUNDED_MOCK_MULTI_AGENT_PROFILE, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE]);
 const PROVIDER_ROUTED_MODES = new Set([
   PROVIDER_MODEL_ROUTED_MODE,
   "provider_routed",
@@ -25,6 +26,10 @@ function normalizeString(value) {
 
 function normalizeToken(value) {
   return normalizeString(value).toLowerCase();
+}
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function compactStrings(value) {
@@ -341,6 +346,312 @@ function mockPackageResult(plan = {}, createdAt) {
   };
 }
 
+function providerExecutorFromOptions(options = {}) {
+  return [
+    options.provider_executor,
+    options.providerExecutor,
+    options.realProviderExecutor,
+    options.contextWorkPackageProviderExecutor,
+    options.context_work_package_provider_executor
+  ].find((candidate) => typeof candidate === "function") || null;
+}
+
+function completionEvidenceFrom(value) {
+  if (typeof value === "string") return normalizeString(value) ? value : null;
+  if (!isObject(value)) return null;
+  if (normalizeString(value.summary || value.uri || value.artifact_id || value.artifactId || value.kind || value.type)) return value;
+  if (Object.keys(value).length > 0) return value;
+  return null;
+}
+
+function externalCallCountFrom(provenance = {}) {
+  if (Array.isArray(provenance.external_calls)) return provenance.external_calls.length;
+  const candidates = [
+    provenance.external_calls,
+    provenance.external_call_count,
+    provenance.externalCallCount,
+    provenance.external_call_budget_used,
+    provenance.externalCallBudgetUsed
+  ];
+  for (const candidate of candidates) {
+    const count = Number(candidate);
+    if (Number.isFinite(count)) return count;
+  }
+  if (Array.isArray(provenance.calls)) return provenance.calls.length;
+  if (Array.isArray(provenance.external_call_ids)) return provenance.external_call_ids.length;
+  if (Array.isArray(provenance.externalCallIds)) return provenance.externalCallIds.length;
+  return 0;
+}
+
+function normalizeExecutorProvenance(executorResult = {}, executionProfile, createdAt) {
+  const raw = executorResult.executor_provenance ||
+    executorResult.executorProvenance ||
+    executorResult.provenance ||
+    {};
+  const issues = [];
+  if (!isObject(raw)) {
+    issues.push(issue("invalid_executor_provenance", "provider executor provenance must be an object", "executor_provenance"));
+  }
+
+  const provenance = isObject(raw) ? raw : {};
+  const executorKind = normalizeToken(provenance.executor_kind || provenance.executorKind || provenance.provider_executor || provenance.providerExecutor);
+  const provenanceProfile = normalizeToken(provenance.execution_profile || provenance.executionProfile || executionProfile);
+  const provider = normalizeToken(provenance.provider || provenance.provider_id || provenance.providerId);
+  const externalCalls = externalCallCountFrom(provenance);
+
+  if (!executorKind) {
+    issues.push(issue("missing_executor_kind", "provider executor provenance must name executor_kind", "executor_provenance.executor_kind"));
+  }
+  if (isLocalBoundedToken(executorKind) || isLocalBoundedToken(provenanceProfile)) {
+    issues.push(issue("local_executor_provenance_not_allowed", "real provider profile cannot claim local_bounded executor provenance", "executor_provenance.executor_kind"));
+  }
+  if (isMockOrSimulationToken(executorKind) || isMockOrSimulationToken(provenanceProfile) || isMockOrSimulationToken(provider)) {
+    issues.push(issue("mock_executor_provenance_not_allowed", "real provider profile cannot use mock or simulation executor provenance", "executor_provenance.executor_kind"));
+  }
+  if (provenance.deterministic === true) {
+    issues.push(issue("deterministic_executor_provenance_not_allowed", "real provider profile requires non-deterministic external execution provenance", "executor_provenance.deterministic"));
+  }
+  if (externalCalls <= 0) {
+    issues.push(issue("missing_external_call_provenance", "real provider profile requires at least one external provider call in provenance", "executor_provenance.external_calls"));
+  }
+
+  return {
+    issues,
+    provenance: {
+      ...provenance,
+      adapter_id: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+      adapter_version: CONTEXT_WORK_PACKAGE_EXECUTION_ADAPTER_VERSION,
+      execution_mode: PROVIDER_MODEL_ROUTED_MODE,
+      execution_profile: executionProfile,
+      executor_kind: executorKind || null,
+      external_calls: externalCalls,
+      deterministic: provenance.deterministic === true,
+      created_at: normalizeString(provenance.created_at || provenance.createdAt) || createdAt
+    }
+  };
+}
+
+function normalizeProviderPackageResults(executorResult = {}, executionPlan = {}, createdAt) {
+  const rawResults = asArray(executorResult.package_results || executorResult.packageResults || executorResult.results);
+  const selectedIds = new Set(asArray(executionPlan.package_plans).map((plan) => normalizeString(plan.work_package_id)));
+  const seenIds = new Set();
+  const rawById = new Map(
+    rawResults
+      .map((result) => [normalizeString(result?.work_package_id || result?.workPackageId || result?.id), result])
+      .filter(([id]) => id)
+  );
+  const issues = [];
+
+  if (rawResults.length === 0 && asArray(executionPlan.package_plans).length > 0) {
+    issues.push(issue("missing_package_results", "provider executor must return package_results", "package_results"));
+  }
+  rawResults.forEach((raw, index) => {
+    const id = normalizeString(raw?.work_package_id || raw?.workPackageId || raw?.id);
+    const status = normalizeToken(raw?.status);
+    if (!id) {
+      issues.push(issue("missing_package_result_id", "provider executor package result must identify a work package", `package_results[${index}]`));
+      return;
+    }
+    if (seenIds.has(id)) {
+      issues.push(issue("duplicate_package_result", `provider executor returned duplicate package result for ${id}`, `package_results.${id}`));
+    }
+    seenIds.add(id);
+    if (!selectedIds.has(id)) {
+      issues.push(issue("unexpected_package_result", `provider executor returned package result outside selected work packages: ${id}`, `package_results.${id}`));
+    }
+    if (status !== "pass") {
+      issues.push(issue("package_result_not_pass", `provider executor package result must be pass for ${id}`, `package_results.${id}.status`));
+    }
+  });
+
+  const packageResults = asArray(executionPlan.package_plans).map((plan) => {
+    const raw = rawById.get(normalizeString(plan.work_package_id)) || {};
+    const status = normalizeToken(raw.status);
+    const completionEvidence = completionEvidenceFrom(raw.completion_evidence || raw.completionEvidence);
+
+    if (!rawById.has(normalizeString(plan.work_package_id))) {
+      issues.push(issue("missing_package_result", `provider executor omitted package result for ${plan.work_package_id}`, `package_results.${plan.work_package_id}`));
+    }
+    if (rawById.has(normalizeString(plan.work_package_id)) && !completionEvidence) {
+      issues.push(issue("missing_package_completion_evidence", `provider executor package result requires completion_evidence for ${plan.work_package_id}`, `package_results.${plan.work_package_id}.completion_evidence`));
+    }
+
+    return {
+      ...raw,
+      work_package_id: plan.work_package_id,
+      status: status || "blocked",
+      result: normalizeString(raw.result) || status || "blocked",
+      completed_at: status === "pass" ? normalizeString(raw.completed_at || raw.completedAt) || createdAt : null,
+      allows_work_package_completion: false,
+      completion_authority: completionAuthority({
+        allowed: false,
+        authority: COMPLETION_AUTHORITY_NONE,
+        evidence_kind: "pending_provider_executor_validation",
+        reason: "provider executor result has not been validated for completion authority"
+      }),
+      completion_evidence: completionEvidence,
+      selected_model: raw.selected_model || raw.selectedModel || plan.collaboration_plan?.selected_model || null,
+      model_roles: raw.model_roles || asArray(plan.collaboration_plan?.roles).map((role) => ({
+        role: role.role,
+        model_id: role.model_id,
+        reason: role.purpose
+      }))
+    };
+  });
+
+  return { issues, packageResults };
+}
+
+function withProviderCompletionAuthority(packageResults = [], executorProvenance = {}, createdAt) {
+  return packageResults.map((result) => ({
+    ...result,
+    completed_at: result.completed_at || createdAt,
+    allows_work_package_completion: true,
+    completion_authority: completionAuthority({
+      allowed: true,
+      authority: COMPLETION_AUTHORITY_EXECUTOR,
+      evidence_kind: "real_provider_execution",
+      reason: "verified provider executor returned pass status, legal external-call provenance, and package completion evidence"
+    }),
+    executor_provenance: {
+      executor_kind: executorProvenance.executor_kind,
+      execution_profile: executorProvenance.execution_profile,
+      external_calls: executorProvenance.external_calls
+    }
+  }));
+}
+
+function executeVerifiedProviderProfile(workflowState = {}, selectedWorkPackages = [], options = {}, executionPlan = {}, createdAt) {
+  const providerExecutor = providerExecutorFromOptions(options);
+  if (!providerExecutor) {
+    return {
+      status: "blocked",
+      phase: "provider_executor_required",
+      issues: [
+        issue(
+          "missing_provider_executor",
+          "verified provider multi-agent profile requires a real provider executor injected by runner/server options",
+          "provider_executor"
+        )
+      ],
+      allows_work_package_completion: false,
+      completion_authority: completionAuthority({
+        allowed: false,
+        authority: COMPLETION_AUTHORITY_NONE,
+        evidence_kind: "missing_executor",
+        reason: "real provider profile blocks closed without an injected executor"
+      }),
+      execution_plan: executionPlan,
+      package_results: [],
+      executor_provenance: null
+    };
+  }
+
+  let executorResult;
+  try {
+    executorResult = providerExecutor({
+      workflow_state: workflowState,
+      selected_work_packages: selectedWorkPackages,
+      execution_plan: executionPlan,
+      options: {
+        ...options,
+        provider_executor: undefined,
+        providerExecutor: undefined,
+        realProviderExecutor: undefined,
+        contextWorkPackageProviderExecutor: undefined,
+        context_work_package_provider_executor: undefined
+      }
+    });
+  } catch (error) {
+    return {
+      status: "fail",
+      phase: "provider_executor_failed",
+      issues: [
+        issue("provider_executor_threw", `provider executor threw before returning completion evidence: ${error.message}`, "provider_executor")
+      ],
+      allows_work_package_completion: false,
+      completion_authority: completionAuthority({
+        allowed: false,
+        authority: COMPLETION_AUTHORITY_NONE,
+        evidence_kind: "executor_error",
+        reason: "provider executor failed before adapter could validate completion evidence"
+      }),
+      execution_plan: executionPlan,
+      package_results: [],
+      executor_provenance: null
+    };
+  }
+
+  if (!isObject(executorResult)) {
+    return {
+      status: "fail",
+      phase: "provider_executor_result_validation",
+      issues: [issue("invalid_provider_executor_result", "provider executor must return an object", "provider_executor.result")],
+      allows_work_package_completion: false,
+      completion_authority: completionAuthority({
+        allowed: false,
+        authority: COMPLETION_AUTHORITY_NONE,
+        evidence_kind: "invalid_executor_result",
+        reason: "provider executor result was not structured"
+      }),
+      execution_plan: executionPlan,
+      package_results: [],
+      executor_provenance: null
+    };
+  }
+
+  const executorStatus = normalizeToken(executorResult.status);
+  const topCompletionEvidence = completionEvidenceFrom(executorResult.completion_evidence || executorResult.completionEvidence);
+  const provenance = normalizeExecutorProvenance(executorResult, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE, createdAt);
+  const normalizedPackages = normalizeProviderPackageResults(executorResult, executionPlan, createdAt);
+  const validationIssues = [
+    ...(executorStatus === "pass" ? [] : [
+      issue("provider_executor_result_not_pass", "provider executor top-level status must be pass", "provider_executor.status")
+    ]),
+    ...(topCompletionEvidence ? [] : [
+      issue("missing_completion_evidence", "provider executor top-level result requires completion_evidence", "provider_executor.completion_evidence")
+    ]),
+    ...provenance.issues,
+    ...normalizedPackages.issues
+  ];
+
+  if (validationIssues.length > 0) {
+    return {
+      status: executorStatus === "fail" ? "fail" : "blocked",
+      phase: "provider_executor_result_validation",
+      issues: validationIssues,
+      allows_work_package_completion: false,
+      completion_authority: completionAuthority({
+        allowed: false,
+        authority: COMPLETION_AUTHORITY_NONE,
+        evidence_kind: "provider_executor_validation_failed",
+        reason: "provider executor did not return pass status, legal provenance, and completion evidence"
+      }),
+      execution_plan: executionPlan,
+      package_results: normalizedPackages.packageResults,
+      executor_provenance: provenance.provenance
+    };
+  }
+
+  const packageResults = withProviderCompletionAuthority(normalizedPackages.packageResults, provenance.provenance, createdAt);
+  return {
+    status: "pass",
+    phase: "provider_executor_completed",
+    allows_work_package_completion: true,
+    completion_authority: completionAuthority({
+      allowed: true,
+      authority: COMPLETION_AUTHORITY_EXECUTOR,
+      evidence_kind: "real_provider_execution",
+      reason: "verified provider executor returned pass status, legal external-call provenance, and completion evidence"
+    }),
+    completion_evidence: topCompletionEvidence,
+    execution_plan: executionPlan,
+    package_results: packageResults,
+    executor_provenance: provenance.provenance,
+    issues: []
+  };
+}
+
 export function executeContextWorkPackagesWithAdapter(workflowState = {}, selectedWorkPackages = [], options = {}) {
   const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
   const executionPlan = buildContextWorkPackageExecutionPlan(workflowState, selectedWorkPackages, options);
@@ -361,6 +672,10 @@ export function executeContextWorkPackagesWithAdapter(workflowState = {}, select
       package_results: [],
       executor_provenance: null
     };
+  }
+
+  if (executionPlan.execution_profile === VERIFIED_PROVIDER_MULTI_AGENT_PROFILE) {
+    return executeVerifiedProviderProfile(workflowState, selectedWorkPackages, options, executionPlan, createdAt);
   }
 
   const packageResults = executionPlan.package_plans.map((plan) => mockPackageResult(plan, createdAt));

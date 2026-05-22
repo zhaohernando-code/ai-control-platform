@@ -6,7 +6,8 @@ import {
   buildContextWorkPackageExecutionPlan,
   executeContextWorkPackagesWithAdapter,
   isProviderModelRoutedExecutionRequested,
-  PROVIDER_MODEL_ROUTED_MODE
+  PROVIDER_MODEL_ROUTED_MODE,
+  VERIFIED_PROVIDER_MULTI_AGENT_PROFILE
 } from "../src/workflow/context-work-package-execution-adapter.js";
 
 function workflowState() {
@@ -119,4 +120,93 @@ test("provider/model routed execution blocks closed without a supported profile"
   assert.equal(unknownProfile.completion_authority.allows_work_package_completion, false);
   assert.ok(unknownProfile.issues.some((item) => item.code === "unsupported_execution_profile"));
   assert.deepEqual(unknownProfile.package_results, []);
+});
+
+test("verified provider profile blocks closed without injected executor", () => {
+  const result = executeContextWorkPackagesWithAdapter(workflowState(), selectedPackages, {
+    execution_mode: PROVIDER_MODEL_ROUTED_MODE,
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T05:10:00.000Z"
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "provider_executor_required");
+  assert.equal(result.allows_work_package_completion, false);
+  assert.equal(result.completion_authority.allows_work_package_completion, false);
+  assert.equal(result.executor_provenance, null);
+  assert.deepEqual(result.package_results, []);
+  assert.ok(result.issues.some((item) => item.code === "missing_provider_executor"));
+});
+
+test("verified provider profile blocks pass result without completion evidence and external-call provenance", () => {
+  const result = executeContextWorkPackagesWithAdapter(workflowState(), selectedPackages, {
+    execution_mode: PROVIDER_MODEL_ROUTED_MODE,
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T05:11:00.000Z",
+    provider_executor: ({ selected_work_packages }) => ({
+      status: "pass",
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass"
+      })),
+      executor_provenance: {
+        executor_kind: "claude_deepseek_provider_executor",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 0
+      }
+    })
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "provider_executor_result_validation");
+  assert.equal(result.allows_work_package_completion, false);
+  assert.equal(result.completion_authority.allows_work_package_completion, false);
+  assert.equal(result.package_results[0].allows_work_package_completion, false);
+  assert.equal(result.package_results[0].completion_authority.allows_work_package_completion, false);
+  assert.ok(result.issues.some((item) => item.code === "missing_completion_evidence"));
+  assert.ok(result.issues.some((item) => item.code === "missing_package_completion_evidence"));
+  assert.ok(result.issues.some((item) => item.code === "missing_external_call_provenance"));
+});
+
+test("verified provider profile grants completion authority only for compliant executor evidence", () => {
+  const result = executeContextWorkPackagesWithAdapter(workflowState(), selectedPackages, {
+    execution_mode: PROVIDER_MODEL_ROUTED_MODE,
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T05:12:00.000Z",
+    provider_executor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "real provider executor completed selected context work package"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `provider-completion-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "claude_deepseek_gpt_provider_executor",
+        provider: "multi_provider",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 2,
+        deterministic: false
+      }
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "provider_executor_completed");
+  assert.equal(result.allows_work_package_completion, true);
+  assert.equal(result.completion_authority.allows_work_package_completion, true);
+  assert.equal(result.completion_authority.evidence_kind, "real_provider_execution");
+  assert.equal(result.executor_provenance.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
+  assert.equal(result.executor_provenance.external_calls, 2);
+  assert.equal(result.package_results[0].status, "pass");
+  assert.equal(result.package_results[0].allows_work_package_completion, true);
+  assert.equal(result.package_results[0].completion_authority.allows_work_package_completion, true);
+  assert.equal(result.execution_plan.model_routing.strategy, "per_work_package_buildModelCollaborationPlan");
 });
