@@ -393,6 +393,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "A durable context_pack_seed is still not an executable cycle; the workbench next-action path must validate the seed, materialize it into a projection-ready workflow snapshot, and ensure root owned_files cover subtask owned_files before dispatch."
+    },
+    {
+      "id": "context-cycle-stops-before-work-package-run",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Materialized context cycles must not stop at readout; run_context_work_packages must durably execute dispatchable work packages and update manifest, task DAG, and artifact ledger state."
     }
   ],
   "hardening_items": [
@@ -1018,6 +1025,14 @@
       "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/context-pack-cycle.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/autonomous-continuation.test.js; test/context-pack-cycle.test.js; test/workbench-projection.test.js; test/workbench-server.test.js",
       "regression_test": "context pack cycle materializes latest project status continuation seed; context pack cycle blocks without a project status continuation fact; workbench projection exposes materialized context pack cycle as pending execution; workbench server executes project status continuation next action",
       "verification": "node --test test/context-pack-cycle.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-cycle-stops-before-work-package-run",
+      "invariant": "Context-pack cycles that contain dispatchable task DAG nodes must recommend and execute run_context_work_packages through the workbench next-action path; every bounded run must append durable context_work_packages_run evidence and leave remaining DAG state visible for the next cycle.",
+      "enforcement_target": "src/workflow/context-work-package-runner.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/context-work-package-runner.test.js; test/workbench-projection.test.js; test/workbench-server.test.js",
+      "regression_test": "context work package runner executes dispatchable packages and updates workflow state; context work package runner blocks when no packages can dispatch; workbench projection exposes materialized context pack cycle as ready execution; workbench server executes project status continuation next action",
+      "verification": "node --test test/context-work-package-runner.test.js test/workbench-projection.test.js test/workbench-server.test.js test/context-pack-cycle.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

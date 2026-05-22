@@ -593,6 +593,7 @@ const OPERATION_EVENT_TYPES = new Set([
   "project_status_continuation",
   "context_pack_cycle_materialized",
   "context_pack_cycle_created",
+  "context_work_packages_run",
   "reviewer_provider_health",
   "reviewer_scope_split",
   "reviewer_shard_result",
@@ -624,6 +625,9 @@ function operationSummary(type, metadata = {}) {
   }
   if (type === "context_pack_cycle_created") {
     return `${metadata.status || "unknown"} / ${metadata.work_package_count || 0} work package(s)`;
+  }
+  if (type === "context_work_packages_run") {
+    return `${metadata.status || "unknown"} / ${metadata.executed_count || 0} executed`;
   }
   if (type === "reviewer_provider_health") {
     return `${metadata.provider_health || "unknown"} / ${asArray(metadata.scheduled_actions).join(", ") || "no_action"}`;
@@ -660,7 +664,7 @@ function operationNextActionRole(type, metadata = {}) {
     return metadata.status === "pass" ? "automation_driver" : "operator_observable";
   }
   if (type === "project_status_continuation") return "operator_observable";
-  if (type === "context_pack_cycle_materialized" || type === "context_pack_cycle_created") return "operator_observable";
+  if (type === "context_pack_cycle_materialized" || type === "context_pack_cycle_created" || type === "context_work_packages_run") return "operator_observable";
   if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
     return "automation_driver";
   }
@@ -724,10 +728,26 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
         requires_operator: false
       };
     }
-    if (latest?.type === "context_pack_cycle_materialized" || latest?.type === "context_pack_cycle_created") {
+    if (
+      latest?.type === "context_pack_cycle_materialized" ||
+      latest?.type === "context_pack_cycle_created" ||
+      latest?.type === "context_work_packages_run"
+    ) {
+      const taskDag = summaries.taskDag || {};
+      if (Number(taskDag.dispatchable?.length || 0) > 0) {
+        return {
+          status: "ready",
+          action: "run_context_work_packages",
+          source_event_id: latest.event_id,
+          source_type: latest.type,
+          target_projection_id: null,
+          reason: latest.summary,
+          requires_operator: false
+        };
+      }
       return {
         status: "pending",
-        action: "run_context_work_packages",
+        action: "inspect_context_work_packages",
         source_event_id: latest.event_id,
         source_type: latest.type,
         target_projection_id: null,
@@ -934,15 +954,16 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
+  const modelSummary = summarizeModelRouting(modelPlan);
+  const reviewerSummary = summarizeReviewerGate(reviewerGate);
+  const dagSummary = summarizeDag(dagInput);
   const nextActionReadout = createNextActionReadout(operationsTimeline, {
     schedulerLoop,
     reviewerProviderHealth,
     reviewerShardReview,
-    globalGoalCompletion
+    globalGoalCompletion,
+    taskDag: dagSummary
   });
-  const modelSummary = summarizeModelRouting(modelPlan);
-  const reviewerSummary = summarizeReviewerGate(reviewerGate);
-  const dagSummary = summarizeDag(dagInput);
   const operatorEventSummary = summarizeOperatorEvents(operatorApplication, operatorEventLedger);
   const status = maxStatus([
     inputValidation.status === "pass" ? "pass" : "human_intervention",

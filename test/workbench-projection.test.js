@@ -211,7 +211,7 @@ test("workbench projection advances from prepared project status continuation to
   assert.equal(projection.next_action_readout.source_type, "project_status_continuation");
 });
 
-test("workbench projection exposes materialized context pack cycle as pending execution", () => {
+test("workbench projection exposes materialized context pack cycle as ready execution", () => {
   const input = baseInput();
   const artifact = {
     id: "context-pack-cycle-run-projection-cycle-20260521-001",
@@ -247,11 +247,28 @@ test("workbench projection exposes materialized context pack cycle as pending ex
     ...input.artifact_ledger,
     artifacts: [...input.artifact_ledger.artifacts, artifact]
   };
+  input.task_dag = [
+    {
+      id: "context-runtime",
+      title: "Run context runtime package",
+      status: "pending",
+      action: "implement",
+      owned_files: ["src/workflow/context-work-package-runner.js"]
+    },
+    {
+      id: "context-tests",
+      title: "Run context runner tests",
+      status: "pending",
+      action: "test",
+      depends_on: ["context-runtime"],
+      owned_files: ["test/context-work-package-runner.test.js"]
+    }
+  ];
 
   const projection = createWorkbenchProjection(input);
 
   assert.equal(projection.operations_timeline.latest.type, "context_pack_cycle_created");
-  assert.equal(projection.next_action_readout.status, "pending");
+  assert.equal(projection.next_action_readout.status, "ready");
   assert.equal(projection.next_action_readout.action, "run_context_work_packages");
 });
 

@@ -236,6 +236,23 @@ test("workbench server executes project status continuation next action", async 
     assert.equal(created.result.projection.manifest.work_package_count, 1);
     assert.equal(created.result.projection.next_action_readout.action, "run_context_work_packages");
     assert.equal(sourceAfterCycle.manifest.events.at(-1).type, "context_pack_cycle_materialized");
+
+    const run = await request(`${baseUrl}/api/workbench/next-action?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "run_context_work_packages",
+        max_package_count: 1,
+        created_at: "2026-05-22T03:12:00.000Z"
+      })
+    });
+    const executed = run.json();
+
+    assert.equal(run.status, 201);
+    assert.equal(executed.action, "run_context_work_packages");
+    assert.equal(executed.result.executed_count, 1);
+    assert.equal(executed.result.artifact.metadata.type, "context_work_packages_run");
+    assert.equal(executed.result.projection.manifest.work_package_count, 1);
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 

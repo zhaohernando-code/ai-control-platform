@@ -46,6 +46,7 @@ import {
   recordProjectStatusContinuationPrepared
 } from "../src/workflow/project-status-continuation.js";
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
+import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -369,6 +370,11 @@ function createWorkbenchLoopClient(baseUrl) {
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
     },
+    runContextWorkPackages(projectionId, body = {}) {
+      const url = new URL("/api/workbench/context-work-packages-run", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    },
     runReviewerShard(projectionId, body = {}) {
       const url = new URL("/api/workbench/reviewer-shard-run", base);
       if (projectionId) url.searchParams.set("id", projectionId);
@@ -497,6 +503,7 @@ function appendEvent(eventsPath, event) {
 const SUPPORTED_NEXT_ACTIONS = new Set([
   "prepare_project_status_continuation",
   "create_context_pack_from_seed",
+  "run_context_work_packages",
   "enqueue_scheduler_next_cycle",
   "run_autonomous_scheduler_loop",
   "run_reviewer_scope_shard",
@@ -617,6 +624,14 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
       snapshot_id: input.snapshot_id || input.snapshotId,
       cycle_id: input.cycle_id || input.cycleId,
       label: input.label,
+      created_at: input.created_at || input.createdAt
+    });
+    return { status: "executed", action, result };
+  }
+
+  if (action === "run_context_work_packages") {
+    const result = await client.runContextWorkPackages(selectedId, {
+      max_package_count: input.max_package_count || input.maxPackageCount,
       created_at: input.created_at || input.createdAt
     });
     return { status: "executed", action, result };
@@ -1063,6 +1078,53 @@ export function createWorkbenchServer(options = {}) {
           current_projection: materialized.source_record?.status === "pass"
             ? workbenchProjection(materialized.source_record.workflow_state)
             : workbenchProjection(workflowState)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/context-work-packages-run" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const result = runContextWorkPackages(workflowState, {
+          max_package_count: input.max_package_count || input.maxPackageCount,
+          created_at: input.created_at || input.createdAt
+        });
+        if (result.status !== "pass") {
+          jsonResponse(res, 409, {
+            error: "context work package run failed",
+            issues: result.issues || [],
+            item,
+            projection: workbenchProjection(workflowState)
+          });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          phase: result.phase,
+          executed_count: result.executed_count,
+          executed_work_packages: result.executed_work_packages,
+          artifact: result.artifact,
+          projection: workbenchProjection(result.workflow_state)
         });
         return;
       }
