@@ -56,3 +56,18 @@ test("rejects unknown status and projection version", () => {
   assert.ok(validation.issues.some((issue) => issue.code === "invalid_projection_version"));
   assert.ok(validation.issues.some((issue) => issue.code === "invalid_projection_status"));
 });
+
+test("rejects projections missing lifecycle heartbeat and timeout readout", () => {
+  const projection = readJson("docs/examples/current-session-workbench-projection.json");
+  const mobileProjection = createMobileWorkbenchProjection(readJson("docs/examples/current-session-workbench-input.json"));
+  delete projection.agent_lifecycle_pool.timed_out;
+  delete mobileProjection.agent_lifecycle_pool.heartbeat_count;
+
+  const pcValidation = validateWorkbenchProjectionSchema(projection);
+  const mobileValidation = validateWorkbenchProjectionSchema(mobileProjection);
+
+  assert.equal(pcValidation.status, "fail");
+  assert.ok(pcValidation.issues.some((issue) => issue.code === "missing_required_field" && issue.path === "agent_lifecycle_pool.timed_out"));
+  assert.equal(mobileValidation.status, "fail");
+  assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_required_field" && issue.path === "agent_lifecycle_pool.heartbeat_count"));
+});

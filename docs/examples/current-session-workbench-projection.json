@@ -472,6 +472,8 @@
       "agent_lifecycle_open": 0,
       "agent_lifecycle_unevaluated": 0,
       "agent_lifecycle_unclosed": 0,
+      "agent_lifecycle_timed_out": 0,
+      "agent_lifecycle_heartbeats": 0,
       "global_goals_pending": 3,
       "global_goals_completed": 0,
       "operation_events": 2

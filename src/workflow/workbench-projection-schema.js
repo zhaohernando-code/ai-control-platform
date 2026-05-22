@@ -35,6 +35,19 @@ function requireArray(projection, field, issues) {
   }
 }
 
+function requireOwnField(projection, field, issues, pathPrefix = "") {
+  if (!hasObject(projection) || !Object.prototype.hasOwnProperty.call(projection, field)) {
+    issues.push(issue("missing_required_field", `${pathPrefix ? `${pathPrefix}.` : ""}${field} is required`, pathPrefix ? `${pathPrefix}.${field}` : field));
+  }
+}
+
+function validateAgentLifecyclePool(projection, issues, path = "agent_lifecycle_pool") {
+  if (!hasObject(projection)) return;
+  for (const field of ["timed_out", "heartbeat_count"]) {
+    requireOwnField(projection, field, issues, path);
+  }
+}
+
 function validateStatus(projection, issues) {
   const status = normalizeString(projection?.status);
   if (!PROJECTION_STATUSES.has(status)) {
@@ -81,6 +94,7 @@ function validatePcProjection(projection, issues) {
     requireObject(projection.one_screen, "counters", issues);
     requireArray(projection.one_screen, "next_actions", issues);
   }
+  validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
 }
 
 function validateMobileProjection(projection, issues) {
@@ -94,6 +108,7 @@ function validateMobileProjection(projection, issues) {
 
   requireArray(projection, "next_actions", issues);
   requireArray(projection, "blockers", issues);
+  validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
 }
 
 export function validateWorkbenchProjectionSchema(projection) {

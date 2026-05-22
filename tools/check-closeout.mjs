@@ -23,6 +23,7 @@ function validateWorkbenchBrowserEventsArtifact(path) {
   const scenarios = Array.isArray(artifact.scenarios) ? artifact.scenarios : [];
   const byScenario = new Map(scenarios.map((scenario) => [scenario.scenario, scenario]));
   const partialReadout = byScenario.get("projected_real_partial_shard_readout") || {};
+  const lifecycleTimeoutReadout = byScenario.get("agent_lifecycle_pool_timeout_readout") || {};
   const lifecycleCleanup = byScenario.get("agent_lifecycle_pool_cleanup_click") || {};
   const lifecycleCleanupLoop = byScenario.get("agent_lifecycle_pool_cleanup_loop_click") || {};
   if (artifact.version !== WORKBENCH_BROWSER_EVENTS_RUN_VERSION) {
@@ -36,6 +37,14 @@ function validateWorkbenchBrowserEventsArtifact(path) {
   }
   if (partialReadout.next_action_readout !== "run_reviewer_scope_shard") {
     throw new Error("workbench browser events artifact is missing projected real next action evidence");
+  }
+  if (
+    lifecycleTimeoutReadout.desktop_timed_out !== "1" ||
+    lifecycleTimeoutReadout.mobile_timed_out !== "1" ||
+    lifecycleTimeoutReadout.desktop_heartbeats !== "1" ||
+    lifecycleTimeoutReadout.mobile_heartbeats !== "1"
+  ) {
+    throw new Error("workbench browser events artifact is missing lifecycle heartbeat/timeout readout evidence");
   }
   if (lifecycleCleanup.cleanup_after_status !== "pass") {
     throw new Error("workbench browser events artifact is missing lifecycle cleanup pass evidence");

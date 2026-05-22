@@ -54,6 +54,14 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-bind="agent_lifecycle_pool_unevaluated"/);
   assert.match(desktop, /data-bind="agent_lifecycle_pool_unclosed"/);
   assert.match(mobile, /data-bind="agent_lifecycle_pool_unclosed"/);
+  assert.match(desktop, /data-bind="agent_lifecycle_pool_timed_out"/);
+  assert.match(mobile, /data-bind="agent_lifecycle_pool_timed_out"/);
+  assert.match(desktop, /data-bind="agent_lifecycle_pool_heartbeats"/);
+  assert.match(mobile, /data-bind="agent_lifecycle_pool_heartbeats"/);
+  assert.match(desktop, /data-bind="agent_lifecycle_pool_latest_heartbeat"/);
+  assert.match(mobile, /data-bind="agent_lifecycle_pool_latest_heartbeat"/);
+  assert.match(desktop, /data-bind="agent_lifecycle_pool_latest_timeout"/);
+  assert.match(mobile, /data-bind="agent_lifecycle_pool_latest_timeout"/);
   assert.match(desktop, /data-bind="agent_lifecycle_pool_next_action"/);
   assert.match(mobile, /data-bind="agent_lifecycle_pool_next_action"/);
   assert.match(desktop, /data-bind="counter_scheduler_dispatch_steps"/);
@@ -114,6 +122,10 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(script, /agent_lifecycle_pool_open/);
   assert.match(script, /agent_lifecycle_pool_unevaluated/);
   assert.match(script, /agent_lifecycle_pool_unclosed/);
+  assert.match(script, /agent_lifecycle_pool_timed_out/);
+  assert.match(script, /agent_lifecycle_pool_heartbeats/);
+  assert.match(script, /agent_lifecycle_pool_latest_heartbeat/);
+  assert.match(script, /agent_lifecycle_pool_latest_timeout/);
   assert.match(script, /agent_lifecycle_pool_next_action/);
   assert.match(script, /operations_timeline/);
   assert.match(script, /counter_operation_events/);

@@ -44,6 +44,7 @@ function createRunArtifact() {
       "scheduler_dispatch_click",
       "scheduler_dispatch_approved_mock_click",
       "guarded_next_action_click",
+      "agent_lifecycle_pool_timeout_readout",
       "agent_lifecycle_pool_cleanup_click",
       "agent_lifecycle_pool_cleanup_loop_click",
       "projected_mock_loop_click",
@@ -387,6 +388,8 @@ function injectLifecycleCleanupState(workflowState) {
   workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
     "WorkerSpawned",
     "WorkerCompleted",
+    "WorkerHeartbeat",
+    "WorkerTimeout",
     "WorkerEvaluation",
     "WorkerClosed",
     "PoolIterationClosed"
@@ -409,6 +412,115 @@ function injectLifecycleCleanupState(workflowState) {
       metadata: { pool_id: "pool-browser-lifecycle", worker_id: "worker-browser-lifecycle" }
     }
   );
+}
+
+function injectLifecycleTimeoutState(workflowState) {
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
+    "WorkerSpawned",
+    "WorkerCompleted",
+    "WorkerHeartbeat",
+    "WorkerTimeout",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ].includes(event.type));
+  workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.manifest.events.push(
+    {
+      id: "worker-spawned-browser-timeout",
+      type: "WorkerSpawned",
+      status: "pass",
+      created_at: "2026-05-22T08:15:00.000Z",
+      metadata: { pool_id: "pool-browser-timeout", worker_id: "worker-browser-timeout" }
+    },
+    {
+      id: "worker-heartbeat-browser-timeout",
+      type: "WorkerHeartbeat",
+      status: "pass",
+      created_at: "2026-05-22T08:16:00.000Z",
+      metadata: { pool_id: "pool-browser-timeout", worker_id: "worker-browser-timeout" }
+    },
+    {
+      id: "worker-timeout-browser-timeout",
+      type: "WorkerTimeout",
+      status: "fail",
+      created_at: "2026-05-22T08:20:00.000Z",
+      metadata: {
+        pool_id: "pool-browser-timeout",
+        worker_id: "worker-browser-timeout",
+        issues: [{ code: "agent_lifecycle_worker_timeout", message: "worker-browser-timeout timed out" }]
+      }
+    }
+  );
+}
+
+async function verifyAgentLifecyclePoolTimeoutReadout(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await desktop.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+    await mobile.goto(
+      `http://127.0.0.1:${port}/apps/workbench/mobile.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+
+    const desktopStatus = await desktop.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const desktopTimedOut = await desktop.textContent('[data-bind="agent_lifecycle_pool_timed_out"]');
+    const desktopHeartbeats = await desktop.textContent('[data-bind="agent_lifecycle_pool_heartbeats"]');
+    const desktopLatestHeartbeat = await desktop.textContent('[data-bind="agent_lifecycle_pool_latest_heartbeat"]');
+    const desktopLatestTimeout = await desktop.textContent('[data-bind="agent_lifecycle_pool_latest_timeout"]');
+    const desktopNextActionStatus = await desktop.textContent('[data-bind="next_action_readout_status"]');
+    const mobileStatus = await mobile.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const mobileTimedOut = await mobile.textContent('[data-bind="agent_lifecycle_pool_timed_out"]');
+    const mobileHeartbeats = await mobile.textContent('[data-bind="agent_lifecycle_pool_heartbeats"]');
+    const mobileLatestHeartbeat = await mobile.textContent('[data-bind="agent_lifecycle_pool_latest_heartbeat"]');
+    const mobileLatestTimeout = await mobile.textContent('[data-bind="agent_lifecycle_pool_latest_timeout"]');
+    const desktopDimensions = await desktop.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    const mobileDimensions = await mobile.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await desktop.close();
+    await mobile.close();
+
+    assert(desktopStatus === "blocked", "desktop timeout lifecycle pool must render blocked status");
+    assert(desktopTimedOut === "1", "desktop lifecycle pool must render one timeout");
+    assert(desktopHeartbeats === "1", "desktop lifecycle pool must render one heartbeat");
+    assert(desktopLatestHeartbeat.includes("2026-05-22T08:16:00.000Z"), "desktop lifecycle pool must render latest heartbeat");
+    assert(desktopLatestTimeout.includes("2026-05-22T08:20:00.000Z"), "desktop lifecycle pool must render latest timeout");
+    assert(desktopNextActionStatus === "blocked", "timeout lifecycle next action must render blocked status");
+    assert(mobileStatus === "blocked", "mobile timeout lifecycle pool must render blocked status");
+    assert(mobileTimedOut === "1", "mobile lifecycle pool must render one timeout");
+    assert(mobileHeartbeats === "1", "mobile lifecycle pool must render one heartbeat");
+    assert(mobileLatestHeartbeat.includes("2026-05-22T08:16:00.000Z"), "mobile lifecycle pool must render latest heartbeat");
+    assert(mobileLatestTimeout.includes("2026-05-22T08:20:00.000Z"), "mobile lifecycle pool must render latest timeout");
+    assert(desktopDimensions.scrollWidth <= desktopDimensions.width, "desktop timeout readout must not create horizontal overflow");
+    assert(mobileDimensions.scrollWidth <= mobileDimensions.width, "mobile timeout readout must not create horizontal overflow");
+
+    recordScenario({
+      scenario: "agent_lifecycle_pool_timeout_readout",
+      desktop_status: desktopStatus,
+      desktop_timed_out: desktopTimedOut,
+      desktop_heartbeats: desktopHeartbeats,
+      desktop_latest_heartbeat: desktopLatestHeartbeat,
+      desktop_latest_timeout: desktopLatestTimeout,
+      desktop_next_action_status: desktopNextActionStatus,
+      mobile_status: mobileStatus,
+      mobile_timed_out: mobileTimedOut,
+      mobile_heartbeats: mobileHeartbeats,
+      mobile_latest_heartbeat: mobileLatestHeartbeat,
+      mobile_latest_timeout: mobileLatestTimeout,
+      desktop_dimensions: desktopDimensions,
+      mobile_dimensions: mobileDimensions
+    });
+  }, { workflowStateMutator: injectLifecycleTimeoutState });
 }
 
 async function verifyAgentLifecyclePoolCleanupClick(browser) {
@@ -725,6 +837,8 @@ async function verifyMobileProjectionLoad(browser) {
     const lifecyclePoolOpen = await page.textContent('[data-bind="agent_lifecycle_pool_open"]');
     const lifecyclePoolUnevaluated = await page.textContent('[data-bind="agent_lifecycle_pool_unevaluated"]');
     const lifecyclePoolUnclosed = await page.textContent('[data-bind="agent_lifecycle_pool_unclosed"]');
+    const lifecyclePoolTimedOut = await page.textContent('[data-bind="agent_lifecycle_pool_timed_out"]');
+    const lifecyclePoolHeartbeats = await page.textContent('[data-bind="agent_lifecycle_pool_heartbeats"]');
     const lifecyclePoolNextAction = await page.textContent('[data-bind="agent_lifecycle_pool_next_action"]');
     const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
     const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
@@ -744,6 +858,8 @@ async function verifyMobileProjectionLoad(browser) {
     assert(lifecyclePoolOpen !== null, "mobile workbench must render lifecycle open worker count");
     assert(lifecyclePoolUnevaluated !== null, "mobile workbench must render lifecycle unevaluated count");
     assert(lifecyclePoolUnclosed !== null, "mobile workbench must render lifecycle unclosed count");
+    assert(lifecyclePoolTimedOut !== null, "mobile workbench must render lifecycle timeout count");
+    assert(lifecyclePoolHeartbeats !== null, "mobile workbench must render lifecycle heartbeat count");
     assert(lifecyclePoolNextAction !== null, "mobile workbench must render lifecycle next action");
     assert(operationRows >= 1, "mobile workbench must render operation timeline rows");
     assert(nextActionReadout, "mobile workbench must render next-action readout");
@@ -765,6 +881,8 @@ async function verifyMobileProjectionLoad(browser) {
       agent_lifecycle_pool_open: lifecyclePoolOpen,
       agent_lifecycle_pool_unevaluated: lifecyclePoolUnevaluated,
       agent_lifecycle_pool_unclosed: lifecyclePoolUnclosed,
+      agent_lifecycle_pool_timed_out: lifecyclePoolTimedOut,
+      agent_lifecycle_pool_heartbeats: lifecyclePoolHeartbeats,
       agent_lifecycle_pool_next_action: lifecyclePoolNextAction,
       operation_rows: operationRows,
       next_action_readout: nextActionReadout,
@@ -781,6 +899,7 @@ try {
   await verifySchedulerDispatchClick(browser);
   await verifyApprovedMockSchedulerDispatchClick(browser);
   await verifyGuardedNextActionClick(browser);
+  await verifyAgentLifecyclePoolTimeoutReadout(browser);
   await verifyAgentLifecyclePoolCleanupClick(browser);
   await verifyAgentLifecyclePoolCleanupLoopClick(browser);
   await verifyProjectedMockLoopClick(browser);

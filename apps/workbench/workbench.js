@@ -179,6 +179,10 @@ function renderProjection(projection) {
   setText("agent_lifecycle_pool_open", lifecyclePool.open ?? 0);
   setText("agent_lifecycle_pool_unevaluated", lifecyclePool.unevaluated ?? 0);
   setText("agent_lifecycle_pool_unclosed", lifecyclePool.unclosed ?? 0);
+  setText("agent_lifecycle_pool_timed_out", lifecyclePool.timed_out ?? 0);
+  setText("agent_lifecycle_pool_heartbeats", lifecyclePool.heartbeat_count ?? 0);
+  setText("agent_lifecycle_pool_latest_heartbeat", lifecyclePool.latest_heartbeat_at);
+  setText("agent_lifecycle_pool_latest_timeout", lifecyclePool.latest_timeout_at);
   setText("agent_lifecycle_pool_next_action", lifecyclePool.next_action);
   setText("global_goals_status", globalGoals.status);
   setText("global_goals_total", globalGoals.total ?? 0);

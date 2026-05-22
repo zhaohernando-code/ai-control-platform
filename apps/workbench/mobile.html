@@ -186,6 +186,14 @@
               <strong data-bind="agent_lifecycle_pool_unclosed">0</strong>
             </div>
             <div>
+              <span>Timeouts</span>
+              <strong data-bind="agent_lifecycle_pool_timed_out">0</strong>
+            </div>
+            <div>
+              <span>Heartbeats</span>
+              <strong data-bind="agent_lifecycle_pool_heartbeats">0</strong>
+            </div>
+            <div>
               <span>Goals</span>
               <strong data-bind="global_goals_status">--</strong>
             </div>
@@ -200,6 +208,14 @@
             <div>
               <span>Cleanup</span>
               <strong data-bind="agent_lifecycle_pool_next_action">--</strong>
+            </div>
+            <div>
+              <span>Heartbeat</span>
+              <strong data-bind="agent_lifecycle_pool_latest_heartbeat">--</strong>
+            </div>
+            <div>
+              <span>Timeout</span>
+              <strong data-bind="agent_lifecycle_pool_latest_timeout">--</strong>
             </div>
             <div>
               <span>Next goal</span>
