@@ -168,6 +168,46 @@ test("verified provider profile blocks pass result without completion evidence a
   assert.ok(result.issues.some((item) => item.code === "missing_external_call_provenance"));
 });
 
+test("verified provider profile rejects fake command runner provenance", () => {
+  const result = executeContextWorkPackagesWithAdapter(workflowState(), selectedPackages, {
+    execution_mode: PROVIDER_MODEL_ROUTED_MODE,
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-22T05:11:30.000Z",
+    provider_executor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "fake command runner must not become completion evidence"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `fake-runner-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "claude_deepseek_provider_executor",
+        provider: "deepseek",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        command_runner_kind: "fake_test_command_runner",
+        external_calls: 1,
+        deterministic: false
+      }
+    })
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.allows_work_package_completion, false);
+  assert.equal(result.completion_authority.allows_work_package_completion, false);
+  assert.equal(result.package_results[0].status, "pass");
+  assert.equal(result.package_results[0].allows_work_package_completion, false);
+  assert.equal(result.executor_provenance.command_runner_kind, "fake_test_command_runner");
+  assert.ok(result.issues.some((item) => item.code === "non_external_command_runner_provenance_not_allowed"));
+});
+
 test("verified provider profile grants completion authority only for compliant executor evidence", () => {
   const result = executeContextWorkPackagesWithAdapter(workflowState(), selectedPackages, {
     execution_mode: PROVIDER_MODEL_ROUTED_MODE,

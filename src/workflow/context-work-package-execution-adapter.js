@@ -73,6 +73,15 @@ function isMockOrSimulationToken(token) {
   return token.includes("mock") || token.includes("simulat");
 }
 
+function isNonExternalRunnerToken(token) {
+  return token.includes("fake") ||
+    token.includes("test") ||
+    token.includes("mock") ||
+    token.includes("simulat") ||
+    token.includes("local") ||
+    token.includes("deterministic");
+}
+
 function isProviderLikeMode(token) {
   return PROVIDER_ROUTED_MODES.has(token) ||
     token.includes("provider") ||
@@ -397,6 +406,7 @@ function normalizeExecutorProvenance(executorResult = {}, executionProfile, crea
   const executorKind = normalizeToken(provenance.executor_kind || provenance.executorKind || provenance.provider_executor || provenance.providerExecutor);
   const provenanceProfile = normalizeToken(provenance.execution_profile || provenance.executionProfile || executionProfile);
   const provider = normalizeToken(provenance.provider || provenance.provider_id || provenance.providerId);
+  const commandRunnerKind = normalizeToken(provenance.command_runner_kind || provenance.commandRunnerKind);
   const externalCalls = externalCallCountFrom(provenance);
 
   if (!executorKind) {
@@ -407,6 +417,9 @@ function normalizeExecutorProvenance(executorResult = {}, executionProfile, crea
   }
   if (isMockOrSimulationToken(executorKind) || isMockOrSimulationToken(provenanceProfile) || isMockOrSimulationToken(provider)) {
     issues.push(issue("mock_executor_provenance_not_allowed", "real provider profile cannot use mock or simulation executor provenance", "executor_provenance.executor_kind"));
+  }
+  if (commandRunnerKind && isNonExternalRunnerToken(commandRunnerKind)) {
+    issues.push(issue("non_external_command_runner_provenance_not_allowed", "real provider profile cannot use fake/test/mock/simulation/local/deterministic command runner provenance for completion authority", "executor_provenance.command_runner_kind"));
   }
   if (provenance.deterministic === true) {
     issues.push(issue("deterministic_executor_provenance_not_allowed", "real provider profile requires non-deterministic external execution provenance", "executor_provenance.deterministic"));
@@ -424,6 +437,7 @@ function normalizeExecutorProvenance(executorResult = {}, executionProfile, crea
       execution_mode: PROVIDER_MODEL_ROUTED_MODE,
       execution_profile: executionProfile,
       executor_kind: executorKind || null,
+      command_runner_kind: commandRunnerKind || provenance.command_runner_kind || provenance.commandRunnerKind || null,
       external_calls: externalCalls,
       deterministic: provenance.deterministic === true,
       created_at: normalizeString(provenance.created_at || provenance.createdAt) || createdAt

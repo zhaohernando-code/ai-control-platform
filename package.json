@@ -17,6 +17,7 @@
     "run:closeout-plan": "node tools/run-with-node18.mjs tools/run-closeout-plan.mjs",
     "run:autonomous-closeout-loop": "node tools/run-with-node18.mjs tools/run-autonomous-closeout-loop.mjs",
     "run:reviewer-shard": "node tools/run-with-node18.mjs tools/run-reviewer-shard.mjs",
+    "run:context-provider-trial": "node tools/run-with-node18.mjs tools/run-context-work-package-provider-trial.mjs",
     "prepare:reviewer-shard-loop-continuation": "node tools/run-with-node18.mjs tools/prepare-reviewer-shard-loop-continuation.mjs",
     "prepare:scheduler-dispatch-continuation": "node tools/run-with-node18.mjs tools/prepare-scheduler-dispatch-continuation.mjs",
     "prepare:project-status-continuation": "node tools/run-with-node18.mjs tools/prepare-project-status-continuation.mjs",
