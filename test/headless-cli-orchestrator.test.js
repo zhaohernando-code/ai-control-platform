@@ -11,7 +11,8 @@ import {
   HEADLESS_MAIN_ORCHESTRATOR_ROLE,
   evaluateHeadlessChildWorkerOutput,
   parseHeadlessChildWorkerOutput,
-  runHeadlessCliMainOrchestrator
+  runHeadlessCliMainOrchestrator,
+  runHeadlessCliMainOrchestratorLoop
 } from "../src/workflow/headless-cli-orchestrator.js";
 
 function projectStatus(overrides = {}) {
@@ -188,6 +189,83 @@ test("headless CLI orchestrator can execute a real child command runner and pars
   assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
 });
 
+test("headless CLI orchestrator persists workflow snapshots into projection history", () => {
+  const dir = mkdtempSync(join(tmpdir(), "headless-cli-snapshot-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-persist",
+    created_at: "2026-05-23T00:02:00.000Z",
+    max_package_count: 1,
+    projection_history_path: historyPath,
+    snapshots_root: snapshotsRoot,
+    snapshot_prefix: "headless-test"
+  });
+  const history = JSON.parse(readFileSync(historyPath, "utf8"));
+  const snapshot = JSON.parse(readFileSync(result.snapshot_publish.snapshot_path, "utf8"));
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.snapshot_publish.status, "created");
+  assert.equal(history.latest, "headless-test-cycle-headless-persist");
+  assert.equal(snapshot.manifest.events.at(-1).type, "headless_cli_snapshot_publish");
+  assert.equal(snapshot.artifact_ledger.artifacts.at(-1).metadata.type, "headless_cli_snapshot_publish");
+  assert.equal(result.projection.run_id, "run-headless-cli");
+});
+
+test("headless CLI loop continues from persisted workflow state and snapshots every iteration", () => {
+  const dir = mkdtempSync(join(tmpdir(), "headless-cli-loop-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-loop",
+    created_at: "2026-05-23T00:02:30.000Z",
+    max_package_count: 1,
+    max_iterations: 2,
+    projection_history_path: historyPath,
+    snapshots_root: snapshotsRoot,
+    snapshot_prefix: "headless-loop-test"
+  });
+  const history = JSON.parse(readFileSync(historyPath, "utf8"));
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "headless_loop_iteration_limit_reached");
+  assert.equal(result.iterations.length, 2);
+  assert.deepEqual(result.iterations.map((iteration) => iteration.snapshot_status), ["created", "created"]);
+  assert.equal(history.items.length, 2);
+  assert.equal(history.latest, result.iterations.at(-1).snapshot_id);
+  assert.notEqual(result.iterations[0].cycle_id, result.iterations[1].cycle_id);
+});
+
+test("headless snapshot ids stay within publisher-safe length", () => {
+  const dir = mkdtempSync(join(tmpdir(), "headless-cli-long-snapshot-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-cli-persistence-with-a-very-long-generated-cycle-identifier-01",
+    created_at: "2026-05-23T00:02:45.000Z",
+    max_package_count: 1,
+    projection_history_path: historyPath,
+    snapshots_root: snapshotsRoot,
+    snapshot_prefix: "headless-cli-current"
+  });
+
+  assert.equal(result.status, "pass");
+  assert.ok(result.snapshot_publish.item.id.length <= 81);
+  assert.equal(result.snapshot_publish.status, "created");
+});
+
 test("headless CLI orchestrator hardens timed-out child command output before retry", () => {
   const result = runHeadlessCliMainOrchestrator({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
@@ -295,4 +373,55 @@ test("run-headless-cli-orchestrator CLI writes replayable output", () => {
   assert.equal(output.role, HEADLESS_MAIN_ORCHESTRATOR_ROLE);
   assert.equal(output.child_role, CHILD_WORKER_ROLE);
   assert.equal(output.workflow_state.manifest.cycle_id, "cycle-headless-cli-file");
+});
+
+test("run-headless-cli-orchestrator CLI can persist a bounded loop to projection history", () => {
+  const dir = mkdtempSync(join(tmpdir(), "headless-cli-orchestrator-loop-"));
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const workflowStatePath = join(dir, "workflow-state.json");
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const outputPath = join(dir, "headless-loop-output.json");
+  const workflowOutputPath = join(dir, "headless-loop-workflow.json");
+
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
+  writeFileSync(workflowStatePath, `${JSON.stringify(sourceWorkflowState(), null, 2)}\n`);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-headless-cli-orchestrator.mjs",
+    "--project-status",
+    projectStatusPath,
+    "--workflow-state",
+    workflowStatePath,
+    "--output",
+    outputPath,
+    "--workflow-output",
+    workflowOutputPath,
+    "--history-path",
+    historyPath,
+    "--snapshots-root",
+    snapshotsRoot,
+    "--snapshot-prefix",
+    "headless-cli-test",
+    "--loop",
+    "--max-iterations",
+    "2",
+    "--cycle-id",
+    "cycle-headless-cli-loop",
+    "--created-at",
+    "2026-05-23T00:03:30.000Z"
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(readFileSync(outputPath, "utf8"));
+  const history = JSON.parse(readFileSync(historyPath, "utf8"));
+  const workflowOutput = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
+  assert.equal(output.status, "pass");
+  assert.equal(output.iterations.length, 2);
+  assert.equal(history.items.length, 2);
+  assert.equal(workflowOutput.manifest.cycle_id, output.last_result.workflow_state.manifest.cycle_id);
+  assert.equal(workflowOutput.manifest.events.at(-1).type, "headless_cli_snapshot_publish");
 });

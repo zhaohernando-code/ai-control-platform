@@ -484,6 +484,13 @@
       "category": "process_gap",
       "severity": "p1",
       "message": "Timed-out or unstructured headless child command output must become structured acceptance failure and process-hardening evidence, not stdout-only state or a silently completed work package."
+    },
+    {
+      "id": "headless-snapshot-id-length-drift",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Headless workflow snapshot ids must stay within the publisher safe-id length even when run_id, cycle_id, or snapshot_prefix are long; otherwise a valid cycle blocks at closeout persistence."
     }
   ],
   "hardening_items": [
@@ -1221,6 +1228,30 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI orchestrator hardens timed-out child command output before retry; headless child worker output parser accepts fenced json and rejects prose",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-cycle-snapshot-persistence-gap",
+      "invariant": "Configured headless main_orchestrator cycles must publish their output workflow_state into projection history/snapshots and record headless_cli_snapshot_publish evidence back into the workflow manifest and artifact ledger before the cycle can be treated as resumable.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; tools/run-headless-cli-orchestrator.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator persists workflow snapshots into projection history",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-loop-workflow-output-gap",
+      "invariant": "Bounded headless CLI loops must persist every configured iteration snapshot and write the final loop workflow_state to --workflow-output; a loop cannot rely on Codex App state or stdout-only summaries for continuation.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop continues from persisted workflow state and snapshots every iteration; run-headless-cli-orchestrator CLI can persist a bounded loop to projection history",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-snapshot-id-length-drift",
+      "invariant": "Headless snapshot ids must be normalized to the same safe-id length accepted by workbench snapshot publishing, including generated ids from long cycle names and prefixes.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless snapshot ids stay within publisher-safe length",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run run:headless-cli-orchestrator -- --project-status PROJECT_STATUS.json --workflow-state docs/examples/current-session-workbench-input.json --output tmp/headless-cli-loop-persistence-run.json --workflow-output tmp/headless-cli-loop-persistence-workflow-state.json --history-path tmp/headless-cli-loop-projection-history.json --snapshots-root tmp/headless-cli-loop-snapshots --snapshot-prefix headless-cli-current --loop --max-iterations 2 --cycle-id cycle-headless-cli-persistence --created-at 2026-05-23T01:30:00.000Z",
       "status": "completed"
     }
   ]

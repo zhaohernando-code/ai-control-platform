@@ -16,11 +16,13 @@ import { appendRunEvent } from "./run-manifest.js";
 import { runContextWorkPackages } from "./context-work-package-runner.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
+import { publishWorkbenchSnapshot } from "./workbench-snapshots.js";
 
 export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
 export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
 export const CHILD_WORKER_ROLE = "child_worker";
 export const DEFAULT_CHILD_WORKER_TIMEOUT_MS = 10 * 60 * 1000;
+export const MAX_HEADLESS_LOOP_ITERATIONS = 5;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -667,6 +669,176 @@ function continuationInput(projectStatus = {}, workflowState = {}, projection = 
   };
 }
 
+function snapshotPersistenceConfig(options = {}) {
+  const historyPath = normalizeString(options.projection_history_path || options.projectionHistoryPath || options.history_path || options.historyPath);
+  const snapshotsRoot = normalizeString(options.snapshots_root || options.snapshotsRoot);
+  if (!historyPath && !snapshotsRoot) {
+    return {
+      status: "not_configured",
+      issues: []
+    };
+  }
+  const issues = [];
+  if (!historyPath) {
+    issues.push(issue("missing_projection_history_path", "projection history path is required when headless snapshot persistence is configured", "projection_history_path"));
+  }
+  if (!snapshotsRoot) {
+    issues.push(issue("missing_snapshots_root", "snapshots root is required when headless snapshot persistence is configured", "snapshots_root"));
+  }
+  return {
+    status: issues.length ? "fail" : "configured",
+    issues,
+    root: normalizeString(options.root) || process.cwd(),
+    history_path: historyPath,
+    snapshots_root: snapshotsRoot
+  };
+}
+
+function headlessSnapshotId(workflowState = {}, options = {}) {
+  const explicit = normalizeString(options.snapshot_id || options.snapshotId);
+  if (explicit) return safeIdPart(explicit).slice(0, 80);
+  const prefix = normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-cli";
+  return `${safeIdPart(prefix)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`.slice(0, 80);
+}
+
+function headlessSnapshotArtifact(snapshotId, result = {}, options = {}) {
+  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+  const status = result.status === "created" ? "pass" : "fail";
+  return {
+    id: `headless-cli-snapshot-${snapshotId}`,
+    type: "evaluation",
+    status,
+    path: result.item?.input_path || undefined,
+    uri: result.item?.input_path ? undefined : `workbench://snapshot/${snapshotId}`,
+    producer: "headless-cli-orchestrator",
+    created_at: createdAt,
+    metadata: {
+      version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
+      type: "headless_cli_snapshot_publish",
+      snapshot_id: snapshotId,
+      publish_status: result.status,
+      projection_status: result.projection?.status || null,
+      history_latest: result.history?.latest || null,
+      issues: result.issues || []
+    }
+  };
+}
+
+function recordHeadlessSnapshotEvidence(workflowState = {}, snapshotId, result = {}, options = {}) {
+  const artifact = headlessSnapshotArtifact(snapshotId, result, options);
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${artifact.id}`,
+    type: "headless_cli_snapshot_publish",
+    status: result.status === "created" ? "created" : "fail",
+    artifact_id: artifact.id,
+    snapshot_id: snapshotId,
+    message: result.status === "created"
+      ? "headless CLI workflow snapshot published"
+      : "headless CLI workflow snapshot publish failed",
+    created_at: artifact.created_at,
+    metadata: artifact.metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts)
+      ? baseLedger.artifacts.filter((item) => item.id !== artifact.id)
+      : []
+  }, artifact);
+
+  return {
+    ...workflowState,
+    manifest: {
+      ...manifest,
+      artifacts: [...asArray(manifest.artifacts).filter((item) => item.id !== artifact.id), artifact]
+    },
+    artifact_ledger: artifactLedger
+  };
+}
+
+function publishHeadlessWorkflowSnapshot(workflowState = {}, options = {}) {
+  const config = snapshotPersistenceConfig(options);
+  if (config.status !== "configured") {
+    return {
+      status: config.status,
+      issues: config.issues,
+      workflow_state: workflowState
+    };
+  }
+
+  const snapshotId = headlessSnapshotId(workflowState, options);
+  const basePlan = {
+    id: snapshotId,
+    label: normalizeString(options.snapshot_label || options.snapshotLabel) || "Headless CLI orchestrator cycle",
+    input: workflowState,
+    created_at: normalizeString(options.created_at || options.createdAt) || new Date().toISOString()
+  };
+  const initial = publishWorkbenchSnapshot(basePlan, {
+    root: config.root,
+    historyPath: config.history_path,
+    snapshotsRoot: config.snapshots_root
+  });
+  if (initial.status !== "created") {
+    return {
+      status: "fail",
+      issues: initial.issues || [],
+      item: initial.item,
+      projection: initial.projection,
+      workflow_state: workflowState,
+      initial_publish: initial
+    };
+  }
+
+  const evidencedWorkflowState = recordHeadlessSnapshotEvidence(workflowState, snapshotId, initial, options);
+  const evidence = publishWorkbenchSnapshot({
+    ...basePlan,
+    input: evidencedWorkflowState
+  }, {
+    root: config.root,
+    historyPath: config.history_path,
+    snapshotsRoot: config.snapshots_root
+  });
+  if (evidence.status !== "created") {
+    return {
+      status: "fail",
+      issues: evidence.issues || [],
+      item: evidence.item,
+      projection: evidence.projection,
+      workflow_state: evidencedWorkflowState,
+      initial_publish: initial,
+      evidence_snapshot_publish: evidence
+    };
+  }
+
+  return {
+    status: "created",
+    issues: [],
+    item: evidence.item,
+    projection: evidence.projection,
+    workflow_state: evidencedWorkflowState,
+    snapshot_path: evidence.snapshot_path,
+    history: evidence.history,
+    initial_publish: initial,
+    evidence_snapshot_publish: evidence
+  };
+}
+
+function boundedHeadlessLoopIterations(value) {
+  const parsed = Number(value || 1);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_HEADLESS_LOOP_ITERATIONS) {
+    return {
+      status: "fail",
+      value: null,
+      issues: [issue(
+        "invalid_headless_loop_iterations",
+        `max_iterations must be an integer between 1 and ${MAX_HEADLESS_LOOP_ITERATIONS}`,
+        "max_iterations"
+      )]
+    };
+  }
+  return { status: "pass", value: parsed, issues: [] };
+}
+
 export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
   const validation = validateHeadlessInput(input);
   if (validation.status !== "pass") {
@@ -839,6 +1011,32 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
     global_goals: projectStatus.global_goals
   });
   const continuation = decideContinuation(continuationInput(projectStatus, workflowState, projection));
+  const snapshotPublish = publishHeadlessWorkflowSnapshot(workflowState, {
+    ...options,
+    created_at: createdAt
+  });
+  if (snapshotPublish.status === "fail") {
+    return {
+      status: "blocked",
+      phase: "headless_snapshot_publish",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      issues: snapshotPublish.issues || [],
+      projection: snapshotPublish.projection || projection,
+      continuation,
+      snapshot_publish: snapshotPublish,
+      workflow_state: snapshotPublish.workflow_state || workflowState
+    };
+  }
+  workflowState = snapshotPublish.workflow_state || workflowState;
+  const persistedProjection = snapshotPublish.projection || projection;
+  if (snapshotPublish.status === "created") {
+    steps.push({
+      phase: "headless_snapshot_publish",
+      status: "created",
+      snapshot_id: snapshotPublish.item?.id || null
+    });
+  }
 
   return {
     status: "pass",
@@ -855,15 +1053,107 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
       before: closed.before,
       after: closed.after
     },
-    projection,
+    projection: persistedProjection,
+    snapshot_publish: snapshotPublish,
     continuation,
     must_continue: continuation.should_continue === true ||
       Boolean(continuation.next_step) ||
       asArray(continuation.next_work_packages).length > 0 ||
-      projection.next_action_readout?.action !== "wait_for_driver_event",
+      persistedProjection.next_action_readout?.action !== "wait_for_driver_event",
     workflow_state: workflowState,
     issues: []
   };
 }
 
-export { validateHeadlessInput };
+export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
+  const bounded = boundedHeadlessLoopIterations(options.max_iterations || options.maxIterations || 1);
+  if (bounded.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "input_validation",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      issues: bounded.issues,
+      iterations: []
+    };
+  }
+
+  const iterations = [];
+  let currentInput = input;
+  let lastResult = null;
+  for (let index = 0; index < bounded.value; index += 1) {
+    const sourceCycleId = currentInput?.workflow_state?.manifest?.cycle_id || currentInput?.workflowState?.manifest?.cycle_id;
+    const cycleSeed = normalizeString(options.cycle_id || options.cycleId) || `${safeIdPart(sourceCycleId)}-headless`;
+    const run = runHeadlessCliMainOrchestrator(currentInput, {
+      ...options,
+      cycle_id: `${safeIdPart(cycleSeed)}-${String(index + 1).padStart(2, "0")}`,
+      snapshot_id: normalizeString(options.snapshot_id || options.snapshotId)
+        ? `${safeIdPart(options.snapshot_id || options.snapshotId)}-${String(index + 1).padStart(2, "0")}`
+        : "",
+      snapshot_prefix: normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-loop"
+    });
+    lastResult = run;
+    const persisted = run.snapshot_publish?.status === "created";
+    iterations.push({
+      index: index + 1,
+      status: run.status,
+      phase: run.phase,
+      run_id: run.workflow_state?.manifest?.run_id || null,
+      cycle_id: run.workflow_state?.manifest?.cycle_id || null,
+      snapshot_status: run.snapshot_publish?.status || "not_configured",
+      snapshot_id: run.snapshot_publish?.item?.id || null,
+      next_action: run.projection?.next_action_readout?.action || null,
+      must_continue: run.must_continue === true,
+      issue_count: asArray(run.issues).length
+    });
+
+    if (run.status !== "pass") {
+      return {
+        status: "blocked",
+        phase: run.phase,
+        role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+        iterations,
+        last_result: run,
+        issues: run.issues || []
+      };
+    }
+    if (snapshotPersistenceConfig(options).status === "configured" && !persisted) {
+      return {
+        status: "blocked",
+        phase: "headless_loop_snapshot_persistence",
+        role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+        iterations,
+        last_result: run,
+        issues: [issue("headless_loop_snapshot_not_persisted", "configured headless loop must persist every iteration snapshot before continuing", "snapshot_publish.status")]
+      };
+    }
+    if (!run.must_continue) {
+      return {
+        status: "complete",
+        phase: "headless_loop_complete",
+        role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+        iterations,
+        last_result: run,
+        issues: []
+      };
+    }
+
+    currentInput = {
+      ...currentInput,
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      workflow_state: run.workflow_state,
+      project_status: input.project_status || input.projectStatus,
+      projection_history: run.snapshot_publish?.history || currentInput.projection_history || currentInput.projectionHistory
+    };
+  }
+
+  return {
+    status: "pass",
+    phase: "headless_loop_iteration_limit_reached",
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    iterations,
+    last_result: lastResult,
+    issues: []
+  };
+}
+
+export { publishHeadlessWorkflowSnapshot, validateHeadlessInput };
