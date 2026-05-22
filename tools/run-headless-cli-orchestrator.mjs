@@ -37,7 +37,10 @@ function usage() {
     "  --snapshots-root <path>              Snapshot directory for headless workflow_state outputs",
     "  --snapshot-prefix <id>               Snapshot id prefix",
     "  --loop                               Run a bounded continuation loop",
-    "  --max-iterations <n>                 Loop iteration bound, 1-5"
+    "  --max-iterations <n>                 Loop iteration bound, 1-5",
+    "  --execution-strategy <strategy>      Use projected_next_action to call the workbench next-action API",
+    "  --workbench-base-url <url>           Local workbench service URL for projected next actions",
+    "  --workbench-projection-id <id>       Projection history id to execute through the workbench service"
   ].join("\n");
 }
 
@@ -64,6 +67,9 @@ const historyPath = valueAfter("--history-path", args);
 const snapshotsRoot = valueAfter("--snapshots-root", args);
 const snapshotPrefix = valueAfter("--snapshot-prefix", args);
 const maxIterations = valueAfter("--max-iterations", args);
+const executionStrategy = valueAfter("--execution-strategy", args);
+const workbenchBaseUrl = valueAfter("--workbench-base-url", args);
+const workbenchProjectionId = valueAfter("--workbench-projection-id", args);
 const childWorkerCommand = valueAfter("--child-worker-command", args);
 const defaultChildProviderCommand = valueAfter("--default-child-provider-command", args);
 const childWorkerTimeoutMs = valueAfter("--child-worker-timeout-ms", args);
@@ -102,6 +108,9 @@ try {
     created_at: valueAfter("--created-at", args),
     max_package_count: valueAfter("--max-package-count", args) || 1,
     max_iterations: maxIterations || 1,
+    execution_strategy: executionStrategy,
+    workbench_base_url: workbenchBaseUrl,
+    workbench_projection_id: workbenchProjectionId,
     projection_history_path: historyPath,
     snapshots_root: snapshotsRoot,
     snapshot_prefix: snapshotPrefix,

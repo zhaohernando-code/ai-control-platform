@@ -368,6 +368,21 @@ test("headless CLI loop blocks projected next action without progress evidence",
   assert.ok(result.issues.some((item) => item.code === "projected_action_missing_progress_evidence"));
 });
 
+test("headless CLI loop rejects nonlocal workbench next-action service URLs", () => {
+  assert.throws(() => runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-nonlocal-workbench",
+    created_at: "2026-05-23T02:20:00.000Z",
+    max_package_count: 1,
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    workbench_base_url: "https://example.com"
+  }), /local http/);
+});
+
 test("headless snapshot ids stay within publisher-safe length", () => {
   const dir = mkdtempSync(join(tmpdir(), "headless-cli-long-snapshot-"));
   const historyPath = join(dir, "projection-history.json");
@@ -548,4 +563,19 @@ test("run-headless-cli-orchestrator CLI can persist a bounded loop to projection
   assert.equal(history.items.length, 2);
   assert.equal(workflowOutput.manifest.cycle_id, output.last_result.workflow_state.manifest.cycle_id);
   assert.equal(workflowOutput.manifest.events.at(-1).type, "headless_cli_snapshot_publish");
+});
+
+test("run-headless-cli-orchestrator CLI exposes projected next-action workbench controls", () => {
+  const result = spawnSync(process.execPath, [
+    "tools/run-headless-cli-orchestrator.mjs",
+    "--help"
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /--execution-strategy/);
+  assert.match(result.stdout, /--workbench-base-url/);
+  assert.match(result.stdout, /--workbench-projection-id/);
 });

@@ -505,6 +505,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "A headless continuation loop that only reruns Context Pack packages can ignore ready workbench next_action_readout actions; projected actions need an allowlisted runner and explicit progress evidence."
+    },
+    {
+      "id": "headless-workbench-next-action-nonlocal",
+      "status": "fail",
+      "category": "security",
+      "severity": "p1",
+      "message": "Headless CLI projected next-action execution must not post workflow-control requests to arbitrary remote workbench URLs; the service client must be local-http only."
     }
   ],
   "hardening_items": [
@@ -1281,6 +1288,14 @@
       "invariant": "Headless projected next-action execution must be opt-in, allowlisted, and progress-gated: the runner must return workflow_state, projection, or next_item.id evidence, otherwise the loop blocks instead of spinning or claiming continuation.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI loop can execute projected next_action_readout through an injected runner; headless CLI loop blocks projected next action without progress evidence",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-workbench-next-action-nonlocal",
+      "invariant": "Headless CLI workbench next-action service clients must accept only local HTTP base URLs and expose explicit CLI controls for execution_strategy, workbench_base_url, and projection id.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop rejects nonlocal workbench next-action service URLs; run-headless-cli-orchestrator CLI exposes projected next-action workbench controls",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }

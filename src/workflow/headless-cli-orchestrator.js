@@ -917,11 +917,9 @@ function boundedHeadlessLoopIterations(value) {
 }
 
 function projectedNextActionRunnerFrom(options = {}) {
-  return typeof options.projected_next_action_runner === "function"
-    ? options.projected_next_action_runner
-    : typeof options.projectedNextActionRunner === "function"
-      ? options.projectedNextActionRunner
-      : null;
+  if (typeof options.projected_next_action_runner === "function") return options.projected_next_action_runner;
+  if (typeof options.projectedNextActionRunner === "function") return options.projectedNextActionRunner;
+  return workbenchNextActionRunnerFrom(options);
 }
 
 function projectedNextActionMode(options = {}) {
@@ -947,6 +945,70 @@ function projectedActionProgressEvidence(result = {}) {
       result?.result?.next_item?.id ||
       result?.next_item?.id
   );
+}
+
+function localWorkbenchBaseUrl(value = "") {
+  const text = normalizeString(value);
+  if (!text) return null;
+  const url = new URL(text);
+  const localHosts = new Set(["127.0.0.1", "localhost", "::1"]);
+  if (url.protocol !== "http:" || !localHosts.has(url.hostname)) {
+    const error = new Error("headless projected next-action workbench base url must be local http");
+    error.code = "INVALID_WORKBENCH_BASE_URL";
+    throw error;
+  }
+  return url;
+}
+
+function postJsonSync(url, body = {}, options = {}) {
+  const timeoutMs = Number(options.timeout_ms || options.timeoutMs || 30000);
+  const payload = JSON.stringify(body);
+  const script = [
+    "const url = process.argv[1];",
+    "const payload = JSON.parse(process.argv[2]);",
+    "const timeoutMs = Number(process.argv[3] || 30000);",
+    "const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(timeoutMs) });",
+    "const text = await response.text();",
+    "if (!response.ok) { console.error(text); process.exit(response.status || 1); }",
+    "process.stdout.write(text);"
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script, url.toString(), payload, String(timeoutMs)], {
+    encoding: "utf8",
+    timeout: timeoutMs + 1000
+  });
+  if (result.status !== 0) {
+    const error = new Error(normalizeString(result.stderr) || normalizeString(result.stdout) || `workbench request failed: ${result.status}`);
+    error.status = result.status;
+    throw error;
+  }
+  return JSON.parse(result.stdout || "{}");
+}
+
+function workbenchNextActionRunnerFrom(options = {}) {
+  const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
+  if (!baseValue) return null;
+  const base = localWorkbenchBaseUrl(baseValue);
+  const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
+  return ({ action, iteration }) => {
+    const url = new URL("/api/workbench/next-action", base);
+    if (projectionId) url.searchParams.set("id", projectionId);
+    const result = postJsonSync(url, {
+      expected_action: action,
+      max_iterations: 1,
+      snapshot_prefix: normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-projected-action",
+      created_at: normalizeString(options.created_at || options.createdAt),
+      iteration
+    }, {
+      timeout_ms: options.workbench_request_timeout_ms || options.workbenchRequestTimeoutMs
+    });
+    return {
+      status: result.status || "executed",
+      action: result.action || action,
+      result,
+      projection: result.projection || result.result?.projection || null,
+      next_item: result.next_item || result.result?.next_item || null
+    };
+  };
 }
 
 function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
