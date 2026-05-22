@@ -95,6 +95,7 @@ function renderProjection(projection) {
   const schedulerDispatch = projection.scheduler_dispatch || {};
   const schedulerContinuation = projection.scheduler_continuation || {};
   const schedulerLoop = projection.scheduler_loop || {};
+  const lifecyclePool = projection.agent_lifecycle_pool || {};
   const globalGoals = projection.global_goal_completion || {};
   const nextActionReadout = projection.next_action_readout || {};
 
@@ -174,6 +175,11 @@ function renderProjection(projection) {
   setText("scheduler_loop_action", schedulerLoop.terminal_action || schedulerLoop.recovery_action);
   setText("scheduler_loop_strategy", schedulerLoop.execution_strategy || schedulerLoop.execution_profile);
   setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
+  setText("agent_lifecycle_pool_status", lifecyclePool.status);
+  setText("agent_lifecycle_pool_open", lifecyclePool.open ?? 0);
+  setText("agent_lifecycle_pool_unevaluated", lifecyclePool.unevaluated ?? 0);
+  setText("agent_lifecycle_pool_unclosed", lifecyclePool.unclosed ?? 0);
+  setText("agent_lifecycle_pool_next_action", lifecyclePool.next_action);
   setText("global_goals_status", globalGoals.status);
   setText("global_goals_total", globalGoals.total ?? 0);
   setText("global_goals_pending", globalGoals.pending ?? 0);

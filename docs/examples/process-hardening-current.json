@@ -1060,9 +1060,9 @@
     {
       "finding_id": "agent-lifecycle-pool-cleanup-gap",
       "invariant": "Every spawned child process must have durable WorkerSpawned, WorkerCompleted, WorkerEvaluation, WorkerClosed, and PoolIterationClosed facts; open, unevaluated, or unclosed pools must schedule cleanup_agent_lifecycle_pool instead of letting the main process advance silently.",
-      "enforcement_target": "src/workflow/agent-lifecycle-pool.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; docs/examples/process-hardening-current.json",
-      "regression_test": "agent lifecycle summary; continuation schedules cleanup; workbench projection and mobile expose agent lifecycle pool cleanup readout; process hardening completed item covers spawned child process lifecycle cleanup",
-      "verification": "node --test test/agent-lifecycle-pool.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js test/process-hardening.test.js; npm run check:process-hardening",
+      "enforcement_target": "src/workflow/agent-lifecycle-pool.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; tools/check-closeout.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "agent lifecycle summary; continuation schedules cleanup; PC/mobile workbench render lifecycle pool status/open/unevaluated/unclosed/next_action; browser events inject WorkerSpawned and WorkerCompleted, execute cleanup_agent_lifecycle_pool through guarded next action and through autonomous scheduler loop projected_next_action, and record cleanup_after_status=pass; closeout validator requires lifecycle cleanup browser evidence and autonomous projected-loop cleanup evidence",
+      "verification": "node --test test/agent-lifecycle-pool.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js test/process-hardening.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events -- --output tmp/lifecycle-browser-events.json; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

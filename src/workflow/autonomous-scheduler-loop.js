@@ -111,6 +111,13 @@ function projectedNextProjectionId(actionResult = {}) {
     null;
 }
 
+function projectedActionResultProjection(actionResult = {}) {
+  return actionResult?.result?.projection ||
+    actionResult?.result?.current_projection ||
+    actionResult?.projection ||
+    null;
+}
+
 function isTerminalProjectedAction(action = "") {
   return !action ||
     action === "wait_for_driver_event" ||
@@ -199,6 +206,21 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
         });
         iteration.status = actionResult.status || "executed";
         iteration.next_projection_id = projectedNextProjectionId(actionResult);
+        const resultProjection = projectedActionResultProjection(actionResult);
+        if (!iteration.next_projection_id && !resultProjection) {
+          iteration.status = "blocked";
+          iteration.issues.push(issue(
+            "projected_action_missing_progress_evidence",
+            "projected next-action execution must return either next_item.id or an updated projection",
+            "action_result"
+          ));
+          return {
+            status: "fail",
+            phase: "projected_action_missing_progress_evidence",
+            issues: iteration.issues,
+            iterations
+          };
+        }
         currentProjectionId = iteration.next_projection_id || currentProjectionId;
         continue;
       }

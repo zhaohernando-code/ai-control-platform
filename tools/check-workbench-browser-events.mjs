@@ -44,6 +44,8 @@ function createRunArtifact() {
       "scheduler_dispatch_click",
       "scheduler_dispatch_approved_mock_click",
       "guarded_next_action_click",
+      "agent_lifecycle_pool_cleanup_click",
+      "agent_lifecycle_pool_cleanup_loop_click",
       "projected_mock_loop_click",
       "projected_real_partial_shard_readout",
       "autonomous_scheduler_loop_click",
@@ -93,7 +95,11 @@ async function withWorkbenchServer(fn, options = {}) {
   const inputPath = join(snapshotsRoot, "current-session-workbench-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
-  writeFileSync(inputPath, readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  if (typeof options.workflowStateMutator === "function") {
+    options.workflowStateMutator(workflowState);
+  }
+  writeFileSync(inputPath, `${JSON.stringify(workflowState, null, 2)}\n`);
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
     latest: "current-session",
@@ -377,6 +383,150 @@ async function verifyGuardedNextActionClick(browser) {
   });
 }
 
+function injectLifecycleCleanupState(workflowState) {
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
+    "WorkerSpawned",
+    "WorkerCompleted",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ].includes(event.type));
+  workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.manifest.events.push(
+    {
+      id: "worker-spawned-browser-lifecycle",
+      type: "WorkerSpawned",
+      status: "pass",
+      created_at: "2026-05-22T08:15:00.000Z",
+      metadata: { pool_id: "pool-browser-lifecycle", worker_id: "worker-browser-lifecycle" }
+    },
+    {
+      id: "worker-completed-browser-lifecycle",
+      type: "WorkerCompleted",
+      status: "pass",
+      created_at: "2026-05-22T08:16:00.000Z",
+      metadata: { pool_id: "pool-browser-lifecycle", worker_id: "worker-browser-lifecycle" }
+    }
+  );
+}
+
+async function verifyAgentLifecyclePoolCleanupClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+
+    const cleanupBeforeStatus = await page.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const cleanupBeforeOpen = await page.textContent('[data-bind="agent_lifecycle_pool_open"]');
+    const cleanupBeforeUnevaluated = await page.textContent('[data-bind="agent_lifecycle_pool_unevaluated"]');
+    const cleanupBeforeUnclosed = await page.textContent('[data-bind="agent_lifecycle_pool_unclosed"]');
+    const cleanupBeforeNextAction = await page.textContent('[data-bind="agent_lifecycle_pool_next_action"]');
+    const projectedAction = await page.textContent('[data-bind="next_action_readout_action"]');
+
+    await page.click('[data-workbench-next-action="guarded"]');
+    await page.waitForFunction(() => document.querySelector('[data-workbench-next-action="guarded"]')?.textContent.includes("推荐动作已记录"));
+
+    const cleanupAfterStatus = await page.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const cleanupAfterOpen = await page.textContent('[data-bind="agent_lifecycle_pool_open"]');
+    const cleanupAfterUnevaluated = await page.textContent('[data-bind="agent_lifecycle_pool_unevaluated"]');
+    const cleanupAfterUnclosed = await page.textContent('[data-bind="agent_lifecycle_pool_unclosed"]');
+    const cleanupAfterNextAction = await page.textContent('[data-bind="agent_lifecycle_pool_next_action"]');
+    const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(cleanupBeforeStatus === "unevaluated", "lifecycle cleanup scenario must start with unevaluated pool");
+    assert(cleanupBeforeOpen === "0", "completed lifecycle worker should not remain open before cleanup");
+    assert(cleanupBeforeUnevaluated === "1", "lifecycle cleanup scenario must start with one unevaluated worker");
+    assert(cleanupBeforeUnclosed === "1", "lifecycle cleanup scenario must start with one unclosed worker");
+    assert(cleanupBeforeNextAction === "cleanup_agent_lifecycle_pool", "lifecycle pool must render cleanup next action before guarded click");
+    assert(projectedAction === "cleanup_agent_lifecycle_pool", "guarded next action must execute lifecycle cleanup projection");
+    assert(cleanupAfterStatus === "pass", "guarded lifecycle cleanup must render pass after execution");
+    assert(cleanupAfterOpen === "0", "guarded lifecycle cleanup must leave no open workers");
+    assert(cleanupAfterUnevaluated === "0", "guarded lifecycle cleanup must leave no unevaluated workers");
+    assert(cleanupAfterUnclosed === "0", "guarded lifecycle cleanup must leave no unclosed workers");
+    assert(cleanupAfterNextAction === "--", "guarded lifecycle cleanup must clear lifecycle next action");
+    assert(nextActionReadout !== "cleanup_agent_lifecycle_pool", "guarded lifecycle cleanup must advance next-action readout");
+    assert(dimensions.scrollWidth <= dimensions.width, "lifecycle cleanup click must not create horizontal overflow");
+
+    recordScenario({
+      scenario: "agent_lifecycle_pool_cleanup_click",
+      cleanup_before_status: cleanupBeforeStatus,
+      cleanup_before_open: cleanupBeforeOpen,
+      cleanup_before_unevaluated: cleanupBeforeUnevaluated,
+      cleanup_before_unclosed: cleanupBeforeUnclosed,
+      cleanup_before_next_action: cleanupBeforeNextAction,
+      projected_action: projectedAction,
+      cleanup_after_status: cleanupAfterStatus,
+      cleanup_after_open: cleanupAfterOpen,
+      cleanup_after_unevaluated: cleanupAfterUnevaluated,
+      cleanup_after_unclosed: cleanupAfterUnclosed,
+      cleanup_after_next_action: cleanupAfterNextAction,
+      next_action_readout: nextActionReadout,
+      dimensions
+    });
+  }, { workflowStateMutator: injectLifecycleCleanupState });
+}
+
+async function verifyAgentLifecyclePoolCleanupLoopClick(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+
+    const cleanupBeforeStatus = await page.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const projectedAction = await page.textContent('[data-bind="next_action_readout_action"]');
+    await page.click('[data-autonomous-scheduler-loop="projected-mock"]');
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-mock"]')?.textContent.includes("Projected Loop 已记录"));
+
+    const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
+    const schedulerLoopStrategy = await page.textContent('[data-bind="scheduler_loop_strategy"]');
+    const cleanupAfterStatus = await page.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const cleanupAfterOpen = await page.textContent('[data-bind="agent_lifecycle_pool_open"]');
+    const cleanupAfterUnevaluated = await page.textContent('[data-bind="agent_lifecycle_pool_unevaluated"]');
+    const cleanupAfterUnclosed = await page.textContent('[data-bind="agent_lifecycle_pool_unclosed"]');
+    const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
+    const dimensions = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await page.close();
+
+    assert(cleanupBeforeStatus === "unevaluated", "lifecycle loop cleanup scenario must start with unevaluated pool");
+    assert(projectedAction === "cleanup_agent_lifecycle_pool", "projected loop must start from lifecycle cleanup action");
+    assert(schedulerLoopStatus === "pass", "projected lifecycle cleanup loop must render loop pass");
+    assert(schedulerLoopStrategy === "projected_next_action", "projected lifecycle cleanup loop must render projected strategy");
+    assert(cleanupAfterStatus === "pass", "projected lifecycle cleanup loop must render lifecycle pass");
+    assert(cleanupAfterOpen === "0", "projected lifecycle cleanup loop must leave no open workers");
+    assert(cleanupAfterUnevaluated === "0", "projected lifecycle cleanup loop must leave no unevaluated workers");
+    assert(cleanupAfterUnclosed === "0", "projected lifecycle cleanup loop must leave no unclosed workers");
+    assert(nextActionReadout !== "cleanup_agent_lifecycle_pool", "projected lifecycle cleanup loop must advance next-action readout");
+    assert(dimensions.scrollWidth <= dimensions.width, "projected lifecycle cleanup loop must not create horizontal overflow");
+
+    recordScenario({
+      scenario: "agent_lifecycle_pool_cleanup_loop_click",
+      cleanup_before_status: cleanupBeforeStatus,
+      projected_action: projectedAction,
+      scheduler_loop_status: schedulerLoopStatus,
+      scheduler_loop_strategy: schedulerLoopStrategy,
+      cleanup_after_status: cleanupAfterStatus,
+      cleanup_after_open: cleanupAfterOpen,
+      cleanup_after_unevaluated: cleanupAfterUnevaluated,
+      cleanup_after_unclosed: cleanupAfterUnclosed,
+      next_action_readout: nextActionReadout,
+      dimensions
+    });
+  }, { workflowStateMutator: injectLifecycleCleanupState });
+}
+
 async function verifyProjectedMockLoopClick(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -571,6 +721,11 @@ async function verifyMobileProjectionLoad(browser) {
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const schedulerLoopResumeStatus = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
+    const lifecyclePoolStatus = await page.textContent('[data-bind="agent_lifecycle_pool_status"]');
+    const lifecyclePoolOpen = await page.textContent('[data-bind="agent_lifecycle_pool_open"]');
+    const lifecyclePoolUnevaluated = await page.textContent('[data-bind="agent_lifecycle_pool_unevaluated"]');
+    const lifecyclePoolUnclosed = await page.textContent('[data-bind="agent_lifecycle_pool_unclosed"]');
+    const lifecyclePoolNextAction = await page.textContent('[data-bind="agent_lifecycle_pool_next_action"]');
     const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
     const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
     await page.close();
@@ -585,6 +740,11 @@ async function verifyMobileProjectionLoad(browser) {
     assert(schedulerLoopStatus, "mobile workbench must render scheduler loop status");
     assert(schedulerLoopRecovery, "mobile workbench must render scheduler loop recovery");
     assert(schedulerLoopResumeStatus, "mobile workbench must render scheduler loop resume attempt status");
+    assert(lifecyclePoolStatus, "mobile workbench must render lifecycle pool status");
+    assert(lifecyclePoolOpen !== null, "mobile workbench must render lifecycle open worker count");
+    assert(lifecyclePoolUnevaluated !== null, "mobile workbench must render lifecycle unevaluated count");
+    assert(lifecyclePoolUnclosed !== null, "mobile workbench must render lifecycle unclosed count");
+    assert(lifecyclePoolNextAction !== null, "mobile workbench must render lifecycle next action");
     assert(operationRows >= 1, "mobile workbench must render operation timeline rows");
     assert(nextActionReadout, "mobile workbench must render next-action readout");
 
@@ -601,6 +761,11 @@ async function verifyMobileProjectionLoad(browser) {
       scheduler_loop_status: schedulerLoopStatus,
       scheduler_loop_recovery: schedulerLoopRecovery,
       scheduler_loop_resume_status: schedulerLoopResumeStatus,
+      agent_lifecycle_pool_status: lifecyclePoolStatus,
+      agent_lifecycle_pool_open: lifecyclePoolOpen,
+      agent_lifecycle_pool_unevaluated: lifecyclePoolUnevaluated,
+      agent_lifecycle_pool_unclosed: lifecyclePoolUnclosed,
+      agent_lifecycle_pool_next_action: lifecyclePoolNextAction,
       operation_rows: operationRows,
       next_action_readout: nextActionReadout,
       dimensions
@@ -616,6 +781,8 @@ try {
   await verifySchedulerDispatchClick(browser);
   await verifyApprovedMockSchedulerDispatchClick(browser);
   await verifyGuardedNextActionClick(browser);
+  await verifyAgentLifecyclePoolCleanupClick(browser);
+  await verifyAgentLifecyclePoolCleanupLoopClick(browser);
   await verifyProjectedMockLoopClick(browser);
   await verifyProjectedRealPartialShardReadout(browser);
   await verifyAutonomousSchedulerLoopClick(browser);

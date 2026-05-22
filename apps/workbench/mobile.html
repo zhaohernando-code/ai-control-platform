@@ -170,6 +170,22 @@
               <strong data-bind="scheduler_loop_resume_status">--</strong>
             </div>
             <div>
+              <span>Lifecycle</span>
+              <strong data-bind="agent_lifecycle_pool_status">--</strong>
+            </div>
+            <div>
+              <span>Open</span>
+              <strong data-bind="agent_lifecycle_pool_open">0</strong>
+            </div>
+            <div>
+              <span>Unevaluated</span>
+              <strong data-bind="agent_lifecycle_pool_unevaluated">0</strong>
+            </div>
+            <div>
+              <span>Unclosed</span>
+              <strong data-bind="agent_lifecycle_pool_unclosed">0</strong>
+            </div>
+            <div>
               <span>Goals</span>
               <strong data-bind="global_goals_status">--</strong>
             </div>
@@ -180,6 +196,10 @@
             <div>
               <span>Action</span>
               <strong data-bind="next_action_readout_action">--</strong>
+            </div>
+            <div>
+              <span>Cleanup</span>
+              <strong data-bind="agent_lifecycle_pool_next_action">--</strong>
             </div>
             <div>
               <span>Next goal</span>
