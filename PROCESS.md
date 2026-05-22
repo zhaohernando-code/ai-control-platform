@@ -42,3 +42,5 @@
 - **完成定义包含继续能力**：一个子任务通过测试不等于项目完成。只要 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next_action_readout 存在，就必须生成下一轮 continuation seed 或明确阻塞原因。
 - **外部 CLI 子进程必须显式交接**：`codex_proxy` 不继承 Codex App 的聊天上下文、developer 指令、skill、connector、浏览器和 heartbeat 状态。交给 proxy 前必须把 `docs/contracts/CODEX_PROXY_HANDOFF_CN.md`、当前 Context Pack、host、owned files、读文件上限、最小 diff、测试命令和自评格式写入 prompt。
 - **子进程无 diff 是流程失败**：外部子进程如果在限定时间内只分析不落地、超出读取范围、没有最终自评或没有测试结果，主进程必须把它归类为 process gap，先新增 gate/文档/测试约束，再重新派发或收敛为最小修复。
+- **最终总执行器必须是 CLI**：Codex App 只能是观察、调试和人工干预入口，不能是中台创建项目、调度任务、验收结果或继续运行的必需条件。目标形态下，Codex CLI/`codex_proxy` 必须作为 headless main orchestrator 从 durable state 启动并执行完整主进程职责。
+- **CLI orchestrator 与 CLI worker 要分层**：同一个 Codex CLI 能力可以承担 main orchestrator 或 child worker，但运行模式必须显式声明。main orchestrator 可以拆任务、派发、验收和修流程；child worker 只能执行 Context Pack 授权的 owned-files 实现。

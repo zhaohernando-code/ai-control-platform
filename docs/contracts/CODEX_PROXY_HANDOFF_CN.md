@@ -4,6 +4,11 @@
 
 当主进程需要把后续平台开发交给 `~/codex-proxy.sh` 执行时，必须把本文件作为交接上下文的一部分。`codex_proxy` 是独立 CLI 进程，不等同于当前 Codex App 会话。
 
+本文件同时约束两个阶段：
+
+- **过渡阶段**：Codex App 仍然作为外层主进程，`codex_proxy` 作为受控子进程执行器。
+- **目标阶段**：`codex_proxy`/Codex CLI 必须能够作为 headless main orchestrator 独立运行完整中台流程；Codex App 只作为人工观察、调试和干预入口，不能成为新项目创建、任务调度、验收或 continuation 的必需运行时。
+
 ## 与 Codex App 的关键差异
 
 - `codex_proxy` 不继承当前聊天上下文、开发者指令、已读文件、已加载 skill、MCP/app connector、浏览器状态或自动化 heartbeat。
@@ -11,6 +16,19 @@
 - `codex_proxy` 不会自动知道“主进程只调度验收、子进程实现”的固定模式，除非 prompt 和仓库 durable 文件重复声明。
 - `codex_proxy` 容易在大范围读取和长时间分析中消耗上下文而不产出补丁；必须给它明确的文件读取上限、交付时限、最小 diff 和测试命令。
 - `codex_proxy` 不能把当前聊天里的口头规则当作 gate。可复发规则必须进入 `AGENTS.md`、`PROCESS.md`、`PROJECT_STATUS.json`、process-hardening、schema、测试或工作台 projection。
+
+## CLI Main Orchestrator 要求
+
+中台最终不能依赖 Codex App 会话来创建或推进项目。CLI 总执行器必须自己完成以下职责：
+
+- 从 durable repository state 启动：读取 `PROJECT_STATUS.json`、`PROCESS.md`、`AGENTS.md`、`PROJECT_RULES.md`、contracts、projection history 和最新 workflow_state。
+- 执行主进程职责：判断目标、分类 host、生成 Context Pack、拆分 work packages、选择模型路由、派发子进程、验收结果、修正流程并决定 continuation。
+- 派发子进程职责：用 Codex CLI/`codex_proxy` 或其他 provider 运行 bounded owned-files work package，并记录 WorkerSpawned、WorkerHeartbeat、WorkerCompleted、WorkerEvaluation、WorkerClosed、PoolIterationClosed。
+- 自恢复职责：检测无 diff、超时、模型失败、测试失败、host 漂移、owned-files 越界、假成功和 continuation 断裂；能自动选择 retry、rollback、split、fallback 或 process-hardening。
+- 工作台职责：把运行事实写入 workflow_state、artifact ledger、projection 和 PC/mobile workbench 输入；UI 只读 projection，不承担流程判断。
+- 退出职责：只有在所有 global goals 完成、没有 next_step、没有 next_work_packages、没有 workbench next_action_readout 且 closeout 通过时，CLI 总执行器才能停止。
+
+因此，`codex_proxy` 不是只能成为子进程。它在当前阶段作为子进程试运行，是为了验证 CLI 能力、收集失败模式并把门禁代码化；平台后续必须实现一个 CLI orchestrator adapter，让同一套 fixed-development-mode gate 在没有 Codex App 的情况下完整运行。
 
 ## Proxy 子进程交付协议
 

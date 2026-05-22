@@ -442,6 +442,20 @@
       "category": "process_gap",
       "severity": "p1",
       "message": "External child processes that analyze for a long time without producing a patch leave the main process waiting manually; they need a bounded delivery protocol and no-diff timeout handling."
+    },
+    {
+      "id": "codex-app-required-runtime-drift",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "The platform must not require an interactive Codex App session as the main executor; new project creation, task scheduling, validation, and continuation must be runnable by a headless Codex CLI orchestrator."
+    },
+    {
+      "id": "cli-main-worker-role-ambiguity",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "Codex CLI sessions must declare whether they are running as main orchestrator or child worker; otherwise a worker can accidentally take main-process authority or a main loop can be treated as a bounded implementation task."
     }
   ],
   "hardening_items": [
@@ -1130,6 +1144,22 @@
       "invariant": "Proxy child processes must be time-boxed and patch-oriented: prompts must cap extra file reads, require a minimum diff before long explanation, and require no-diff timeout output with blocker, read files, and next minimal patch position.",
       "enforcement_target": "docs/contracts/CODEX_PROXY_HANDOFF_CN.md; PROCESS.md; docs/examples/process-hardening-current.json",
       "regression_test": "CODEX_PROXY_HANDOFF_CN defines read limits, 10-minute no-diff exit, final self-evaluation, and process-gap handling for no-diff proxy runs",
+      "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "codex-app-required-runtime-drift",
+      "invariant": "The final AI control platform must run from headless Codex CLI/codex_proxy durable state without requiring Codex App; Codex App is only an observation, debug, or human-intervention surface.",
+      "enforcement_target": "docs/contracts/CODEX_PROXY_HANDOFF_CN.md; PROCESS.md; PROJECT_STATUS.json; docs/examples/process-hardening-current.json",
+      "regression_test": "CODEX_PROXY_HANDOFF_CN defines target-stage CLI main orchestrator requirements and PROCESS states Codex App is not a required runtime",
+      "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "cli-main-worker-role-ambiguity",
+      "invariant": "Every Codex CLI execution must declare role=main_orchestrator or role=child_worker; only main_orchestrator may create Context Packs, dispatch children, validate results, repair process gates, and decide continuation, while child_worker remains bounded by owned files.",
+      "enforcement_target": "docs/contracts/CODEX_PROXY_HANDOFF_CN.md; PROCESS.md; docs/examples/process-hardening-current.json",
+      "regression_test": "CODEX_PROXY_HANDOFF_CN documents separate transition worker mode and target CLI main orchestrator mode; PROCESS documents CLI orchestrator and CLI worker layering",
       "verification": "npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
