@@ -17,6 +17,7 @@ function usage() {
     "Options:",
     "  --next-step <text>",
     "  --workflow-state-output <path>",
+    "  --agent-lifecycle-cleanup-output <path>",
     "  --reviewer-shard-loop-artifact <path>",
     "  --continuation-input-output <path>",
     "  --history-path <path>",
@@ -60,6 +61,7 @@ try {
   result = createSchedulerDispatchPlan(input, {
     workflow_state_input_path: valueAfter("--workflow-state-input", args),
     workflow_state_output_path: valueAfter("--workflow-state-output", args),
+    agent_lifecycle_cleanup_output_path: valueAfter("--agent-lifecycle-cleanup-output", args),
     reviewer_shard_loop_artifact_path: valueAfter("--reviewer-shard-loop-artifact", args),
     continuation_input_path: valueAfter("--continuation-input-output", args),
     history_path: valueAfter("--history-path", args),

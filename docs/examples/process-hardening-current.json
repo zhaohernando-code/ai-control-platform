@@ -414,6 +414,34 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Spawned child processes must be tracked, evaluated, closed, and exposed as durable workflow facts before the main process advances to another pool iteration."
+    },
+    {
+      "id": "scheduler-cleanup-dispatch-continuation-drift",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Scheduler cleanup-only dispatch must not be treated as reviewer-shard continuation work; it must write the cleaned workflow_state back and avoid closeout continuation preparation."
+    },
+    {
+      "id": "scheduler-cleanup-policy-reviewer-budget-drift",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Scheduler policy must distinguish non-reviewer maintenance dispatch from reviewer dispatch so cleanup work is not blocked by reviewer budget/provider gates."
+    },
+    {
+      "id": "codex-proxy-context-gate-drift",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "External codex_proxy child processes do not inherit Codex App context or gates; handoff prompts must carry durable project context, host boundary, owned files, read limits, tests, and self-evaluation requirements."
+    },
+    {
+      "id": "codex-proxy-analysis-without-diff",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "External child processes that analyze for a long time without producing a patch leave the main process waiting manually; they need a bounded delivery protocol and no-diff timeout handling."
     }
   ],
   "hardening_items": [
@@ -1071,6 +1099,38 @@
       "enforcement_target": "src/workflow/model-router.js; src/workflow/reviewer-execution-policy.js; test/model-router.test.js; test/reviewer-execution-policy.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "DS expanded strategy makes medium-risk implementation DS primary under plan pressure; DS expanded strategy keeps high-risk platform implementation GPT-led; DS expanded strategy does not take primary ownership of recovery stage; reviewer execution policy can temporarily expand DS bounded participation; reviewer execution policy caps expanded DS cumulative timeout",
       "verification": "node --test test/model-router.test.js test/reviewer-execution-policy.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-cleanup-dispatch-continuation-drift",
+      "invariant": "Scheduler dispatch plans must declare dispatch_kind, fail closed on mixed reviewer/cleanup actions, set cleanup-only continuation_output mode to none, and the workbench must write cleanup output workflow_state back without preparing reviewer closeout continuation.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-plan.js; tools/workbench-server.mjs; test/scheduler-dispatch-plan.test.js; test/workbench-server.test.js",
+      "regression_test": "scheduler dispatch plan maps agent lifecycle cleanup work package to executable command; scheduler dispatch plan fails closed for mixed reviewer and lifecycle cleanup actions; workbench server runs approved non-dry-run scheduler dispatch for lifecycle cleanup without continuation",
+      "verification": "node --test test/scheduler-dispatch-plan.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-cleanup-policy-reviewer-budget-drift",
+      "invariant": "Scheduler control policy must apply reviewer budget and bounded provider cost requirements only to plans that actually run reviewer shards; cleanup-only maintenance dispatch keeps zero external reviewer calls and reviewer_cost_mode=not_required.",
+      "enforcement_target": "src/workflow/scheduler-dispatch-policy.js; test/workbench-server.test.js",
+      "regression_test": "workbench server runs approved non-dry-run scheduler dispatch for lifecycle cleanup without continuation",
+      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "codex-proxy-context-gate-drift",
+      "invariant": "Proxy handoff must be durable and explicit: AGENTS/PROCESS and a dedicated proxy handoff contract must state that codex_proxy does not inherit Codex App context, skills, connectors, browser state, heartbeat, or hidden gates, and every proxy prompt must restate host, owned files, context files, tests, and self-evaluation.",
+      "enforcement_target": "AGENTS.md; PROCESS.md; docs/contracts/CODEX_PROXY_HANDOFF_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "process-hardening-current requires completed proxy handoff finding; manual prompt uses CODEX_PROXY_HANDOFF_CN as required context",
+      "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "codex-proxy-analysis-without-diff",
+      "invariant": "Proxy child processes must be time-boxed and patch-oriented: prompts must cap extra file reads, require a minimum diff before long explanation, and require no-diff timeout output with blocker, read files, and next minimal patch position.",
+      "enforcement_target": "docs/contracts/CODEX_PROXY_HANDOFF_CN.md; PROCESS.md; docs/examples/process-hardening-current.json",
+      "regression_test": "CODEX_PROXY_HANDOFF_CN defines read limits, 10-minute no-diff exit, final self-evaluation, and process-gap handling for no-diff proxy runs",
+      "verification": "npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
   ]

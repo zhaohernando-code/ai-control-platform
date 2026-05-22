@@ -42,6 +42,11 @@ function reviewerShardCount(plan = {}) {
   return asArray(firstStep?.work_package_ids).length;
 }
 
+function planRunsReviewerShards(plan = {}) {
+  return reviewerShardCount(plan) > 0 ||
+    asArray(plan.steps).some((step) => normalizeString(step.action) === "run_reviewer_shard_loop");
+}
+
 function policyStatus(policy = {}) {
   return normalizeString(policy.status) === "pass" ? "pass" : "fail";
 }
@@ -136,8 +141,13 @@ export function evaluateSchedulerDispatchControlPolicy(input = {}, plan = {}) {
   }
 
   const usesMock = planUsesReviewerMock(plan);
+  const runsReviewerShards = planRunsReviewerShards(plan);
   const maxExternalReviewerCalls = numberValue(input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls);
-  if (usesMock) {
+  if (!runsReviewerShards) {
+    if (maxExternalReviewerCalls !== null && maxExternalReviewerCalls !== 0) {
+      issues.push(issue("invalid_non_reviewer_budget", "non-reviewer scheduler dispatch must set max_external_reviewer_calls to 0 when provided", "max_external_reviewer_calls"));
+    }
+  } else if (usesMock) {
     if (maxExternalReviewerCalls !== null && maxExternalReviewerCalls !== 0) {
       issues.push(issue("invalid_mock_reviewer_budget", "mocked reviewer dispatch must set max_external_reviewer_calls to 0 when provided", "max_external_reviewer_calls"));
     }
@@ -154,7 +164,7 @@ export function evaluateSchedulerDispatchControlPolicy(input = {}, plan = {}) {
   if (!["mocked", "bounded"].includes(providerCostMode)) {
     issues.push(issue("missing_provider_cost_mode", "non-dry-run scheduler dispatch requires provider_cost_mode mocked or bounded", "provider_cost_mode"));
   }
-  if (!usesMock && providerCostMode !== "bounded") {
+  if (runsReviewerShards && !usesMock && providerCostMode !== "bounded") {
     issues.push(issue("invalid_provider_cost_mode", "non-mocked reviewer dispatch must use bounded provider_cost_mode", "provider_cost_mode"));
   }
 
@@ -166,7 +176,7 @@ export function evaluateSchedulerDispatchControlPolicy(input = {}, plan = {}) {
       max_steps: maxSteps,
       max_external_reviewer_calls: maxExternalReviewerCalls,
       provider_cost_mode: providerCostMode,
-      reviewer_cost_mode: usesMock ? "mocked" : "bounded"
+      reviewer_cost_mode: runsReviewerShards ? (usesMock ? "mocked" : "bounded") : "not_required"
     }
   };
 }

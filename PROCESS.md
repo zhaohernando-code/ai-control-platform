@@ -40,3 +40,5 @@
 - **全局不跑偏优先级最高**：cwd、历史 thread、默认 hook、临时日志、模型建议或单个子进程输出都不能覆盖 host-boundary、global-goal completion、process-hardening 和 workbench continuation gate。
 - **多模型协同必须可审计**：GPT、DeepSeek V4 Pro/Flash、Claude Code 或其他模型只能通过 model routing plan 和 reviewer gate 进入流程；模型调用结果必须沉淀为 durable findings、artifacts 或 continuation facts。
 - **完成定义包含继续能力**：一个子任务通过测试不等于项目完成。只要 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next_action_readout 存在，就必须生成下一轮 continuation seed 或明确阻塞原因。
+- **外部 CLI 子进程必须显式交接**：`codex_proxy` 不继承 Codex App 的聊天上下文、developer 指令、skill、connector、浏览器和 heartbeat 状态。交给 proxy 前必须把 `docs/contracts/CODEX_PROXY_HANDOFF_CN.md`、当前 Context Pack、host、owned files、读文件上限、最小 diff、测试命令和自评格式写入 prompt。
+- **子进程无 diff 是流程失败**：外部子进程如果在限定时间内只分析不落地、超出读取范围、没有最终自评或没有测试结果，主进程必须把它归类为 process gap，先新增 gate/文档/测试约束，再重新派发或收敛为最小修复。

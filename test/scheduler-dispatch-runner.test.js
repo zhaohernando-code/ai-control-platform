@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
+import {
+  cleanupAgentLifecyclePool,
+  recordAgentLifecycleFact
+} from "../src/workflow/agent-lifecycle-pool.js";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import {
   createSchedulerDispatchRunArtifact,
@@ -32,6 +36,57 @@ function dispatchPlan(overrides = {}) {
   });
 }
 
+function lifecycleCleanupPlan(overrides = {}) {
+  return createSchedulerDispatchPlan({
+    status: "pass",
+    action: "cleanup_agent_lifecycle_pool",
+    workflow_state: workflowState(),
+    next_work_packages: [
+      {
+        id: "agent-lifecycle-pool-cleanup-latest",
+        action: "cleanup_agent_lifecycle_pool"
+      }
+    ]
+  }, {
+    workflow_state_input_path: "tmp/scheduler/input.json",
+    ...overrides
+  });
+}
+
+function lifecycleWorkflowStateAfterCleanup() {
+  const base = {
+    manifest: {
+      run_id: "run-agent-lifecycle-cleanup",
+      cycle_id: "cycle-agent-lifecycle-cleanup",
+      events: [],
+      artifacts: [],
+      work_packages: []
+    },
+    artifact_ledger: {
+      run_id: "run-agent-lifecycle-cleanup",
+      cycle_id: "cycle-agent-lifecycle-cleanup",
+      artifacts: []
+    }
+  };
+  const spawned = recordAgentLifecycleFact(base, {
+    event_type: "WorkerSpawned",
+    pool_id: "pool-agent-lifecycle",
+    worker_id: "worker-a",
+    status: "pass",
+    created_at: "2026-05-22T01:00:00.000Z"
+  });
+  const completed = recordAgentLifecycleFact(spawned.workflow_state, {
+    event_type: "WorkerCompleted",
+    pool_id: "pool-agent-lifecycle",
+    worker_id: "worker-a",
+    status: "pass",
+    created_at: "2026-05-22T01:01:00.000Z"
+  });
+  return cleanupAgentLifecyclePool(completed.workflow_state, {
+    created_at: "2026-05-22T01:02:00.000Z"
+  }).workflow_state;
+}
+
 test("scheduler dispatch runner validates allowed npm scripts", () => {
   const plan = dispatchPlan();
   const validation = validateSchedulerDispatchPlan(plan);
@@ -54,6 +109,117 @@ test("scheduler dispatch runner validates allowed npm scripts", () => {
   assert.ok(damagedValidation.issues.some((entry) => entry.code === "unsupported_step_command"));
 });
 
+test("scheduler dispatch runner allows agent lifecycle cleanup npm script", () => {
+  const validation = validateSchedulerDispatchPlan(lifecycleCleanupPlan());
+
+  assert.equal(validation.status, "pass");
+});
+
+test("scheduler dispatch runner rejects non-cleanup agent lifecycle pool arguments", () => {
+  const basePlan = lifecycleCleanupPlan();
+  const cases = [
+    {
+      name: "event recording",
+      args: [
+        "run",
+        "record:agent-lifecycle-pool",
+        "--",
+        "--input",
+        "tmp/scheduler/input.json",
+        "--output",
+        "tmp/scheduler/output.json",
+        "--cleanup-latest-pool",
+        "--event-type",
+        "WorkerClosed"
+      ],
+      codes: ["unsupported_agent_lifecycle_pool_arg"]
+    },
+    {
+      name: "in place writes",
+      args: [
+        "run",
+        "record:agent-lifecycle-pool",
+        "--",
+        "--input",
+        "tmp/scheduler/input.json",
+        "--cleanup-latest-pool",
+        "--in-place"
+      ],
+      codes: ["unsupported_agent_lifecycle_pool_arg", "missing_agent_lifecycle_cleanup_output"]
+    },
+    {
+      name: "missing cleanup flag",
+      args: [
+        "run",
+        "record:agent-lifecycle-pool",
+        "--",
+        "--input",
+        "tmp/scheduler/input.json",
+        "--output",
+        "tmp/scheduler/output.json"
+      ],
+      codes: ["missing_agent_lifecycle_cleanup_flag"]
+    },
+    {
+      name: "missing input",
+      args: [
+        "run",
+        "record:agent-lifecycle-pool",
+        "--",
+        "--output",
+        "tmp/scheduler/output.json",
+        "--cleanup-latest-pool"
+      ],
+      codes: ["missing_agent_lifecycle_cleanup_input"]
+    },
+    {
+      name: "missing output",
+      args: [
+        "run",
+        "record:agent-lifecycle-pool",
+        "--",
+        "--input",
+        "tmp/scheduler/input.json",
+        "--cleanup-latest-pool"
+      ],
+      codes: ["missing_agent_lifecycle_cleanup_output"]
+    },
+    {
+      name: "unknown extra parameter",
+      args: [
+        "run",
+        "record:agent-lifecycle-pool",
+        "--",
+        "--input",
+        "tmp/scheduler/input.json",
+        "--output",
+        "tmp/scheduler/output.json",
+        "--cleanup-latest-pool",
+        "--unknown"
+      ],
+      codes: ["unsupported_agent_lifecycle_pool_arg"]
+    }
+  ];
+
+  for (const item of cases) {
+    const validation = validateSchedulerDispatchPlan({
+      ...basePlan,
+      steps: [
+        {
+          ...basePlan.steps[0],
+          args: item.args
+        }
+      ]
+    });
+    const issueCodes = validation.issues.map((entry) => entry.code);
+
+    assert.equal(validation.status, "fail", item.name);
+    for (const code of item.codes) {
+      assert.ok(issueCodes.includes(code), `${item.name} should include ${code}`);
+    }
+  }
+});
+
 test("scheduler dispatch runner executes steps with injected executor", async () => {
   const seen = [];
   const result = await runSchedulerDispatchPlan(dispatchPlan(), {
@@ -71,6 +237,22 @@ test("scheduler dispatch runner executes steps with injected executor", async ()
     "run-autonomous-closeout-loop"
   ]);
   assert.equal(result.steps.length, 3);
+});
+
+test("scheduler dispatch runner executes agent lifecycle cleanup step", async () => {
+  const seen = [];
+  const result = await runSchedulerDispatchPlan(lifecycleCleanupPlan(), {
+    executor: async (step) => {
+      seen.push({ id: step.id, script: step.args[1] });
+      return { status: "pass", exit_code: 0, stdout: "", stderr: "" };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(seen, [
+    { id: "cleanup-agent-lifecycle-pool", script: "record:agent-lifecycle-pool" }
+  ]);
+  assert.equal(result.steps[0].action, "cleanup_agent_lifecycle_pool");
 });
 
 test("scheduler dispatch runner summarizes step output artifacts", async () => {
@@ -123,6 +305,27 @@ test("scheduler dispatch runner summarizes step output artifacts", async () => {
   assert.equal(result.steps[1].outputs.continuation_input.next_step, "continue");
   assert.equal(result.steps[2].outputs.autonomous_closeout_loop_artifact.next_decision_action, "rerun");
   assert.equal(result.steps[2].outputs.autonomous_closeout_loop_artifact.next_work_package_count, 2);
+});
+
+test("scheduler dispatch runner summarizes agent lifecycle cleanup workflow state output", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "scheduler-dispatch-lifecycle-summary-"));
+  const outputPath = join(dir, "agent-lifecycle-cleanup-output.json");
+  const plan = lifecycleCleanupPlan({
+    agent_lifecycle_cleanup_output_path: outputPath
+  });
+  const result = await runSchedulerDispatchPlan(plan, {
+    executor: async (step) => {
+      writeFileSync(step.outputs.workflow_state, JSON.stringify(lifecycleWorkflowStateAfterCleanup(), null, 2));
+      return { status: "pass", exit_code: 0, stdout: "", stderr: "" };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.steps[0].outputs.workflow_state.agent_lifecycle_pool.status, "pass");
+  assert.equal(result.steps[0].outputs.workflow_state.agent_lifecycle_pool.next_action, null);
+  assert.equal(result.steps[0].outputs.agent_lifecycle_cleanup.cleanup_status, "pass");
+  assert.equal(result.steps[0].outputs.agent_lifecycle_cleanup.pool_id, "pool-agent-lifecycle");
+  assert.equal(result.steps[0].outputs.agent_lifecycle_cleanup.next_action, null);
 });
 
 test("scheduler dispatch runner stops on step failure", async () => {

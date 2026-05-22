@@ -23,6 +23,20 @@ function continuationInput() {
   };
 }
 
+function lifecycleCleanupDecision() {
+  return {
+    status: "pass",
+    action: "cleanup_agent_lifecycle_pool",
+    workflow_state: workflowState(),
+    next_work_packages: [
+      {
+        id: "agent-lifecycle-pool-cleanup-latest",
+        action: "cleanup_agent_lifecycle_pool"
+      }
+    ]
+  };
+}
+
 test("scheduler dispatch plan maps reviewer shard work packages to loop and closeout commands", () => {
   const plan = createSchedulerDispatchPlan(continuationInput(), {
     workflow_state_input_path: "tmp/scheduler/input.json",
@@ -42,6 +56,7 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
 
   assert.equal(plan.status, "pass");
   assert.equal(plan.phase, "scheduler_dispatch_plan");
+  assert.equal(plan.dispatch_kind, "reviewer_shard_loop");
   assert.equal(plan.steps.length, 3);
   assert.equal(plan.steps[0].action, "run_reviewer_shard_loop");
   assert.ok(plan.steps[0].args.includes("--all"));
@@ -63,6 +78,53 @@ test("scheduler dispatch plan maps reviewer shard work packages to loop and clos
   });
 });
 
+test("scheduler dispatch plan maps agent lifecycle cleanup work package to executable command", () => {
+  const plan = createSchedulerDispatchPlan(lifecycleCleanupDecision(), {
+    workflow_state_input_path: "tmp/scheduler/input.json",
+    agent_lifecycle_cleanup_output_path: "tmp/scheduler/agent-lifecycle-cleanup-output.json"
+  });
+
+  assert.equal(plan.status, "pass");
+  assert.equal(plan.phase, "scheduler_dispatch_plan");
+  assert.equal(plan.dispatch_kind, "agent_lifecycle_cleanup");
+  assert.equal(plan.steps.length, 1);
+  assert.equal(plan.steps[0].id, "cleanup-agent-lifecycle-pool");
+  assert.equal(plan.steps[0].action, "cleanup_agent_lifecycle_pool");
+  assert.deepEqual(plan.steps[0].work_package_ids, ["agent-lifecycle-pool-cleanup-latest"]);
+  assert.deepEqual(plan.steps[0].args, [
+    "run",
+    "record:agent-lifecycle-pool",
+    "--",
+    "--input",
+    "tmp/scheduler/input.json",
+    "--output",
+    "tmp/scheduler/agent-lifecycle-cleanup-output.json",
+    "--cleanup-latest-pool"
+  ]);
+  assert.deepEqual(plan.steps[0].outputs, {
+    workflow_state: "tmp/scheduler/agent-lifecycle-cleanup-output.json",
+    agent_lifecycle_cleanup: "tmp/scheduler/agent-lifecycle-cleanup-output.json"
+  });
+  assert.deepEqual(plan.continuation_output, { mode: "none" });
+});
+
+test("scheduler dispatch plan fails closed for mixed reviewer and lifecycle cleanup actions", () => {
+  const decision = lifecycleCleanupDecision();
+  decision.next_work_packages.push({
+    id: "reviewer-scope-shard-mixed",
+    action: "run_reviewer_scope_shard"
+  });
+
+  const plan = createSchedulerDispatchPlan(decision, {
+    workflow_state_input_path: "tmp/scheduler/input.json"
+  });
+
+  assert.equal(plan.status, "fail");
+  assert.equal(plan.dispatch_kind, "mixed");
+  assert.equal(plan.steps.length, 0);
+  assert.ok(plan.issues.some((entry) => entry.code === "mixed_scheduler_dispatch_actions"));
+});
+
 test("scheduler dispatch plan fails closed when service writeback lacks base url", () => {
   const plan = createSchedulerDispatchPlan(continuationInput(), {
     workflow_state_input_path: "tmp/scheduler/input.json",
@@ -75,6 +137,13 @@ test("scheduler dispatch plan fails closed when service writeback lacks base url
 
 test("scheduler dispatch plan fails closed without workflow state input path", () => {
   const plan = createSchedulerDispatchPlan(continuationInput());
+
+  assert.equal(plan.status, "fail");
+  assert.ok(plan.issues.some((entry) => entry.code === "missing_workflow_state_input_path"));
+});
+
+test("scheduler dispatch plan fails closed for lifecycle cleanup without workflow state input path", () => {
+  const plan = createSchedulerDispatchPlan(lifecycleCleanupDecision());
 
   assert.equal(plan.status, "fail");
   assert.ok(plan.issues.some((entry) => entry.code === "missing_workflow_state_input_path"));

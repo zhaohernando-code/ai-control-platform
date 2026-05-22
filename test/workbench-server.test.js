@@ -1117,6 +1117,82 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server runs approved non-dry-run scheduler dispatch for lifecycle cleanup without continuation", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-cleanup-"));
+  const inputPath = join(snapshotsRoot, "scheduler-cleanup-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
+    "WorkerSpawned",
+    "WorkerCompleted",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed",
+    "reviewer_provider_health",
+    "reviewer_scope_split",
+    "reviewer_shard_result",
+    "reviewer_shard_aggregate"
+  ].includes(event.type));
+  workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.manifest.events.push(
+    {
+      id: "worker-spawned-cleanup",
+      type: "WorkerSpawned",
+      status: "pass",
+      created_at: "2026-05-22T08:20:00.000Z",
+      metadata: { pool_id: "pool-scheduler-cleanup", worker_id: "worker-cleanup" }
+    },
+    {
+      id: "worker-completed-cleanup",
+      type: "WorkerCompleted",
+      status: "pass",
+      created_at: "2026-05-22T08:21:00.000Z",
+      metadata: { pool_id: "pool-scheduler-cleanup", worker_id: "worker-cleanup" }
+    }
+  );
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "scheduler-cleanup",
+    items: [
+      {
+        id: "scheduler-cleanup",
+        label: "Scheduler cleanup",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/scheduler-dispatch?id=scheduler-cleanup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        execution_profile: "approved_mock_non_dry_run",
+        created_at: "2026-05-22T08:22:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.plan.dispatch_kind, "agent_lifecycle_cleanup");
+    assert.equal(created.plan.continuation_output.mode, "none");
+    assert.equal(created.result.status, "pass");
+    assert.equal(created.result.steps.length, 1);
+    assert.equal(created.continuation, null);
+    assert.equal(created.projection.agent_lifecycle_pool.status, "pass");
+    assert.equal(created.projection.scheduler_dispatch.step_count, 1);
+    assert.equal(created.projection.scheduler_continuation.ready, false);
+    assert.ok(state.manifest.events.some((event) => event.type === "WorkerEvaluation"));
+    assert.ok(state.manifest.events.some((event) => event.type === "WorkerClosed"));
+    assert.ok(state.manifest.events.some((event) => event.type === "PoolIterationClosed"));
+    assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server rejects scheduler next-cycle without workflow state input", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/scheduler-next-cycle?id=bootstrap`, {

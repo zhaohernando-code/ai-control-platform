@@ -494,6 +494,47 @@ function schedulerDispatchRunIssues(input = {}) {
   return issues;
 }
 
+function latestAvailableSchedulerWorkflowStatePath(runResult = {}) {
+  for (const step of [...(Array.isArray(runResult.steps) ? runResult.steps : [])].reverse()) {
+    const workflowStateOutput = step.outputs?.workflow_state;
+    if (workflowStateOutput?.status === "available" && workflowStateOutput.path) {
+      return workflowStateOutput.path;
+    }
+  }
+  return "";
+}
+
+function readSchedulerWorkflowStateOutput(runResult = {}) {
+  const outputPath = latestAvailableSchedulerWorkflowStatePath(runResult);
+  if (!outputPath) {
+    return {
+      status: "fail",
+      issues: [{
+        code: "missing_scheduler_workflow_state_output",
+        message: "agent lifecycle cleanup scheduler dispatch did not produce an available workflow state output",
+        path: "result.steps.outputs.workflow_state"
+      }]
+    };
+  }
+
+  try {
+    return {
+      status: "pass",
+      workflow_state: readJson(resolve(root, outputPath)),
+      output_path: outputPath
+    };
+  } catch (error) {
+    return {
+      status: "fail",
+      issues: [{
+        code: "unreadable_scheduler_workflow_state_output",
+        message: error.message,
+        path: outputPath
+      }]
+    };
+  }
+}
+
 function schedulerPlanInputFromWorkflowState(workflowState, input = {}) {
   return {
     project_status: {
@@ -1346,7 +1387,25 @@ export function createWorkbenchServer(options = {}) {
         const runArtifact = createSchedulerDispatchRunArtifact(plan, runResult, {
           created_at: controlInput.created_at || controlInput.createdAt
         });
-        const recorded = recordSchedulerDispatchRunArtifact(policyRecorded.workflow_state, runArtifact, {
+        let workflowStateForRunRecord = policyRecorded.workflow_state;
+        if (
+          policy.execution_mode !== "dry_run" &&
+          plan.dispatch_kind === "agent_lifecycle_cleanup" &&
+          runResult.status === "pass"
+        ) {
+          const cleanupOutput = readSchedulerWorkflowStateOutput(runResult);
+          if (cleanupOutput.status !== "pass") {
+            jsonResponse(res, 400, {
+              error: "scheduler dispatch cleanup output unavailable",
+              issues: cleanupOutput.issues || [],
+              projection: workbenchProjection(policyRecorded.workflow_state)
+            });
+            return;
+          }
+          workflowStateForRunRecord = cleanupOutput.workflow_state;
+        }
+
+        const recorded = recordSchedulerDispatchRunArtifact(workflowStateForRunRecord, runArtifact, {
           created_at: controlInput.created_at || controlInput.createdAt
         });
         if (recorded.status !== "pass") {
@@ -1356,7 +1415,7 @@ export function createWorkbenchServer(options = {}) {
 
         let nextWorkflowState = recorded.workflow_state;
         let continuation = null;
-        if (policy.execution_mode !== "dry_run") {
+        if (policy.execution_mode !== "dry_run" && plan.dispatch_kind !== "agent_lifecycle_cleanup") {
           continuation = prepareSchedulerDispatchContinuationFromRunArtifact(runArtifact);
           if (continuation.status !== "ready") {
             jsonResponse(res, 400, {

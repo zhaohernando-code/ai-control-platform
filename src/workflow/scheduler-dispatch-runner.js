@@ -2,13 +2,16 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { recordArtifact } from "./artifact-ledger.js";
+import { summarizeAgentLifecyclePool } from "./agent-lifecycle-pool.js";
 import { appendRunEvent } from "./run-manifest.js";
 
 const SCHEDULER_DISPATCH_RUN_VERSION = "scheduler-dispatch-run.v1";
+const AGENT_LIFECYCLE_POOL_SCRIPT = "record:agent-lifecycle-pool";
 const ALLOWED_NPM_SCRIPTS = new Set([
   "run:reviewer-shard",
   "prepare:reviewer-shard-loop-continuation",
-  "run:autonomous-closeout-loop"
+  "run:autonomous-closeout-loop",
+  AGENT_LIFECYCLE_POOL_SCRIPT
 ]);
 
 function asArray(value) {
@@ -50,6 +53,94 @@ function stepId(step, index) {
   return normalizeString(step?.id) || `step-${index + 1}`;
 }
 
+function validateAgentLifecyclePoolCleanupArgs(args = [], path) {
+  const issues = [];
+
+  if (args[2] !== "--") {
+    issues.push(issue("missing_npm_args_separator", "record:agent-lifecycle-pool must pass tool args after --", `${path}.args`));
+  }
+
+  const tokens = args.slice(3);
+  const seen = new Set();
+  let inputPath = "";
+  let outputPath = "";
+  let cleanupLatestPool = false;
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = normalizeString(tokens[index]);
+    const tokenPath = `${path}.args[${index + 3}]`;
+
+    if (token === "--input" || token === "--output") {
+      if (seen.has(token)) {
+        issues.push(issue("duplicate_agent_lifecycle_pool_arg", `${token} must appear only once`, tokenPath));
+      }
+      seen.add(token);
+
+      const value = normalizeString(tokens[index + 1]);
+      if (!value || value.startsWith("--")) {
+        issues.push(issue(
+          token === "--input" ? "missing_agent_lifecycle_cleanup_input" : "missing_agent_lifecycle_cleanup_output",
+          `${token} requires a path value`,
+          `${path}.args[${index + 4}]`
+        ));
+      } else if (token === "--input") {
+        inputPath = value;
+      } else {
+        outputPath = value;
+      }
+      index += 1;
+      continue;
+    }
+
+    if (token === "--cleanup-latest-pool") {
+      if (seen.has(token)) {
+        issues.push(issue("duplicate_agent_lifecycle_pool_arg", "--cleanup-latest-pool must appear only once", tokenPath));
+      }
+      seen.add(token);
+      cleanupLatestPool = true;
+      continue;
+    }
+
+    if (token) {
+      issues.push(issue(
+        "unsupported_agent_lifecycle_pool_arg",
+        `${token} is not allowed for scheduler agent lifecycle cleanup`,
+        tokenPath
+      ));
+    }
+  }
+
+  if (!inputPath) {
+    issues.push(issue("missing_agent_lifecycle_cleanup_input", "record:agent-lifecycle-pool cleanup requires --input <path>", `${path}.args`));
+  }
+  if (!outputPath) {
+    issues.push(issue("missing_agent_lifecycle_cleanup_output", "record:agent-lifecycle-pool cleanup requires --output <path>", `${path}.args`));
+  }
+  if (!cleanupLatestPool) {
+    issues.push(issue("missing_agent_lifecycle_cleanup_flag", "record:agent-lifecycle-pool cleanup requires --cleanup-latest-pool", `${path}.args`));
+  }
+
+  const exactCleanupShape = args.length === 8 &&
+    args[2] === "--" &&
+    args[3] === "--input" &&
+    Boolean(normalizeString(args[4])) &&
+    !normalizeString(args[4]).startsWith("--") &&
+    args[5] === "--output" &&
+    Boolean(normalizeString(args[6])) &&
+    !normalizeString(args[6]).startsWith("--") &&
+    args[7] === "--cleanup-latest-pool";
+
+  if (inputPath && outputPath && cleanupLatestPool && !exactCleanupShape) {
+    issues.push(issue(
+      "invalid_agent_lifecycle_cleanup_shape",
+      "record:agent-lifecycle-pool scheduler step must be exactly: npm run record:agent-lifecycle-pool -- --input <path> --output <path> --cleanup-latest-pool",
+      `${path}.args`
+    ));
+  }
+
+  return issues;
+}
+
 function validateStep(step = {}, index = 0) {
   const issues = [];
   const path = `steps[${index}]`;
@@ -63,6 +154,9 @@ function validateStep(step = {}, index = 0) {
   }
   if (args[0] !== "run" || !ALLOWED_NPM_SCRIPTS.has(args[1])) {
     issues.push(issue("unsupported_npm_script", "scheduler dispatch step must use an allowed npm run script", `${path}.args`));
+  }
+  if (args[0] === "run" && args[1] === AGENT_LIFECYCLE_POOL_SCRIPT) {
+    issues.push(...validateAgentLifecyclePoolCleanupArgs(args, path));
   }
 
   return issues;
@@ -152,6 +246,33 @@ function summarizeOutput(kind, path) {
         project_status: payload.project_status?.project || null,
         next_step: payload.project_status?.next_step || null,
         work_package_count: asArray(payload.workflow_state?.manifest?.work_packages).length
+      };
+    }
+    if (kind === "workflow_state") {
+      const lifecyclePool = summarizeAgentLifecyclePool(payload.manifest, payload.artifact_ledger || payload.artifactLedger);
+      return {
+        status: "available",
+        path: outputPath,
+        run_id: payload.manifest?.run_id || null,
+        cycle_id: payload.manifest?.cycle_id || null,
+        work_package_count: asArray(payload.manifest?.work_packages).length,
+        agent_lifecycle_pool: lifecyclePool
+      };
+    }
+    if (kind === "agent_lifecycle_cleanup") {
+      const lifecyclePool = summarizeAgentLifecyclePool(payload.manifest, payload.artifact_ledger || payload.artifactLedger);
+      return {
+        status: "available",
+        path: outputPath,
+        cleanup_status: lifecyclePool.status,
+        pool_id: lifecyclePool.pool_id,
+        open: lifecyclePool.open,
+        unevaluated: lifecyclePool.unevaluated,
+        unclosed: lifecyclePool.unclosed,
+        iteration_closed: lifecyclePool.iteration_closed,
+        next_action: lifecyclePool.next_action,
+        artifact_id: lifecyclePool.artifact_id,
+        event_id: lifecyclePool.event_id
       };
     }
     if (kind === "autonomous_closeout_loop_artifact") {
