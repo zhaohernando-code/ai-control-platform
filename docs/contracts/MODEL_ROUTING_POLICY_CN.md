@@ -64,7 +64,30 @@ Context Pack
 -> Ops Workbench 展示 model routing 与 reviewer gate 状态
 ```
 
-## 5. 工作台展示
+## 5. Context Work Package 执行 Adapter
+
+`run_context_work_packages` 的 provider/model-routed 执行必须挂在 fixed-development-mode dispatch gate 后面：
+
+- 先校验 Run Manifest、Task DAG 和 fixed-development-mode gate。
+- gate 通过后，才允许选择 execution adapter/profile。
+- 默认 `local_bounded` 路径继续保持本地有界执行，不调用外部模型。
+- `local_bounded` completion 只允许在调用方没有显式执行身份时发生，或所有显式执行身份字段都为 `local_bounded` 时发生。显式 `execution_profile`、`adapter_profile`、`executor_profile`、非 local `executor_kind`、非 local/provider-like `execution_mode` 不能被默认 local fallback 消化。
+- 显式请求 provider/model-routed mode 时，必须提供已注册的 `execution_profile`；缺失或未知 profile 必须 blocked closed，不能把 work package 标为完成。
+- `bounded_mock_multi_agent`、`deterministic_mock_multi_agent` 以及任何 mock/simulation 类 execution token 都是非完成证据；即使调用方漏传 `execution_mode=provider_model_routed`，也必须进入 blocked/validated non-completing 路径，不得写 completed。
+- 当前平台内置的 deterministic profile 是 `bounded_mock_multi_agent`。它只生成模型路由计划和模拟校验结果，`external_calls=0`，用于测试和工作台试跑；它没有 completion authority，不能作为 work package 完成证据。
+- provider/model-routed adapter 必须在顶层结果和每个 package result 上显式声明 `completion_authority` / `allows_work_package_completion`。runner 只能使用两层都具备完成授权且 `status=pass` 的 package result 写 completed。
+- non-completing profile 必须返回 `validated` / `simulated_execution` 语义，暴露 execution plan、package results、executor provenance 和 issues 供工作台展示，但不得返回 `workflow_state` 或 pass completion artifact。
+- 真实 GPT/DeepSeek/Claude provider adapter 后续只能挂在同一接口后，不得绕过 fixed-development-mode gate 或直接写业务项目状态。
+
+provider/model-routed artifact metadata 必须包含：
+
+- `execution_mode` / `execution_profile`。
+- `package_results`，且只有具备 completion authority 的 `status=pass` package result 可以驱动 work package 完成。
+- `executor_provenance`，至少记录 adapter id/version、executor kind、是否 deterministic、外部调用次数。
+- `completion_authority`，说明完成授权来源、证据类型和是否允许写 completed。
+- `model_routing`，按 work package 记录 `buildModelCollaborationPlan` 产生的 roles、reasons、budget、risk、selected/preferred model 和 guardrails。
+
+## 6. 工作台展示
 
 `summarizeModelRouting` 输出：
 

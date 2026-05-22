@@ -307,7 +307,10 @@ function requestJson(url, body = null) {
           json = null;
         }
         if (response.statusCode < 200 || response.statusCode >= 300) {
-          reject(new Error(json?.error || text || `workbench request failed: ${response.statusCode}`));
+          const error = new Error(json?.error || text || `workbench request failed: ${response.statusCode}`);
+          error.http_status = response.statusCode;
+          error.response = json;
+          reject(error);
           return;
         }
         resolveRequest(json);
@@ -380,6 +383,26 @@ function createWorkbenchLoopClient(baseUrl) {
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
     }
+  };
+}
+
+function contextWorkPackageRunOptions(input = {}) {
+  return {
+    max_package_count: input.max_package_count ?? input.maxPackageCount,
+    created_at: input.created_at || input.createdAt,
+    execution_mode: input.execution_mode || input.executionMode,
+    execution_profile: input.execution_profile || input.executionProfile,
+    executor_profile: input.executor_profile || input.executorProfile,
+    executor_kind: input.executor_kind || input.executorKind,
+    adapter_profile: input.adapter_profile || input.adapterProfile,
+    risk: input.risk || input.risk_level || input.riskLevel,
+    risk_level: input.risk_level || input.riskLevel,
+    budget_tier: input.budget_tier || input.budgetTier,
+    budget: input.budget,
+    codex_plan_pressure: input.codex_plan_pressure ?? input.codexPlanPressure,
+    cost_pressure: input.cost_pressure ?? input.costPressure,
+    tags: Array.isArray(input.tags) ? input.tags : undefined,
+    stage: input.stage
   };
 }
 
@@ -630,11 +653,18 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
   }
 
   if (action === "run_context_work_packages") {
-    const result = await client.runContextWorkPackages(selectedId, {
-      max_package_count: input.max_package_count || input.maxPackageCount,
-      created_at: input.created_at || input.createdAt
-    });
-    return { status: "executed", action, result };
+    try {
+      const result = await client.runContextWorkPackages(selectedId, contextWorkPackageRunOptions(input));
+      return { status: "executed", action, result };
+    } catch (error) {
+      return {
+        status: "blocked",
+        http_status: error.http_status || 409,
+        error: error.message,
+        issues: error.response?.issues || [],
+        result: error.response || null
+      };
+    }
   }
 
   if (action === "run_reviewer_scope_shard") {
@@ -1102,15 +1132,22 @@ export function createWorkbenchServer(options = {}) {
 
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
-        const result = runContextWorkPackages(workflowState, {
-          max_package_count: input.max_package_count || input.maxPackageCount,
-          created_at: input.created_at || input.createdAt
-        });
+        const result = runContextWorkPackages(workflowState, contextWorkPackageRunOptions(input));
         if (result.status !== "pass") {
           jsonResponse(res, 409, {
-            error: "context work package run failed",
+            status: result.status,
+            error: result.status === "validated"
+              ? "context work package run validated without completion authority"
+              : "context work package run failed",
             issues: result.issues || [],
             item,
+            phase: result.phase,
+            fixed_development_mode_gate: result.fixed_development_mode_gate || result.gate_result || null,
+            execution_plan: result.execution_plan || null,
+            package_results: result.package_results || [],
+            executor_provenance: result.executor_provenance || null,
+            allows_work_package_completion: result.allows_work_package_completion === true,
+            completion_authority: result.completion_authority || null,
             projection: workbenchProjection(workflowState)
           });
           return;
@@ -1640,6 +1677,7 @@ export function createWorkbenchServer(options = {}) {
             issues: executed.issues || [],
             item,
             next_action_readout: projection.next_action_readout,
+            result: executed.result || null,
             projection
           });
           return;

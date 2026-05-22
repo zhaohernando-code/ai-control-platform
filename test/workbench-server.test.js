@@ -14,6 +14,8 @@ import {
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
+mkdirSync("tmp", { recursive: true });
+
 async function withServer(fn, options = {}) {
   const server = createWorkbenchServer(options);
   server.listen(0, "127.0.0.1");
@@ -237,22 +239,160 @@ test("workbench server executes project status continuation next action", async 
     assert.equal(created.result.projection.next_action_readout.action, "run_context_work_packages");
     assert.equal(sourceAfterCycle.manifest.events.at(-1).type, "context_pack_cycle_materialized");
 
-    const run = await request(`${baseUrl}/api/workbench/next-action?id=project-status-context-cycle`, {
+    const cycleHistory = JSON.parse(readFileSync(historyPath, "utf8"));
+    const cycleItem = cycleHistory.items.find((entry) => entry.id === "project-status-context-cycle");
+    const cycleInputPath = join(process.cwd(), cycleItem.input_path);
+
+    const rejectedRun = await request(`${baseUrl}/api/workbench/next-action?id=project-status-context-cycle`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         expected_action: "run_context_work_packages",
         max_package_count: 1,
+        execution_mode: "provider_model_routed",
+        execution_profile: "real_provider_not_registered",
+        created_at: "2026-05-22T03:11:30.000Z"
+      })
+    });
+    const rejected = rejectedRun.json();
+    const stateAfterRejectedRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
+
+    assert.equal(rejectedRun.status, 409);
+    assert.equal(rejected.error, "context work package run failed");
+    assert.ok(rejected.issues.some((issue) => issue.code === "unsupported_execution_profile"));
+    assert.notEqual(stateAfterRejectedRun.manifest.work_packages[0].status, "completed");
+
+    const profileOnlyRun = await request(`${baseUrl}/api/workbench/context-work-packages-run?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_package_count: 1,
+        execution_profile: "real_provider_not_registered",
+        created_at: "2026-05-22T03:11:40.000Z"
+      })
+    });
+    const profileOnly = profileOnlyRun.json();
+    const stateAfterProfileOnlyRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
+
+    assert.equal(profileOnlyRun.status, 409);
+    assert.equal(profileOnly.error, "context work package run failed");
+    assert.ok(profileOnly.issues.some((issue) => issue.code === "unsupported_execution_profile"));
+    assert.notEqual(stateAfterProfileOnlyRun.manifest.work_packages[0].status, "completed");
+
+    const deterministicKindRun = await request(`${baseUrl}/api/workbench/context-work-packages-run?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_package_count: 1,
+        executor_kind: "deterministic_mock_multi_agent",
+        created_at: "2026-05-22T03:11:45.000Z"
+      })
+    });
+    const deterministicKind = deterministicKindRun.json();
+    const stateAfterDeterministicKindRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
+
+    assert.equal(deterministicKindRun.status, 409);
+    assert.equal(deterministicKind.error, "context work package run failed");
+    assert.ok(deterministicKind.issues.some((issue) => issue.code === "unsupported_execution_profile"));
+    assert.notEqual(stateAfterDeterministicKindRun.manifest.work_packages[0].status, "completed");
+
+    const adapterProfileRun = await request(`${baseUrl}/api/workbench/context-work-packages-run?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_package_count: 1,
+        adapter_profile: "bounded_mock_multi_agent",
+        risk: "high",
+        budget_tier: "high",
+        codex_plan_pressure: true,
+        created_at: "2026-05-22T03:11:50.000Z"
+      })
+    });
+    const adapterProfile = adapterProfileRun.json();
+    const stateAfterAdapterProfileRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
+
+    assert.equal(adapterProfileRun.status, 409);
+    assert.equal(adapterProfile.status, "validated");
+    assert.equal(adapterProfile.error, "context work package run validated without completion authority");
+    assert.equal(adapterProfile.executor_provenance.executor_kind, "deterministic_mock_multi_agent");
+    assert.notEqual(stateAfterAdapterProfileRun.manifest.work_packages[0].status, "completed");
+    assert.equal(stateAfterAdapterProfileRun.artifact_ledger.artifacts.some((artifact) => artifact.metadata?.execution_profile === "bounded_mock_multi_agent"), false);
+
+    const directMockRun = await request(`${baseUrl}/api/workbench/context-work-packages-run?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_package_count: 1,
+        execution_mode: "provider_model_routed",
+        execution_profile: "bounded_mock_multi_agent",
+        risk: "high",
+        budget_tier: "high",
+        codex_plan_pressure: true,
+        tags: ["boundary_sensitive"],
+        stage: "implementation",
         created_at: "2026-05-22T03:12:00.000Z"
       })
     });
-    const executed = run.json();
+    const directMock = directMockRun.json();
+    const stateAfterDirectMockRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
 
-    assert.equal(run.status, 201);
-    assert.equal(executed.action, "run_context_work_packages");
-    assert.equal(executed.result.executed_count, 1);
-    assert.equal(executed.result.artifact.metadata.type, "context_work_packages_run");
-    assert.equal(executed.result.projection.manifest.work_package_count, 1);
+    assert.equal(directMockRun.status, 409);
+    assert.equal(directMock.status, "validated");
+    assert.equal(directMock.error, "context work package run validated without completion authority");
+    assert.equal(directMock.allows_work_package_completion, false);
+    assert.equal(directMock.completion_authority.allows_work_package_completion, false);
+    assert.equal(directMock.executor_provenance.executor_kind, "deterministic_mock_multi_agent");
+    assert.equal(directMock.package_results[0].status, "validated");
+    assert.equal(directMock.package_results[0].allows_work_package_completion, false);
+    assert.equal(directMock.execution_plan.model_routing.strategy, "per_work_package_buildModelCollaborationPlan");
+    assert.ok(directMock.execution_plan.model_routing.package_plans[0].roles.some((role) => role.role === "process_guard"));
+    assert.notEqual(stateAfterDirectMockRun.manifest.work_packages[0].status, "completed");
+    assert.equal(stateAfterDirectMockRun.artifact_ledger.artifacts.some((artifact) => artifact.metadata?.execution_profile === "bounded_mock_multi_agent"), false);
+
+    const nextActionMockRun = await request(`${baseUrl}/api/workbench/next-action?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "run_context_work_packages",
+        max_package_count: 1,
+        execution_mode: "provider_model_routed",
+        execution_profile: "bounded_mock_multi_agent",
+        risk: "high",
+        budget_tier: "high",
+        codex_plan_pressure: true,
+        tags: ["boundary_sensitive"],
+        stage: "implementation",
+        created_at: "2026-05-22T03:12:30.000Z"
+      })
+    });
+    const nextActionMock = nextActionMockRun.json();
+    const stateAfterNextActionMockRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
+
+    assert.equal(nextActionMockRun.status, 409);
+    assert.equal(nextActionMock.error, "context work package run validated without completion authority");
+    assert.equal(nextActionMock.result.status, "validated");
+    assert.equal(nextActionMock.result.allows_work_package_completion, false);
+    assert.equal(nextActionMock.result.executor_provenance.executor_kind, "deterministic_mock_multi_agent");
+    assert.equal(nextActionMock.result.package_results[0].status, "validated");
+    assert.notEqual(stateAfterNextActionMockRun.manifest.work_packages[0].status, "completed");
+    assert.equal(stateAfterNextActionMockRun.artifact_ledger.artifacts.some((artifact) => artifact.metadata?.execution_profile === "bounded_mock_multi_agent"), false);
+
+    const localRun = await request(`${baseUrl}/api/workbench/context-work-packages-run?id=project-status-context-cycle`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        max_package_count: 1,
+        created_at: "2026-05-22T03:13:00.000Z"
+      })
+    });
+    const local = localRun.json();
+    const stateAfterLocalRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
+
+    assert.equal(localRun.status, 201);
+    assert.equal(local.status, "created");
+    assert.equal(local.executed_count, 1);
+    assert.equal(stateAfterLocalRun.manifest.work_packages[0].status, "completed");
+    assert.equal(stateAfterLocalRun.artifact_ledger.artifacts.at(-1).metadata.execution_profile, "local_bounded");
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 

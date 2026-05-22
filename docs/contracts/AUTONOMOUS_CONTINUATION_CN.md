@@ -139,6 +139,19 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 这些 work packages 必须进入 `next_work_packages` 和 `context_pack_seed.subtasks`，不能只展示在工作台上。
 
+`run_context_work_packages` 是 Context Pack work packages 的执行入口。它必须先运行 fixed-development-mode dispatch gate，再根据显式执行请求选择 adapter：
+
+- 未请求 provider/model-routed mode 时，继续使用默认 `local_bounded` 路径。
+- 默认 `local_bounded` 只能消费“无显式执行身份”或显式身份全为 `local_bounded` 的请求；显式未知 `execution_profile` / `adapter_profile` / `executor_profile`、非 local `executor_kind`、provider-like 或非 local `execution_mode` 必须 blocked closed，不能被 local fallback 写成 completed。
+- 请求 provider/model-routed mode 时，必须提供已注册 `execution_profile`。当前可用于测试和工作台试跑的 profile 是 `bounded_mock_multi_agent`，它只做 deterministic mock execution，不调用真实 GPT/DeepSeek/Claude。
+- 工作台 `/api/workbench/next-action` 执行 `run_context_work_packages` 时必须把 `execution_mode`、`execution_profile`、`risk`、`budget_tier`、`codex_plan_pressure`、`tags`、`stage` 等 adapter 字段透传给 `/api/workbench/context-work-packages-run`，不能只支持代码 API 直接调用。
+- adapter 结果必须显式携带 `completion_authority` / `allows_work_package_completion`。runner 只能让同时具备顶层 completion authority 和 package-result completion authority 的 `status=pass` 结果驱动 `work_packages[].status=completed`。
+- `bounded_mock_multi_agent` 属于 non-completing profile：它只能返回可展示的 `status=validated` / `phase=simulated_execution`，包含 `execution_plan`、`package_results`、`executor_provenance`、`issues` 和无完成授权的 `completion_authority`；不得返回 `workflow_state`，不得写 completed/result pass，不得生成 pass completion artifact。
+- `bounded_mock_multi_agent`、`deterministic_mock_multi_agent` 和任何 mock/simulation 类 token 即使只出现在 `adapter_profile`、`executor_profile` 或 `executor_kind` 中，也不得落入 local completion fallback。
+- adapter 只有在具备 completion authority 并真实完成后，才允许写入 durable completion artifact metadata：`execution_mode`、`execution_profile`、`package_results`、`executor_provenance`、`completion_authority` 和 `model_routing`。
+- profile 缺失、未知、adapter blocked，或模拟/复审型 adapter 缺少 completion authority 时，必须保持原 work package 状态。
+- 后续真实 provider adapter 应复用同一接口和 metadata 结构，不能直接在 continuation 或 workbench next-action 中调用外部模型。
+
 如果 workflow state 或 projection 中已经存在 `reviewer_scope_split` fact，continuation 必须优先消费具体 shard：
 
 - 未完成 shard -> `run_reviewer_scope_shard` work package。
