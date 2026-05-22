@@ -7,7 +7,8 @@ import test from "node:test";
 
 import {
   createContinuationInputFromProjectStatus,
-  prepareContinuationFromProjectStatus
+  prepareContinuationFromProjectStatus,
+  recordProjectStatusContinuationPrepared
 } from "../src/workflow/project-status-continuation.js";
 
 function projectStatus(overrides = {}) {
@@ -62,6 +63,25 @@ test("project status continuation blocks wrong project", () => {
 
   assert.equal(result.status, "blocked");
   assert.ok(result.issues.some((issue) => issue.code === "project_status_mismatch"));
+});
+
+test("project status continuation records durable workflow facts", () => {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = [];
+  const prepared = prepareContinuationFromProjectStatus(projectStatus({ next_step: "" }), {
+    workflow_state: workflowState
+  });
+  const recorded = recordProjectStatusContinuationPrepared(workflowState, prepared, {
+    created_at: "2026-05-22T02:00:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.fact.type, "project_status_continuation");
+  assert.equal(recorded.fact.status, "ready");
+  assert.equal(recorded.fact.next_work_package_count, 1);
+  assert.equal(recorded.fact.context_pack_seed.target_project_id, "ai-control-platform");
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).type, "project_status_continuation");
+  assert.equal(recorded.workflow_state.artifact_ledger.artifacts.at(-1).metadata.next_goal.id, "platform-foundation");
 });
 
 test("prepare-project-status-continuation CLI writes continuation input", () => {

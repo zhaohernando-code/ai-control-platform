@@ -590,6 +590,7 @@ const OPERATION_EVENT_TYPES = new Set([
   "scheduler_next_cycle_enqueue",
   "autonomous_scheduler_loop_run",
   "scheduler_loop_resume_attempt",
+  "project_status_continuation",
   "reviewer_provider_health",
   "reviewer_scope_split",
   "reviewer_shard_result",
@@ -612,6 +613,9 @@ function operationSummary(type, metadata = {}) {
   }
   if (type === "scheduler_loop_resume_attempt") {
     return `${metadata.status || "unknown"} -> ${metadata.resume_projection_id || "none"}`;
+  }
+  if (type === "project_status_continuation") {
+    return `${metadata.status || "unknown"} / ${metadata.next_work_package_count || 0} package(s)`;
   }
   if (type === "reviewer_provider_health") {
     return `${metadata.provider_health || "unknown"} / ${asArray(metadata.scheduled_actions).join(", ") || "no_action"}`;
@@ -647,6 +651,7 @@ function operationNextActionRole(type, metadata = {}) {
   if (type === "scheduler_loop_resume_attempt") {
     return metadata.status === "pass" ? "automation_driver" : "operator_observable";
   }
+  if (type === "project_status_continuation") return "operator_observable";
   if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
     return "automation_driver";
   }
@@ -698,6 +703,30 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
 function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const driver = operationsTimeline.latest_driver || null;
   if (!driver) {
+    const latest = operationsTimeline.latest || null;
+    if (latest?.type === "project_status_continuation") {
+      return {
+        status: "pending",
+        action: "create_context_pack_from_seed",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: latest.summary,
+        requires_operator: false
+      };
+    }
+    const globalGoals = summaries.globalGoalCompletion || {};
+    if (Number(globalGoals.pending || 0) > 0 && globalGoals.status === "in_progress") {
+      return {
+        status: "ready",
+        action: "prepare_project_status_continuation",
+        source_event_id: null,
+        source_type: "global_goal_completion",
+        target_projection_id: null,
+        reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || "repository global goals remain pending",
+        requires_operator: false
+      };
+    }
     return {
       status: "not_configured",
       action: "wait_for_driver_event",
@@ -888,7 +917,8 @@ export function createWorkbenchProjection(input = {}) {
   const nextActionReadout = createNextActionReadout(operationsTimeline, {
     schedulerLoop,
     reviewerProviderHealth,
-    reviewerShardReview
+    reviewerShardReview,
+    globalGoalCompletion
   });
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);

@@ -41,6 +41,10 @@ import {
   evaluateReviewerProviderHealthPreflight
 } from "../src/workflow/reviewer-execution-policy.js";
 import { recordWorkbenchBrowserEventsRunArtifact } from "../src/workflow/workbench-browser-events.js";
+import {
+  prepareContinuationFromProjectStatus,
+  recordProjectStatusContinuationPrepared
+} from "../src/workflow/project-status-continuation.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -354,6 +358,11 @@ function createWorkbenchLoopClient(baseUrl) {
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
     },
+    prepareProjectStatusContinuation(projectionId, body = {}) {
+      const url = new URL("/api/workbench/project-status-continuation", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
+    },
     runReviewerShard(projectionId, body = {}) {
       const url = new URL("/api/workbench/reviewer-shard-run", base);
       if (projectionId) url.searchParams.set("id", projectionId);
@@ -480,6 +489,7 @@ function appendEvent(eventsPath, event) {
 }
 
 const SUPPORTED_NEXT_ACTIONS = new Set([
+  "prepare_project_status_continuation",
   "enqueue_scheduler_next_cycle",
   "run_autonomous_scheduler_loop",
   "run_reviewer_scope_shard",
@@ -583,6 +593,13 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
     const result = await client.enqueueSchedulerNextCycle(selectedId, {
       snapshot_id: input.snapshot_id || input.snapshotId,
       label: input.label,
+      created_at: input.created_at || input.createdAt
+    });
+    return { status: "executed", action, result };
+  }
+
+  if (action === "prepare_project_status_continuation") {
+    const result = await client.prepareProjectStatusContinuation(selectedId, {
       created_at: input.created_at || input.createdAt
     });
     return { status: "executed", action, result };
@@ -913,6 +930,48 @@ export function createWorkbenchServer(options = {}) {
           aggregate: result.aggregate || null,
           pending_shards: result.pending_shards ?? result.aggregate?.pending_shards ?? null,
           projection: workbenchProjection(result.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/project-status-continuation" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const projectStatus = projectStatusPath ? readJson(projectStatusPath) : workflowState.project_status;
+        const prepared = prepareContinuationFromProjectStatus(projectStatus, { workflow_state: workflowState });
+        const recorded = recordProjectStatusContinuationPrepared(workflowState, prepared, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (recorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "project status continuation record failed", issues: recorded.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        const statusCode = prepared.status === "ready" ? 201 : 409;
+        jsonResponse(res, statusCode, {
+          status: prepared.status === "ready" ? "created" : "blocked",
+          item,
+          continuation: prepared,
+          artifact: recorded.artifact,
+          projection: workbenchProjection(recorded.workflow_state)
         });
         return;
       }

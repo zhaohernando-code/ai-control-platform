@@ -156,6 +156,66 @@ test("workbench server overlays repository PROJECT_STATUS into workflow projecti
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 
+test("workbench server executes project status continuation next action", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-project-status-next-action-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "project-status-next-action-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: [
+      {
+        id: "repo-goal",
+        title: "Repository status goal",
+        status: "in_progress",
+        next_step: "Prepare the next global-goal cycle."
+      }
+    ]
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "project-status-next-action",
+    items: [
+      {
+        id: "project-status-next-action",
+        label: "Project status next action",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const before = await request(`${baseUrl}/api/workbench/projection`);
+    assert.equal(before.json().next_action_readout.action, "prepare_project_status_continuation");
+
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=project-status-next-action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "prepare_project_status_continuation",
+        created_at: "2026-05-22T03:10:00.000Z"
+      })
+    });
+    const payload = response.json();
+    const saved = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(payload.status, "executed");
+    assert.equal(payload.action, "prepare_project_status_continuation");
+    assert.equal(payload.result.status, "created");
+    assert.equal(payload.result.artifact.metadata.next_goal.id, "repo-goal");
+    assert.equal(saved.manifest.events.at(-1).type, "project_status_continuation");
+    assert.equal(payload.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+  }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
 test("workbench server returns projection history index", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/projections`);

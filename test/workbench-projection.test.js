@@ -159,9 +159,56 @@ test("workbench projection exposes global goal completion for autonomous continu
   assert.equal(projection.global_goal_completion.completed, 1);
   assert.equal(projection.global_goal_completion.pending, 1);
   assert.equal(projection.global_goal_completion.next_goal.id, "completion-loop");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "prepare_project_status_continuation");
+  assert.equal(projection.next_action_readout.source_type, "global_goal_completion");
   assert.equal(projection.one_screen.counters.global_goals_completed, 1);
   assert.equal(projection.one_screen.counters.global_goals_pending, 1);
   assert.equal(mobile.global_goal_completion.pending, 1);
+});
+
+test("workbench projection advances from prepared project status continuation to context pack seed", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "project-status-continuation-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "project-status://continuation/run-projection/cycle-20260521/project-status-continuation-run-projection-cycle-20260521-001",
+    producer: "project-status-continuation",
+    created_at: "2026-05-21T00:03:00.000Z",
+    metadata: {
+      type: "project_status_continuation",
+      version: "project-status-continuation.v1",
+      status: "ready",
+      next_work_package_count: 1
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "project_status_continuation",
+        status: "ready",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.operations_timeline.latest.type, "project_status_continuation");
+  assert.equal(projection.next_action_readout.status, "pending");
+  assert.equal(projection.next_action_readout.action, "create_context_pack_from_seed");
+  assert.equal(projection.next_action_readout.source_type, "project_status_continuation");
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {
