@@ -340,6 +340,8 @@ test("headless CLI loop can execute projected next_action_readout through an inj
   assert.deepEqual(calls, ["cleanup_agent_lifecycle_pool"]);
   assert.equal(result.iterations[0].projected_next_action_status, "executed");
   assert.equal(result.last_result.workflow_state.projected_action_marker, "cleanup_agent_lifecycle_pool");
+  assert.ok(result.last_result.workflow_state.manifest.events.some((event) => event.type === "headless_projected_action_progress"));
+  assert.ok(result.last_result.workflow_state.artifact_ledger.artifacts.some((artifact) => artifact.metadata?.type === "headless_projected_action_progress"));
 });
 
 test("headless CLI loop blocks projected next action without progress evidence", () => {

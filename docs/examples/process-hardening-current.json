@@ -512,6 +512,13 @@
       "category": "security",
       "severity": "p1",
       "message": "Headless CLI projected next-action execution must not post workflow-control requests to arbitrary remote workbench URLs; the service client must be local-http only."
+    },
+    {
+      "id": "headless-projection-evidence-hidden",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Headless child provider retry/split evidence and projected next-action progress must be durable projection fields, not only stdout, transient loop return values, or buried artifact metadata."
     }
   ],
   "hardening_items": [
@@ -1297,6 +1304,14 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI loop rejects nonlocal workbench next-action service URLs; run-headless-cli-orchestrator CLI exposes projected next-action workbench controls",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-projection-evidence-hidden",
+      "invariant": "Workbench projection schema must expose headless_child_provider retry/split attempts and projected_action_progress evidence for PC/mobile consumers; headless projected next-action execution must record durable manifest/artifact evidence before loop continuation.",
+      "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; src/workflow/headless-cli-orchestrator.js; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/headless-cli-orchestrator.test.js; docs/examples/current-session-workbench-projection.json; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection exposes headless child provider retry and split evidence; workbench projection exposes headless projected action progress evidence; rejects projections missing headless orchestrator evidence sections",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

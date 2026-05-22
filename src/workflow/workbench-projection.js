@@ -356,6 +356,104 @@ function summarizeReviewerShardReview(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function summarizeHeadlessChildProvider(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "context_work_packages_run");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      provider: null,
+      model: null,
+      command_runner_kind: null,
+      max_attempts: 0,
+      split_retry: false,
+      package_count: 0,
+      accepted_count: 0,
+      rejected_count: 0,
+      attempt_count: 0,
+      retry_attempt_count: 0,
+      split_retry_attempt_count: 0,
+      latest_attempt_status: null,
+      event_id: null,
+      artifact_id: null,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const provenance = metadata.executor_provenance || {};
+  const retryPolicy = provenance.retry_policy || {};
+  const packageResults = asArray(metadata.package_results);
+  const attempts = packageResults.flatMap((result) => (
+    asArray(result?.completion_evidence?.child_output?.command_evidence?.attempts)
+      .map((attempt) => ({ ...attempt, work_package_id: result.work_package_id || result.workPackageId || null }))
+  ));
+
+  return {
+    status: latestEvent.status || metadata.status || artifact?.status || "unknown",
+    provider: provenance.provider || null,
+    model: provenance.model || null,
+    command_runner_kind: provenance.command_runner_kind || null,
+    max_attempts: Number(retryPolicy.max_attempts || retryPolicy.maxAttempts || 0),
+    split_retry: retryPolicy.split_retry === true || retryPolicy.splitRetry === true,
+    package_count: packageResults.length,
+    accepted_count: packageResults.filter((result) => result?.status === "pass").length,
+    rejected_count: packageResults.filter((result) => result?.status && result.status !== "pass").length,
+    attempt_count: attempts.length,
+    retry_attempt_count: attempts.filter((attempt) => Number(attempt?.attempt || 0) > 1).length,
+    split_retry_attempt_count: attempts.filter((attempt) => attempt?.split_retry === true).length,
+    latest_attempt_status: attempts.at(-1)?.status || null,
+    event_id: latestEvent.id || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    created_at: latestEvent.created_at || artifact?.created_at || null
+  };
+}
+
+function summarizeHeadlessProjectedActionProgress(manifest = {}, artifactLedger = {}) {
+  const events = asArray(manifest?.events).filter((event) => event?.type === "headless_projected_action_progress");
+  const latestEvent = events.at(-1) || null;
+  if (!latestEvent) {
+    return {
+      status: "not_configured",
+      action: null,
+      next_projection_id: null,
+      has_workflow_state: false,
+      has_projection: false,
+      issue_count: 0,
+      latest_issue: null,
+      event_id: null,
+      artifact_id: null,
+      created_at: null
+    };
+  }
+
+  const artifacts = [
+    ...asArray(artifactLedger?.artifacts),
+    ...asArray(manifest?.artifacts)
+  ];
+  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const metadata = artifact?.metadata || latestEvent.metadata || {};
+  const issues = asArray(metadata.issues);
+
+  return {
+    status: metadata.status || latestEvent.status || artifact?.status || "unknown",
+    action: metadata.action || null,
+    next_projection_id: metadata.next_projection_id || null,
+    has_workflow_state: metadata.has_workflow_state === true,
+    has_projection: metadata.has_projection === true,
+    issue_count: issues.length,
+    latest_issue: issues[0]?.message || issues[0]?.code || null,
+    event_id: latestEvent.id || null,
+    artifact_id: latestEvent.artifact_id || artifact?.id || null,
+    created_at: latestEvent.created_at || artifact?.created_at || null
+  };
+}
+
 function summarizeSchedulerDispatch(manifest = {}, artifactLedger = {}) {
   const events = asArray(manifest?.events).filter((event) => event?.type === "scheduler_dispatch_run");
   const latestEvent = events.at(-1) || null;
@@ -614,6 +712,7 @@ const OPERATION_EVENT_TYPES = new Set([
   "reviewer_shard_result",
   "reviewer_shard_aggregate",
   "workbench_browser_events_run",
+  "headless_projected_action_progress",
   ...AGENT_LIFECYCLE_EVENT_TYPES
 ]);
 
@@ -660,6 +759,9 @@ function operationSummary(type, metadata = {}) {
   if (type === "workbench_browser_events_run") {
     return `${metadata.status || "unknown"} / ${metadata.scenario_count || 0} scenario(s)`;
   }
+  if (type === "headless_projected_action_progress") {
+    return `${metadata.status || "unknown"} / ${metadata.action || "projected_action"}`;
+  }
   if (AGENT_LIFECYCLE_EVENT_TYPES.has(type)) {
     return metadata.worker_id || metadata.workerId || metadata.status || "agent lifecycle pool";
   }
@@ -669,6 +771,7 @@ function operationSummary(type, metadata = {}) {
 function operationGroup(type) {
   if (AGENT_LIFECYCLE_EVENT_TYPES.has(type)) return "agent_lifecycle_pool";
   if (String(type || "").startsWith("reviewer_")) return "reviewer_recovery";
+  if (type === "headless_projected_action_progress") return "headless_orchestrator";
   return "scheduler";
 }
 
@@ -985,6 +1088,8 @@ export function createWorkbenchProjection(input = {}) {
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
   const reviewerShardReview = summarizeReviewerShardReview(manifest, artifactLedger);
+  const headlessChildProvider = summarizeHeadlessChildProvider(manifest, artifactLedger);
+  const projectedActionProgress = summarizeHeadlessProjectedActionProgress(manifest, artifactLedger);
   const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
@@ -1032,6 +1137,8 @@ export function createWorkbenchProjection(input = {}) {
     reviewer_provider_health: reviewerProviderHealth,
     reviewer_scope_split: reviewerScopeSplit,
     reviewer_shard_review: reviewerShardReview,
+    headless_child_provider: headlessChildProvider,
+    projected_action_progress: projectedActionProgress,
     scheduler_dispatch: schedulerDispatch,
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
@@ -1069,6 +1176,9 @@ export function createWorkbenchProjection(input = {}) {
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
         reviewer_shards_completed: reviewerShardReview.completed_shards || 0,
+        headless_child_attempts: headlessChildProvider.attempt_count || 0,
+        headless_child_retry_attempts: headlessChildProvider.retry_attempt_count || 0,
+        projected_action_progress_events: projectedActionProgress.status === "not_configured" ? 0 : 1,
         scheduler_dispatch_steps: schedulerDispatch.step_count || 0,
         scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0,
         scheduler_loop_iterations: schedulerLoop.iteration_count || 0,
@@ -1142,6 +1252,30 @@ export function createMobileWorkbenchProjection(input = {}) {
       latest_provider: projection.reviewer_shard_review.latest_provider,
       latest_model: projection.reviewer_shard_review.latest_model,
       latest_external_call_budget_used: projection.reviewer_shard_review.latest_external_call_budget_used
+    },
+    headless_child_provider: {
+      status: projection.headless_child_provider.status,
+      provider: projection.headless_child_provider.provider,
+      model: projection.headless_child_provider.model,
+      command_runner_kind: projection.headless_child_provider.command_runner_kind,
+      max_attempts: projection.headless_child_provider.max_attempts,
+      split_retry: projection.headless_child_provider.split_retry,
+      package_count: projection.headless_child_provider.package_count,
+      accepted_count: projection.headless_child_provider.accepted_count,
+      rejected_count: projection.headless_child_provider.rejected_count,
+      attempt_count: projection.headless_child_provider.attempt_count,
+      retry_attempt_count: projection.headless_child_provider.retry_attempt_count,
+      split_retry_attempt_count: projection.headless_child_provider.split_retry_attempt_count,
+      latest_attempt_status: projection.headless_child_provider.latest_attempt_status
+    },
+    projected_action_progress: {
+      status: projection.projected_action_progress.status,
+      action: projection.projected_action_progress.action,
+      next_projection_id: projection.projected_action_progress.next_projection_id,
+      has_workflow_state: projection.projected_action_progress.has_workflow_state,
+      has_projection: projection.projected_action_progress.has_projection,
+      issue_count: projection.projected_action_progress.issue_count,
+      latest_issue: projection.projected_action_progress.latest_issue
     },
     scheduler_dispatch: {
       status: projection.scheduler_dispatch.status,
@@ -1244,6 +1378,8 @@ export {
   summarizeReviewerProviderHealth,
   summarizeReviewerScopeSplit,
   summarizeReviewerShardReview,
+  summarizeHeadlessChildProvider,
+  summarizeHeadlessProjectedActionProgress,
   summarizeSchedulerDispatchContinuation,
   summarizeAutonomousSchedulerLoop,
   summarizeSchedulerLoopResumeAttempt,

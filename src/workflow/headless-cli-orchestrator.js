@@ -1083,6 +1083,65 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
   };
 }
 
+function recordHeadlessProjectedActionProgress(workflowState = {}, projectedAction = {}, options = {}) {
+  if (projectedAction.status === "not_configured" || projectedAction.status === "stopped") {
+    return {
+      status: "not_configured",
+      workflow_state: workflowState
+    };
+  }
+
+  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+  const id = normalizeString(options.projected_action_artifact_id || options.projectedActionArtifactId) ||
+    `headless-projected-action-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}-${safeIdPart(projectedAction.action || projectedAction.status)}-001`;
+  const artifact = {
+    id,
+    type: "evaluation",
+    status: projectedAction.status === "blocked" ? "fail" : "pass",
+    uri: `headless-cli://projected-action/${encodeURIComponent(workflowState?.manifest?.run_id || "unknown")}/${encodeURIComponent(workflowState?.manifest?.cycle_id || "unknown")}/${encodeURIComponent(id)}`,
+    producer: "headless-cli-orchestrator",
+    created_at: createdAt,
+    metadata: {
+      version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
+      type: "headless_projected_action_progress",
+      status: projectedAction.status,
+      action: projectedAction.action || null,
+      next_projection_id: projectedAction.next_projection_id || projectedAction.result?.result?.next_item?.id || projectedAction.result?.next_item?.id || null,
+      has_workflow_state: isObject(projectedAction.workflow_state || projectedAction.workflowState),
+      has_projection: isObject(projectedAction.projection),
+      issues: asArray(projectedAction.issues),
+      result_status: projectedAction.result?.status || null
+    }
+  };
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${id}`,
+    type: "headless_projected_action_progress",
+    status: artifact.status,
+    artifact_id: id,
+    message: `headless projected next-action ${projectedAction.action || "unknown"} ${projectedAction.status}`,
+    created_at: createdAt,
+    metadata: artifact.metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    status: "pass",
+    artifact,
+    workflow_state: {
+      ...workflowState,
+      manifest: {
+        ...manifest,
+        artifacts: [...asArray(manifest.artifacts), artifact]
+      },
+      artifact_ledger: artifactLedger
+    }
+  };
+}
+
 export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
   const validation = validateHeadlessInput(input);
   if (validation.status !== "pass") {
@@ -1386,6 +1445,14 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
       };
     }
     if (projectedAction.status !== "not_configured") {
+      const progress = recordHeadlessProjectedActionProgress(
+        projectedAction.workflow_state || run.workflow_state,
+        projectedAction,
+        options
+      );
+      if (progress.status === "pass") {
+        projectedAction.workflow_state = progress.workflow_state;
+      }
       lastResult = {
         ...run,
         projected_next_action: projectedAction,
