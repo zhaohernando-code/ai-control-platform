@@ -27,6 +27,10 @@ function usage() {
     "  --child-worker-arg <arg>             Repeatable argument; supports {prompt_file}, {work_package_id}, {run_id}, {cycle_id}",
     "  --child-worker-timeout-ms <ms>       Child command timeout",
     "  --child-worker-output-path <path>    Optional structured JSON output path template",
+    "  --default-child-provider-command <cmd>  Configured default child provider command",
+    "  --default-child-provider-arg <arg>      Repeatable default provider argument",
+    "  --child-worker-max-attempts <n>         Retry bound, capped at 3",
+    "  --child-worker-split-retry              Mark retries as split retries",
     "",
     "Optional persistence/loop:",
     "  --history-path <path>                Projection history path to update with headless snapshots",
@@ -61,8 +65,10 @@ const snapshotsRoot = valueAfter("--snapshots-root", args);
 const snapshotPrefix = valueAfter("--snapshot-prefix", args);
 const maxIterations = valueAfter("--max-iterations", args);
 const childWorkerCommand = valueAfter("--child-worker-command", args);
+const defaultChildProviderCommand = valueAfter("--default-child-provider-command", args);
 const childWorkerTimeoutMs = valueAfter("--child-worker-timeout-ms", args);
 const childWorkerOutputPath = valueAfter("--child-worker-output-path", args);
+const childWorkerMaxAttempts = valueAfter("--child-worker-max-attempts", args);
 
 function valuesAfter(flag, args) {
   const values = [];
@@ -101,9 +107,21 @@ try {
     snapshot_prefix: snapshotPrefix,
     child_worker_command: childWorkerCommand,
     child_worker_args: valuesAfter("--child-worker-arg", args),
+    default_child_provider: defaultChildProviderCommand ? {
+      command: defaultChildProviderCommand,
+      args: valuesAfter("--default-child-provider-arg", args),
+      provider: "codex_proxy",
+      model: "codex-cli",
+      retry_policy: {
+        max_attempts: childWorkerMaxAttempts || 1,
+        split_retry: hasFlag("--child-worker-split-retry", args)
+      }
+    } : undefined,
+    child_worker_max_attempts: childWorkerMaxAttempts,
+    child_worker_split_retry: hasFlag("--child-worker-split-retry", args),
     child_worker_timeout_ms: childWorkerTimeoutMs,
     child_worker_output_path: childWorkerOutputPath,
-    command_runner_kind: childWorkerCommand ? "codex_proxy_child_process" : undefined
+    command_runner_kind: childWorkerCommand || defaultChildProviderCommand ? "codex_proxy_child_process" : undefined
   };
 
   result = hasFlag("--loop", args)

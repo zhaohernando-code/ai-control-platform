@@ -189,6 +189,64 @@ test("headless CLI orchestrator can execute a real child command runner and pars
   assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
 });
 
+test("headless CLI orchestrator can use default child provider config with retry and split policy", () => {
+  const calls = [];
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-default-provider",
+    created_at: "2026-05-23T01:40:00.000Z",
+    max_package_count: 1,
+    default_child_provider: {
+      command: "codex-proxy",
+      args: ["run", "--prompt", "{prompt_file}"],
+      provider: "codex_proxy",
+      model: "codex-cli",
+      retry_policy: { max_attempts: 2, split_retry: true }
+    },
+    child_worker_runner: ({ attempt, split_retry }) => {
+      calls.push({ attempt, split_retry });
+      if (attempt === 1) {
+        return {
+          status: 124,
+          stdout: "",
+          stderr: "child worker timeout"
+        };
+      }
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          status: "pass",
+          role: CHILD_WORKER_ROLE,
+          host: "platform_core",
+          changed_files: ["src/workflow/headless-cli-orchestrator.js"],
+          test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
+          durable_state_updated: true,
+          process_hardening: { required: false, status: "not_required" },
+          continuation_readiness: { ready: true },
+          self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+        }),
+        stderr: ""
+      };
+    }
+  });
+  const childOutput = result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output;
+  const provenance = result.child_run.artifact.metadata.executor_provenance;
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(calls, [
+    { attempt: 1, split_retry: false },
+    { attempt: 2, split_retry: true }
+  ]);
+  assert.equal(provenance.provider, "codex_proxy");
+  assert.equal(provenance.retry_policy.max_attempts, 2);
+  assert.equal(provenance.retry_policy.split_retry, true);
+  assert.equal(childOutput.command_evidence.attempts.length, 2);
+  assert.equal(childOutput.command_evidence.attempts[1].split_retry, true);
+});
+
 test("headless CLI orchestrator persists workflow snapshots into projection history", () => {
   const dir = mkdtempSync(join(tmpdir(), "headless-cli-snapshot-"));
   const historyPath = join(dir, "projection-history.json");

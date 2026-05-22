@@ -491,6 +491,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Headless workflow snapshot ids must stay within the publisher safe-id length even when run_id, cycle_id, or snapshot_prefix are long; otherwise a valid cycle blocks at closeout persistence."
+    },
+    {
+      "id": "headless-default-child-provider-not-configured",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless main_orchestrator must be able to use configured default codex_proxy child provider settings with bounded retry and split-retry evidence, not require every run to pass ad hoc child command arguments."
     }
   ],
   "hardening_items": [
@@ -1252,6 +1259,14 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless snapshot ids stay within publisher-safe length",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run run:headless-cli-orchestrator -- --project-status PROJECT_STATUS.json --workflow-state docs/examples/current-session-workbench-input.json --output tmp/headless-cli-loop-persistence-run.json --workflow-output tmp/headless-cli-loop-persistence-workflow-state.json --history-path tmp/headless-cli-loop-projection-history.json --snapshots-root tmp/headless-cli-loop-snapshots --snapshot-prefix headless-cli-current --loop --max-iterations 2 --cycle-id cycle-headless-cli-persistence --created-at 2026-05-23T01:30:00.000Z",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-default-child-provider-not-configured",
+      "invariant": "Headless main_orchestrator must accept configured default child provider command, args, model/provider identity, bounded max attempts, and split-retry policy; retry attempts must be recorded in child command evidence and executor provenance before acceptance.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator can use default child provider config with retry and split policy",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

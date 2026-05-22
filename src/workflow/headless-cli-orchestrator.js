@@ -380,17 +380,55 @@ function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options
 }
 
 function commandTemplateFrom(options = {}) {
-  const command = normalizeString(options.child_worker_command || options.childWorkerCommand);
+  const provider = options.default_child_provider || options.defaultChildProvider || {};
+  const command = normalizeString(
+    options.child_worker_command ||
+      options.childWorkerCommand ||
+      provider.command ||
+      options.default_child_worker_command ||
+      options.defaultChildWorkerCommand
+  );
   if (!command) return null;
   return {
     command,
-    args: asArray(options.child_worker_args || options.childWorkerArgs).map(String)
+    args: asArray(
+      options.child_worker_args ||
+        options.childWorkerArgs ||
+        provider.args ||
+        options.default_child_worker_args ||
+        options.defaultChildWorkerArgs
+    ).map(String),
+    provider: normalizeString(provider.provider || options.default_child_provider_name || options.defaultChildProviderName) || "codex_proxy",
+    model: normalizeString(provider.model || options.default_child_provider_model || options.defaultChildProviderModel) || "codex-cli",
+    retry_policy: provider.retry_policy || provider.retryPolicy || options.child_worker_retry_policy || options.childWorkerRetryPolicy || {}
   };
 }
 
 function childWorkerTimeoutMs(options = {}) {
   const value = Number(options.child_worker_timeout_ms ?? options.childWorkerTimeoutMs ?? options.timeout_ms ?? options.timeoutMs);
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_CHILD_WORKER_TIMEOUT_MS;
+}
+
+function maxChildWorkerAttempts(options = {}) {
+  const template = commandTemplateFrom(options);
+  const retryPolicy = template?.retry_policy || {};
+  const value = Number(
+    options.child_worker_max_attempts ??
+      options.childWorkerMaxAttempts ??
+      retryPolicy.max_attempts ??
+      retryPolicy.maxAttempts ??
+      1
+  );
+  return Number.isInteger(value) && value > 0 ? Math.min(value, 3) : 1;
+}
+
+function splitRetryEnabled(options = {}) {
+  const template = commandTemplateFrom(options);
+  const retryPolicy = template?.retry_policy || {};
+  return options.child_worker_split_retry === true ||
+    options.childWorkerSplitRetry === true ||
+    retryPolicy.split_retry === true ||
+    retryPolicy.splitRetry === true;
 }
 
 function childWorkerRunnerFrom(options = {}) {
@@ -491,26 +529,51 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
   writeFileSync(promptFile, headlessChildWorkerPrompt(workflowState, workPackage, options));
 
   const timeoutMs = childWorkerTimeoutMs(options);
-  let result;
-  try {
-    result = runner({
-      workflow_state: workflowState,
-      work_package: workPackage,
-      prompt_file: promptFile,
-      output_path: outputPath,
-      timeout_ms: timeoutMs,
-      options
+  const attempts = [];
+  let normalized = null;
+  for (let attemptIndex = 0; attemptIndex < maxChildWorkerAttempts(options); attemptIndex += 1) {
+    let result;
+    try {
+      result = runner({
+        workflow_state: workflowState,
+        work_package: workPackage,
+        prompt_file: promptFile,
+        output_path: outputPath,
+        timeout_ms: timeoutMs,
+        attempt: attemptIndex + 1,
+        split_retry: attemptIndex > 0 && splitRetryEnabled(options),
+        options
+      });
+    } catch (error) {
+      result = {
+        status: 1,
+        stdout: "",
+        stderr: error.message,
+        error
+      };
+    }
+    normalized = normalizeCommandRunnerResult(result, workPackage, promptFile, outputPath);
+    attempts.push({
+      attempt: attemptIndex + 1,
+      status: normalized.status || "fail",
+      exit_code: normalized.command_evidence?.exit_code ?? null,
+      timed_out: normalized.command_evidence?.timed_out === true,
+      split_retry: attemptIndex > 0 && splitRetryEnabled(options)
     });
-  } catch (error) {
-    result = {
-      status: 1,
-      stdout: "",
-      stderr: error.message,
-      error
-    };
+    if (evaluateHeadlessChildWorkerOutput(workPackage, normalized).status === "pass") break;
   }
 
-  return normalizeCommandRunnerResult(result, workPackage, promptFile, outputPath);
+  return {
+    ...normalized,
+    command_evidence: {
+      ...(normalized?.command_evidence || {}),
+      attempts,
+      retry_policy: {
+        max_attempts: maxChildWorkerAttempts(options),
+        split_retry: splitRetryEnabled(options)
+      }
+    }
+  };
 }
 
 function createHeadlessProviderExecutor(options = {}) {
@@ -569,8 +632,12 @@ function createHeadlessProviderExecutor(options = {}) {
         executor_kind: normalizeString(options.executor_kind || options.executorKind) || "codex_proxy_cli_worker",
         command_runner_kind: normalizeString(options.command_runner_kind || options.commandRunnerKind) ||
           (childWorkerRunnerFrom(options) ? "codex_proxy_child_process" : "codex_proxy"),
-        provider: normalizeString(options.provider) || "codex_proxy",
-        model: normalizeString(options.model) || "codex-cli",
+        provider: commandTemplateFrom(options)?.provider || normalizeString(options.provider) || "codex_proxy",
+        model: commandTemplateFrom(options)?.model || normalizeString(options.model) || "codex-cli",
+        retry_policy: {
+          max_attempts: maxChildWorkerAttempts(options),
+          split_retry: splitRetryEnabled(options)
+        },
         external_calls: Math.max(1, Number(options.external_calls || options.externalCalls || packageResults.length || 1)),
         deterministic: false,
         role: CHILD_WORKER_ROLE,
