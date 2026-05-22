@@ -964,13 +964,28 @@ function postJsonSync(url, body = {}, options = {}) {
   const timeoutMs = Number(options.timeout_ms || options.timeoutMs || 30000);
   const payload = JSON.stringify(body);
   const script = [
+    "const http = await import('node:http');",
+    "const https = await import('node:https');",
     "const url = process.argv[1];",
     "const payload = JSON.parse(process.argv[2]);",
     "const timeoutMs = Number(process.argv[3] || 30000);",
-    "const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(timeoutMs) });",
-    "const text = await response.text();",
-    "if (!response.ok) { console.error(text); process.exit(response.status || 1); }",
-    "process.stdout.write(text);"
+    "const body = JSON.stringify(payload);",
+    "const target = new URL(url);",
+    "const transport = target.protocol === 'https:' ? https : http;",
+    "const result = await new Promise((resolveRequest, rejectRequest) => {",
+    "  const req = transport.request(target, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, (res) => {",
+    "    let text = '';",
+    "    res.setEncoding('utf8');",
+    "    res.on('data', (chunk) => { text += chunk; });",
+    "    res.on('end', () => resolveRequest({ statusCode: res.statusCode || 0, text }));",
+    "  });",
+    "  req.setTimeout(timeoutMs, () => req.destroy(new Error('workbench request timed out')));",
+    "  req.on('error', rejectRequest);",
+    "  req.write(body);",
+    "  req.end();",
+    "});",
+    "if (result.statusCode < 200 || result.statusCode >= 300) { console.error(result.text); process.exit(result.statusCode || 1); }",
+    "process.stdout.write(result.text);"
   ].join("\n");
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", script, url.toString(), payload, String(timeoutMs)], {
     encoding: "utf8",

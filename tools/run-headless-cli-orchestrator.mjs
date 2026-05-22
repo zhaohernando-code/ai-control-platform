@@ -40,7 +40,9 @@ function usage() {
     "  --max-iterations <n>                 Loop iteration bound, 1-5",
     "  --execution-strategy <strategy>      Use projected_next_action to call the workbench next-action API",
     "  --workbench-base-url <url>           Local workbench service URL for projected next actions",
-    "  --workbench-projection-id <id>       Projection history id to execute through the workbench service"
+    "  --workbench-projection-id <id>       Projection history id to execute through the workbench service",
+    "  --projected-next-action <action>     Override the projected action readout for service trials",
+    "  --projected-next-action-status <status>  Override projected action status, usually ready"
   ].join("\n");
 }
 
@@ -70,6 +72,8 @@ const maxIterations = valueAfter("--max-iterations", args);
 const executionStrategy = valueAfter("--execution-strategy", args);
 const workbenchBaseUrl = valueAfter("--workbench-base-url", args);
 const workbenchProjectionId = valueAfter("--workbench-projection-id", args);
+const projectedNextAction = valueAfter("--projected-next-action", args);
+const projectedNextActionStatus = valueAfter("--projected-next-action-status", args);
 const childWorkerCommand = valueAfter("--child-worker-command", args);
 const defaultChildProviderCommand = valueAfter("--default-child-provider-command", args);
 const childWorkerTimeoutMs = valueAfter("--child-worker-timeout-ms", args);
@@ -111,6 +115,10 @@ try {
     execution_strategy: executionStrategy,
     workbench_base_url: workbenchBaseUrl,
     workbench_projection_id: workbenchProjectionId,
+    projected_next_action_readout: projectedNextAction || projectedNextActionStatus ? {
+      status: projectedNextActionStatus || "ready",
+      action: projectedNextAction
+    } : undefined,
     projection_history_path: historyPath,
     snapshots_root: snapshotsRoot,
     snapshot_prefix: snapshotPrefix,
