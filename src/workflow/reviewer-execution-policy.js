@@ -2,6 +2,7 @@ import { buildModelCollaborationPlan } from "./model-router.js";
 
 const APPROVED_MOCK_REVIEWER_PROFILE = "approved_mock_non_dry_run";
 const APPROVED_BOUNDED_REAL_REVIEWER_PROFILE = "approved_bounded_real_reviewer";
+const MAX_EXPANDED_REVIEWER_WALL_CLOCK_SECONDS = 240;
 
 function normalizeString(value) {
   return String(value || "").trim();
@@ -32,24 +33,60 @@ function numberValue(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-function boundedTimeout(value) {
+function normalizeTokenList(input) {
+  if (Array.isArray(input)) return input.map(normalizeToken).filter(Boolean);
+  return normalizeString(input)
+    .split(",")
+    .map(normalizeToken)
+    .filter(Boolean);
+}
+
+function dsParticipationMode(input = {}) {
+  const explicit = normalizeToken(
+    input.ds_participation_mode ||
+      input.dsParticipationMode ||
+      input.model_routing_strategy ||
+      input.modelRoutingStrategy ||
+      input.routing_strategy ||
+      input.routingStrategy
+  );
+  if (["expanded", "ds_expanded", "ds_first", "ds-first", "cost_saving", "cost-sensitive"].includes(explicit)) return "expanded";
+  return "balanced";
+}
+
+function maxRealReviewerCallsFor(input = {}) {
+  return dsParticipationMode(input) === "expanded" ? 2 : 1;
+}
+
+function boundedTimeout(value, input = {}) {
   const timeout = numberValue(value ?? 90);
-  if (timeout === null || timeout < 30 || timeout > 120) {
+  const maxTimeout = dsParticipationMode(input) === "expanded" ? 150 : 120;
+  if (timeout === null || timeout < 30 || timeout > maxTimeout) {
     return {
       value: null,
-      issues: [issue("invalid_reviewer_timeout", "real reviewer timeout_seconds must be between 30 and 120", "timeout_seconds")]
+      issues: [issue("invalid_reviewer_timeout", `real reviewer timeout_seconds must be between 30 and ${maxTimeout}`, "timeout_seconds")]
     };
   }
   return { value: timeout, issues: [] };
 }
 
 function modelRoutingPlan(input = {}) {
+  const tags = [
+    "independent_review",
+    "code_audit",
+    "boundary_sensitive",
+    ...normalizeTokenList(input.tags || input.capabilities)
+  ];
+  if (dsParticipationMode(input) === "expanded") tags.push("codex_plan_pressure");
+
   return buildModelCollaborationPlan({
     goal: "projected next-action reviewer shard execution",
     stage: "review",
     risk: normalizeToken(input.risk || input.risk_level || "medium"),
     budget_tier: normalizeToken(input.budget_tier || "medium"),
-    tags: ["independent_review", "code_audit", "boundary_sensitive"]
+    model_routing_strategy: dsParticipationMode(input) === "expanded" ? "ds_expanded" : "balanced",
+    ds_ratio_boost: input.ds_ratio_boost || input.dsRatioBoost,
+    tags
   });
 }
 
@@ -95,9 +132,14 @@ export function evaluateReviewerExecutionPolicy(input = {}) {
     issues.push(issue("mock_output_for_real_reviewer", "bounded real reviewer profile must not include mock reviewer output", "reviewer_mock_status"));
   }
 
+  const maxAllowedReviewerCalls = maxRealReviewerCallsFor(input);
   const maxExternalReviewerCalls = numberValue(input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls ?? 1);
-  if (maxExternalReviewerCalls !== 1) {
-    issues.push(issue("invalid_real_reviewer_budget", "bounded real reviewer profile currently allows exactly one external reviewer call per projected action", "max_external_reviewer_calls"));
+  if (maxExternalReviewerCalls === null || maxExternalReviewerCalls < 1 || maxExternalReviewerCalls > maxAllowedReviewerCalls) {
+    issues.push(issue(
+      "invalid_real_reviewer_budget",
+      `bounded real reviewer profile allows 1-${maxAllowedReviewerCalls} external reviewer call(s) for the current DS participation mode`,
+      "max_external_reviewer_calls"
+    ));
   }
 
   const providerCostMode = normalizeToken(input.provider_cost_mode || input.providerCostMode || "bounded");
@@ -105,8 +147,15 @@ export function evaluateReviewerExecutionPolicy(input = {}) {
     issues.push(issue("invalid_real_reviewer_cost_mode", "bounded real reviewer profile requires provider_cost_mode=bounded", "provider_cost_mode"));
   }
 
-  const timeout = boundedTimeout(input.timeout_seconds ?? input.timeoutSeconds ?? 90);
+  const timeout = boundedTimeout(input.timeout_seconds ?? input.timeoutSeconds ?? 90, input);
   issues.push(...timeout.issues);
+  if (timeout.value !== null && maxExternalReviewerCalls !== null && maxExternalReviewerCalls * timeout.value > MAX_EXPANDED_REVIEWER_WALL_CLOCK_SECONDS) {
+    issues.push(issue(
+      "invalid_reviewer_cumulative_timeout",
+      `expanded DS reviewer budget must stay at or below ${MAX_EXPANDED_REVIEWER_WALL_CLOCK_SECONDS}s cumulative wall-clock`,
+      "timeout_seconds"
+    ));
+  }
   const routing = modelRoutingPlan(input);
   issues.push(...(routing.issues || []));
 
@@ -117,11 +166,15 @@ export function evaluateReviewerExecutionPolicy(input = {}) {
     controls: {
       executor_mode: "claude_deepseek",
       max_external_reviewer_calls: maxExternalReviewerCalls,
+      max_allowed_external_reviewer_calls: maxAllowedReviewerCalls,
+      ds_participation_mode: dsParticipationMode(input),
       provider_cost_mode: providerCostMode,
       timeout_seconds: timeout.value,
       model_routing: {
         selected_model: routing.selected_model || null,
         preferred_model: routing.preferred_model || null,
+        model_routing_strategy: routing.model_routing_strategy || null,
+        ds_ratio_boost: routing.ds_ratio_boost ?? null,
         roles: routing.roles || []
       }
     },

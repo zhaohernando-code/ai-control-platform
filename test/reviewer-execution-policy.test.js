@@ -42,8 +42,43 @@ test("reviewer execution policy allows bounded real reviewer profile", () => {
   assert.equal(policy.execution_mode, "bounded_real_reviewer");
   assert.equal(policy.controls.executor_mode, "claude_deepseek");
   assert.equal(policy.controls.max_external_reviewer_calls, 1);
+  assert.equal(policy.controls.max_allowed_external_reviewer_calls, 1);
+  assert.equal(policy.controls.ds_participation_mode, "balanced");
   assert.equal(policy.controls.provider_cost_mode, "bounded");
   assert.equal(policy.controls.model_routing.selected_model, "deepseek-v4-pro");
+});
+
+test("reviewer execution policy can temporarily expand DS bounded participation", () => {
+  const policy = evaluateReviewerExecutionPolicy({
+    execution_profile: "approved_bounded_real_reviewer",
+    max_external_reviewer_calls: 2,
+    provider_cost_mode: "bounded",
+    timeout_seconds: 120,
+    ds_participation_mode: "expanded",
+    budget_tier: "medium"
+  });
+
+  assert.equal(policy.status, "pass");
+  assert.equal(policy.execution_mode, "bounded_real_reviewer");
+  assert.equal(policy.controls.executor_mode, "claude_deepseek");
+  assert.equal(policy.controls.max_external_reviewer_calls, 2);
+  assert.equal(policy.controls.max_allowed_external_reviewer_calls, 2);
+  assert.equal(policy.controls.ds_participation_mode, "expanded");
+  assert.equal(policy.controls.model_routing.model_routing_strategy, "ds_expanded");
+  assert.equal(policy.controls.model_routing.selected_model, "deepseek-v4-pro");
+});
+
+test("reviewer execution policy caps expanded DS cumulative timeout", () => {
+  const policy = evaluateReviewerExecutionPolicy({
+    execution_profile: "approved_bounded_real_reviewer",
+    max_external_reviewer_calls: 2,
+    provider_cost_mode: "bounded",
+    timeout_seconds: 150,
+    ds_participation_mode: "expanded"
+  });
+
+  assert.equal(policy.status, "fail");
+  assert.ok(policy.issues.some((entry) => entry.code === "invalid_reviewer_cumulative_timeout"));
 });
 
 test("reviewer execution policy rejects mock output and unsafe bounds for real profile", () => {

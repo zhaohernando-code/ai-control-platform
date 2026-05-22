@@ -332,11 +332,16 @@
     "status": "pass",
     "selected_model": "gpt",
     "preferred_model": "gpt",
+    "model_routing_strategy": "balanced",
+    "ds_ratio_boost": 1,
     "role_count": 2,
     "by_model": {
       "gpt": 1,
       "deepseek-v4-pro": 1
     },
+    "ds_role_count": 1,
+    "gpt_role_count": 1,
+    "ds_primary": false,
     "has_process_guard": false,
     "has_independent_reviewer": true,
     "has_arbiter": false

@@ -1064,6 +1064,14 @@
       "regression_test": "agent lifecycle summary; continuation schedules cleanup; continuation turns timed_out lifecycle pools into smaller retry worker packages with retry_worker/timed_out_workers metadata and context_pack_seed subtasks; PC/mobile workbench render lifecycle pool status/open/unevaluated/unclosed/next_action; browser events inject WorkerSpawned and WorkerCompleted, execute cleanup_agent_lifecycle_pool through guarded next action and through autonomous scheduler loop projected_next_action, and record cleanup_after_status=pass; closeout validator requires lifecycle cleanup browser evidence and autonomous projected-loop cleanup evidence",
       "verification": "node --test test/agent-lifecycle-pool.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js test/process-hardening.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events -- --output tmp/lifecycle-browser-events.json; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "ds-participation-pressure-not-configurable",
+      "invariant": "When Codex plan or cost pressure rises, DS participation must increase through explicit routing policy fields, not chat-only instructions: low/medium context_pack, planning, and implementation may become DeepSeek V4 Pro primary; high-risk platform core, critical, architecture, security, destructive, final arbitration, and recovery work must remain GPT-led with DS guard/review roles; expanded real reviewer execution must remain bounded by call count and cumulative timeout.",
+      "enforcement_target": "src/workflow/model-router.js; src/workflow/reviewer-execution-policy.js; test/model-router.test.js; test/reviewer-execution-policy.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "DS expanded strategy makes medium-risk implementation DS primary under plan pressure; DS expanded strategy keeps high-risk platform implementation GPT-led; DS expanded strategy does not take primary ownership of recovery stage; reviewer execution policy can temporarily expand DS bounded participation; reviewer execution policy caps expanded DS cumulative timeout",
+      "verification": "node --test test/model-router.test.js test/reviewer-execution-policy.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

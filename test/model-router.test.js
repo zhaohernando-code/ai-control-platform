@@ -148,6 +148,62 @@ test("cost pressure adds process guard but low-risk classification stays cheap",
   assert.equal(classification.selected_model, "deepseek-v4-flash");
 });
 
+test("DS expanded strategy makes medium-risk implementation DS primary under plan pressure", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "继续实现中台工作台投影但当前 Codex plan 紧张",
+    stage: "implementation",
+    risk: "medium",
+    budget_tier: "medium",
+    host: "platform_core",
+    codex_plan_pressure: true,
+    model_routing_strategy: "ds_expanded"
+  });
+  const summary = summarizeModelRouting(plan);
+
+  assert.equal(plan.status, "pass");
+  assert.equal(plan.selected_model, "deepseek-v4-pro");
+  assert.equal(plan.model_routing_strategy, "ds_expanded");
+  assert.equal(plan.ds_ratio_boost, 2);
+  assert.equal(plan.guardrails.ds_expansion_is_configurable, true);
+  assert.equal(summary.ds_primary, true);
+  assert.ok(summary.ds_role_count > summary.gpt_role_count);
+  assert.ok(plan.roles.some((role) => role.role === "scout" && role.model_id === "deepseek-v4-flash"));
+});
+
+test("DS expanded strategy keeps high-risk platform implementation GPT-led", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "修改中台核心调度和安全边界",
+    stage: "implementation",
+    risk: "high",
+    budget_tier: "high",
+    host: "platform_core",
+    model_routing_strategy: "ds_expanded",
+    tags: ["boundary_sensitive"]
+  });
+  const guardIndex = plan.roles.findIndex((role) => role.role === "process_guard");
+  const primaryIndex = plan.roles.findIndex((role) => role.role === "primary");
+
+  assert.equal(plan.selected_model, "gpt");
+  assert.equal(plan.guardrails.gpt_primary_required_for_high_risk_platform_core, true);
+  assert.ok(guardIndex >= 0);
+  assert.ok(guardIndex < primaryIndex);
+  assert.ok(plan.roles.some((role) => role.role === "independent_reviewer" && role.model_id === "deepseek-v4-pro"));
+});
+
+test("DS expanded strategy does not take primary ownership of recovery stage", () => {
+  const plan = buildModelCollaborationPlan({
+    goal: "恢复失败的中台调度循环",
+    stage: "recovery",
+    risk: "medium",
+    budget_tier: "high",
+    host: "platform_core",
+    model_routing_strategy: "ds_expanded"
+  });
+
+  assert.equal(plan.selected_model, "gpt");
+  assert.ok(plan.roles.some((role) => role.role === "process_guard" && role.model_id === "deepseek-v4-pro"));
+});
+
 test("DeepSeek Pro primary review does not duplicate process guard", () => {
   const plan = buildModelCollaborationPlan({
     goal: "审查平台宿主边界是否仍可能漂移",
@@ -183,13 +239,17 @@ test("invalid request fails validation", () => {
   const validation = validateModelRoutingRequest({
     stage: "implementation",
     risk: "extreme",
-    budget_tier: "free"
+    budget_tier: "free",
+    model_routing_strategy: "always_gpt",
+    ds_ratio_boost: 8
   });
 
   assert.equal(validation.status, "fail");
   assert.ok(validation.issues.some((issue) => issue.code === "missing_goal"));
   assert.ok(validation.issues.some((issue) => issue.code === "invalid_risk"));
   assert.ok(validation.issues.some((issue) => issue.code === "invalid_budget_tier"));
+  assert.ok(validation.issues.some((issue) => issue.code === "invalid_model_routing_strategy"));
+  assert.ok(validation.issues.some((issue) => issue.code === "invalid_ds_ratio_boost"));
 });
 
 test("routing summary is workbench-friendly", () => {
@@ -205,5 +265,7 @@ test("routing summary is workbench-friendly", () => {
   assert.equal(summary.selected_model, "deepseek-v4-flash");
   assert.equal(summary.role_count, 2);
   assert.equal(summary.by_model["deepseek-v4-flash"], 2);
+  assert.equal(summary.ds_role_count, 2);
+  assert.equal(summary.gpt_role_count, 0);
   assert.equal(summary.has_independent_reviewer, false);
 });
