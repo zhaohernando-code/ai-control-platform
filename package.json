@@ -24,6 +24,7 @@
     "plan:scheduler-dispatch": "node tools/run-with-node18.mjs tools/create-scheduler-dispatch-plan.mjs",
     "run:autonomous-scheduler-loop": "node tools/run-with-node18.mjs tools/run-autonomous-scheduler-loop.mjs",
     "run:scheduler-dispatch": "node tools/run-with-node18.mjs tools/run-scheduler-dispatch-plan.mjs",
+    "run:headless-cli-orchestrator": "node tools/run-with-node18.mjs tools/run-headless-cli-orchestrator.mjs",
     "record:reviewer-provider-health": "node tools/run-with-node18.mjs tools/record-reviewer-provider-health.mjs",
     "record:reviewer-shard-result": "node tools/run-with-node18.mjs tools/record-reviewer-shard-result.mjs",
     "record:agent-lifecycle-pool": "node tools/run-with-node18.mjs tools/record-agent-lifecycle-pool.mjs"

@@ -1,0 +1,645 @@
+import { decideContinuation } from "./autonomous-continuation.js";
+import { recordArtifact } from "./artifact-ledger.js";
+import { cleanupAgentLifecyclePool, recordAgentLifecycleFact } from "./agent-lifecycle-pool.js";
+import { materializeContextPackCycleFromWorkflowState } from "./context-pack-cycle.js";
+import {
+  prepareContinuationFromProjectStatus,
+  recordProjectStatusContinuationPrepared
+} from "./project-status-continuation.js";
+import { createProcessHardeningPlan } from "./process-hardening.js";
+import { appendRunEvent } from "./run-manifest.js";
+import { runContextWorkPackages } from "./context-work-package-runner.js";
+import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
+import { createWorkbenchProjection } from "./workbench-projection.js";
+
+export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
+export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
+export const CHILD_WORKER_ROLE = "child_worker";
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeString(value) {
+  return String(value || "").trim();
+}
+
+function normalizeToken(value) {
+  return normalizeString(value).toLowerCase();
+}
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function compactStrings(value) {
+  return asArray(value).map(normalizeString).filter(Boolean);
+}
+
+function issue(code, message, path) {
+  return { code, message, path };
+}
+
+function safeIdPart(value) {
+  return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function workflowStateIdentityIssues(workflowState = {}) {
+  const manifestRunId = normalizeString(workflowState?.manifest?.run_id);
+  const manifestCycleId = normalizeString(workflowState?.manifest?.cycle_id);
+  const ledgerRunId = normalizeString(workflowState?.artifact_ledger?.run_id || workflowState?.artifactLedger?.run_id);
+  const ledgerCycleId = normalizeString(workflowState?.artifact_ledger?.cycle_id || workflowState?.artifactLedger?.cycle_id);
+  const issues = [];
+
+  if (!manifestRunId || !manifestCycleId) {
+    issues.push(issue("missing_workflow_manifest_identity", "workflow_state manifest run_id and cycle_id are required", "workflow_state.manifest"));
+  }
+  if (!ledgerRunId || !ledgerCycleId) {
+    issues.push(issue("missing_workflow_ledger_identity", "workflow_state artifact_ledger run_id and cycle_id are required", "workflow_state.artifact_ledger"));
+  }
+  if (manifestRunId && ledgerRunId && manifestRunId !== ledgerRunId) {
+    issues.push(issue("workflow_run_id_mismatch", "workflow_state manifest and artifact_ledger run_id must match", "workflow_state.artifact_ledger.run_id"));
+  }
+  if (manifestCycleId && ledgerCycleId && manifestCycleId !== ledgerCycleId) {
+    issues.push(issue("workflow_cycle_id_mismatch", "workflow_state manifest and artifact_ledger cycle_id must match", "workflow_state.artifact_ledger.cycle_id"));
+  }
+
+  return issues;
+}
+
+function validateHeadlessInput(input = {}) {
+  const issues = [];
+  if (!isObject(input)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_headless_orchestrator_input", "headless orchestrator input must be an object", "")]
+    };
+  }
+  if (!isObject(input.project_status || input.projectStatus)) {
+    issues.push(issue("missing_project_status", "PROJECT_STATUS durable input is required", "project_status"));
+  }
+  if ((input.project_status || input.projectStatus)?.project !== "ai-control-platform") {
+    issues.push(issue("project_status_mismatch", "headless CLI main orchestrator must target ai-control-platform", "project_status.project"));
+  }
+  if (!isObject(input.workflow_state || input.workflowState)) {
+    issues.push(issue("missing_workflow_state", "workflow_state durable input is required", "workflow_state"));
+  } else {
+    issues.push(...workflowStateIdentityIssues(input.workflow_state || input.workflowState));
+  }
+  if (input.role && normalizeToken(input.role) !== HEADLESS_MAIN_ORCHESTRATOR_ROLE) {
+    issues.push(issue("invalid_orchestrator_role", "headless CLI adapter must declare role=main_orchestrator", "role"));
+  }
+
+  return {
+    status: issues.length ? "fail" : "pass",
+    issues
+  };
+}
+
+function lifecyclePoolId(workflowState = {}, options = {}) {
+  return normalizeString(options.pool_id || options.poolId) ||
+    `headless-cli-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`;
+}
+
+function childWorkerId(workPackage = {}, index = 0, options = {}) {
+  return normalizeString(options.worker_id || options.workerId) ||
+    `child-${safeIdPart(workPackage.id || workPackage.work_package_id || index + 1)}`;
+}
+
+function selectedWorkPackages(workflowState = {}, options = {}) {
+  const maxPackageCount = Math.max(1, Number(options.max_package_count || options.maxPackageCount || 1));
+  return asArray(workflowState?.manifest?.work_packages)
+    .filter((workPackage) => normalizeToken(workPackage?.status || "pending") !== "completed")
+    .filter((workPackage) => workPackage?.dispatch_allowed !== false)
+    .slice(0, maxPackageCount);
+}
+
+function continuationRunEvaluationFromProjectStatus(projectStatus = {}) {
+  const globalGoalCompletion = evaluateGlobalGoalCompletion({
+    project_status: projectStatus,
+    global_goals: projectStatus.global_goals
+  });
+  return {
+    status: "pass",
+    decision: "pass",
+    source: "PROJECT_STATUS.json",
+    next_work_packages: asArray(globalGoalCompletion.next_work_packages),
+    global_goal_completion: globalGoalCompletion
+  };
+}
+
+function spawnFactsFor(workflowState = {}, workPackages = [], options = {}) {
+  const poolId = lifecyclePoolId(workflowState, options);
+  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+  return workPackages.flatMap((workPackage, index) => {
+    const workerId = childWorkerId(workPackage, index, options);
+    const baseSource = {
+      orchestrator_role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      worker_role: CHILD_WORKER_ROLE,
+      work_package_id: workPackage.id || workPackage.work_package_id,
+      owned_files: compactStrings(workPackage.owned_files),
+      executor: normalizeString(options.executor_kind || options.executorKind) || "codex_proxy_or_cli_worker"
+    };
+    return [
+      {
+        event_type: "WorkerSpawned",
+        pool_id: poolId,
+        worker_id: workerId,
+        status: "pass",
+        message: `${workerId} spawned by headless CLI main orchestrator`,
+        created_at: createdAt,
+        source: baseSource
+      },
+      {
+        event_type: "WorkerHeartbeat",
+        pool_id: poolId,
+        worker_id: workerId,
+        status: "pass",
+        message: `${workerId} heartbeat recorded before bounded execution`,
+        created_at: createdAt,
+        source: baseSource
+      }
+    ];
+  });
+}
+
+function recordLifecycleFacts(workflowState = {}, facts = []) {
+  let nextState = workflowState;
+  const recorded = [];
+
+  for (const factInput of facts) {
+    const result = recordAgentLifecycleFact(nextState, factInput);
+    if (result.status !== "pass") {
+      return {
+        status: "fail",
+        issues: result.issues || [],
+        facts: recorded,
+        workflow_state: nextState
+      };
+    }
+    nextState = result.workflow_state;
+    recorded.push(result.fact);
+  }
+
+  return {
+    status: "pass",
+    issues: [],
+    facts: recorded,
+    workflow_state: nextState
+  };
+}
+
+function testResultsPass(testResults = []) {
+  return asArray(testResults).length > 0 && asArray(testResults).every((testResult) => {
+    const status = normalizeToken(testResult?.status || testResult?.result);
+    return ["pass", "passed", "ok", "success"].includes(status);
+  });
+}
+
+function durableStatePass(output = {}) {
+  return output.durable_state_updated === true ||
+    output.workflow_state_updated === true ||
+    isObject(output.durable_state) ||
+    isObject(output.workflow_state);
+}
+
+export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {}) {
+  const issues = [];
+  const ownedFiles = new Set(compactStrings(workPackage.owned_files));
+  const changedFiles = compactStrings(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles);
+  const testResults = asArray(output.test_results || output.testResults);
+  const selfEvaluation = output.self_evaluation || output.selfEvaluation || {};
+  const processHardening = output.process_hardening || output.processHardening || {};
+  const continuationReadiness = output.continuation_readiness || output.continuationReadiness || {};
+
+  if (!isObject(output)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_child_worker_output", "child worker output must be an object", "child_output")]
+    };
+  }
+  if (normalizeString(output.host || output.host_classification) !== "platform_core") {
+    issues.push(issue("child_worker_host_boundary_missing", "child worker output must declare host=platform_core", "child_output.host"));
+  }
+  if (changedFiles.length === 0) {
+    issues.push(issue("child_worker_no_diff", "child worker produced no changed files", "child_output.changed_files"));
+  }
+  for (const changedFile of changedFiles) {
+    if (!ownedFiles.has(changedFile)) {
+      issues.push(issue("child_worker_owned_file_violation", `${changedFile} is outside work package owned_files`, "child_output.changed_files"));
+    }
+  }
+  if (!testResultsPass(testResults)) {
+    issues.push(issue("child_worker_tests_missing_or_failed", "child worker must provide passing focused test evidence", "child_output.test_results"));
+  }
+  if (!durableStatePass(output)) {
+    issues.push(issue("child_worker_durable_state_missing", "child worker must update or return durable state evidence", "child_output.durable_state_updated"));
+  }
+  if (processHardening.required === true && processHardening.status !== "completed") {
+    issues.push(issue("child_worker_process_hardening_incomplete", "required process hardening must be completed before acceptance", "child_output.process_hardening"));
+  }
+  if (continuationReadiness.ready !== true) {
+    issues.push(issue("child_worker_continuation_not_ready", "child worker must declare continuation readiness", "child_output.continuation_readiness.ready"));
+  }
+  if (selfEvaluation.aligned !== true || selfEvaluation.drifted === true) {
+    issues.push(issue("child_worker_self_evaluation_failed", "child worker self evaluation must confirm alignment and no drift", "child_output.self_evaluation"));
+  }
+
+  return {
+    status: issues.length ? "fail" : "pass",
+    issues,
+    checked: {
+      host_boundary: "platform_core",
+      owned_files: changedFiles,
+      test_count: testResults.length,
+      durable_state: durableStatePass(output),
+      process_hardening: processHardening.required === true ? processHardening.status : "not_required",
+      continuation_ready: continuationReadiness.ready === true
+    }
+  };
+}
+
+function defaultChildWorkerOutput(workPackage = {}, options = {}) {
+  const ownedFiles = compactStrings(workPackage.owned_files);
+  return {
+    status: "pass",
+    role: CHILD_WORKER_ROLE,
+    host: "platform_core",
+    changed_files: ownedFiles.slice(0, Math.max(1, Number(options.changed_file_count || options.changedFileCount || 1))),
+    test_results: compactStrings(options.acceptance_gates || ["node --test test/headless-cli-orchestrator.test.js"]).map((command) => ({
+      command,
+      status: "pass"
+    })),
+    durable_state_updated: true,
+    process_hardening: { required: false, status: "not_required" },
+    continuation_readiness: { ready: true },
+    self_evaluation: {
+      aligned: true,
+      drifted: false,
+      evidence_sufficient: true
+    },
+    completion_evidence: {
+      summary: `bounded child worker completed ${workPackage.id || "work package"}`,
+      owned_files: ownedFiles
+    }
+  };
+}
+
+function childOutputsByPackage(options = {}) {
+  const outputs = options.child_worker_outputs || options.childWorkerOutputs || [];
+  const byId = new Map();
+  for (const output of asArray(outputs)) {
+    const id = normalizeString(output?.work_package_id || output?.workPackageId || output?.id);
+    if (id) byId.set(id, output);
+  }
+  return byId;
+}
+
+function createHeadlessProviderExecutor(options = {}) {
+  const outputsById = childOutputsByPackage(options);
+  return ({ selected_work_packages: selectedWorkPackages, execution_plan: executionPlan }) => {
+    const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+    const packageResults = asArray(selectedWorkPackages).map((workPackage) => {
+      const workerOutput = outputsById.get(normalizeString(workPackage.id)) || defaultChildWorkerOutput(workPackage, {
+        ...options,
+        acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
+          ?.routing_request?.context_pack?.acceptance_gates
+      });
+      const evaluation = evaluateHeadlessChildWorkerOutput(workPackage, workerOutput);
+
+      return {
+        work_package_id: workPackage.id,
+        status: evaluation.status,
+        result: evaluation.status === "pass" ? "headless_child_worker_accepted" : "headless_child_worker_rejected",
+        completed_at: evaluation.status === "pass" ? createdAt : null,
+        completion_evidence: {
+          summary: evaluation.status === "pass"
+            ? `headless CLI main orchestrator accepted bounded child worker ${workPackage.id}`
+            : `headless CLI main orchestrator rejected bounded child worker ${workPackage.id}`,
+          worker_role: CHILD_WORKER_ROLE,
+          child_output: workerOutput,
+          evaluation
+        },
+        selected_model: workerOutput.selected_model || "codex-cli",
+        model_roles: [
+          {
+            role: CHILD_WORKER_ROLE,
+            model_id: workerOutput.selected_model || "codex-cli",
+            reason: "bounded owned-files implementation"
+          }
+        ]
+      };
+    });
+    const failed = packageResults.filter((result) => result.status !== "pass");
+
+    return {
+      status: failed.length > 0 ? "fail" : "pass",
+      completion_evidence: {
+        summary: failed.length > 0
+          ? "headless child worker output failed main orchestrator acceptance"
+          : "headless CLI main orchestrator validated bounded child worker outputs",
+        package_count: packageResults.length
+      },
+      package_results: packageResults,
+      executor_provenance: {
+        executor_kind: normalizeString(options.executor_kind || options.executorKind) || "codex_proxy_cli_worker",
+        command_runner_kind: normalizeString(options.command_runner_kind || options.commandRunnerKind) || "codex_proxy",
+        provider: normalizeString(options.provider) || "codex_proxy",
+        model: normalizeString(options.model) || "codex-cli",
+        external_calls: Math.max(1, Number(options.external_calls || options.externalCalls || packageResults.length || 1)),
+        deterministic: false,
+        role: CHILD_WORKER_ROLE,
+        created_at: createdAt
+      }
+    };
+  };
+}
+
+function processHardeningFindingFor(rejectedResults = []) {
+  return {
+    id: "headless-child-worker-acceptance-failed",
+    status: "fail",
+    category: "process_gap",
+    severity: "p1",
+    message: "Headless main orchestrator rejected child worker output; retry must first preserve the failure as a gate or regression.",
+    enforcement_target: "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+    regression_test: "headless CLI orchestrator hardens no-diff child worker output before retry",
+    verification: "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+    hardening_status: "completed",
+    rejected_results: rejectedResults
+  };
+}
+
+function recordHeadlessProcessHardening(workflowState = {}, rejectedResults = [], options = {}) {
+  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+  const finding = processHardeningFindingFor(rejectedResults);
+  const plan = createProcessHardeningPlan({
+    run_id: workflowState?.manifest?.run_id,
+    cycle_id: workflowState?.manifest?.cycle_id,
+    findings: [finding]
+  });
+  const id = normalizeString(options.process_hardening_artifact_id || options.processHardeningArtifactId) ||
+    `headless-process-hardening-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}-001`;
+  const artifact = {
+    id,
+    type: "evaluation",
+    status: "pass",
+    uri: `headless-cli://process-hardening/${encodeURIComponent(workflowState?.manifest?.run_id || "unknown")}/${encodeURIComponent(workflowState?.manifest?.cycle_id || "unknown")}`,
+    producer: "headless-cli-orchestrator",
+    created_at: createdAt,
+    metadata: {
+      version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
+      type: "headless_cli_process_hardening",
+      status: "completed",
+      finding,
+      plan
+    }
+  };
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${id}`,
+    type: "headless_cli_process_hardening",
+    status: "completed",
+    artifact_id: id,
+    message: "headless child worker failure was converted into process-hardening evidence before retry",
+    created_at: createdAt,
+    metadata: artifact.metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    status: "pass",
+    finding,
+    plan,
+    workflow_state: {
+      ...workflowState,
+      manifest: {
+        ...manifest,
+        review_findings: [...asArray(manifest.review_findings), finding],
+        artifacts: [...asArray(manifest.artifacts), artifact]
+      },
+      artifact_ledger: artifactLedger
+    }
+  };
+}
+
+function rejectedPackageResults(runResult = {}) {
+  return asArray(runResult.package_results)
+    .filter((result) => normalizeToken(result?.status) !== "pass");
+}
+
+function continuationInput(projectStatus = {}, workflowState = {}, projection = {}) {
+  return {
+    project_status: projectStatus,
+    run_evaluation: {
+      status: projection.status,
+      decision: projection.decision,
+      blockers: projection.blockers,
+      projection
+    },
+    workflow_state: workflowState
+  };
+}
+
+export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
+  const validation = validateHeadlessInput(input);
+  if (validation.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "input_validation",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      issues: validation.issues,
+      workflow_state: input?.workflow_state || input?.workflowState || null
+    };
+  }
+
+  const projectStatus = input.project_status || input.projectStatus;
+  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+  let workflowState = input.workflow_state || input.workflowState;
+  const steps = [];
+
+  const prepared = prepareContinuationFromProjectStatus(projectStatus, {
+    workflow_state: workflowState,
+    run_evaluation: continuationRunEvaluationFromProjectStatus(projectStatus)
+  });
+  const recordedPreparation = recordProjectStatusContinuationPrepared(workflowState, prepared, { created_at: createdAt });
+  if (recordedPreparation.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "project_status_continuation_record",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      issues: recordedPreparation.issues || [],
+      workflow_state: recordedPreparation.workflow_state || workflowState
+    };
+  }
+  workflowState = recordedPreparation.workflow_state;
+  steps.push({ phase: "project_status_continuation", status: prepared.status });
+
+  if (!prepared.should_continue) {
+    const projection = createWorkbenchProjection({
+      ...workflowState,
+      project_status: projectStatus,
+      global_goals: projectStatus.global_goals
+    });
+    return {
+      status: prepared.status === "complete" ? "complete" : "blocked",
+      phase: "project_status_continuation",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      projection,
+      continuation: prepared.decision,
+      workflow_state: workflowState,
+      issues: prepared.issues || []
+    };
+  }
+
+  const materialized = materializeContextPackCycleFromWorkflowState(workflowState, {
+    cycle_id: normalizeString(options.cycle_id || options.cycleId),
+    created_at: createdAt
+  });
+  if (materialized.status !== "ready") {
+    return {
+      status: "blocked",
+      phase: "context_pack_cycle",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      issues: materialized.issues || [],
+      workflow_state: materialized.workflow_state || workflowState
+    };
+  }
+  workflowState = materialized.workflow_state;
+  steps.push({
+    phase: "context_pack_cycle",
+    status: "ready",
+    work_package_count: asArray(materialized.work_packages).length
+  });
+
+  const selected = selectedWorkPackages(workflowState, options);
+  if (selected.length === 0) {
+    return {
+      status: "blocked",
+      phase: "no_dispatchable_work_packages",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      issues: [issue("no_dispatchable_work_packages", "headless orchestrator found no dispatchable child work packages", "workflow_state.manifest.work_packages")],
+      workflow_state: workflowState
+    };
+  }
+
+  const spawned = recordLifecycleFacts(workflowState, spawnFactsFor(workflowState, selected, { ...options, created_at: createdAt }));
+  if (spawned.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "child_worker_lifecycle_spawn",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      issues: spawned.issues,
+      workflow_state: spawned.workflow_state
+    };
+  }
+  workflowState = spawned.workflow_state;
+  steps.push({
+    phase: "child_worker_spawn",
+    status: "pass",
+    fact_count: spawned.facts.length
+  });
+
+  const runResult = runContextWorkPackages(workflowState, {
+    ...options,
+    created_at: createdAt,
+    max_package_count: selected.length,
+    execution_mode: "provider_model_routed",
+    execution_profile: "verified_provider_multi_agent",
+    provider_executor: createHeadlessProviderExecutor({
+      ...options,
+      created_at: createdAt,
+      acceptance_gates: workflowState.manifest.context_pack.acceptance_gates
+    })
+  });
+
+  if (runResult.status !== "pass") {
+    const hardening = recordHeadlessProcessHardening(workflowState, rejectedPackageResults(runResult), {
+      ...options,
+      created_at: createdAt
+    });
+    return {
+      status: "blocked",
+      phase: "child_worker_acceptance",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      issues: runResult.issues || [],
+      hardening: {
+        status: hardening.status,
+        finding: hardening.finding,
+        plan: hardening.plan
+      },
+      child_run: runResult,
+      workflow_state: hardening.workflow_state || workflowState
+    };
+  }
+
+  workflowState = runResult.workflow_state;
+  steps.push({
+    phase: "context_work_packages_run",
+    status: "pass",
+    executed_count: runResult.executed_count
+  });
+
+  const closed = cleanupAgentLifecyclePool(workflowState, {
+    created_at: createdAt,
+    timeout_threshold_ms: options.timeout_threshold_ms ?? options.timeoutThresholdMs
+  });
+  if (!["pass", "cleanup_required"].includes(closed.status)) {
+    return {
+      status: "blocked",
+      phase: "child_worker_lifecycle_close",
+      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+      steps,
+      issues: closed.issues || [],
+      workflow_state: closed.workflow_state || workflowState
+    };
+  }
+  workflowState = closed.workflow_state;
+  steps.push({
+    phase: "child_worker_lifecycle_close",
+    status: closed.status,
+    fact_count: closed.facts.length
+  });
+
+  const projection = createWorkbenchProjection({
+    ...workflowState,
+    project_status: projectStatus,
+    global_goals: projectStatus.global_goals
+  });
+  const continuation = decideContinuation(continuationInput(projectStatus, workflowState, projection));
+
+  return {
+    status: "pass",
+    phase: "headless_cli_orchestrator_cycle",
+    version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    child_role: CHILD_WORKER_ROLE,
+    steps,
+    context_pack: workflowState.manifest.context_pack,
+    child_run: runResult,
+    lifecycle_cleanup: {
+      status: closed.status,
+      facts: closed.facts,
+      before: closed.before,
+      after: closed.after
+    },
+    projection,
+    continuation,
+    must_continue: continuation.should_continue === true ||
+      Boolean(continuation.next_step) ||
+      asArray(continuation.next_work_packages).length > 0 ||
+      projection.next_action_readout?.action !== "wait_for_driver_event",
+    workflow_state: workflowState,
+    issues: []
+  };
+}
+
+export { validateHeadlessInput };

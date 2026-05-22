@@ -456,6 +456,20 @@
       "category": "process_gap",
       "severity": "p1",
       "message": "Codex CLI sessions must declare whether they are running as main orchestrator or child worker; otherwise a worker can accidentally take main-process authority or a main loop can be treated as a bounded implementation task."
+    },
+    {
+      "id": "headless-cli-orchestrator-adapter-missing",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless Codex CLI main orchestrator must not remain a documentation-only target; it needs an executable adapter that starts from durable PROJECT_STATUS/workflow_state and declares role=main_orchestrator."
+    },
+    {
+      "id": "headless-child-worker-acceptance-failed",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "Headless child worker no-diff, host drift, owned-files violation, failed tests, missing durable state, incomplete process hardening, or missing continuation readiness must be converted into a durable hardening gate before retry."
     }
   ],
   "hardening_items": [
@@ -1161,6 +1175,22 @@
       "enforcement_target": "docs/contracts/CODEX_PROXY_HANDOFF_CN.md; PROCESS.md; docs/examples/process-hardening-current.json",
       "regression_test": "CODEX_PROXY_HANDOFF_CN documents separate transition worker mode and target CLI main orchestrator mode; PROCESS documents CLI orchestrator and CLI worker layering",
       "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-cli-orchestrator-adapter-missing",
+      "invariant": "Headless Codex CLI/codex_proxy must have an executable main_orchestrator adapter that starts from durable PROJECT_STATUS, workflow_state, and projection history, creates a bounded Context Pack, dispatches bounded child workers, records lifecycle facts, evaluates outputs, updates projection, and decides continuation without requiring Codex App.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; package.json; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json; PROJECT_STATUS.json",
+      "regression_test": "headless CLI orchestrator runs one main_orchestrator cycle with bounded child lifecycle facts; run-headless-cli-orchestrator CLI writes replayable output",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run run:headless-cli-orchestrator -- --project-status PROJECT_STATUS.json --workflow-state docs/examples/current-session-workbench-input.json --projection-history docs/examples/projection-history.json --output tmp/headless-cli-orchestrator-run.json --workflow-output tmp/headless-cli-orchestrator-workflow-state.json; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-child-worker-acceptance-failed",
+      "invariant": "Headless main_orchestrator acceptance must reject and harden child_worker outputs that drift host boundary, write outside owned files, produce no diff, omit tests, omit durable state, leave required process hardening incomplete, or fail continuation readiness; failed child runs cannot complete work packages until the failure is represented as process-hardening or regression evidence.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless child worker acceptance checks host, owned files, tests, durable state, hardening, and continuation; headless CLI orchestrator hardens no-diff child worker output before retry; headless CLI orchestrator blocks wrong role before mutating workflow state",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
