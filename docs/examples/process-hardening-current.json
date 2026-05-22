@@ -470,6 +470,20 @@
       "category": "process_gap",
       "severity": "p1",
       "message": "Headless child worker no-diff, host drift, owned-files violation, failed tests, missing durable state, incomplete process hardening, or missing continuation readiness must be converted into a durable hardening gate before retry."
+    },
+    {
+      "id": "headless-child-command-runner-missing",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless CLI main_orchestrator must be able to invoke a real bounded codex_proxy/CLI child process through a prompt file and parse structured child_worker output instead of relying only on deterministic in-process equivalents."
+    },
+    {
+      "id": "headless-child-command-timeout-side-channel",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "Timed-out or unstructured headless child command output must become structured acceptance failure and process-hardening evidence, not stdout-only state or a silently completed work package."
     }
   ],
   "hardening_items": [
@@ -1190,6 +1204,22 @@
       "invariant": "Headless main_orchestrator acceptance must reject and harden child_worker outputs that drift host boundary, write outside owned files, produce no diff, omit tests, omit durable state, leave required process hardening incomplete, or fail continuation readiness; failed child runs cannot complete work packages until the failure is represented as process-hardening or regression evidence.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless child worker acceptance checks host, owned files, tests, durable state, hardening, and continuation; headless CLI orchestrator hardens no-diff child worker output before retry; headless CLI orchestrator blocks wrong role before mutating workflow state",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-child-command-runner-missing",
+      "invariant": "Headless main_orchestrator must support an explicit real child command runner path that writes a bounded role=child_worker prompt file, substitutes prompt/run/package placeholders for codex_proxy or equivalent CLI commands, parses structured JSON from stdout or output files, records command evidence, and still routes acceptance through the same host/owned-files/tests/durable-state/process-hardening/continuation gate.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator can execute a real child command runner and parse structured output; run-headless-cli-orchestrator CLI exposes --child-worker-command and repeatable --child-worker-arg",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-child-command-timeout-side-channel",
+      "invariant": "Headless child command timeouts, nonzero exits, and unstructured stdout must normalize into child_worker output with no diff, failed tests, missing durable state, command_evidence, and continuation_not_ready so the main_orchestrator records process-hardening before retry instead of accepting the work package.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator hardens timed-out child command output before retry; headless child worker output parser accepts fenced json and rejects prose",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }

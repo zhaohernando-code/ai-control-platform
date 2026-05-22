@@ -10,6 +10,7 @@ import {
   CHILD_WORKER_ROLE,
   HEADLESS_MAIN_ORCHESTRATOR_ROLE,
   evaluateHeadlessChildWorkerOutput,
+  parseHeadlessChildWorkerOutput,
   runHeadlessCliMainOrchestrator
 } from "../src/workflow/headless-cli-orchestrator.js";
 
@@ -147,6 +148,73 @@ test("headless child worker acceptance checks host, owned files, tests, durable 
 
   assert.equal(evaluation.status, "pass");
   assert.equal(evaluation.checked.host_boundary, "platform_core");
+});
+
+test("headless CLI orchestrator can execute a real child command runner and parse structured output", () => {
+  const calls = [];
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-real-child",
+    created_at: "2026-05-23T00:01:30.000Z",
+    max_package_count: 1,
+    command_runner_kind: "codex_proxy_child_process",
+    child_worker_runner: ({ prompt_file, work_package, timeout_ms }) => {
+      calls.push({ prompt_file, work_package, timeout_ms });
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          status: "pass",
+          role: CHILD_WORKER_ROLE,
+          host: "platform_core",
+          changed_files: ["src/workflow/headless-cli-orchestrator.js"],
+          test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
+          durable_state_updated: true,
+          process_hardening: { required: false, status: "not_required" },
+          continuation_readiness: { ready: true },
+          self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+        }),
+        stderr: ""
+      };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(calls.length, 1);
+  assert.match(readFileSync(calls[0].prompt_file, "utf8"), /role=child_worker/);
+  assert.equal(result.child_run.artifact.metadata.executor_provenance.command_runner_kind, "codex_proxy_child_process");
+  assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
+});
+
+test("headless CLI orchestrator hardens timed-out child command output before retry", () => {
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-timeout-child",
+    created_at: "2026-05-23T00:01:45.000Z",
+    max_package_count: 1,
+    command_runner_kind: "codex_proxy_child_process",
+    child_worker_runner: () => ({
+      status: 124,
+      stdout: "",
+      stderr: "child worker timeout"
+    })
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "child_worker_acceptance");
+  assert.ok(result.issues.some((item) => item.code === "package_result_not_pass"));
+  assert.equal(result.child_run.package_results[0].completion_evidence.child_output.command_evidence.timed_out, true);
+  assert.equal(result.hardening.finding.id, "headless-child-worker-acceptance-failed");
+});
+
+test("headless child worker output parser accepts fenced json and rejects prose", () => {
+  assert.equal(parseHeadlessChildWorkerOutput("plain prose"), null);
+  assert.equal(parseHeadlessChildWorkerOutput("```json\n{\"status\":\"pass\"}\n```").status, "pass");
 });
 
 test("headless CLI orchestrator hardens no-diff child worker output before retry", () => {

@@ -17,7 +17,13 @@ function usage() {
   return [
     "Usage: node tools/run-headless-cli-orchestrator.mjs --project-status PROJECT_STATUS.json --workflow-state docs/examples/current-session-workbench-input.json --output tmp/headless-cli-orchestrator-output.json",
     "",
-    "Runs one bounded headless Codex CLI main_orchestrator cycle from durable repository state."
+    "Runs one bounded headless Codex CLI main_orchestrator cycle from durable repository state.",
+    "",
+    "Optional child-worker execution:",
+    "  --child-worker-command <cmd>         Real codex_proxy/CLI child command",
+    "  --child-worker-arg <arg>             Repeatable argument; supports {prompt_file}, {work_package_id}, {run_id}, {cycle_id}",
+    "  --child-worker-timeout-ms <ms>       Child command timeout",
+    "  --child-worker-output-path <path>    Optional structured JSON output path template"
   ].join("\n");
 }
 
@@ -40,6 +46,17 @@ const workflowStatePath = valueAfter("--workflow-state", args);
 const projectionHistoryPath = valueAfter("--projection-history", args);
 const outputPath = valueAfter("--output", args);
 const workflowOutputPath = valueAfter("--workflow-output", args);
+const childWorkerCommand = valueAfter("--child-worker-command", args);
+const childWorkerTimeoutMs = valueAfter("--child-worker-timeout-ms", args);
+const childWorkerOutputPath = valueAfter("--child-worker-output-path", args);
+
+function valuesAfter(flag, args) {
+  const values = [];
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === flag && args[index + 1]) values.push(args[index + 1]);
+  }
+  return values;
+}
 
 if (!projectStatusPath || !workflowStatePath || !outputPath) {
   console.error(usage());
@@ -62,7 +79,12 @@ try {
   }, {
     cycle_id: valueAfter("--cycle-id", args),
     created_at: valueAfter("--created-at", args),
-    max_package_count: valueAfter("--max-package-count", args) || 1
+    max_package_count: valueAfter("--max-package-count", args) || 1,
+    child_worker_command: childWorkerCommand,
+    child_worker_args: valuesAfter("--child-worker-arg", args),
+    child_worker_timeout_ms: childWorkerTimeoutMs,
+    child_worker_output_path: childWorkerOutputPath,
+    command_runner_kind: childWorkerCommand ? "codex_proxy_child_process" : undefined
   });
 } catch (error) {
   result = {

@@ -1,3 +1,8 @@
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+
 import { decideContinuation } from "./autonomous-continuation.js";
 import { recordArtifact } from "./artifact-ledger.js";
 import { cleanupAgentLifecyclePool, recordAgentLifecycleFact } from "./agent-lifecycle-pool.js";
@@ -15,6 +20,7 @@ import { createWorkbenchProjection } from "./workbench-projection.js";
 export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
 export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
 export const CHILD_WORKER_ROLE = "child_worker";
+export const DEFAULT_CHILD_WORKER_TIMEOUT_MS = 10 * 60 * 1000;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -295,16 +301,232 @@ function childOutputsByPackage(options = {}) {
   return byId;
 }
 
+function parseJsonCandidate(text = "") {
+  const value = normalizeString(text);
+  if (!value) return null;
+  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced
+    ? fenced[1].trim()
+    : (() => {
+        const objectStart = value.indexOf("{");
+        const objectEnd = value.lastIndexOf("}");
+        return objectStart >= 0 && objectEnd > objectStart ? value.slice(objectStart, objectEnd + 1) : value;
+      })();
+  try {
+    const parsed = JSON.parse(candidate);
+    return isObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseHeadlessChildWorkerOutput(raw = {}) {
+  if (isObject(raw)) return raw;
+  return parseJsonCandidate(raw) || null;
+}
+
+function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
+  const contextPack = workflowState?.manifest?.context_pack || {};
+  return [
+    "# AI Control Platform Headless Child Worker",
+    "",
+    "role=child_worker",
+    "host=platform_core",
+    "Return exactly one JSON object. Do not wrap it in prose.",
+    "",
+    "You are not the main orchestrator. Only implement the bounded work package.",
+    "",
+    "Required rules:",
+    "- Read AGENTS.md, PROCESS.md, PROJECT_STATUS.json, PROJECT_RULES.md, docs/contracts/CODEX_PROXY_HANDOFF_CN.md, docs/contracts/AUTONOMOUS_DEVELOPMENT_FLOW_CN.md, and this Context Pack.",
+    "- Do not read more than five extra files outside the Context Pack unless you first report why.",
+    "- First produce the minimum runnable diff, then explain design.",
+    "- If no patch is possible within the time box, return status=fail with no_diff=true, blocker, read_files, and next_minimal_patch_position.",
+    "- Do not modify managed projects, legacy directories, or files outside owned_files.",
+    "",
+    "Required JSON shape:",
+    JSON.stringify({
+      status: "pass|fail",
+      role: CHILD_WORKER_ROLE,
+      host: "platform_core",
+      changed_files: ["owned file path"],
+      test_results: [{ command: "focused test command", status: "pass|fail" }],
+      durable_state_updated: true,
+      process_hardening: { required: false, status: "not_required|completed" },
+      continuation_readiness: { ready: true },
+      self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true },
+      blocker: null,
+      read_files: [],
+      next_minimal_patch_position: null
+    }, null, 2),
+    "",
+    "Workflow identity:",
+    JSON.stringify({
+      run_id: workflowState?.manifest?.run_id || null,
+      cycle_id: workflowState?.manifest?.cycle_id || null,
+      goal: workflowState?.manifest?.goal || null
+    }, null, 2),
+    "",
+    "Context Pack:",
+    JSON.stringify(contextPack, null, 2),
+    "",
+    "Selected work package:",
+    JSON.stringify(workPackage, null, 2),
+    "",
+    "Acceptance gates:",
+    JSON.stringify(compactStrings(options.acceptance_gates || contextPack.acceptance_gates), null, 2)
+  ].join("\n");
+}
+
+function commandTemplateFrom(options = {}) {
+  const command = normalizeString(options.child_worker_command || options.childWorkerCommand);
+  if (!command) return null;
+  return {
+    command,
+    args: asArray(options.child_worker_args || options.childWorkerArgs).map(String)
+  };
+}
+
+function childWorkerTimeoutMs(options = {}) {
+  const value = Number(options.child_worker_timeout_ms ?? options.childWorkerTimeoutMs ?? options.timeout_ms ?? options.timeoutMs);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_CHILD_WORKER_TIMEOUT_MS;
+}
+
+function childWorkerRunnerFrom(options = {}) {
+  if (typeof options.child_worker_runner === "function") return options.child_worker_runner;
+  if (typeof options.childWorkerRunner === "function") return options.childWorkerRunner;
+  const template = commandTemplateFrom(options);
+  if (!template) return null;
+  return ({ prompt_file: promptFile, work_package: workPackage, workflow_state: workflowState, timeout_ms: timeoutMs }) => {
+    const args = template.args.map((arg) => arg
+      .replaceAll("{prompt_file}", promptFile)
+      .replaceAll("{work_package_id}", normalizeString(workPackage.id))
+      .replaceAll("{run_id}", normalizeString(workflowState?.manifest?.run_id))
+      .replaceAll("{cycle_id}", normalizeString(workflowState?.manifest?.cycle_id)));
+    return spawnSync(template.command, args, {
+      cwd: resolve(normalizeString(options.child_worker_cwd || options.childWorkerCwd) || process.cwd()),
+      encoding: "utf8",
+      timeout: timeoutMs
+    });
+  };
+}
+
+function childWorkerCommandOutputPath(workPackage = {}, options = {}) {
+  const explicit = normalizeString(options.child_worker_output_path || options.childWorkerOutputPath);
+  if (!explicit) return null;
+  return explicit
+    .replaceAll("{work_package_id}", safeIdPart(workPackage.id))
+    .replaceAll("{run_id}", safeIdPart(options.run_id || options.runId || "run"))
+    .replaceAll("{cycle_id}", safeIdPart(options.cycle_id || options.cycleId || "cycle"));
+}
+
+function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile = "", outputPath = null) {
+  const stdout = normalizeString(result?.stdout);
+  const stderr = normalizeString(result?.stderr);
+  const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
+  const timedOut = result?.error?.code === "ETIMEDOUT" ||
+    exitCode === 124 ||
+    /timed?\s*out|timeout/i.test(stderr);
+  const fileOutput = outputPath && existsSync(outputPath)
+    ? parseHeadlessChildWorkerOutput(readFileSync(outputPath, "utf8"))
+    : null;
+  const parsed = fileOutput || parseHeadlessChildWorkerOutput(stdout);
+
+  if (parsed) {
+    return {
+      ...parsed,
+      command_evidence: {
+        exit_code: exitCode,
+        timed_out: timedOut,
+        stdout_present: Boolean(stdout),
+        stderr_present: Boolean(stderr),
+        prompt_file: promptFile,
+        output_path: outputPath
+      }
+    };
+  }
+
+  return {
+    status: "fail",
+    role: CHILD_WORKER_ROLE,
+    host: "platform_core",
+    changed_files: [],
+    test_results: [],
+    durable_state_updated: false,
+    process_hardening: { required: true, status: "pending" },
+    continuation_readiness: { ready: false },
+    self_evaluation: {
+      aligned: false,
+      drifted: false,
+      evidence_sufficient: false
+    },
+    blocker: timedOut
+      ? `child worker timed out before structured output for ${workPackage.id}`
+      : `child worker returned no structured output for ${workPackage.id}`,
+    read_files: [],
+    next_minimal_patch_position: "child_worker.output",
+    command_evidence: {
+      exit_code: exitCode,
+      timed_out: timedOut,
+      stdout,
+      stderr,
+      prompt_file: promptFile,
+      output_path: outputPath
+    }
+  };
+}
+
+function executeRealChildWorker(workflowState = {}, workPackage = {}, options = {}) {
+  const runner = childWorkerRunnerFrom(options);
+  if (!runner) return null;
+
+  const tempDir = mkdtempSync(join(tmpdir(), "headless-child-worker-"));
+  const promptFile = join(tempDir, `${safeIdPart(workPackage.id)}-prompt.md`);
+  const outputPath = childWorkerCommandOutputPath(workPackage, {
+    ...options,
+    run_id: workflowState?.manifest?.run_id,
+    cycle_id: workflowState?.manifest?.cycle_id
+  });
+  writeFileSync(promptFile, headlessChildWorkerPrompt(workflowState, workPackage, options));
+
+  const timeoutMs = childWorkerTimeoutMs(options);
+  let result;
+  try {
+    result = runner({
+      workflow_state: workflowState,
+      work_package: workPackage,
+      prompt_file: promptFile,
+      output_path: outputPath,
+      timeout_ms: timeoutMs,
+      options
+    });
+  } catch (error) {
+    result = {
+      status: 1,
+      stdout: "",
+      stderr: error.message,
+      error
+    };
+  }
+
+  return normalizeCommandRunnerResult(result, workPackage, promptFile, outputPath);
+}
+
 function createHeadlessProviderExecutor(options = {}) {
   const outputsById = childOutputsByPackage(options);
   return ({ selected_work_packages: selectedWorkPackages, execution_plan: executionPlan }) => {
     const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
     const packageResults = asArray(selectedWorkPackages).map((workPackage) => {
-      const workerOutput = outputsById.get(normalizeString(workPackage.id)) || defaultChildWorkerOutput(workPackage, {
-        ...options,
-        acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
-          ?.routing_request?.context_pack?.acceptance_gates
-      });
+      const workerOutput = outputsById.get(normalizeString(workPackage.id)) ||
+        executeRealChildWorker(options.workflow_state || {}, workPackage, {
+          ...options,
+          acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
+            ?.routing_request?.context_pack?.acceptance_gates
+        }) ||
+        defaultChildWorkerOutput(workPackage, {
+          ...options,
+          acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
+            ?.routing_request?.context_pack?.acceptance_gates
+        });
       const evaluation = evaluateHeadlessChildWorkerOutput(workPackage, workerOutput);
 
       return {
@@ -343,7 +565,8 @@ function createHeadlessProviderExecutor(options = {}) {
       package_results: packageResults,
       executor_provenance: {
         executor_kind: normalizeString(options.executor_kind || options.executorKind) || "codex_proxy_cli_worker",
-        command_runner_kind: normalizeString(options.command_runner_kind || options.commandRunnerKind) || "codex_proxy",
+        command_runner_kind: normalizeString(options.command_runner_kind || options.commandRunnerKind) ||
+          (childWorkerRunnerFrom(options) ? "codex_proxy_child_process" : "codex_proxy"),
         provider: normalizeString(options.provider) || "codex_proxy",
         model: normalizeString(options.model) || "codex-cli",
         external_calls: Math.max(1, Number(options.external_calls || options.externalCalls || packageResults.length || 1)),
@@ -556,6 +779,7 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
     provider_executor: createHeadlessProviderExecutor({
       ...options,
       created_at: createdAt,
+      workflow_state: workflowState,
       acceptance_gates: workflowState.manifest.context_pack.acceptance_gates
     })
   });
