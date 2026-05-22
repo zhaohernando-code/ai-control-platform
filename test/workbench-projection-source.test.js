@@ -153,6 +153,32 @@ test("projection source records reviewer shard results", async () => {
   assert.match(calls[0].options.body, /reviewer-scope-shard-001/);
 });
 
+test("projection source records agent lifecycle pool facts", async () => {
+  const calls = [];
+  const source = createProjectionSource({
+    agentLifecyclePoolUrl: "/api/workbench/agent-lifecycle-pool",
+    fetch: async (url, options = {}) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        async json() {
+          return { status: "created", facts: [{ event_type: "PoolIterationClosed" }] };
+        }
+      };
+    }
+  });
+
+  const result = await source.recordAgentLifecyclePool({
+    cleanup_latest_pool: true,
+    created_at: "2026-05-22T08:10:00.000Z"
+  });
+
+  assert.equal(result.status, "created");
+  assert.equal(source.agentLifecyclePoolUrl, "/api/workbench/agent-lifecycle-pool");
+  assert.equal(calls[0].options.method, "POST");
+  assert.match(calls[0].options.body, /cleanup_latest_pool/);
+});
+
 test("projection source records scheduler dispatch runs", async () => {
   const calls = [];
   const source = createProjectionSource({

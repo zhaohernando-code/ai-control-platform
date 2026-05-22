@@ -1,7 +1,32 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { summarizeAgentLifecyclePool } from "../src/workflow/agent-lifecycle-pool.js";
+import {
+  cleanupAgentLifecyclePool,
+  createAgentLifecycleFact,
+  recordAgentLifecycleFact,
+  summarizeAgentLifecyclePool
+} from "../src/workflow/agent-lifecycle-pool.js";
+
+function workflowState(events = []) {
+  return {
+    manifest: {
+      run_id: "run-agent-lifecycle",
+      cycle_id: "cycle-agent-lifecycle",
+      events,
+      artifacts: [],
+      gate_results: [],
+      review_findings: [],
+      recovery_attempts: []
+    },
+    artifact_ledger: {
+      run_id: "run-agent-lifecycle",
+      cycle_id: "cycle-agent-lifecycle",
+      artifacts: []
+    }
+  };
+}
 
 test("summarizes latest agent lifecycle pool cleanup state from durable events", () => {
   const summary = summarizeAgentLifecyclePool({
@@ -67,4 +92,128 @@ test("closed and evaluated workers pass only after pool iteration close", () => 
   assert.equal(summary.open, 0);
   assert.equal(summary.unevaluated, 0);
   assert.equal(summary.unclosed, 0);
+});
+
+test("creates agent lifecycle facts from camel and snake case event types", () => {
+  const spawned = createAgentLifecycleFact({
+    event_type: "WorkerSpawned",
+    pool_id: "pool-fact",
+    worker_id: "worker-1",
+    created_at: "2026-05-22T08:00:00.000Z"
+  });
+  const closed = createAgentLifecycleFact({
+    event_type: "worker_closed",
+    pool_id: "pool-fact",
+    worker_id: "worker-1",
+    created_at: "2026-05-22T08:01:00.000Z"
+  });
+
+  assert.equal(spawned.event_type, "WorkerSpawned");
+  assert.equal(closed.event_type, "WorkerClosed");
+  assert.equal(spawned.validation_issues.length, 0);
+});
+
+test("records lifecycle fact into manifest and artifact ledger", () => {
+  const result = recordAgentLifecycleFact(workflowState(), {
+    event_type: "WorkerSpawned",
+    pool_id: "pool-record",
+    worker_id: "worker-1",
+    created_at: "2026-05-22T08:02:00.000Z"
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.workflow_state.manifest.events.at(-1).type, "WorkerSpawned");
+  assert.equal(result.workflow_state.manifest.artifacts.at(-1).metadata.lifecycle_event, "WorkerSpawned");
+  assert.equal(result.workflow_state.artifact_ledger.artifacts.at(-1).metadata.pool_id, "pool-record");
+});
+
+test("cleanup latest pool records missing evaluation close and iteration close", () => {
+  let state = workflowState();
+  for (const input of [
+    { event_type: "WorkerSpawned", pool_id: "pool-cleanup", worker_id: "worker-1" },
+    { event_type: "WorkerCompleted", pool_id: "pool-cleanup", worker_id: "worker-1" }
+  ]) {
+    const result = recordAgentLifecycleFact(state, { ...input, created_at: "2026-05-22T08:03:00.000Z" });
+    state = result.workflow_state;
+  }
+
+  const cleanup = cleanupAgentLifecyclePool(state, {
+    created_at: "2026-05-22T08:04:00.000Z"
+  });
+
+  assert.equal(cleanup.status, "pass");
+  assert.deepEqual(cleanup.facts.map((fact) => fact.event_type), [
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ]);
+  assert.equal(cleanup.after.status, "pass");
+  assert.equal(cleanup.after.next_action, null);
+});
+
+test("cleanup latest pool closes open spawned workers without looping", () => {
+  let state = workflowState();
+  const spawned = recordAgentLifecycleFact(state, {
+    event_type: "WorkerSpawned",
+    pool_id: "pool-open",
+    worker_id: "worker-open",
+    created_at: "2026-05-22T08:04:30.000Z"
+  });
+  state = spawned.workflow_state;
+
+  const cleanup = cleanupAgentLifecyclePool(state, {
+    created_at: "2026-05-22T08:04:40.000Z"
+  });
+
+  assert.equal(cleanup.status, "pass");
+  assert.deepEqual(cleanup.facts.map((fact) => fact.event_type), [
+    "WorkerCompleted",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ]);
+  assert.equal(cleanup.after.status, "pass");
+  assert.equal(cleanup.after.open, 0);
+  assert.equal(cleanup.after.unevaluated, 0);
+  assert.equal(cleanup.after.unclosed, 0);
+  assert.equal(cleanup.after.next_action, null);
+});
+
+test("blocked cleanup writes durable blocker and keeps projection blocked", () => {
+  let state = workflowState();
+  for (const input of [
+    { event_type: "WorkerSpawned", pool_id: "pool-blocked", worker_id: "worker-1" },
+    { event_type: "WorkerCompleted", pool_id: "pool-blocked", worker_id: "worker-1" }
+  ]) {
+    const result = recordAgentLifecycleFact(state, { ...input, created_at: "2026-05-22T08:05:00.000Z" });
+    state = result.workflow_state;
+  }
+
+  const cleanup = cleanupAgentLifecyclePool(state, {
+    failure: "child process exited without usable result",
+    created_at: "2026-05-22T08:06:00.000Z"
+  });
+
+  assert.equal(cleanup.status, "blocked");
+  assert.equal(cleanup.facts[0].status, "fail");
+  assert.equal(cleanup.after.status, "blocked");
+  assert.equal(cleanup.after.next_action, "cleanup_agent_lifecycle_pool");
+  assert.match(cleanup.after.latest_issue, /child process exited/);
+});
+
+test("agent lifecycle CLI fails closed on unreadable input", () => {
+  const result = spawnSync(process.execPath, [
+    "tools/record-agent-lifecycle-pool.mjs",
+    "--input",
+    "tmp/does-not-exist-agent-lifecycle.json",
+    "--output",
+    "tmp/unused-agent-lifecycle.json",
+    "--cleanup-latest-pool"
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /agent_lifecycle_input_read_failed/);
 });

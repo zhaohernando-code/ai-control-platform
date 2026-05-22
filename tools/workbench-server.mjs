@@ -17,6 +17,10 @@ import {
   recordReviewerShardResult
 } from "../src/workflow/reviewer-shard-results.js";
 import {
+  cleanupAgentLifecyclePool,
+  recordAgentLifecycleFact
+} from "../src/workflow/agent-lifecycle-pool.js";
+import {
   createSchedulerDispatchRunArtifact,
   recordSchedulerDispatchRunArtifact,
   runSchedulerDispatchPlan
@@ -382,6 +386,11 @@ function createWorkbenchLoopClient(baseUrl) {
       const url = new URL("/api/workbench/reviewer-shard-run", base);
       if (projectionId) url.searchParams.set("id", projectionId);
       return requestJson(url, body);
+    },
+    recordAgentLifecyclePool(projectionId, body = {}) {
+      const url = new URL("/api/workbench/agent-lifecycle-pool", base);
+      if (projectionId) url.searchParams.set("id", projectionId);
+      return requestJson(url, body);
     }
   };
 }
@@ -530,6 +539,7 @@ const SUPPORTED_NEXT_ACTIONS = new Set([
   "enqueue_scheduler_next_cycle",
   "run_autonomous_scheduler_loop",
   "run_reviewer_scope_shard",
+  "cleanup_agent_lifecycle_pool",
   "resume_autonomous_scheduler_loop"
 ]);
 
@@ -682,6 +692,17 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
       reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
       reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
       timeout_seconds: input.timeout_seconds || input.timeoutSeconds
+    });
+    return { status: "executed", action, result };
+  }
+
+  if (action === "cleanup_agent_lifecycle_pool") {
+    const result = await client.recordAgentLifecyclePool(selectedId, {
+      cleanup_latest_pool: true,
+      created_at: input.created_at || input.createdAt,
+      failure: input.failure,
+      blocked: input.blocked,
+      message: input.message
     });
     return { status: "executed", action, result };
   }
@@ -889,6 +910,59 @@ export function createWorkbenchServer(options = {}) {
           fact: result.fact,
           aggregate: aggregate?.fact || null,
           projection: workbenchProjection(nextState)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/agent-lifecycle-pool" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const result = (input.cleanup_latest_pool || input.cleanupLatestPool)
+          ? cleanupAgentLifecyclePool(workflowState, {
+            created_at: input.created_at || input.createdAt,
+            failure: input.failure,
+            blocked: input.blocked,
+            message: input.message
+          })
+          : recordAgentLifecycleFact(workflowState, {
+            event_type: input.event_type || input.eventType || input.type,
+            pool_id: input.pool_id || input.poolId,
+            worker_id: input.worker_id || input.workerId,
+            status: input.status,
+            message: input.message,
+            created_at: input.created_at || input.createdAt
+          });
+        if (!["pass", "cleanup_required", "blocked"].includes(result.status)) {
+          jsonResponse(res, 400, { error: "agent lifecycle pool record failed", issues: result.issues });
+          return;
+        }
+
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        jsonResponse(res, 201, {
+          status: result.status === "blocked" ? "blocked" : "created",
+          item,
+          fact: result.fact || null,
+          facts: result.facts || [],
+          before: result.before || null,
+          after: result.after || null,
+          projection: workbenchProjection(result.workflow_state)
         });
         return;
       }

@@ -61,6 +61,7 @@ export function createProjectionSource(options = {}) {
   const eventsUrl = options.eventsUrl || "/api/workbench/events";
   const providerHealthUrl = options.providerHealthUrl || "/api/workbench/reviewer-provider-health";
   const shardResultUrl = options.shardResultUrl || "/api/workbench/reviewer-shard-result";
+  const agentLifecyclePoolUrl = options.agentLifecyclePoolUrl || "/api/workbench/agent-lifecycle-pool";
   const schedulerDispatchPlanUrl = options.schedulerDispatchPlanUrl || "/api/workbench/scheduler-dispatch-plan";
   const schedulerDispatchUrl = options.schedulerDispatchUrl || "/api/workbench/scheduler-dispatch";
   const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || "/api/workbench/scheduler-dispatch-run";
@@ -76,6 +77,7 @@ export function createProjectionSource(options = {}) {
     eventsUrl,
     providerHealthUrl,
     shardResultUrl,
+    agentLifecyclePoolUrl,
     schedulerDispatchPlanUrl,
     schedulerDispatchUrl,
     schedulerDispatchRunUrl,
@@ -161,6 +163,21 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         throw new Error(`Reviewer shard result write failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    async recordAgentLifecyclePool(input) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+
+      const response = await fetchImpl(agentLifecyclePoolUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Agent lifecycle pool write failed: ${response.status}`);
       }
 
       return response.json();

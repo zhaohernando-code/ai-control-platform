@@ -1,3 +1,6 @@
+import { recordArtifact } from "./artifact-ledger.js";
+import { appendRunEvent } from "./run-manifest.js";
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -9,6 +12,55 @@ function normalizeString(value) {
 function normalizeToken(value) {
   return normalizeString(value).toLowerCase();
 }
+
+function isObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function safeIdPart(value) {
+  return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function issue(code, message, path) {
+  return { code, message, path };
+}
+
+function workflowStateIdentityIssues(workflowState = {}) {
+  const manifestRunId = normalizeString(workflowState?.manifest?.run_id);
+  const manifestCycleId = normalizeString(workflowState?.manifest?.cycle_id);
+  const ledger = workflowState?.artifact_ledger || workflowState?.artifactLedger || {};
+  const ledgerRunId = normalizeString(ledger.run_id);
+  const ledgerCycleId = normalizeString(ledger.cycle_id);
+  const issues = [];
+
+  if (!manifestRunId || !manifestCycleId) {
+    issues.push(issue("missing_manifest_identity", "manifest run_id and cycle_id are required", "manifest"));
+  }
+  if (!ledgerRunId || !ledgerCycleId) {
+    issues.push(issue("missing_artifact_ledger_identity", "artifact ledger run_id and cycle_id are required", "artifact_ledger"));
+  }
+  if (manifestRunId && ledgerRunId && manifestRunId !== ledgerRunId) {
+    issues.push(issue("workflow_state_run_mismatch", "manifest run_id does not match artifact ledger run_id", "artifact_ledger.run_id"));
+  }
+  if (manifestCycleId && ledgerCycleId && manifestCycleId !== ledgerCycleId) {
+    issues.push(issue("workflow_state_cycle_mismatch", "manifest cycle_id does not match artifact ledger cycle_id", "artifact_ledger.cycle_id"));
+  }
+
+  return issues;
+}
+
+const FACT_TYPES = new Map([
+  ["workerspawned", "WorkerSpawned"],
+  ["worker_spawned", "WorkerSpawned"],
+  ["workercompleted", "WorkerCompleted"],
+  ["worker_completed", "WorkerCompleted"],
+  ["workerevaluation", "WorkerEvaluation"],
+  ["worker_evaluation", "WorkerEvaluation"],
+  ["workerclosed", "WorkerClosed"],
+  ["worker_closed", "WorkerClosed"],
+  ["pooliterationclosed", "PoolIterationClosed"],
+  ["pool_iteration_closed", "PoolIterationClosed"]
+]);
 
 function eventKind(event = {}) {
   return normalizeToken(event.type || event.event_type || event.kind).replace(/[^a-z0-9]+/g, "_");
@@ -105,6 +157,16 @@ function latestPoolId(records) {
   return explicitPoolRecord?.pool_id || "default";
 }
 
+function latestPoolRecords(manifest = {}, artifactLedger = {}) {
+  const records = lifecycleRecords(manifest, artifactLedger);
+  const poolId = latestPoolId(records);
+  return {
+    records,
+    pool_id: records.length === 0 ? null : poolId,
+    pool_records: records.filter((record) => (record.pool_id || "default") === poolId)
+  };
+}
+
 function addWorker(workers, workerId) {
   if (!workerId) return null;
   if (!workers.has(workerId)) {
@@ -117,6 +179,275 @@ function addWorker(workers, workerId) {
     });
   }
   return workers.get(workerId);
+}
+
+function latestWorkers(manifest = {}, artifactLedger = {}) {
+  const { pool_id: poolId, pool_records: poolRecords } = latestPoolRecords(manifest, artifactLedger);
+  const workers = new Map();
+  for (const record of poolRecords) {
+    const worker = addWorker(workers, record.worker_id);
+    if (!worker) continue;
+    if (record.kind === "worker_spawned" || record.kind === "workerspawned") worker.spawned = true;
+    if (record.kind === "worker_completed" || record.kind === "workercompleted") worker.completed = true;
+    if (record.kind === "worker_evaluation" || record.kind === "workerevaluation") worker.evaluated = true;
+    if (record.kind === "worker_closed" || record.kind === "workerclosed") worker.closed = true;
+  }
+  return { pool_id: poolId, workers: Array.from(workers.values()) };
+}
+
+function canonicalFactType(value) {
+  return FACT_TYPES.get(normalizeToken(value).replace(/[^a-z0-9]+/g, "_")) || null;
+}
+
+function statusOf(input = {}) {
+  const status = normalizeToken(input.status || input.result || input.outcome);
+  if (["pass", "passed", "ok", "success", "succeeded", "completed", "complete"].includes(status)) return "pass";
+  if (["fail", "failed", "error", "errored", "blocked", "timeout", "timed_out"].includes(status)) return "fail";
+  return status || "pass";
+}
+
+function nextFactId(workflowState = {}, fact = {}) {
+  const prefix = fact.id || `agent-lifecycle-${safeIdPart(fact.event_type)}-${safeIdPart(fact.pool_id || "default")}-${safeIdPart(fact.worker_id || "pool")}`;
+  const artifacts = workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts || [];
+  const events = workflowState?.manifest?.events || [];
+  const usedIds = new Set([
+    ...artifacts.map((item) => item?.id).filter(Boolean),
+    ...events.map((item) => normalizeString(item?.artifact_id)).filter(Boolean)
+  ]);
+  if (fact.id && !usedIds.has(fact.id)) return fact.id;
+
+  let index = 1;
+  let id = `${prefix}-${String(index).padStart(3, "0")}`;
+  while (usedIds.has(id)) {
+    index += 1;
+    id = `${prefix}-${String(index).padStart(3, "0")}`;
+  }
+  return id;
+}
+
+export function createAgentLifecycleFact(input = {}) {
+  const eventType = canonicalFactType(input.event_type || input.eventType || input.type || input.kind);
+  const issues = [];
+  if (!eventType) {
+    issues.push(issue("unsupported_agent_lifecycle_fact_type", "event_type must be WorkerSpawned, WorkerCompleted, WorkerEvaluation, WorkerClosed, or PoolIterationClosed", "event_type"));
+  }
+
+  const poolId = normalizeString(input.pool_id || input.poolId || input.iteration_id || input.iterationId) || "default";
+  const workerId = normalizeString(input.worker_id || input.workerId || input.child_id || input.childId || input.agent_id || input.agentId);
+  if (eventType && eventType !== "PoolIterationClosed" && !workerId) {
+    issues.push(issue("missing_agent_lifecycle_worker_id", "worker_id is required for worker lifecycle facts", "worker_id"));
+  }
+
+  const createdAt = normalizeString(input.created_at || input.createdAt) || new Date().toISOString();
+  const message = normalizeString(input.message) || (
+    eventType === "PoolIterationClosed"
+      ? `agent lifecycle pool ${poolId} iteration closed`
+      : `${workerId} ${eventType || "agent lifecycle fact"}`
+  );
+  const issueInput = input.issue || input.blocker || null;
+  const issuesList = [
+    ...asArray(input.issues),
+    ...(issueInput ? [typeof issueInput === "object" ? issueInput : issue("agent_lifecycle_blocker", normalizeString(issueInput), "message")] : [])
+  ];
+
+  return {
+    id: normalizeString(input.id),
+    type: "agent_lifecycle_pool",
+    event_type: eventType || normalizeString(input.event_type || input.eventType || input.type),
+    status: statusOf(input),
+    pool_id: poolId,
+    worker_id: workerId || null,
+    message,
+    created_at: createdAt,
+    issues: issuesList,
+    cleanup: input.cleanup && typeof input.cleanup === "object" && !Array.isArray(input.cleanup) ? input.cleanup : undefined,
+    source: input.source && typeof input.source === "object" && !Array.isArray(input.source) ? input.source : undefined,
+    validation_issues: issues
+  };
+}
+
+export function recordAgentLifecycleFact(workflowState = {}, input = {}) {
+  if (!isObject(workflowState)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_workflow_state", "workflow state must be an object", "workflow_state")]
+    };
+  }
+
+  const identityIssues = workflowStateIdentityIssues(workflowState);
+  if (identityIssues.length > 0) return { status: "fail", issues: identityIssues };
+
+  const baseFact = createAgentLifecycleFact(input);
+  if (baseFact.validation_issues.length > 0) {
+    return { status: "fail", issues: baseFact.validation_issues };
+  }
+
+  const id = nextFactId(workflowState, baseFact);
+  const fact = { ...baseFact, id };
+  delete fact.validation_issues;
+  const artifact = {
+    id,
+    type: fact.event_type === "WorkerEvaluation" ? "evaluation" : "review",
+    status: fact.status,
+    uri: `codex://agent-lifecycle-pool/${encodeURIComponent(fact.pool_id)}/${encodeURIComponent(id)}`,
+    producer: "agent-lifecycle-pool",
+    created_at: fact.created_at,
+    metadata: {
+      ...fact,
+      lifecycle_event: fact.event_type,
+      pool_id: fact.pool_id,
+      worker_id: fact.worker_id || undefined
+    }
+  };
+  const manifest = appendRunEvent(workflowState.manifest, {
+    id: `event-${id}`,
+    type: fact.event_type,
+    status: fact.status,
+    artifact_id: id,
+    message: fact.message,
+    created_at: fact.created_at,
+    metadata: artifact.metadata
+  });
+  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
+  const artifactLedger = recordArtifact({
+    ...baseLedger,
+    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
+  }, artifact);
+
+  return {
+    status: "pass",
+    fact,
+    workflow_state: {
+      ...workflowState,
+      manifest: {
+        ...manifest,
+        artifacts: [...asArray(manifest.artifacts), artifact]
+      },
+      artifact_ledger: artifactLedger
+    }
+  };
+}
+
+export function cleanupAgentLifecyclePool(workflowState = {}, input = {}) {
+  if (!isObject(workflowState)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_workflow_state", "workflow state must be an object", "workflow_state")]
+    };
+  }
+
+  const before = summarizeAgentLifecyclePool(workflowState.manifest, workflowState.artifact_ledger || workflowState.artifactLedger);
+  if (!before.pool_id) {
+    return {
+      status: "pass",
+      facts: [],
+      before,
+      after: before,
+      workflow_state: workflowState
+    };
+  }
+
+  const createdAt = normalizeString(input.created_at || input.createdAt);
+  const failureMessage = normalizeString(input.failure || input.blocked || input.message);
+  let nextState = workflowState;
+  const facts = [];
+
+  if (failureMessage) {
+    const { workers } = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
+    const worker = workers.find((entry) => entry.completed && !entry.evaluated) || workers.at(-1) || {};
+    const result = recordAgentLifecycleFact(nextState, {
+      event_type: "WorkerEvaluation",
+      pool_id: before.pool_id,
+      worker_id: worker.worker_id || "pool",
+      status: "fail",
+      message: failureMessage,
+      issues: [issue("agent_lifecycle_cleanup_blocked", failureMessage, "cleanup")],
+      created_at: createdAt,
+      cleanup: { automatic: true, blocked: true }
+    });
+    if (result.status !== "pass") return result;
+    nextState = result.workflow_state;
+    facts.push(result.fact);
+    return {
+      status: "blocked",
+      facts,
+      before,
+      after: summarizeAgentLifecyclePool(nextState.manifest, nextState.artifact_ledger),
+      workflow_state: nextState
+    };
+  }
+
+  const { workers } = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
+  for (const worker of workers.filter((entry) => entry.spawned && !entry.completed)) {
+    const result = recordAgentLifecycleFact(nextState, {
+      event_type: "WorkerCompleted",
+      pool_id: before.pool_id,
+      worker_id: worker.worker_id,
+      status: "pass",
+      message: `${worker.worker_id} marked terminal during agent lifecycle cleanup`,
+      created_at: createdAt,
+      cleanup: { automatic: true, reason: "missing_completion" }
+    });
+    if (result.status !== "pass") return result;
+    nextState = result.workflow_state;
+    facts.push(result.fact);
+  }
+
+  const afterCompletion = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
+  for (const worker of afterCompletion.workers.filter((entry) => entry.completed && !entry.evaluated)) {
+    const result = recordAgentLifecycleFact(nextState, {
+      event_type: "WorkerEvaluation",
+      pool_id: before.pool_id,
+      worker_id: worker.worker_id,
+      status: "pass",
+      message: `${worker.worker_id} evaluated during agent lifecycle cleanup`,
+      created_at: createdAt,
+      cleanup: { automatic: true, reason: "missing_evaluation" }
+    });
+    if (result.status !== "pass") return result;
+    nextState = result.workflow_state;
+    facts.push(result.fact);
+  }
+
+  const afterEvaluation = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
+  for (const worker of afterEvaluation.workers.filter((entry) => entry.spawned && !entry.closed)) {
+    const result = recordAgentLifecycleFact(nextState, {
+      event_type: "WorkerClosed",
+      pool_id: before.pool_id,
+      worker_id: worker.worker_id,
+      status: "pass",
+      message: `${worker.worker_id} closed during agent lifecycle cleanup`,
+      created_at: createdAt,
+      cleanup: { automatic: true, reason: "missing_close" }
+    });
+    if (result.status !== "pass") return result;
+    nextState = result.workflow_state;
+    facts.push(result.fact);
+  }
+
+  const afterWorkerCleanup = summarizeAgentLifecyclePool(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
+  if (afterWorkerCleanup.open === 0 && afterWorkerCleanup.unevaluated === 0 && afterWorkerCleanup.unclosed === 0 && !afterWorkerCleanup.iteration_closed) {
+    const result = recordAgentLifecycleFact(nextState, {
+      event_type: "PoolIterationClosed",
+      pool_id: before.pool_id,
+      status: "pass",
+      message: `agent lifecycle pool ${before.pool_id} iteration closed during cleanup`,
+      created_at: createdAt,
+      cleanup: { automatic: true, reason: "missing_iteration_close" }
+    });
+    if (result.status !== "pass") return result;
+    nextState = result.workflow_state;
+    facts.push(result.fact);
+  }
+
+  const after = summarizeAgentLifecyclePool(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
+  return {
+    status: after.status === "pass" ? "pass" : "cleanup_required",
+    facts,
+    before,
+    after,
+    workflow_state: nextState
+  };
 }
 
 export function summarizeAgentLifecyclePool(manifest = {}, artifactLedger = {}) {

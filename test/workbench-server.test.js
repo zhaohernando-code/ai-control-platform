@@ -771,6 +771,91 @@ test("workbench server records reviewer shard results into workflow state input"
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server records agent lifecycle cleanup into workflow state input", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-agent-lifecycle-"));
+  const inputPath = join(snapshotsRoot, "agent-lifecycle-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
+    "WorkerSpawned",
+    "WorkerCompleted",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ].includes(event.type));
+  workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "agent_lifecycle_pool");
+  workflowState.manifest.events.push(
+    {
+      id: "worker-spawned-api",
+      type: "WorkerSpawned",
+      status: "pass",
+      created_at: "2026-05-22T08:15:00.000Z",
+      metadata: { pool_id: "pool-api", worker_id: "worker-api" }
+    },
+    {
+      id: "worker-completed-api",
+      type: "WorkerCompleted",
+      status: "pass",
+      created_at: "2026-05-22T08:16:00.000Z",
+      metadata: { pool_id: "pool-api", worker_id: "worker-api" }
+    }
+  );
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "agent-lifecycle",
+    items: [
+      {
+        id: "agent-lifecycle",
+        label: "Agent lifecycle",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/agent-lifecycle-pool`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        cleanup_latest_pool: true,
+        created_at: "2026-05-22T08:17:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "created");
+    assert.equal(created.after.status, "pass");
+    assert.equal(created.projection.agent_lifecycle_pool.status, "pass");
+    assert.notEqual(created.projection.next_action_readout.action, "cleanup_agent_lifecycle_pool");
+    assert.deepEqual(created.facts.map((fact) => fact.event_type), [
+      "WorkerEvaluation",
+      "WorkerClosed",
+      "PoolIterationClosed"
+    ]);
+    assert.equal(state.manifest.events.at(-1).type, "PoolIterationClosed");
+    assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.lifecycle_event, "PoolIterationClosed");
+  }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server rejects agent lifecycle recording without workflow state input", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/agent-lifecycle-pool?id=bootstrap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cleanup_latest_pool: true })
+    });
+    const rejected = response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(rejected.error, /workflow state input not found/);
+  });
+});
+
 test("workbench server records workbench browser event run artifacts", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-browser-events-"));
