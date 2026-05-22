@@ -302,6 +302,72 @@ test("headless CLI loop continues from persisted workflow state and snapshots ev
   assert.notEqual(result.iterations[0].cycle_id, result.iterations[1].cycle_id);
 });
 
+test("headless CLI loop can execute projected next_action_readout through an injected runner", () => {
+  const calls = [];
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-projected-action",
+    created_at: "2026-05-23T02:00:00.000Z",
+    max_package_count: 1,
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    projected_next_action_readout: {
+      status: "ready",
+      action: "cleanup_agent_lifecycle_pool"
+    },
+    projected_next_action_runner: ({ action, workflow_state }) => {
+      calls.push(action);
+      return {
+        status: "executed",
+        workflow_state: {
+          ...workflow_state,
+          projected_action_marker: action
+        },
+        projection: {
+          next_action_readout: {
+            status: "ready",
+            action: "inspect_scheduler_loop"
+          }
+        }
+      };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(calls, ["cleanup_agent_lifecycle_pool"]);
+  assert.equal(result.iterations[0].projected_next_action_status, "executed");
+  assert.equal(result.last_result.workflow_state.projected_action_marker, "cleanup_agent_lifecycle_pool");
+});
+
+test("headless CLI loop blocks projected next action without progress evidence", () => {
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-projected-blocked",
+    created_at: "2026-05-23T02:00:30.000Z",
+    max_package_count: 1,
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    projected_next_action_readout: {
+      status: "ready",
+      action: "cleanup_agent_lifecycle_pool"
+    },
+    projected_next_action_runner: () => ({
+      status: "executed"
+    })
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "headless_projected_next_action");
+  assert.equal(result.iterations[0].projected_next_action_status, "blocked");
+  assert.ok(result.issues.some((item) => item.code === "projected_action_missing_progress_evidence"));
+});
+
 test("headless snapshot ids stay within publisher-safe length", () => {
   const dir = mkdtempSync(join(tmpdir(), "headless-cli-long-snapshot-"));
   const historyPath = join(dir, "projection-history.json");

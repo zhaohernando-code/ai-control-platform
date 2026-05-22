@@ -498,6 +498,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Headless main_orchestrator must be able to use configured default codex_proxy child provider settings with bounded retry and split-retry evidence, not require every run to pass ad hoc child command arguments."
+    },
+    {
+      "id": "headless-loop-ignores-projected-next-action",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A headless continuation loop that only reruns Context Pack packages can ignore ready workbench next_action_readout actions; projected actions need an allowlisted runner and explicit progress evidence."
     }
   ],
   "hardening_items": [
@@ -1266,6 +1273,14 @@
       "invariant": "Headless main_orchestrator must accept configured default child provider command, args, model/provider identity, bounded max attempts, and split-retry policy; retry attempts must be recorded in child command evidence and executor provenance before acceptance.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI orchestrator can use default child provider config with retry and split policy",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-loop-ignores-projected-next-action",
+      "invariant": "Headless projected next-action execution must be opt-in, allowlisted, and progress-gated: the runner must return workflow_state, projection, or next_item.id evidence, otherwise the loop blocks instead of spinning or claiming continuation.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop can execute projected next_action_readout through an injected runner; headless CLI loop blocks projected next action without progress evidence",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }

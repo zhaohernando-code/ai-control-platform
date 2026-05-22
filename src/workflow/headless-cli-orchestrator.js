@@ -23,6 +23,16 @@ export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
 export const CHILD_WORKER_ROLE = "child_worker";
 export const DEFAULT_CHILD_WORKER_TIMEOUT_MS = 10 * 60 * 1000;
 export const MAX_HEADLESS_LOOP_ITERATIONS = 5;
+const HEADLESS_PROJECTED_NEXT_ACTIONS = new Set([
+  "enqueue_scheduler_next_cycle",
+  "prepare_project_status_continuation",
+  "create_context_pack_from_seed",
+  "run_context_work_packages",
+  "run_reviewer_scope_shard",
+  "cleanup_agent_lifecycle_pool",
+  "resume_autonomous_scheduler_loop",
+  "run_autonomous_scheduler_loop"
+]);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -906,6 +916,111 @@ function boundedHeadlessLoopIterations(value) {
   return { status: "pass", value: parsed, issues: [] };
 }
 
+function projectedNextActionRunnerFrom(options = {}) {
+  return typeof options.projected_next_action_runner === "function"
+    ? options.projected_next_action_runner
+    : typeof options.projectedNextActionRunner === "function"
+      ? options.projectedNextActionRunner
+      : null;
+}
+
+function projectedNextActionMode(options = {}) {
+  return normalizeString(options.execution_strategy || options.executionStrategy) === "projected_next_action" ||
+    normalizeString(options.headless_loop_strategy || options.headlessLoopStrategy) === "projected_next_action";
+}
+
+function isTerminalProjectedAction(action = "") {
+  return !action ||
+    action === "wait_for_driver_event" ||
+    action === "inspect_scheduler_loop" ||
+    action === "inspect_resume_target" ||
+    action === "inspect_latest_driver";
+}
+
+function projectedActionProgressEvidence(result = {}) {
+  return Boolean(
+    result?.workflow_state ||
+      result?.workflowState ||
+      result?.projection ||
+      result?.result?.projection ||
+      result?.result?.current_projection ||
+      result?.result?.next_item?.id ||
+      result?.next_item?.id
+  );
+}
+
+function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
+  const runner = projectedNextActionRunnerFrom(options);
+  if (!projectedNextActionMode(options) || !runner) {
+    return {
+      status: "not_configured",
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+
+  const readout = options.projected_next_action_readout || options.projectedNextActionReadout || run.projection?.next_action_readout || {};
+  const action = normalizeString(readout.action);
+  if (readout.status !== "ready" || isTerminalProjectedAction(action)) {
+    return {
+      status: "stopped",
+      action,
+      reason: readout.reason || "projected next action is terminal or not ready",
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+  if (!HEADLESS_PROJECTED_NEXT_ACTIONS.has(action)) {
+    return {
+      status: "blocked",
+      action,
+      issues: [issue("unsupported_projected_next_action", `${action || "none"} is not in the headless projected action allowlist`, "projection.next_action_readout.action")],
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+
+  let result;
+  try {
+    result = runner({
+      action,
+      projection: run.projection,
+      workflow_state: run.workflow_state,
+      expected_action: action,
+      iteration: index + 1,
+      options
+    });
+  } catch (error) {
+    return {
+      status: "blocked",
+      action,
+      issues: [issue("projected_next_action_runner_failed", error.message, "projected_next_action_runner")],
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+
+  if (!projectedActionProgressEvidence(result)) {
+    return {
+      status: "blocked",
+      action,
+      result,
+      issues: [issue("projected_action_missing_progress_evidence", "projected next-action execution must return workflow_state, projection, or next_item.id", "projected_next_action_result")],
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+
+  return {
+    status: result.status || "executed",
+    action,
+    result,
+    workflow_state: result.workflow_state || result.workflowState || run.workflow_state,
+    projection: result.projection || result.result?.projection || result.result?.current_projection || run.projection,
+    next_projection_id: result.result?.next_item?.id || result.next_item?.id || null
+  };
+}
+
 export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
   const validation = validateHeadlessInput(input);
   if (validation.status !== "pass") {
@@ -1160,6 +1275,7 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
     });
     lastResult = run;
     const persisted = run.snapshot_publish?.status === "created";
+    const projectedAction = executeHeadlessProjectedNextAction(run, options, index);
     iterations.push({
       index: index + 1,
       status: run.status,
@@ -1169,6 +1285,9 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
       snapshot_status: run.snapshot_publish?.status || "not_configured",
       snapshot_id: run.snapshot_publish?.item?.id || null,
       next_action: run.projection?.next_action_readout?.action || null,
+      projected_next_action_status: projectedAction.status,
+      projected_next_action: projectedAction.action || null,
+      projected_next_projection_id: projectedAction.next_projection_id || null,
       must_continue: run.must_continue === true,
       issue_count: asArray(run.issues).length
     });
@@ -1193,13 +1312,32 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
         issues: [issue("headless_loop_snapshot_not_persisted", "configured headless loop must persist every iteration snapshot before continuing", "snapshot_publish.status")]
       };
     }
+    if (projectedAction.status === "blocked") {
+      return {
+        status: "blocked",
+        phase: "headless_projected_next_action",
+        role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+        iterations,
+        last_result: run,
+        projected_next_action: projectedAction,
+        issues: projectedAction.issues || []
+      };
+    }
+    if (projectedAction.status !== "not_configured") {
+      lastResult = {
+        ...run,
+        projected_next_action: projectedAction,
+        workflow_state: projectedAction.workflow_state || run.workflow_state,
+        projection: projectedAction.projection || run.projection
+      };
+    }
     if (!run.must_continue) {
       return {
         status: "complete",
         phase: "headless_loop_complete",
         role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
         iterations,
-        last_result: run,
+        last_result: lastResult,
         issues: []
       };
     }
@@ -1207,7 +1345,7 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
     currentInput = {
       ...currentInput,
       role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
-      workflow_state: run.workflow_state,
+      workflow_state: projectedAction.workflow_state || run.workflow_state,
       project_status: input.project_status || input.projectStatus,
       projection_history: run.snapshot_publish?.history || currentInput.projection_history || currentInput.projectionHistory
     };
