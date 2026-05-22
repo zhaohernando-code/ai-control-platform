@@ -1,4 +1,5 @@
 import { recordArtifact } from "./artifact-ledger.js";
+import { recordAgentLifecycleFact } from "./agent-lifecycle-pool.js";
 import {
   executeContextWorkPackagesWithAdapter,
   isProviderModelRoutedExecutionRequested
@@ -148,6 +149,91 @@ function runArtifact(workflowState = {}, selected = [], options = {}) {
       },
       model_routing: options.model_routing || options.modelRouting || null
     }
+  };
+}
+
+function retryAgentWorkerId(node = {}) {
+  return normalizeString(
+    node.source?.retry_worker?.worker_id ||
+      node.source?.retryWorker?.worker_id ||
+      node.source?.worker_id ||
+      node.source?.workerId ||
+      node.id
+  );
+}
+
+function retryAgentPoolId(node = {}) {
+  return normalizeString(
+    node.source?.retry_worker?.pool_id ||
+      node.source?.retryWorker?.pool_id ||
+      node.source?.pool_id ||
+      node.source?.poolId
+  ) || "default";
+}
+
+function retryAgentFactsForNode(node = {}, createdAt) {
+  if (normalizeString(node.action) !== "retry_agent_worker") return [];
+  const workerId = retryAgentWorkerId(node);
+  const poolId = retryAgentPoolId(node);
+  if (!workerId) return [];
+  const retryWorkerId = `${workerId}-retry`;
+
+  return [
+    {
+      event_type: "WorkerSpawned",
+      pool_id: poolId,
+      worker_id: retryWorkerId,
+      status: "pass",
+      message: `${retryWorkerId} spawned as retry for timed-out worker ${workerId}`,
+      created_at: createdAt,
+      source: {
+        action: "retry_agent_worker",
+        work_package_id: node.id,
+        original_worker_id: workerId,
+        retry_worker: node.source?.retry_worker || null,
+        timed_out_workers: asArray(node.source?.timed_out_workers)
+      }
+    },
+    {
+      event_type: "WorkerHeartbeat",
+      pool_id: poolId,
+      worker_id: retryWorkerId,
+      status: "pass",
+      message: `${retryWorkerId} retry heartbeat recorded by scheduler`,
+      created_at: createdAt,
+      source: {
+        action: "retry_agent_worker",
+        work_package_id: node.id,
+        original_worker_id: workerId
+      }
+    }
+  ];
+}
+
+function recordRetryAgentWorkerFacts(workflowState = {}, selected = [], createdAt) {
+  let nextState = workflowState;
+  const facts = [];
+
+  for (const node of selected) {
+    for (const factInput of retryAgentFactsForNode(node, createdAt)) {
+      const result = recordAgentLifecycleFact(nextState, factInput);
+      if (result.status !== "pass") {
+        return {
+          status: "fail",
+          issues: result.issues || [],
+          facts,
+          workflow_state: nextState
+        };
+      }
+      nextState = result.workflow_state;
+      facts.push(result.fact);
+    }
+  }
+
+  return {
+    status: "pass",
+    facts,
+    workflow_state: nextState
   };
 }
 
@@ -352,7 +438,7 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     ...baseLedger,
     artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
   }, artifact);
-  const workflow_state = {
+  let workflow_state = {
     ...workflowState,
     manifest: {
       ...manifest,
@@ -361,11 +447,24 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     artifact_ledger: artifactLedger,
     task_dag: nextWorkPackages
   };
+  const retryFactResult = recordRetryAgentWorkerFacts(workflow_state, executedNodes, createdAt);
+  if (retryFactResult.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "retry_agent_worker_fact_recording",
+      issues: retryFactResult.issues,
+      dispatchable_count: dispatchable.length,
+      selected_work_package_ids: selected.map((node) => node.id),
+      workflow_state: retryFactResult.workflow_state
+    };
+  }
+  workflow_state = retryFactResult.workflow_state;
 
   return {
     status: "pass",
     phase: "context_work_packages_run",
     artifact,
+    retry_agent_worker_facts: retryFactResult.facts,
     executed_work_packages: artifact.metadata.executed_work_packages,
     executed_count: artifact.metadata.executed_count,
     remaining_dispatchable_count: getDispatchableNodes(buildTaskDag(nextWorkPackages)).length,

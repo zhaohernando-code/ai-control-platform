@@ -167,6 +167,12 @@ test("timed-out agent lifecycle pool schedules smaller retry worker slice", () =
   assert.deepEqual(retryPackage.timed_out_workers.map((worker) => worker.worker_id), ["child-implementation-2"]);
   assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.action === "cleanup_agent_lifecycle_pool"));
   assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === retryPackage.id));
+  const retrySubtask = decision.context_pack_seed.subtasks.find((subtask) => subtask.id === retryPackage.id);
+  assert.equal(retrySubtask.action, "retry_agent_worker");
+  assert.equal(retrySubtask.source.pool_id, "pool-main-child");
+  assert.equal(retrySubtask.source.worker_id, "child-implementation-2");
+  assert.equal(retrySubtask.source.retry_worker.worker_id, "child-implementation-2");
+  assert.deepEqual(retrySubtask.source.timed_out_workers.map((worker) => worker.worker_id), ["child-implementation-2"]);
 });
 
 test("timed-out agent lifecycle retry package has default owned files", () => {

@@ -4,6 +4,7 @@ import test from "node:test";
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
+import { createRunManifest } from "../src/workflow/run-manifest.js";
 import {
   prepareContinuationFromProjectStatus,
   recordProjectStatusContinuationPrepared
@@ -81,6 +82,54 @@ function workflowStateWithContextCycle() {
   }).workflow_state;
 }
 
+function workflowStateWithRetryAgentWorker() {
+  const contextPack = {
+    requirement_summary: "Retry timed-out child agent worker",
+    host: "platform_core",
+    target_project_id: "ai-control-platform",
+    non_goals: ["Do not modify managed business projects"],
+    forbidden_actions: ["Do not skip main-process evaluation gates"],
+    owned_files: ["src/workflow/context-work-package-runner.js"],
+    acceptance_gates: ["node --test test/context-work-package-runner.test.js"],
+    rollback_conditions: ["retry facts are not recorded"],
+    subtasks: [
+      {
+        id: "agent-worker-retry-pool-main-child-child-1",
+        title: "Retry timed-out agent worker child-1",
+        action: "retry_agent_worker",
+        owned_files: ["src/workflow/context-work-package-runner.js"],
+        source: {
+          pool_id: "pool-main-child",
+          worker_id: "child-1",
+          retry_worker: { pool_id: "pool-main-child", worker_id: "child-1" },
+          timed_out_workers: [{ worker_id: "child-1" }]
+        }
+      }
+    ]
+  };
+  const manifest = createRunManifest({
+    run_id: "run-retry-agent",
+    cycle_id: "cycle-retry-agent",
+    goal: contextPack.requirement_summary,
+    context_pack: contextPack,
+    events: [],
+    artifacts: [],
+    gate_results: [],
+    review_findings: [],
+    recovery_attempts: [],
+    created_at: "2026-05-22T09:00:00.000Z"
+  });
+
+  return {
+    manifest,
+    artifact_ledger: {
+      run_id: manifest.run_id,
+      cycle_id: manifest.cycle_id,
+      artifacts: []
+    }
+  };
+}
+
 test("context work package runner executes dispatchable packages and updates workflow state", () => {
   const workflowState = workflowStateWithContextCycle();
   const first = runContextWorkPackages(workflowState, {
@@ -98,12 +147,36 @@ test("context work package runner executes dispatchable packages and updates wor
   assert.equal(first.artifact.metadata.execution_profile, "local_bounded");
   assert.deepEqual(first.artifact.metadata.package_results, []);
   assert.equal(first.artifact.metadata.executor_provenance.executor_kind, "local_bounded");
+  assert.equal(first.retry_agent_worker_facts.length, 0);
   assert.equal(first.workflow_state.manifest.gate_results.at(-1).gate_id, "fixed-development-mode-dispatch");
   assert.equal(first.workflow_state.artifact_ledger.artifacts.at(-1).metadata.executed_work_package_ids[0], "runtime");
+  assert.ok(!first.workflow_state.manifest.events.some((event) => event.type === "WorkerSpawned"));
+  assert.ok(!first.workflow_state.manifest.events.some((event) => event.type === "WorkerHeartbeat"));
 
   const projection = createWorkbenchProjection(first.workflow_state);
   assert.equal(projection.next_action_readout.action, "run_context_work_packages");
   assert.equal(projection.next_action_readout.status, "ready");
+});
+
+test("context work package runner executes retry_agent_worker by recording lifecycle spawn and heartbeat facts", () => {
+  const workflowState = workflowStateWithRetryAgentWorker();
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-22T09:01:00.000Z"
+  });
+  const eventTypes = result.workflow_state.manifest.events.map((event) => event.type);
+  const projection = createWorkbenchProjection(result.workflow_state);
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_count, 1);
+  assert.equal(result.workflow_state.manifest.work_packages[0].status, "completed");
+  assert.equal(result.retry_agent_worker_facts.length, 2);
+  assert.ok(eventTypes.includes("WorkerSpawned"));
+  assert.ok(eventTypes.includes("WorkerHeartbeat"));
+  assert.equal(projection.agent_lifecycle_pool.pool_id, "pool-main-child");
+  assert.equal(projection.agent_lifecycle_pool.spawned, 1);
+  assert.equal(projection.agent_lifecycle_pool.heartbeat_count, 1);
+  assert.equal(projection.agent_lifecycle_pool.open, 1);
 });
 
 test("context work package runner blocks when no packages can dispatch", () => {

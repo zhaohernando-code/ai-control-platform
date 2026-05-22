@@ -12,6 +12,7 @@ import {
   runSchedulerDispatchPlan
 } from "../src/workflow/scheduler-dispatch-runner.js";
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
+import { createRunManifest } from "../src/workflow/run-manifest.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
@@ -129,6 +130,63 @@ function providerContextWorkPackageWorkflowState() {
       artifacts: []
     },
     task_dag: workPackages
+  };
+}
+
+function retryAgentWorkerWorkflowState() {
+  const contextPack = {
+    requirement_summary: "Retry timed-out child worker through context package execution.",
+    host: "platform_core",
+    target_project_id: "ai-control-platform",
+    non_goals: ["Do not modify managed business projects"],
+    forbidden_actions: ["Do not skip main-process evaluation gates"],
+    owned_files: ["src/workflow/context-work-package-runner.js"],
+    acceptance_gates: ["node --test test/workbench-server.test.js"],
+    rollback_conditions: ["retry facts are missing"],
+    subtasks: [
+      {
+        id: "agent-worker-retry-pool-server-child-1",
+        title: "Retry timed-out child worker",
+        action: "retry_agent_worker",
+        owned_files: ["src/workflow/context-work-package-runner.js"],
+        source: {
+          pool_id: "pool-server",
+          worker_id: "child-1",
+          retry_worker: { pool_id: "pool-server", worker_id: "child-1" },
+          timed_out_workers: [{ worker_id: "child-1" }]
+        }
+      }
+    ]
+  };
+  const manifest = createRunManifest({
+    run_id: "run-server-retry-agent",
+    cycle_id: "cycle-server-retry-agent",
+    goal: contextPack.requirement_summary,
+    context_pack: contextPack,
+    events: [
+      {
+        id: "event-server-retry-context-cycle",
+        type: "context_pack_cycle_materialized",
+        status: "pass",
+        message: "retry agent context cycle materialized",
+        created_at: "2026-05-22T09:20:00.000Z"
+      }
+    ],
+    artifacts: [],
+    gate_results: [],
+    review_findings: [],
+    recovery_attempts: [],
+    created_at: "2026-05-22T09:20:00.000Z"
+  });
+
+  return {
+    manifest,
+    artifact_ledger: {
+      run_id: manifest.run_id,
+      cycle_id: manifest.cycle_id,
+      artifacts: []
+    },
+    task_dag: manifest.work_packages
   };
 }
 
@@ -1221,6 +1279,52 @@ test("workbench server runs reviewer shard through projected next action", async
     assert.equal(created.projection.reviewer_shard_review.completed_shards, 1);
     assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_result");
   }, { historyPath, snapshotsRoot });
+});
+
+test("workbench server executes retry_agent_worker through context work package next action", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-retry-agent-"));
+  const inputPath = join(snapshotsRoot, "next-action-retry-agent-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = retryAgentWorkerWorkflowState();
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "next-action-retry-agent",
+    items: [
+      {
+        id: "next-action-retry-agent",
+        label: "Next action retry agent",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const before = await request(`${baseUrl}/api/workbench/projection?id=next-action-retry-agent`);
+    assert.equal(before.json().next_action_readout.action, "run_context_work_packages");
+
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=next-action-retry-agent`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "run_context_work_packages",
+        created_at: "2026-05-22T09:21:00.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+    const eventTypes = state.manifest.events.map((event) => event.type);
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "executed");
+    assert.equal(created.action, "run_context_work_packages");
+    assert.equal(created.result.status, "created");
+    assert.ok(eventTypes.includes("WorkerSpawned"));
+    assert.ok(eventTypes.includes("WorkerHeartbeat"));
+    assert.equal(created.projection.agent_lifecycle_pool.pool_id, "pool-server");
+    assert.equal(created.projection.agent_lifecycle_pool.heartbeat_count, 1);
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server blocks reviewer shard execution when mock profile has no mock output", async () => {

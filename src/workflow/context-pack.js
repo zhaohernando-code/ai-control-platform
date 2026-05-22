@@ -223,8 +223,12 @@ export function createWorkPackages(contextPack) {
     return {
       id,
       title: normalizeString(subtask?.title || subtask?.summary || id),
+      action: normalizeString(subtask?.action),
       owned_files: ownedFiles,
       depends_on: dependsOn,
+      source: subtask?.source && typeof subtask.source === "object" && !Array.isArray(subtask.source)
+        ? subtask.source
+        : null,
       dispatch_allowed: blockedReasons.length === 0,
       blocked_reasons: blockedReasons
     };

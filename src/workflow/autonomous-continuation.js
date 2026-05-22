@@ -369,8 +369,17 @@ function createContextPackSeed(input, action) {
     subtasks: nextWorkPackages.map((workPackage, index) => ({
       id: normalizeString(workPackage.id || workPackage.work_package_id) || `continuation-${index + 1}`,
       title: normalizeString(workPackage.title || workPackage.reason || workPackage.action) || `Continuation ${index + 1}`,
+      action: normalizeString(workPackage.action),
       owned_files: compactStrings(workPackage.owned_files || workPackage.ownedFiles),
-      depends_on: compactStrings(workPackage.depends_on || workPackage.dependencies)
+      depends_on: compactStrings(workPackage.depends_on || workPackage.dependencies),
+      source: {
+        pool_id: normalizeString(workPackage.pool_id || workPackage.poolId),
+        worker_id: normalizeString(workPackage.worker_id || workPackage.workerId),
+        retry_worker: workPackage.retry_worker || workPackage.retryWorker || null,
+        retry_workers: asArray(workPackage.retry_workers || workPackage.retryWorkers),
+        timed_out_workers: asArray(workPackage.timed_out_workers || workPackage.timedOutWorkers),
+        reason: normalizeString(workPackage.reason)
+      }
     })),
     continuation_action: action
   };

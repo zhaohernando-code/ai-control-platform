@@ -105,3 +105,28 @@ test("work package dependencies are preserved", () => {
   assert.equal(workPackages[1].id, "tests");
   assert.deepEqual(workPackages[1].depends_on, ["core"]);
 });
+
+test("work package action and source metadata are preserved for scheduler retry routes", () => {
+  const workPackages = createWorkPackages(validContextPack({
+    subtasks: [
+      {
+        id: "agent-worker-retry-pool-main-child-1",
+        title: "Retry timed-out agent worker",
+        action: "retry_agent_worker",
+        owned_files: ["src/workflow/context-work-package-runner.js"],
+        source: {
+          pool_id: "pool-main-child",
+          worker_id: "child-1",
+          retry_worker: { pool_id: "pool-main-child", worker_id: "child-1" },
+          timed_out_workers: [{ worker_id: "child-1" }]
+        }
+      }
+    ]
+  }));
+
+  assert.equal(workPackages[0].action, "retry_agent_worker");
+  assert.equal(workPackages[0].source.pool_id, "pool-main-child");
+  assert.equal(workPackages[0].source.worker_id, "child-1");
+  assert.equal(workPackages[0].source.retry_worker.worker_id, "child-1");
+  assert.deepEqual(workPackages[0].source.timed_out_workers.map((worker) => worker.worker_id), ["child-1"]);
+});
