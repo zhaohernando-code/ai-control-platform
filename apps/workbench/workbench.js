@@ -95,6 +95,7 @@ function renderProjection(projection) {
   const schedulerDispatch = projection.scheduler_dispatch || {};
   const schedulerContinuation = projection.scheduler_continuation || {};
   const schedulerLoop = projection.scheduler_loop || {};
+  const globalGoals = projection.global_goal_completion || {};
   const nextActionReadout = projection.next_action_readout || {};
 
   setText("run_id", projection.run_id);
@@ -117,6 +118,8 @@ function renderProjection(projection) {
   setText("counter_reviewer_findings", counters.reviewer_findings ?? 0);
   setText("counter_dispatchable_tasks", counters.dispatchable_tasks ?? 0);
   setText("counter_scheduler_dispatch_steps", counters.scheduler_dispatch_steps ?? schedulerDispatch.step_count ?? 0);
+  setText("counter_global_goals_pending", counters.global_goals_pending ?? globalGoals.pending ?? 0);
+  setText("counter_global_goals_completed", counters.global_goals_completed ?? globalGoals.completed ?? 0);
   setText("counter_operation_events", counters.operation_events ?? projection.operations_timeline?.count ?? 0);
   setText("closeout_status", closeout.status);
   setText("closeout_publish_status", closeout.publish_status);
@@ -171,6 +174,12 @@ function renderProjection(projection) {
   setText("scheduler_loop_action", schedulerLoop.terminal_action || schedulerLoop.recovery_action);
   setText("scheduler_loop_strategy", schedulerLoop.execution_strategy || schedulerLoop.execution_profile);
   setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
+  setText("global_goals_status", globalGoals.status);
+  setText("global_goals_total", globalGoals.total ?? 0);
+  setText("global_goals_pending", globalGoals.pending ?? 0);
+  setText("global_goals_completed", globalGoals.completed ?? 0);
+  setText("global_goals_blocked", globalGoals.blocked ?? 0);
+  setText("global_goals_next", globalGoals.next_goal?.title || globalGoals.next_goal?.id);
   setText("next_action_readout_status", nextActionReadout.status);
   setText("next_action_readout_action", nextActionReadout.action || projection.one_screen?.recommended_action);
   setText("next_action_readout_source", nextActionReadout.source_type);

@@ -90,6 +90,10 @@
               <span>Scheduler Steps</span>
               <strong data-bind="counter_scheduler_dispatch_steps">0</strong>
             </article>
+            <article class="metric">
+              <span>Global Pending</span>
+              <strong data-bind="counter_global_goals_pending">0</strong>
+            </article>
           </section>
 
           <section class="panel wide">
@@ -159,8 +163,11 @@
               <div><span>Loop profile</span><strong data-bind="scheduler_loop_strategy">--</strong></div>
               <div><span>Recovery</span><strong data-bind="scheduler_loop_recovery">--</strong></div>
               <div><span>Resume</span><strong data-bind="scheduler_loop_resume_status">--</strong></div>
+              <div><span>Goals</span><strong data-bind="global_goals_status">--</strong></div>
+              <div><span>Goal pending</span><strong data-bind="global_goals_pending">0</strong></div>
               <div><span>Action</span><strong data-bind="next_action_readout_action">--</strong></div>
               <div><span>Action status</span><strong data-bind="next_action_readout_status">--</strong></div>
+              <div class="full"><span>Next goal</span><strong data-bind="global_goals_next">--</strong></div>
               <div class="full"><span>Evidence</span><strong data-bind="scheduler_dispatch_artifact">--</strong></div>
               <div class="full"><span>Next action</span><strong data-bind="scheduler_next_action">--</strong></div>
               <div class="full"><span>Continuation</span><strong data-bind="scheduler_continuation_path">--</strong></div>

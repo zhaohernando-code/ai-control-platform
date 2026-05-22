@@ -124,7 +124,44 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.one_screen.counters.scheduler_dispatch_steps, 0);
   assert.equal(projection.one_screen.counters.scheduler_continuation_ready, 0);
   assert.equal(projection.one_screen.counters.scheduler_loop_iterations, 0);
+  assert.equal(projection.global_goal_completion.status, "not_configured");
+  assert.equal(projection.one_screen.counters.global_goals_pending, 0);
   assert.equal(projection.one_screen.counters.operation_events, 0);
+});
+
+test("workbench projection exposes global goal completion for autonomous continuation", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      next_step: "",
+      global_goals: [
+        { id: "foundation", title: "Foundation", status: "completed" },
+        {
+          id: "completion-loop",
+          title: "Completion loop",
+          status: "in_progress",
+          next_step: "Continue detecting unfinished platform goals."
+        }
+      ]
+    }
+  }));
+  const mobile = createMobileWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      global_goals: [
+        { id: "foundation", title: "Foundation", status: "completed" },
+        { id: "completion-loop", title: "Completion loop", status: "in_progress" }
+      ]
+    }
+  }));
+
+  assert.equal(projection.global_goal_completion.status, "in_progress");
+  assert.equal(projection.global_goal_completion.completed, 1);
+  assert.equal(projection.global_goal_completion.pending, 1);
+  assert.equal(projection.global_goal_completion.next_goal.id, "completion-loop");
+  assert.equal(projection.one_screen.counters.global_goals_completed, 1);
+  assert.equal(projection.one_screen.counters.global_goals_pending, 1);
+  assert.equal(mobile.global_goal_completion.pending, 1);
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {

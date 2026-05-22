@@ -40,6 +40,10 @@
             <span>调度</span>
             <strong data-bind="counter_scheduler_dispatch_steps">0</strong>
           </article>
+          <article>
+            <span>总目标</span>
+            <strong data-bind="counter_global_goals_pending">0</strong>
+          </article>
         </section>
 
         <section class="mobile-section">
@@ -166,8 +170,20 @@
               <strong data-bind="scheduler_loop_resume_status">--</strong>
             </div>
             <div>
+              <span>Goals</span>
+              <strong data-bind="global_goals_status">--</strong>
+            </div>
+            <div>
+              <span>Pending</span>
+              <strong data-bind="global_goals_pending">0</strong>
+            </div>
+            <div>
               <span>Action</span>
               <strong data-bind="next_action_readout_action">--</strong>
+            </div>
+            <div>
+              <span>Next goal</span>
+              <strong data-bind="global_goals_next">--</strong>
             </div>
           </div>
           <div class="provider-actions">

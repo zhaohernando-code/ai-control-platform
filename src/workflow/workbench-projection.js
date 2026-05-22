@@ -9,6 +9,7 @@ import {
   evaluateSchedulerLoopRecovery
 } from "./autonomous-scheduler-loop.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
+import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -882,6 +883,7 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerDispatch = summarizeSchedulerDispatch(manifest, artifactLedger);
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
+  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
   const nextActionReadout = createNextActionReadout(operationsTimeline, {
     schedulerLoop,
@@ -924,6 +926,7 @@ export function createWorkbenchProjection(input = {}) {
     scheduler_dispatch: schedulerDispatch,
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
+    global_goal_completion: globalGoalCompletion,
     operations_timeline: operationsTimeline,
     next_action_readout: nextActionReadout,
     model_routing: modelSummary,
@@ -959,6 +962,8 @@ export function createWorkbenchProjection(input = {}) {
         scheduler_dispatch_steps: schedulerDispatch.step_count || 0,
         scheduler_continuation_ready: schedulerContinuation.ready ? 1 : 0,
         scheduler_loop_iterations: schedulerLoop.iteration_count || 0,
+        global_goals_pending: globalGoalCompletion.pending || 0,
+        global_goals_completed: globalGoalCompletion.completed || 0,
         operation_events: operationsTimeline.count || 0
       },
       recommended_action: nextActionReadout.action
@@ -1061,6 +1066,14 @@ export function createMobileWorkbenchProjection(input = {}) {
       execution_profile: projection.scheduler_loop.execution_profile,
       latest_resume_status: projection.scheduler_loop.latest_resume_status,
       latest_resume_target: projection.scheduler_loop.latest_resume_target
+    },
+    global_goal_completion: {
+      status: projection.global_goal_completion.status,
+      total: projection.global_goal_completion.total,
+      completed: projection.global_goal_completion.completed,
+      pending: projection.global_goal_completion.pending,
+      blocked: projection.global_goal_completion.blocked,
+      next_goal: projection.global_goal_completion.next_goal
     },
     operations_timeline: {
       status: projection.operations_timeline.status,

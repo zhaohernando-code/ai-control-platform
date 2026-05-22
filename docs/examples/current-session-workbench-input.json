@@ -1,5 +1,29 @@
 {
   "generated_at": "2026-05-21T16:25:00.000Z",
+  "project_status": {
+    "project": "ai-control-platform",
+    "next_step": "Continue autonomous platform development by wiring browser-events recording into the runner or closeout flow.",
+    "global_goals": [
+      {
+        "id": "platform-boundary-and-state-foundation",
+        "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
+        "status": "in_progress",
+        "next_step": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters."
+      },
+      {
+        "id": "pc-mobile-autonomous-workbench",
+        "title": "PC/mobile 单页中台工作台和一屏状态投影",
+        "status": "in_progress",
+        "next_step": "Continue wiring browser-events recording into the browser verification runner or closeout flow."
+      },
+      {
+        "id": "autonomous-scheduler-and-reviewer-loop",
+        "title": "任务拆解、调度、multi-LLM reviewer、自恢复和持续运行闭环",
+        "status": "in_progress",
+        "next_step": "Continue converting scheduler/reviewer recovery outputs into durable service-side continuation facts."
+      }
+    ]
+  },
   "manifest": {
     "run_id": "run-20260521-platform-self-trial",
     "cycle_id": "cycle-20260521-autonomous-platform",

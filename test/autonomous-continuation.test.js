@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   assertShouldContinue,
+  COMPLETE,
   CONTINUE,
   decideContinuation,
   RERUN,
@@ -358,4 +359,107 @@ test("continuation does not emit a snapshot publish plan without operator event 
   assert.equal(decision.should_continue, true);
   assert.equal(decision.snapshot_publish_plan, null);
   assert.ok(decision.snapshot_publish_issues.includes("operator events must apply before snapshot publish"));
+});
+
+test("continues from pending global goals after a single requirement passes", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "",
+      global_goals: [
+        {
+          id: "pc-mobile-workbench",
+          title: "PC/mobile workbench shell",
+          status: "completed"
+        },
+        {
+          id: "global-completion-loop",
+          title: "Global completion detector",
+          status: "in_progress",
+          next_step: "Implement global goal completion detection before stopping.",
+          owned_files: ["src/workflow/global-goal-completion.js"]
+        }
+      ]
+    }),
+    run_evaluation: { status: "pass", next_work_packages: [] }
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.should_continue, true);
+  assert.equal(decision.global_goal_completion.status, "in_progress");
+  assert.equal(decision.global_goal_completion.pending, 1);
+  assert.ok(decision.reasons.includes("global_goals=1/2"));
+  assert.equal(decision.next_work_packages[0].action, "continue_global_goal");
+  assert.equal(decision.next_work_packages[0].global_goal_id, "global-completion-loop");
+  assert.equal(decision.context_pack_seed.subtasks[0].id, "global-goal-global-completion-loop");
+});
+
+test("global goals do not dilute explicit scheduler continuation packages", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "",
+      global_goals: [
+        { id: "workbench", title: "Workbench", status: "in_progress" },
+        { id: "scheduler", title: "Scheduler", status: "in_progress" }
+      ]
+    }),
+    run_evaluation: {
+      status: "pass",
+      next_work_packages: [
+        { id: "explicit-next", title: "Run explicit next scheduler step", action: "run_scheduler_step" }
+      ]
+    }
+  });
+
+  assert.equal(decision.should_continue, true);
+  assert.equal(decision.next_work_packages.length, 1);
+  assert.equal(decision.next_work_packages[0].id, "explicit-next");
+  assert.equal(decision.global_goal_completion.pending, 2);
+});
+
+test("marks continuation complete only when all configured global goals are done", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "",
+      global_goals: [
+        { id: "workbench", title: "Workbench", status: "completed" },
+        { id: "scheduler", title: "Scheduler", status: "done" }
+      ]
+    }),
+    run_evaluation: { status: "pass", next_work_packages: [] }
+  });
+
+  assert.equal(decision.action, COMPLETE);
+  assert.equal(decision.should_continue, false);
+  assert.equal(decision.context_pack_seed, null);
+  assert.equal(decision.global_goal_completion.status, "complete");
+  assert.ok(decision.reasons.includes("all configured global goals are complete"));
+  assert.throws(() => assertShouldContinue({
+    project_status: projectStatus({
+      next_step: "",
+      global_goals: [{ id: "done", title: "Done", status: "completed" }]
+    }),
+    run_evaluation: { status: "pass" }
+  }), { code: "AUTONOMOUS_CONTINUATION_COMPLETE" });
+});
+
+test("blocked global goals stop without pretending the cycle is complete", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "",
+      global_goals: [
+        {
+          id: "remote-secret",
+          title: "Publish through production remote",
+          status: "blocked",
+          blockers: [{ id: "missing-secret", requires_human: true }]
+        }
+      ]
+    }),
+    run_evaluation: { status: "pass" }
+  });
+
+  assert.equal(decision.action, STOP_FOR_HUMAN);
+  assert.equal(decision.should_continue, false);
+  assert.equal(decision.global_goal_completion.status, "blocked");
+  assert.ok(decision.blockers.some((blocker) => blocker.category === "global_goal_blocked"));
 });

@@ -351,6 +351,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Projected scheduler loops that stop at an iteration bound after completing one reviewer shard must continue from durable pending shard evidence, not treat the current projection id as a new resume target or fall back to inspect-only state."
+    },
+    {
+      "id": "single-requirement-pass-hides-global-goals",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A passed single requirement must not be treated as overall project completion; autonomous continuation needs a durable global-goal completion check that schedules pending goals and stops only when every configured goal is complete."
     }
   ],
   "hardening_items": [
@@ -928,6 +935,14 @@
       "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; src/workflow/workbench-projection.js; src/workflow/workbench-browser-events.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; tools/check-closeout.mjs; tools/workbench-server.mjs; test/workbench-server.test.js; test/autonomous-scheduler-loop.test.js; test/workbench-projection.test.js; test/workbench-shell.test.js",
       "regression_test": "workbench server continues projected real reviewer loop from durable partial shard state; projected_real_partial_shard_readout browser scenario renders next shard and run_reviewer_scope_shard; workbench-browser-events-run.v1 closeout artifact validates partial-shard readiness; workbench projection exposes browser event artifact evidence; workbench server records workbench browser event run artifacts",
       "verification": "node --test test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js test/workbench-server.test.js test/workbench-shell.test.js; npm run check:workbench:browser-events -- --output <artifact>; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "single-requirement-pass-hides-global-goals",
+      "invariant": "Autonomous continuation must evaluate durable global_goals after each requirement: pending goals become continuation work packages, blocked goals become blockers, and action=complete is allowed only after every configured global goal is done and no next step/work package remains.",
+      "enforcement_target": "src/workflow/global-goal-completion.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/contracts/WORKBENCH_PROJECTION_CN.md; PROJECT_STATUS.json; test/autonomous-continuation.test.js; test/workbench-projection.test.js",
+      "regression_test": "continues from pending global goals after a single requirement passes; global goals do not dilute explicit scheduler continuation packages; marks continuation complete only when all configured global goals are done; blocked global goals stop without pretending the cycle is complete; workbench projection exposes global goal completion for autonomous continuation",
+      "verification": "node --test test/autonomous-continuation.test.js test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-projection-fixture.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

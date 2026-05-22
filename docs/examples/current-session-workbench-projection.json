@@ -173,6 +173,75 @@
     "latest_issue": null,
     "created_at": null
   },
+  "global_goal_completion": {
+    "status": "in_progress",
+    "total": 3,
+    "completed": 0,
+    "pending": 3,
+    "blocked": 0,
+    "next_goal": {
+      "id": "platform-boundary-and-state-foundation",
+      "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
+      "next_step": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters."
+    },
+    "pending_goals": [
+      {
+        "id": "platform-boundary-and-state-foundation",
+        "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
+        "status": "in_progress",
+        "next_step": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters."
+      },
+      {
+        "id": "pc-mobile-autonomous-workbench",
+        "title": "PC/mobile 单页中台工作台和一屏状态投影",
+        "status": "in_progress",
+        "next_step": "Continue wiring browser-events recording into the browser verification runner or closeout flow."
+      },
+      {
+        "id": "autonomous-scheduler-and-reviewer-loop",
+        "title": "任务拆解、调度、multi-LLM reviewer、自恢复和持续运行闭环",
+        "status": "in_progress",
+        "next_step": "Continue converting scheduler/reviewer recovery outputs into durable service-side continuation facts."
+      }
+    ],
+    "blocked_goals": [],
+    "next_work_packages": [
+      {
+        "id": "global-goal-platform-boundary-and-state-foundation",
+        "title": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+        "action": "continue_global_goal",
+        "owned_files": [],
+        "acceptance_gates": [],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "platform-boundary-and-state-foundation",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-pc-mobile-autonomous-workbench",
+        "title": "Continue wiring browser-events recording into the browser verification runner or closeout flow.",
+        "action": "continue_global_goal",
+        "owned_files": [],
+        "acceptance_gates": [],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "pc-mobile-autonomous-workbench",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-autonomous-scheduler-and-reviewer-loop",
+        "title": "Continue converting scheduler/reviewer recovery outputs into durable service-side continuation facts.",
+        "action": "continue_global_goal",
+        "owned_files": [],
+        "acceptance_gates": [],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "autonomous-scheduler-and-reviewer-loop",
+        "reason": "global goal remains incomplete after the current requirement"
+      }
+    ],
+    "issues": []
+  },
   "operations_timeline": {
     "status": "available",
     "count": 2,
@@ -373,6 +442,8 @@
       "scheduler_dispatch_steps": 0,
       "scheduler_continuation_ready": 0,
       "scheduler_loop_iterations": 0,
+      "global_goals_pending": 3,
+      "global_goals_completed": 0,
       "operation_events": 2
     },
     "recommended_action": "run_reviewer_scope_shard"

@@ -1,11 +1,13 @@
 import { projectionPublishIssues, snapshotIssues } from "./workbench-snapshots.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { evaluateRunResult } from "./autonomous-run.js";
+import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
 const ROLLBACK = "rollback";
 const STOP_FOR_HUMAN = "stop_for_human";
+const COMPLETE = "complete";
 
 const STOP_STATUSES = new Set(["human_intervention", "blocked", "stop_for_human"]);
 const RERUN_STATUSES = new Set(["rerun", "retry"]);
@@ -37,11 +39,18 @@ function statusOf(value) {
 
 function blockersFrom(input) {
   const runEvaluation = runEvaluationFrom(input);
+  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   return [
     ...asArray(input?.blockers),
     ...asArray(input?.project_status?.blockers),
     ...asArray(runEvaluation?.blockers),
-    ...asArray(runEvaluation?.projection?.blockers)
+    ...asArray(runEvaluation?.projection?.blockers),
+    ...asArray(globalGoalCompletion.blocked_goals).map((goal) => ({
+      id: goal.id,
+      category: "global_goal_blocked",
+      message: `${goal.title} is blocked`,
+      requires_human: true
+    }))
   ].filter(Boolean);
 }
 
@@ -75,7 +84,8 @@ function nextWorkPackagesFrom(input) {
   const runEvaluation = runEvaluationFrom(input);
   const providerPackages = reviewerProviderWorkPackagesFrom(input);
   const scopeSplitPackages = reviewerScopeSplitWorkPackagesFrom(input);
-  return [
+  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
+  const directPackages = [
     ...asArray(input?.next_work_packages),
     ...asArray(input?.nextWorkPackages),
     ...asArray(runEvaluation?.next_work_packages),
@@ -83,6 +93,10 @@ function nextWorkPackagesFrom(input) {
     ...providerPackages,
     ...scopeSplitPackages
   ];
+  if (directPackages.length > 0 || nextStepFrom(input)) {
+    return directPackages;
+  }
+  return asArray(globalGoalCompletion.next_work_packages);
 }
 
 function explicitRunEvaluation(input = {}) {
@@ -216,11 +230,16 @@ function continuationReasons(input, action) {
   const nextStep = nextStepFrom(input);
   const nextWorkPackages = nextWorkPackagesFrom(input);
   const runStatus = statusOf(runEvaluationFrom(input) || input?.decision || input?.status);
+  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
 
   if (runStatus) reasons.push(`run_status=${runStatus}`);
   if (nextStep) reasons.push("project_status.next_step is present");
   if (nextWorkPackages.length > 0) reasons.push(`next_work_packages=${nextWorkPackages.length}`);
+  if (globalGoalCompletion.status !== "not_configured") {
+    reasons.push(`global_goals=${globalGoalCompletion.completed}/${globalGoalCompletion.total}`);
+  }
   if (action === STOP_FOR_HUMAN) reasons.push("human blocker or explicit human_intervention status");
+  if (action === COMPLETE) reasons.push("all configured global goals are complete");
   if (action === CONTINUE && !nextStep && nextWorkPackages.length === 0) reasons.push("continuation fallback keeps the autonomous loop alive");
 
   return reasons;
@@ -325,11 +344,14 @@ export function decideContinuation(input = {}) {
   const hasBlocker = hasHumanBlocker(input);
   const nextStep = nextStepFrom(input);
   const nextWorkPackages = nextWorkPackagesFrom(input);
+  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   let action = CONTINUE;
 
   if (validation.status !== "pass") {
     action = STOP_FOR_HUMAN;
   } else if (hasBlocker || STOP_STATUSES.has(runStatus)) {
+    action = STOP_FOR_HUMAN;
+  } else if (globalGoalCompletion.status === "blocked") {
     action = STOP_FOR_HUMAN;
   } else if (ROLLBACK_STATUSES.has(runStatus)) {
     action = ROLLBACK;
@@ -337,18 +359,21 @@ export function decideContinuation(input = {}) {
     action = RERUN_STATUSES.has(runStatus) ? RERUN : CONTINUE;
   } else if (nextStep) {
     action = CONTINUE;
+  } else if (globalGoalCompletion.status === "complete") {
+    action = COMPLETE;
   }
   const snapshotPlan = action === STOP_FOR_HUMAN ? { plan: null, issues: [] } : createSnapshotPublishPlan(input);
 
   return {
     status: validation.status === "pass" ? "pass" : "fail",
     action,
-    should_continue: action !== STOP_FOR_HUMAN,
+    should_continue: action !== STOP_FOR_HUMAN && action !== COMPLETE,
     reasons: continuationReasons(input, action),
     blockers: blockersFrom(input),
     next_step: nextStep || null,
     next_work_packages: nextWorkPackages,
-    context_pack_seed: action === STOP_FOR_HUMAN ? null : createContextPackSeed(input, action),
+    global_goal_completion: globalGoalCompletion,
+    context_pack_seed: action === STOP_FOR_HUMAN || action === COMPLETE ? null : createContextPackSeed(input, action),
     snapshot_publish_plan: snapshotPlan.plan,
     snapshot_publish_issues: snapshotPlan.issues,
     validation
@@ -359,8 +384,12 @@ export function assertShouldContinue(input = {}) {
   const decision = decideContinuation(input);
 
   if (!decision.should_continue) {
-    const error = new Error("autonomous continuation stopped for human intervention");
-    error.code = "AUTONOMOUS_CONTINUATION_STOPPED";
+    const error = new Error(decision.action === COMPLETE
+      ? "autonomous continuation completed all configured global goals"
+      : "autonomous continuation stopped for human intervention");
+    error.code = decision.action === COMPLETE
+      ? "AUTONOMOUS_CONTINUATION_COMPLETE"
+      : "AUTONOMOUS_CONTINUATION_STOPPED";
     error.decision = decision;
     throw error;
   }
@@ -368,4 +397,4 @@ export function assertShouldContinue(input = {}) {
   return decision;
 }
 
-export { CONTINUE, RERUN, ROLLBACK, STOP_FOR_HUMAN };
+export { COMPLETE, CONTINUE, RERUN, ROLLBACK, STOP_FOR_HUMAN };
