@@ -105,6 +105,57 @@ test("workbench server builds latest projection from workflow state input", asyn
   });
 });
 
+test("workbench server overlays repository PROJECT_STATUS into workflow projections", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-project-status-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "project-status-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.project_status = {
+    project: "ai-control-platform",
+    next_step: "",
+    global_goals: [{ id: "stale", title: "Stale input goal", status: "completed" }]
+  };
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "Continue from repository PROJECT_STATUS.",
+    global_goals: [
+      {
+        id: "repo-goal",
+        title: "Repository status goal",
+        status: "in_progress",
+        next_step: "Use repo-level goal state."
+      }
+    ]
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "project-status",
+    items: [
+      {
+        id: "project-status",
+        label: "Project status",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/projection`);
+    const projection = response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(projection.global_goal_completion.status, "in_progress");
+    assert.equal(projection.global_goal_completion.next_goal.id, "repo-goal");
+    assert.equal(projection.global_goal_completion.next_goal.title, "Repository status goal");
+    assert.equal(projection.one_screen.counters.global_goals_pending, 1);
+  }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
 test("workbench server returns projection history index", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/projections`);

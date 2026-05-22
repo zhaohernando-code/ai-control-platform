@@ -372,6 +372,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "The scheduler must not require manual JSON assembly to continue from repository PROJECT_STATUS/global_goals; a reusable generator must turn durable repo status into continuation input and decision evidence."
+    },
+    {
+      "id": "project-status-hidden-from-workbench",
+      "status": "fail",
+      "category": "observability",
+      "severity": "p1",
+      "message": "Workbench projection must not rely on stale project_status copied into workflow snapshots; the service needs to overlay repository PROJECT_STATUS/global_goals so operators and next-action flows see current repo-level unfinished goals."
     }
   ],
   "hardening_items": [
@@ -973,6 +980,14 @@
       "enforcement_target": "src/workflow/project-status-continuation.js; tools/prepare-project-status-continuation.mjs; tools/create-scheduler-dispatch-plan.mjs; package.json; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/project-status-continuation.test.js; test/scheduler-dispatch-plan.test.js",
       "regression_test": "project status continuation keeps next step and global goals in durable input; project status continuation is ready while global goals are pending; project status continuation completes only when configured goals are complete; prepare-project-status-continuation CLI writes continuation input; scheduler dispatch plan CLI can start from PROJECT_STATUS without manual continuation json",
       "verification": "node --test test/project-status-continuation.test.js test/autonomous-continuation.test.js test/scheduler-dispatch-plan.test.js; npm run prepare:project-status-continuation -- --project-status PROJECT_STATUS.json --output tmp/project-status-continuation-current.json; npm run plan:scheduler-dispatch -- --project-status PROJECT_STATUS.json --output tmp/project-status-dispatch-plan.json; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "project-status-hidden-from-workbench",
+      "invariant": "Workbench server must overlay repository PROJECT_STATUS/global_goals when dynamically creating projections from workflow history input, and server CLI help must fail safely instead of treating --help as a port.",
+      "enforcement_target": "tools/workbench-server.mjs; docs/contracts/WORKBENCH_PROJECTION_CN.md; test/workbench-server.test.js",
+      "regression_test": "workbench server overlays repository PROJECT_STATUS into workflow projections; node tools/workbench-server.mjs --help exits successfully",
+      "verification": "node --test test/workbench-server.test.js test/workbench-shell.test.js; node tools/workbench-server.mjs --help; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

@@ -45,6 +45,7 @@ import { recordWorkbenchBrowserEventsRunArtifact } from "../src/workflow/workben
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
 const defaultEventsPath = resolve(root, "docs/examples/operator-events.json");
+const defaultProjectStatusPath = resolve(root, "PROJECT_STATUS.json");
 const examplesRoot = resolve(root, "docs/examples");
 const defaultSnapshotsRoot = resolve(root, "tmp/workbench-snapshots");
 
@@ -65,6 +66,15 @@ function jsonResponse(res, status, body) {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function projectionInputWithProjectStatus(input = {}, projectStatusPath = null) {
+  if (!projectStatusPath) return input;
+  const projectStatus = readJson(projectStatusPath);
+  return {
+    ...input,
+    project_status: projectStatus
+  };
 }
 
 function isWithinPath(basePath, filePath) {
@@ -89,7 +99,7 @@ function historyItemPath(itemPath, field, allowedRoots = [examplesRoot, defaultS
   return filePath;
 }
 
-function projectionById(id = null, history = readJson(historyPath), allowedRoots = [examplesRoot, defaultSnapshotsRoot]) {
+function projectionById(id = null, history = readJson(historyPath), allowedRoots = [examplesRoot, defaultSnapshotsRoot], projectStatusPath = null) {
   const selectedId = id || history.latest;
   const item = history.items.find((entry) => entry.id === selectedId);
 
@@ -103,7 +113,7 @@ function projectionById(id = null, history = readJson(historyPath), allowedRoots
     history,
     item,
     projection: item.input_path
-      ? createWorkbenchProjection(readJson(historyItemPath(item.input_path, "input_path", allowedRoots)))
+      ? createWorkbenchProjection(projectionInputWithProjectStatus(readJson(historyItemPath(item.input_path, "input_path", allowedRoots)), projectStatusPath))
       : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))
   };
 }
@@ -190,14 +200,14 @@ function generatedContinuationInputIssues(generated = {}, prepared = {}) {
   return issues;
 }
 
-function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot]) {
+function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], projectStatusPath = null) {
   return {
     ...history,
     items: asArray(history.items).map((item) => {
       if (!item?.input_path) return item;
       try {
         const workflowState = readJson(historyItemPath(item.input_path, "input_path", allowedRoots));
-        const projection = createWorkbenchProjection(workflowState);
+        const projection = createWorkbenchProjection(projectionInputWithProjectStatus(workflowState, projectStatusPath));
         return {
           ...item,
           scheduler_dispatch: {
@@ -638,23 +648,29 @@ function safeStaticPath(pathname) {
 export function createWorkbenchServer(options = {}) {
   const eventsPath = options.eventsPath || defaultEventsPath;
   const serverHistoryPath = options.historyPath || historyPath;
+  const projectStatusPath = options.projectStatusPath === null
+    ? null
+    : resolve(options.projectStatusPath || defaultProjectStatusPath);
   const snapshotsRoot = resolve(options.snapshotsRoot || defaultSnapshotsRoot);
   const allowedHistoryRoots = [examplesRoot, snapshotsRoot];
   const realReviewerExecutor = options.realReviewerExecutor;
+  const workbenchProjection = (workflowState) => createWorkbenchProjection(
+    projectionInputWithProjectStatus(workflowState, projectStatusPath)
+  );
 
   return createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
       if (url.pathname === "/api/workbench/projection") {
-        const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath), allowedHistoryRoots);
+        const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath), allowedHistoryRoots, projectStatusPath);
         jsonResponse(res, 200, projection);
         return;
       }
 
       if (url.pathname === "/api/workbench/projections") {
         const history = readJson(serverHistoryPath);
-        jsonResponse(res, 200, projectionHistoryWithReadiness(history, allowedHistoryRoots));
+        jsonResponse(res, 200, projectionHistoryWithReadiness(history, allowedHistoryRoots, projectStatusPath));
         return;
       }
 
@@ -733,7 +749,7 @@ export function createWorkbenchServer(options = {}) {
           status: "created",
           item,
           fact: result.fact,
-          projection: createWorkbenchProjection(result.workflow_state)
+          projection: workbenchProjection(result.workflow_state)
         });
         return;
       }
@@ -788,7 +804,7 @@ export function createWorkbenchServer(options = {}) {
           item,
           fact: result.fact,
           aggregate: aggregate?.fact || null,
-          projection: createWorkbenchProjection(nextState)
+          projection: workbenchProjection(nextState)
         });
         return;
       }
@@ -831,7 +847,7 @@ export function createWorkbenchServer(options = {}) {
           status: "created",
           item,
           artifact: result.artifact,
-          projection: createWorkbenchProjection(result.workflow_state)
+          projection: workbenchProjection(result.workflow_state)
         });
         return;
       }
@@ -866,7 +882,7 @@ export function createWorkbenchServer(options = {}) {
               : "reviewer shard executor setup failed",
             issues: error.issues || [{ code: "reviewer_shard_executor_setup_failed", message: error.message, path: "reviewer_mock_findings_json" }],
             policy: error.policy || null,
-            projection: createWorkbenchProjection(readJson(inputPath))
+            projection: workbenchProjection(readJson(inputPath))
           });
           return;
         }
@@ -880,7 +896,7 @@ export function createWorkbenchServer(options = {}) {
           executor: executorSetup.executor
         });
         if (result.status !== "pass") {
-          jsonResponse(res, 400, { error: "reviewer shard run failed", issues: result.issues || [], projection: createWorkbenchProjection(workflowState) });
+          jsonResponse(res, 400, { error: "reviewer shard run failed", issues: result.issues || [], projection: workbenchProjection(workflowState) });
           return;
         }
 
@@ -896,7 +912,7 @@ export function createWorkbenchServer(options = {}) {
           provider_health: result.provider_health || null,
           aggregate: result.aggregate || null,
           pending_shards: result.pending_shards ?? result.aggregate?.pending_shards ?? null,
-          projection: createWorkbenchProjection(result.workflow_state)
+          projection: workbenchProjection(result.workflow_state)
         });
         return;
       }
@@ -990,7 +1006,7 @@ export function createWorkbenchServer(options = {}) {
             policy,
             control: normalizedControl,
             artifact: policyRecorded.artifact,
-            projection: createWorkbenchProjection(policyRecorded.workflow_state)
+            projection: workbenchProjection(policyRecorded.workflow_state)
           });
           return;
         }
@@ -1016,7 +1032,7 @@ export function createWorkbenchServer(options = {}) {
               error: "scheduler dispatch continuation preparation failed",
               issues: continuation.issues || [],
               continuation,
-              projection: createWorkbenchProjection(nextWorkflowState)
+              projection: workbenchProjection(nextWorkflowState)
             });
             return;
           }
@@ -1046,7 +1062,7 @@ export function createWorkbenchServer(options = {}) {
           result: runResult,
           artifact: recorded.artifact,
           continuation,
-          projection: createWorkbenchProjection(nextWorkflowState)
+          projection: workbenchProjection(nextWorkflowState)
         });
         return;
       }
@@ -1170,7 +1186,7 @@ export function createWorkbenchServer(options = {}) {
           enqueue_artifact: enqueued.artifact,
           next_item: published.item,
           projection: published.projection,
-          current_projection: createWorkbenchProjection(enqueued.workflow_state)
+          current_projection: workbenchProjection(enqueued.workflow_state)
         });
         return;
       }
@@ -1233,7 +1249,7 @@ export function createWorkbenchServer(options = {}) {
           item,
           result: loopResult,
           artifact: recorded.artifact,
-          projection: createWorkbenchProjection(recorded.workflow_state)
+          projection: workbenchProjection(recorded.workflow_state)
         });
         return;
       }
@@ -1260,7 +1276,7 @@ export function createWorkbenchServer(options = {}) {
         const sourceWorkflowState = readJson(sourcePath);
         const registry = buildSchedulerLoopRunRegistry(sourceWorkflowState);
         const recovery = evaluateSchedulerLoopRecovery(registry);
-        const sourceProjection = createWorkbenchProjection(sourceWorkflowState);
+        const sourceProjection = workbenchProjection(sourceWorkflowState);
         if (recovery.status !== "ready" || !recovery.resume_projection_id) {
           const blockedAttempt = recordSchedulerLoopResumeAttempt(sourceWorkflowState, {
             status: "blocked",
@@ -1279,7 +1295,7 @@ export function createWorkbenchServer(options = {}) {
             recovery,
             resume_attempt: blockedAttempt.artifact || null,
             projection: blockedAttempt.status === "pass"
-              ? createWorkbenchProjection(blockedAttempt.workflow_state)
+              ? workbenchProjection(blockedAttempt.workflow_state)
               : sourceProjection
           });
           return;
@@ -1306,7 +1322,7 @@ export function createWorkbenchServer(options = {}) {
             recovery,
             resume_attempt: blockedAttempt.artifact || null,
             projection: blockedAttempt.status === "pass"
-              ? createWorkbenchProjection(blockedAttempt.workflow_state)
+              ? workbenchProjection(blockedAttempt.workflow_state)
               : sourceProjection
           });
           return;
@@ -1373,8 +1389,8 @@ export function createWorkbenchServer(options = {}) {
           result: loopResult,
           artifact: recorded.artifact,
           resume_attempt: resumeAttempt.artifact,
-          source_projection: createWorkbenchProjection(resumeAttempt.workflow_state),
-          projection: createWorkbenchProjection(recorded.workflow_state)
+          source_projection: workbenchProjection(resumeAttempt.workflow_state),
+          projection: workbenchProjection(recorded.workflow_state)
         });
         return;
       }
@@ -1399,7 +1415,7 @@ export function createWorkbenchServer(options = {}) {
 
         const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
         const workflowState = readJson(inputPath);
-        const projection = createWorkbenchProjection(workflowState);
+        const projection = workbenchProjection(workflowState);
         const executed = await executeProjectedNextAction({
           req,
           selectedId,
@@ -1469,7 +1485,7 @@ export function createWorkbenchServer(options = {}) {
           status: "created",
           item,
           artifact: result.artifact,
-          projection: createWorkbenchProjection(result.workflow_state)
+          projection: workbenchProjection(result.workflow_state)
         });
         return;
       }
@@ -1544,6 +1560,10 @@ export function startWorkbenchServer({ port = 4180, host = "127.0.0.1" } = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log("Usage: node tools/workbench-server.mjs [port]");
+    process.exit(0);
+  }
   const port = Number(process.env.PORT || process.argv[2] || 4180);
   const server = startWorkbenchServer({ port });
   server.on("listening", () => {
