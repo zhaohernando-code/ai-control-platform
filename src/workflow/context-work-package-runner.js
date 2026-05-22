@@ -1,4 +1,5 @@
 import { recordArtifact } from "./artifact-ledger.js";
+import { evaluateFixedDevelopmentModeGate } from "./fixed-development-mode-gate.js";
 import { appendRunEvent, validateRunManifest } from "./run-manifest.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 
@@ -92,6 +93,7 @@ function runArtifact(workflowState = {}, selected = [], options = {}) {
       run_id: runId,
       cycle_id: cycleId,
       executor_kind: normalizeString(options.executor_kind || options.executorKind) || "local_bounded",
+      fixed_development_mode_gate: options.fixed_development_mode_gate || options.fixedDevelopmentModeGate || null,
       executed_count: selected.length,
       executed_work_package_ids: selected.map((node) => node.id),
       executed_work_packages: selected.map((node) => ({
@@ -140,12 +142,41 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     };
   }
 
+  const fixedDevelopmentModeGate = evaluateFixedDevelopmentModeGate({
+    manifest: workflowState.manifest,
+    selected_work_packages: selected
+  });
+  if (fixedDevelopmentModeGate.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "fixed_development_mode_gate",
+      gate_result: fixedDevelopmentModeGate,
+      issues: fixedDevelopmentModeGate.issues,
+      dispatchable_count: dispatchable.length,
+      selected_work_package_ids: selected.map((node) => node.id)
+    };
+  }
+
   const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
-  const artifact = runArtifact(workflowState, selected, { ...options, created_at: createdAt });
+  const artifact = runArtifact(workflowState, selected, {
+    ...options,
+    created_at: createdAt,
+    fixed_development_mode_gate: fixedDevelopmentModeGate
+  });
   const nextWorkPackages = updateWorkPackages(workflowState, selected, { ...options, created_at: createdAt });
   const manifestWithPackages = {
     ...workflowState.manifest,
-    work_packages: nextWorkPackages
+    work_packages: nextWorkPackages,
+    gate_results: [
+      ...asArray(workflowState.manifest?.gate_results),
+      {
+        gate_id: fixedDevelopmentModeGate.gate_id,
+        status: fixedDevelopmentModeGate.status,
+        checked_work_package_count: fixedDevelopmentModeGate.checked_work_package_count,
+        checked_work_package_ids: fixedDevelopmentModeGate.checked_work_package_ids,
+        created_at: createdAt
+      }
+    ]
   };
   const manifest = appendRunEvent(manifestWithPackages, {
     id: `event-${artifact.id}`,

@@ -29,3 +29,14 @@
 - **工作台只消费 projection，不解析零散日志**：PC 和 mobile 工作台必须以 Workbench Projection 为一屏状态输入。任务、模型、reviewer、artifact 和 DAG 状态先汇总成 projection，再进入 UI。
 - **完成一轮后必须运行 continuation gate**：提交、推送、测试通过或输出总结都不是停止条件。只要 `PROJECT_STATUS.next_step` 或 `next_work_packages` 存在且没有人工阻塞，系统必须生成下一轮 Context Pack seed 并继续执行。
 - **Process Hardening Gate**：阻塞级 reviewer finding 必须进入 `process-hardening` gate。该 gate 要求每条阻塞 finding 都有 invariant、enforcement target、regression test、verification 和 completed 状态；缺任一项则当前实现不能合入。
+
+## 固定开发模式持久化
+
+- **标准职责不可反转**：主进程负责目标判断、任务拆解、Context Pack、调度、验收和流程修正；子进程只负责 owned files 内的受限实现。主进程不得因为任务小、文档多或上下文紧张而直接越过调度闭环实现平台能力。
+- **每个子进程必须自评**：子进程完成后必须明确评估需求是否跑偏、实现是否符合预期、证据是否足够、是否需要重跑。该自评是主进程验收输入，不是可选总结。
+- **不合格先改流程/gate**：如果发现偏离目标、宿主错误、owned files 越界、假成功、状态未持久化或 continuation 断裂，先新增或更新流程不变量、gate、schema、测试、fixture 或 workbench projection，再重新派发同类任务。
+- **恢复必须从 durable 状态开始**：上下文压缩或新会话恢复后，先读取 `AGENTS.md`、`PROJECT_STATUS.json`、`PROJECT_RULES.md`、本文件和 `docs/contracts/AUTONOMOUS_DEVELOPMENT_FLOW_CN.md`。当前阶段、决策、阻塞、next_step、global_goals、run manifest、artifact ledger、task DAG 和 workbench continuation 以 durable 状态为准。
+- **文档恢复入口必须配 runtime gate**：AGENTS/PROCESS/合同用于让压缩后的会话恢复规则；真正调度前，`run_context_work_packages` 必须运行 fixed-development-mode runtime gate，验证平台宿主、Context Pack root `owned_files`、subtasks `owned_files`、selected work package `owned_files` 和 managed project 路径，失败则 blocked closed。
+- **全局不跑偏优先级最高**：cwd、历史 thread、默认 hook、临时日志、模型建议或单个子进程输出都不能覆盖 host-boundary、global-goal completion、process-hardening 和 workbench continuation gate。
+- **多模型协同必须可审计**：GPT、DeepSeek V4 Pro/Flash、Claude Code 或其他模型只能通过 model routing plan 和 reviewer gate 进入流程；模型调用结果必须沉淀为 durable findings、artifacts 或 continuation facts。
+- **完成定义包含继续能力**：一个子任务通过测试不等于项目完成。只要 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next_action_readout 存在，就必须生成下一轮 continuation seed 或明确阻塞原因。

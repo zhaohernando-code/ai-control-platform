@@ -5,8 +5,12 @@
 - `stock_dashboard`、`lobechat` 等业务项目只能作为被纳管项目、fixture、验收样本或集成适配对象；不得承载平台本体能力。
 - 旧 `local-control-server` 和 `dashboard-ui` 可以被读取、迁移或重构，但不能继续作为新能力的默认补丁落点。
 - 开工前必须生成或更新 Context Pack，并通过 `host-boundary` gate。未通过时不得派发子进程、不得写代码。
-- 每一轮实现必须包含：流程设计、子任务落地、主进程评审、失败回退或重跑、流程固化。
+- 每一轮实现必须按固定开发模式执行：主进程负责目标判断、任务拆解、子进程调度、验收和流程修正；子进程只负责 Context Pack/owned files 授权内的受限实现。
+- 每个子进程完成后必须自评需求是否跑偏、结果是否符合预期、证据是否足够；主进程必须把该自评纳入验收。
+- 不合格结果必须先改流程不变量、gate、schema、测试或 workbench projection，再重跑；禁止只写普通总结或口头提醒。
+- 上下文压缩或新会话恢复后，必须从 `AGENTS.md`、`PROCESS.md`、`PROJECT_STATUS.json`、global_goals、durable run/artifact/task DAG 状态和 workbench continuation 继续，不得依赖聊天记忆替代状态。
+- 文档检查只证明恢复入口存在；`run_context_work_packages` 调度前必须通过 fixed-development-mode runtime gate，检查 Context Pack root/subtask/selected work package 的 `owned_files`，失败时不得把 work package 标记为 completed。
+- 多模型协同必须经过 model routing plan、reviewer gate 和 durable findings/artifacts；禁止把某个模型或临时 skill 固定成绕过流程的默认实现者。
 - 前端相关任务默认同时覆盖 PC Web 与手机尺寸；手机端可以独立信息架构，不得默认压缩 PC 页面。
 - 用户可见功能完成前必须有真实渲染或服务验收；只通过源码或静态文档不算完成。
 - 重要决策写入 `DECISIONS.md`，可复用流程经验写入 `PROCESS.md`，当前状态写入 `PROJECT_STATUS.json`。
-

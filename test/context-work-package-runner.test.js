@@ -92,6 +92,9 @@ test("context work package runner executes dispatchable packages and updates wor
   assert.equal(first.executed_work_packages[0].id, "runtime");
   assert.equal(first.workflow_state.manifest.work_packages.find((item) => item.id === "runtime").status, "completed");
   assert.equal(first.workflow_state.manifest.events.at(-1).type, "context_work_packages_run");
+  assert.equal(first.artifact.metadata.fixed_development_mode_gate.status, "pass");
+  assert.equal(first.artifact.metadata.fixed_development_mode_gate.gate_id, "fixed-development-mode-dispatch");
+  assert.equal(first.workflow_state.manifest.gate_results.at(-1).gate_id, "fixed-development-mode-dispatch");
   assert.equal(first.workflow_state.artifact_ledger.artifacts.at(-1).metadata.executed_work_package_ids[0], "runtime");
 
   const projection = createWorkbenchProjection(first.workflow_state);
@@ -111,4 +114,36 @@ test("context work package runner blocks when no packages can dispatch", () => {
 
   assert.equal(result.status, "blocked");
   assert.ok(result.issues.some((issue) => issue.code === "no_dispatchable_work_packages"));
+});
+
+test("context work package runner blocks managed project paths before completion", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const forbiddenOwnedFiles = ["../stock_dashboard/src/runner.js"];
+  workflowState.manifest.context_pack.owned_files = forbiddenOwnedFiles;
+  workflowState.manifest.context_pack.subtasks = [{ id: "runtime", owned_files: forbiddenOwnedFiles }];
+  workflowState.manifest.work_packages = [
+    {
+      id: "runtime",
+      title: "Runtime",
+      status: "pending",
+      owned_files: forbiddenOwnedFiles
+    }
+  ];
+  workflowState.task_dag = workflowState.manifest.work_packages;
+  const eventCountBefore = workflowState.manifest.events.length;
+  const artifactCountBefore = workflowState.artifact_ledger.artifacts.length;
+
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-22T04:03:00.000Z"
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "fixed_development_mode_gate");
+  assert.equal(result.gate_result.gate_id, "fixed-development-mode-dispatch");
+  assert.ok(result.issues.some((item) => item.code === "fixed_mode_managed_project_owned_file"));
+  assert.equal(workflowState.manifest.work_packages[0].status, "pending");
+  assert.equal(workflowState.manifest.events.length, eventCountBefore);
+  assert.equal(workflowState.artifact_ledger.artifacts.length, artifactCountBefore);
+  assert.equal(result.workflow_state, undefined);
 });
