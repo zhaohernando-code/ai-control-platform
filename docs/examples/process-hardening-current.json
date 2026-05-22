@@ -358,6 +358,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "A passed single requirement must not be treated as overall project completion; autonomous continuation needs a durable global-goal completion check that schedules pending goals and stops only when every configured goal is complete."
+    },
+    {
+      "id": "browser-events-artifact-not-written-back",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Workbench browser verification must not stop at stdout or a local artifact file; the browser-events runner and closeout gate need to prove the workbench API writes the artifact back into workflow state."
     }
   ],
   "hardening_items": [
@@ -943,6 +950,14 @@
       "enforcement_target": "src/workflow/global-goal-completion.js; src/workflow/autonomous-continuation.js; src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/contracts/WORKBENCH_PROJECTION_CN.md; PROJECT_STATUS.json; test/autonomous-continuation.test.js; test/workbench-projection.test.js",
       "regression_test": "continues from pending global goals after a single requirement passes; global goals do not dilute explicit scheduler continuation packages; marks continuation complete only when all configured global goals are done; blocked global goals stop without pretending the cycle is complete; workbench projection exposes global goal completion for autonomous continuation",
       "verification": "node --test test/autonomous-continuation.test.js test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-projection-fixture.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "browser-events-artifact-not-written-back",
+      "invariant": "Workbench browser event verification must optionally post its generated workbench-browser-events-run.v1 artifact to the workbench API, verify the returned projection exposes partial-shard readiness, and closeout must exercise that API writeback path with a temp workflow state.",
+      "enforcement_target": "tools/check-workbench-browser-events.mjs; tools/check-closeout.mjs; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "check-workbench-browser-events --record-temp-workflow writes workbench_browser_events_run into workflow state through /api/workbench/workbench-browser-events-run; npm run check:closeout exercises the temp workflow API writeback path",
+      "verification": "npm run check:workbench:browser-events -- --output <artifact> --record-temp-workflow; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

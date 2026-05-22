@@ -22,15 +22,17 @@ function valueAfter(flag, args = process.argv.slice(2)) {
   return index >= 0 ? args[index + 1] : null;
 }
 
+function hasFlag(flag, args = process.argv.slice(2)) {
+  return args.includes(flag);
+}
+
 function recordScenario(result) {
   scenarioResults.push(result);
   console.log(JSON.stringify(result, null, 2));
 }
 
-function writeRunArtifact(outputPath) {
-  if (!outputPath) return null;
-  const resolved = resolve(outputPath);
-  const artifact = {
+function createRunArtifact() {
+  return {
     version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
     status: "pass",
     created_at: new Date().toISOString(),
@@ -49,9 +51,38 @@ function writeRunArtifact(outputPath) {
     ],
     scenarios: scenarioResults
   };
+}
+
+function writeRunArtifact(outputPath, artifact) {
+  if (!outputPath) return null;
+  const resolved = resolve(outputPath);
   mkdirSync(dirname(resolved), { recursive: true });
   writeFileSync(resolved, `${JSON.stringify(artifact, null, 2)}\n`);
   return resolved;
+}
+
+async function postRunArtifactToWorkbench(artifact, { baseUrl, projectionId = null }) {
+  const url = new URL("/api/workbench/workbench-browser-events-run", baseUrl);
+  if (projectionId) url.searchParams.set("id", projectionId);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ artifact })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status !== 201 || payload.status !== "created") {
+    throw new Error(`workbench browser events API writeback failed: ${response.status} ${JSON.stringify(payload)}`);
+  }
+  if (payload.projection?.workbench_browser_events?.partial_shard_ready !== true) {
+    throw new Error("workbench browser events API writeback did not project partial shard readiness");
+  }
+  return {
+    status: "pass",
+    response_status: response.status,
+    artifact_id: payload.artifact?.id || null,
+    projection_status: payload.projection?.workbench_browser_events?.status || null,
+    partial_shard_ready: payload.projection?.workbench_browser_events?.partial_shard_ready === true
+  };
 }
 
 async function withWorkbenchServer(fn, options = {}) {
@@ -86,11 +117,26 @@ async function withWorkbenchServer(fn, options = {}) {
   await once(server, "listening");
 
   try {
-    await fn({ port: server.address().port, eventsPath });
+    await fn({ port: server.address().port, eventsPath, inputPath, historyPath });
   } finally {
     server.close();
     await once(server, "close");
   }
+}
+
+async function recordRunArtifactToTempWorkflow(artifact) {
+  let result = null;
+  await withWorkbenchServer(async ({ port, inputPath }) => {
+    result = await postRunArtifactToWorkbench(artifact, {
+      baseUrl: `http://127.0.0.1:${port}`,
+      projectionId: "current-session"
+    });
+    const workflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+    const latestEvent = workflowState.manifest.events.at(-1);
+    assert(latestEvent?.type === "workbench_browser_events_run", "browser events API writeback must persist manifest event");
+    assert(workflowState.artifact_ledger.artifacts.at(-1)?.metadata?.version === WORKBENCH_BROWSER_EVENTS_RUN_VERSION, "browser events API writeback must persist ledger artifact");
+  });
+  return result;
 }
 
 function readLedger(eventsPath) {
@@ -579,12 +625,36 @@ try {
 }
 
 const outputPath = valueAfter("--output") || process.env.WORKBENCH_BROWSER_EVENTS_OUTPUT || null;
-const written = writeRunArtifact(outputPath);
+const artifact = createRunArtifact();
+const written = writeRunArtifact(outputPath, artifact);
 if (written) {
   console.log(JSON.stringify({
     status: "pass",
     artifact_version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
     output: written,
     scenario_count: scenarioResults.length
+  }, null, 2));
+}
+
+const recordBaseUrl = valueAfter("--record-base-url") || process.env.WORKBENCH_BROWSER_EVENTS_RECORD_BASE_URL || null;
+const recordProjectionId = valueAfter("--record-projection-id") || process.env.WORKBENCH_BROWSER_EVENTS_RECORD_PROJECTION_ID || null;
+if (recordBaseUrl) {
+  const recordResult = await postRunArtifactToWorkbench(artifact, {
+    baseUrl: recordBaseUrl,
+    projectionId: recordProjectionId
+  });
+  console.log(JSON.stringify({
+    status: "pass",
+    record_mode: "workbench_api",
+    ...recordResult
+  }, null, 2));
+}
+
+if (hasFlag("--record-temp-workflow") || process.env.WORKBENCH_BROWSER_EVENTS_RECORD_TEMP_WORKFLOW === "1") {
+  const recordResult = await recordRunArtifactToTempWorkflow(artifact);
+  console.log(JSON.stringify({
+    status: "pass",
+    record_mode: "temp_workflow_api",
+    ...recordResult
   }, null, 2));
 }

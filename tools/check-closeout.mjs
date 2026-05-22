@@ -50,7 +50,7 @@ run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-m
 run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
 const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
 const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
-run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath]);
+run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);
 validateWorkbenchBrowserEventsArtifact(browserEventsArtifactPath);
 run("scheduler dispatch writeback", ["tools/check-scheduler-dispatch-writeback.mjs"]);
 
