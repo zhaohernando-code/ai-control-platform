@@ -969,10 +969,10 @@
     },
     {
       "finding_id": "project-status-continuation-manual-assembly",
-      "invariant": "Repository PROJECT_STATUS/global_goals must be convertible into a standard continuation input through a reusable module and CLI, and the generated decision must still use decideContinuation for host, blocker, next-step, and global-goal completion rules.",
-      "enforcement_target": "src/workflow/project-status-continuation.js; tools/prepare-project-status-continuation.mjs; package.json; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/project-status-continuation.test.js",
-      "regression_test": "project status continuation keeps next step and global goals in durable input; project status continuation is ready while global goals are pending; project status continuation completes only when configured goals are complete; prepare-project-status-continuation CLI writes continuation input",
-      "verification": "node --test test/project-status-continuation.test.js test/autonomous-continuation.test.js; npm run prepare:project-status-continuation -- --project-status PROJECT_STATUS.json --output tmp/project-status-continuation-current.json; npm run check:process-hardening; npm run check:closeout",
+      "invariant": "Repository PROJECT_STATUS/global_goals must be convertible into a standard continuation input through a reusable module and CLI, and scheduler dispatch planning must be able to consume PROJECT_STATUS directly while preserving decideContinuation host, blocker, next-step, and global-goal completion rules.",
+      "enforcement_target": "src/workflow/project-status-continuation.js; tools/prepare-project-status-continuation.mjs; tools/create-scheduler-dispatch-plan.mjs; package.json; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/project-status-continuation.test.js; test/scheduler-dispatch-plan.test.js",
+      "regression_test": "project status continuation keeps next step and global goals in durable input; project status continuation is ready while global goals are pending; project status continuation completes only when configured goals are complete; prepare-project-status-continuation CLI writes continuation input; scheduler dispatch plan CLI can start from PROJECT_STATUS without manual continuation json",
+      "verification": "node --test test/project-status-continuation.test.js test/autonomous-continuation.test.js test/scheduler-dispatch-plan.test.js; npm run prepare:project-status-continuation -- --project-status PROJECT_STATUS.json --output tmp/project-status-continuation-current.json; npm run plan:scheduler-dispatch -- --project-status PROJECT_STATUS.json --output tmp/project-status-dispatch-plan.json; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

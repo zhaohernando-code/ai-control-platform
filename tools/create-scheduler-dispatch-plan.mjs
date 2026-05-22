@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
+import { prepareContinuationFromProjectStatus } from "../src/workflow/project-status-continuation.js";
 
 function valueAfter(flag, args) {
   const index = args.indexOf(flag);
@@ -11,7 +12,7 @@ function valueAfter(flag, args) {
 
 function usage() {
   return [
-    "Usage: node tools/create-scheduler-dispatch-plan.mjs --input <continuation-input.json> --workflow-state-input <workflow-state.json> --output <dispatch-plan.json>",
+    "Usage: node tools/create-scheduler-dispatch-plan.mjs (--input <continuation-input.json> | --project-status <PROJECT_STATUS.json>) --workflow-state-input <workflow-state.json> --output <dispatch-plan.json>",
     "",
     "Options:",
     "  --next-step <text>",
@@ -36,15 +37,26 @@ if (args.includes("--help") || args.includes("-h")) {
 }
 
 const inputPath = valueAfter("--input", args);
+const projectStatusPath = valueAfter("--project-status", args);
 const outputPath = valueAfter("--output", args);
-if (!inputPath || !outputPath) {
+if ((!inputPath && !projectStatusPath) || !outputPath) {
   console.error(usage());
   process.exit(1);
 }
 
 let result;
 try {
-  const input = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
+  let input;
+  if (projectStatusPath) {
+    const projectStatus = JSON.parse(readFileSync(resolve(projectStatusPath), "utf8"));
+    const prepared = prepareContinuationFromProjectStatus(projectStatus);
+    if (prepared.status === "blocked") {
+      throw new Error(`project status continuation blocked: ${JSON.stringify(prepared.issues)}`);
+    }
+    input = prepared.continuation_input;
+  } else {
+    input = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
+  }
   result = createSchedulerDispatchPlan(input, {
     workflow_state_input_path: valueAfter("--workflow-state-input", args),
     workflow_state_output_path: valueAfter("--workflow-state-output", args),

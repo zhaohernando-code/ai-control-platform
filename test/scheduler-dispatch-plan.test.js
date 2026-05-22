@@ -115,3 +115,34 @@ test("scheduler dispatch plan CLI writes reviewer shard dispatch plan", () => {
   assert.equal(plan.writeback.base_url, "http://127.0.0.1:4180");
   assert.equal(plan.writeback.projection_id, "current-session");
 });
+
+test("scheduler dispatch plan CLI can start from PROJECT_STATUS without manual continuation json", () => {
+  const dir = mkdtempSync(join(tmpdir(), "scheduler-dispatch-project-status-"));
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const outputPath = join(dir, "dispatch-plan.json");
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "Continue from durable repository status.",
+    global_goals: [
+      { id: "platform", title: "Platform", status: "in_progress" }
+    ]
+  }, null, 2));
+
+  const result = spawnSync(process.execPath, [
+    "tools/create-scheduler-dispatch-plan.mjs",
+    "--project-status",
+    projectStatusPath,
+    "--output",
+    outputPath
+  ], { encoding: "utf8" });
+  const summary = JSON.parse(result.stdout);
+  const plan = JSON.parse(readFileSync(outputPath, "utf8"));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(summary.status, "pass");
+  assert.equal(plan.phase, "no_dispatchable_scheduler_actions");
+  assert.equal(plan.decision.global_goal_completion.pending, 1);
+  assert.equal(plan.decision.next_step, "Continue from durable repository status.");
+});
