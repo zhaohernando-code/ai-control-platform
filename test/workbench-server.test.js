@@ -174,7 +174,8 @@ test("workbench server executes project status continuation next action", async 
         id: "repo-goal",
         title: "Repository status goal",
         status: "in_progress",
-        next_step: "Prepare the next global-goal cycle."
+        next_step: "Prepare the next global-goal cycle.",
+        owned_files: ["src/workflow/context-pack-cycle.js", "test/context-pack-cycle.test.js"]
       }
     ]
   }, null, 2));
@@ -213,6 +214,28 @@ test("workbench server executes project status continuation next action", async 
     assert.equal(payload.result.artifact.metadata.next_goal.id, "repo-goal");
     assert.equal(saved.manifest.events.at(-1).type, "project_status_continuation");
     assert.equal(payload.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+
+    const cycle = await request(`${baseUrl}/api/workbench/next-action?id=project-status-next-action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "create_context_pack_from_seed",
+        snapshot_id: "project-status-context-cycle",
+        cycle_id: "cycle-project-status-context",
+        label: "Project status context cycle",
+        created_at: "2026-05-22T03:11:00.000Z"
+      })
+    });
+    const created = cycle.json();
+    const sourceAfterCycle = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(cycle.status, 201);
+    assert.equal(created.action, "create_context_pack_from_seed");
+    assert.equal(created.result.next_item.id, "project-status-context-cycle");
+    assert.equal(created.result.projection.cycle_id, "cycle-project-status-context");
+    assert.equal(created.result.projection.manifest.work_package_count, 1);
+    assert.equal(created.result.projection.next_action_readout.action, "run_context_work_packages");
+    assert.equal(sourceAfterCycle.manifest.events.at(-1).type, "context_pack_cycle_materialized");
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 

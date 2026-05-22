@@ -390,6 +390,7 @@ test("continues from pending global goals after a single requirement passes", ()
   assert.ok(decision.reasons.includes("global_goals=1/2"));
   assert.equal(decision.next_work_packages[0].action, "continue_global_goal");
   assert.equal(decision.next_work_packages[0].global_goal_id, "global-completion-loop");
+  assert.deepEqual(decision.context_pack_seed.owned_files, ["src/workflow/global-goal-completion.js"]);
   assert.equal(decision.context_pack_seed.subtasks[0].id, "global-goal-global-completion-loop");
 });
 

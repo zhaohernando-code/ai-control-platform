@@ -249,6 +249,8 @@ function createContextPackSeed(input, action) {
   const status = projectStatus(input);
   const nextStep = nextStepFrom(input);
   const nextWorkPackages = nextWorkPackagesFrom(input);
+  const explicitOwnedFiles = compactStrings(input?.owned_files || input?.ownedFiles);
+  const workPackageOwnedFiles = compactStrings(nextWorkPackages.flatMap((workPackage) => workPackage.owned_files || workPackage.ownedFiles));
 
   return {
     requirement_summary: nextStep || nextWorkPackages[0]?.title || "Continue autonomous platform development from the latest project status.",
@@ -264,7 +266,7 @@ function createContextPackSeed(input, action) {
       "Do not write platform-core code into managed business projects.",
       "Do not skip main-process evaluation gates."
     ],
-    owned_files: compactStrings(input?.owned_files || input?.ownedFiles),
+    owned_files: [...new Set([...explicitOwnedFiles, ...workPackageOwnedFiles])],
     acceptance_gates: compactStrings(input?.acceptance_gates || input?.acceptanceGates || ["npm test", "npm run check:onboarding"]),
     rollback_conditions: compactStrings(input?.rollback_conditions || input?.rollbackConditions || [
       "host boundary violation",

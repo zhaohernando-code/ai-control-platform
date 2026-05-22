@@ -386,6 +386,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Showing pending repository global goals is insufficient; when no more specific automation driver exists, the workbench next-action path must turn PROJECT_STATUS/global_goals into durable continuation facts and context-pack seed without manual CLI assembly."
+    },
+    {
+      "id": "context-pack-seed-not-materialized",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A durable context_pack_seed is still not an executable cycle; the workbench next-action path must validate the seed, materialize it into a projection-ready workflow snapshot, and ensure root owned_files cover subtask owned_files before dispatch."
     }
   ],
   "hardening_items": [
@@ -1003,6 +1010,14 @@
       "enforcement_target": "src/workflow/project-status-continuation.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/project-status-continuation.test.js; test/workbench-projection.test.js; test/workbench-server.test.js",
       "regression_test": "project status continuation records durable workflow facts; workbench projection exposes global goal completion for autonomous continuation; workbench projection advances from prepared project status continuation to context pack seed; workbench server executes project status continuation next action",
       "verification": "node --test test/project-status-continuation.test.js test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-pack-seed-not-materialized",
+      "invariant": "Ready project_status_continuation facts must drive create_context_pack_from_seed through /api/workbench/next-action; materialization must validate Context Pack readiness, publish a projection-ready workflow snapshot with Run Manifest/Work Packages/Artifact Ledger, record source materialization facts, and make context_pack_seed root owned_files include owned files declared by continuation work packages.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/context-pack-cycle.js; src/workflow/workbench-projection.js; tools/workbench-server.mjs; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; test/autonomous-continuation.test.js; test/context-pack-cycle.test.js; test/workbench-projection.test.js; test/workbench-server.test.js",
+      "regression_test": "context pack cycle materializes latest project status continuation seed; context pack cycle blocks without a project status continuation fact; workbench projection exposes materialized context pack cycle as pending execution; workbench server executes project status continuation next action",
+      "verification": "node --test test/context-pack-cycle.test.js test/autonomous-continuation.test.js test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

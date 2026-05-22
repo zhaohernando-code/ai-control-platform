@@ -206,9 +206,53 @@ test("workbench projection advances from prepared project status continuation to
   const projection = createWorkbenchProjection(input);
 
   assert.equal(projection.operations_timeline.latest.type, "project_status_continuation");
-  assert.equal(projection.next_action_readout.status, "pending");
+  assert.equal(projection.next_action_readout.status, "ready");
   assert.equal(projection.next_action_readout.action, "create_context_pack_from_seed");
   assert.equal(projection.next_action_readout.source_type, "project_status_continuation");
+});
+
+test("workbench projection exposes materialized context pack cycle as pending execution", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "context-pack-cycle-run-projection-cycle-20260521-001",
+    type: "context_pack",
+    status: "pass",
+    uri: "context-pack://cycle/run-projection/cycle-context/context-pack-cycle-run-projection-cycle-context-001",
+    producer: "context-pack-cycle",
+    created_at: "2026-05-21T00:04:00.000Z",
+    metadata: {
+      type: "context_pack_cycle",
+      version: "context-pack-cycle.v1",
+      status: "ready",
+      cycle_id: "cycle-context",
+      work_package_count: 2
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "context_pack_cycle_created",
+        status: "ready",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.operations_timeline.latest.type, "context_pack_cycle_created");
+  assert.equal(projection.next_action_readout.status, "pending");
+  assert.equal(projection.next_action_readout.action, "run_context_work_packages");
 });
 
 test("workbench projection exposes latest closeout publication evidence", () => {

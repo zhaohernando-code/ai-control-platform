@@ -1,0 +1,64 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
+import {
+  prepareContinuationFromProjectStatus,
+  recordProjectStatusContinuationPrepared
+} from "../src/workflow/project-status-continuation.js";
+import { validateRunManifest } from "../src/workflow/run-manifest.js";
+
+function sourceWorkflowState() {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = [];
+  return workflowState;
+}
+
+function sourceWithProjectStatusContinuation() {
+  const workflowState = sourceWorkflowState();
+  const prepared = prepareContinuationFromProjectStatus({
+    project: "ai-control-platform",
+    status: "in_progress",
+    next_step: "",
+    blockers: [],
+    global_goals: [
+      {
+        id: "context-cycle",
+        title: "Context cycle",
+        status: "in_progress",
+        next_step: "Build the next platform context pack cycle.",
+        owned_files: ["src/workflow/context-pack-cycle.js", "test/context-pack-cycle.test.js"]
+      }
+    ]
+  }, { workflow_state: workflowState });
+  const recorded = recordProjectStatusContinuationPrepared(workflowState, prepared, {
+    created_at: "2026-05-22T03:20:00.000Z"
+  });
+
+  return recorded.workflow_state;
+}
+
+test("context pack cycle materializes latest project status continuation seed", () => {
+  const source = sourceWithProjectStatusContinuation();
+  const result = materializeContextPackCycleFromWorkflowState(source, {
+    cycle_id: "cycle-context-pack",
+    created_at: "2026-05-22T03:21:00.000Z"
+  });
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.phase, "context_pack_cycle");
+  assert.equal(result.work_packages.length, 1);
+  assert.equal(result.workflow_state.manifest.cycle_id, "cycle-context-pack");
+  assert.equal(result.workflow_state.manifest.context_pack.target_project_id, "ai-control-platform");
+  assert.equal(result.workflow_state.manifest.work_packages[0].id, "global-goal-context-cycle");
+  assert.equal(validateRunManifest(result.workflow_state.manifest).status, "pass");
+  assert.equal(result.source_record.workflow_state.manifest.events.at(-1).type, "context_pack_cycle_materialized");
+});
+
+test("context pack cycle blocks without a project status continuation fact", () => {
+  const result = materializeContextPackCycleFromWorkflowState(sourceWorkflowState());
+
+  assert.equal(result.status, "blocked");
+  assert.ok(result.issues.some((issue) => issue.code === "missing_project_status_continuation"));
+});

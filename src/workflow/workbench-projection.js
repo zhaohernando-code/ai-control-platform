@@ -591,6 +591,8 @@ const OPERATION_EVENT_TYPES = new Set([
   "autonomous_scheduler_loop_run",
   "scheduler_loop_resume_attempt",
   "project_status_continuation",
+  "context_pack_cycle_materialized",
+  "context_pack_cycle_created",
   "reviewer_provider_health",
   "reviewer_scope_split",
   "reviewer_shard_result",
@@ -616,6 +618,12 @@ function operationSummary(type, metadata = {}) {
   }
   if (type === "project_status_continuation") {
     return `${metadata.status || "unknown"} / ${metadata.next_work_package_count || 0} package(s)`;
+  }
+  if (type === "context_pack_cycle_materialized") {
+    return `${metadata.status || "unknown"} -> ${metadata.next_cycle_id || "next-cycle"}`;
+  }
+  if (type === "context_pack_cycle_created") {
+    return `${metadata.status || "unknown"} / ${metadata.work_package_count || 0} work package(s)`;
   }
   if (type === "reviewer_provider_health") {
     return `${metadata.provider_health || "unknown"} / ${asArray(metadata.scheduled_actions).join(", ") || "no_action"}`;
@@ -652,6 +660,7 @@ function operationNextActionRole(type, metadata = {}) {
     return metadata.status === "pass" ? "automation_driver" : "operator_observable";
   }
   if (type === "project_status_continuation") return "operator_observable";
+  if (type === "context_pack_cycle_materialized" || type === "context_pack_cycle_created") return "operator_observable";
   if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
     return "automation_driver";
   }
@@ -706,8 +715,19 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     const latest = operationsTimeline.latest || null;
     if (latest?.type === "project_status_continuation") {
       return {
-        status: "pending",
+        status: "ready",
         action: "create_context_pack_from_seed",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: latest.summary,
+        requires_operator: false
+      };
+    }
+    if (latest?.type === "context_pack_cycle_materialized" || latest?.type === "context_pack_cycle_created") {
+      return {
+        status: "pending",
+        action: "run_context_work_packages",
         source_event_id: latest.event_id,
         source_type: latest.type,
         target_projection_id: null,
