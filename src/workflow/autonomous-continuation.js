@@ -231,9 +231,57 @@ function agentLifecyclePoolFrom(input = {}) {
   return summarizeAgentLifecyclePool(workflowState?.manifest, workflowState?.artifact_ledger || workflowState?.artifactLedger);
 }
 
+function timedOutWorkersFrom(pool = {}) {
+  const workers = asArray(pool?.timed_out_workers || pool?.timedOutWorkers);
+  if (workers.length > 0) return workers;
+
+  const workerId = normalizeString(pool?.timed_out_worker || pool?.timedOutWorker || pool?.worker_id || pool?.workerId);
+  return workerId ? [{ worker_id: workerId }] : [];
+}
+
+function retryWorkerOwnedFiles(worker = {}, pool = {}) {
+  const declared = compactStrings(worker.owned_files || worker.ownedFiles || pool.owned_files || pool.ownedFiles);
+  return declared.length > 0
+    ? declared
+    : [
+        "src/workflow/agent-lifecycle-pool.js",
+        "src/workflow/autonomous-continuation.js",
+        "docs/examples/process-hardening-current.json",
+        "test/agent-lifecycle-pool.test.js",
+        "test/autonomous-continuation.test.js"
+      ];
+}
+
 function agentLifecyclePoolWorkPackagesFrom(input = {}) {
   const pool = agentLifecyclePoolFrom(input);
   const status = normalizeToken(pool?.status);
+  const timedOutCount = Number(pool?.timed_out || pool?.timedOut || 0);
+  const timedOutWorkers = timedOutWorkersFrom(pool);
+  if (timedOutCount > 0) {
+    const retryWorker = timedOutWorkers[0] || {};
+    const workerId = normalizeString(retryWorker.worker_id || retryWorker.workerId || retryWorker.id) || "timed-out-worker";
+    const poolId = normalizeString(pool.pool_id || pool.poolId || "latest");
+
+    return [
+      {
+        id: `agent-worker-retry-${poolId.replace(/[^a-zA-Z0-9_-]+/g, "-")}-${workerId.replace(/[^a-zA-Z0-9_-]+/g, "-")}`,
+        title: `Retry timed-out agent worker ${workerId}`,
+        action: "retry_agent_worker",
+        owned_files: retryWorkerOwnedFiles(retryWorker, pool),
+        reason: pool.latest_issue || `agent lifecycle pool ${poolId} has ${timedOutCount} timed-out worker(s); retry the smallest worker slice before whole-pool cleanup`,
+        pool_id: poolId,
+        worker_id: workerId,
+        retry_worker: {
+          ...retryWorker,
+          worker_id: workerId,
+          pool_id: poolId
+        },
+        retry_workers: timedOutWorkers,
+        timed_out_workers: timedOutWorkers
+      }
+    ];
+  }
+
   const needsCleanup = status === "cleanup_required" ||
     status === "blocked" ||
     status === "open" ||

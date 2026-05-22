@@ -54,6 +54,10 @@ const FACT_TYPES = new Map([
   ["worker_spawned", "WorkerSpawned"],
   ["workercompleted", "WorkerCompleted"],
   ["worker_completed", "WorkerCompleted"],
+  ["workerheartbeat", "WorkerHeartbeat"],
+  ["worker_heartbeat", "WorkerHeartbeat"],
+  ["workertimeout", "WorkerTimeout"],
+  ["worker_timeout", "WorkerTimeout"],
   ["workerevaluation", "WorkerEvaluation"],
   ["worker_evaluation", "WorkerEvaluation"],
   ["workerclosed", "WorkerClosed"],
@@ -129,6 +133,10 @@ function lifecycleRecords(manifest = {}, artifactLedger = {}) {
         "workerspawned",
         "worker_completed",
         "workercompleted",
+        "worker_heartbeat",
+        "workerheartbeat",
+        "worker_timeout",
+        "workertimeout",
         "worker_evaluation",
         "workerevaluation",
         "worker_closed",
@@ -174,6 +182,12 @@ function addWorker(workers, workerId) {
       worker_id: workerId,
       spawned: false,
       completed: false,
+      timed_out: false,
+      heartbeat_count: 0,
+      latest_heartbeat_at: null,
+      latest_timeout_at: null,
+      latest_issue: null,
+      spawned_at: null,
       evaluated: false,
       closed: false
     });
@@ -187,8 +201,21 @@ function latestWorkers(manifest = {}, artifactLedger = {}) {
   for (const record of poolRecords) {
     const worker = addWorker(workers, record.worker_id);
     if (!worker) continue;
-    if (record.kind === "worker_spawned" || record.kind === "workerspawned") worker.spawned = true;
+    const recordCreatedAt = record.event?.created_at || record.artifact?.created_at || record.metadata?.created_at || null;
+    if (record.kind === "worker_spawned" || record.kind === "workerspawned") {
+      worker.spawned = true;
+      worker.spawned_at = recordCreatedAt || worker.spawned_at;
+    }
     if (record.kind === "worker_completed" || record.kind === "workercompleted") worker.completed = true;
+    if (record.kind === "worker_heartbeat" || record.kind === "workerheartbeat") {
+      worker.heartbeat_count += 1;
+      worker.latest_heartbeat_at = recordCreatedAt || worker.latest_heartbeat_at;
+    }
+    if (record.kind === "worker_timeout" || record.kind === "workertimeout") {
+      worker.timed_out = true;
+      worker.latest_timeout_at = recordCreatedAt || worker.latest_timeout_at;
+      worker.latest_issue = lifecycleIssue(record.event, record.metadata) || worker.latest_issue;
+    }
     if (record.kind === "worker_evaluation" || record.kind === "workerevaluation") worker.evaluated = true;
     if (record.kind === "worker_closed" || record.kind === "workerclosed") worker.closed = true;
   }
@@ -229,7 +256,7 @@ export function createAgentLifecycleFact(input = {}) {
   const eventType = canonicalFactType(input.event_type || input.eventType || input.type || input.kind);
   const issues = [];
   if (!eventType) {
-    issues.push(issue("unsupported_agent_lifecycle_fact_type", "event_type must be WorkerSpawned, WorkerCompleted, WorkerEvaluation, WorkerClosed, or PoolIterationClosed", "event_type"));
+    issues.push(issue("unsupported_agent_lifecycle_fact_type", "event_type must be WorkerSpawned, WorkerCompleted, WorkerHeartbeat, WorkerTimeout, WorkerEvaluation, WorkerClosed, or PoolIterationClosed", "event_type"));
   }
 
   const poolId = normalizeString(input.pool_id || input.poolId || input.iteration_id || input.iterationId) || "default";
@@ -347,7 +374,10 @@ export function cleanupAgentLifecyclePool(workflowState = {}, input = {}) {
     };
   }
 
-  const createdAt = normalizeString(input.created_at || input.createdAt);
+  const createdAt = normalizeString(input.created_at || input.createdAt || input.now) || new Date().toISOString();
+  const timeoutThresholdMs = Number(input.timeout_threshold_ms ?? input.timeoutThresholdMs ?? input.worker_timeout_ms ?? input.workerTimeoutMs ?? NaN);
+  const hasTimeoutThreshold = Number.isFinite(timeoutThresholdMs) && timeoutThresholdMs >= 0;
+  const nowMs = Date.parse(normalizeString(input.now || input.created_at || input.createdAt) || createdAt);
   const failureMessage = normalizeString(input.failure || input.blocked || input.message);
   let nextState = workflowState;
   const facts = [];
@@ -378,7 +408,33 @@ export function cleanupAgentLifecyclePool(workflowState = {}, input = {}) {
   }
 
   const { workers } = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
-  for (const worker of workers.filter((entry) => entry.spawned && !entry.completed)) {
+  for (const worker of workers.filter((entry) => entry.spawned && !entry.completed && !entry.timed_out)) {
+    const latestSignalAt = worker.latest_heartbeat_at || worker.spawned_at;
+    const latestSignalMs = Date.parse(latestSignalAt || "");
+    const isSilentTimeout = hasTimeoutThreshold && Number.isFinite(nowMs) && Number.isFinite(latestSignalMs) && nowMs - latestSignalMs > timeoutThresholdMs;
+    if (isSilentTimeout) {
+      const timeoutMessage = `${worker.worker_id} timed out without heartbeat or completion`;
+      const result = recordAgentLifecycleFact(nextState, {
+        event_type: "WorkerTimeout",
+        pool_id: before.pool_id,
+        worker_id: worker.worker_id,
+        status: "fail",
+        message: timeoutMessage,
+        issues: [issue("agent_lifecycle_worker_timeout", timeoutMessage, "cleanup.timeout_threshold_ms")],
+        created_at: createdAt,
+        cleanup: {
+          automatic: true,
+          reason: "worker_timeout",
+          timeout_threshold_ms: timeoutThresholdMs,
+          latest_signal_at: latestSignalAt || null
+        }
+      });
+      if (result.status !== "pass") return result;
+      nextState = result.workflow_state;
+      facts.push(result.fact);
+      continue;
+    }
+    if (hasTimeoutThreshold) continue;
     const result = recordAgentLifecycleFact(nextState, {
       event_type: "WorkerCompleted",
       pool_id: before.pool_id,
@@ -394,15 +450,18 @@ export function cleanupAgentLifecyclePool(workflowState = {}, input = {}) {
   }
 
   const afterCompletion = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
-  for (const worker of afterCompletion.workers.filter((entry) => entry.completed && !entry.evaluated)) {
+  for (const worker of afterCompletion.workers.filter((entry) => (entry.completed || entry.timed_out) && !entry.evaluated)) {
     const result = recordAgentLifecycleFact(nextState, {
       event_type: "WorkerEvaluation",
       pool_id: before.pool_id,
       worker_id: worker.worker_id,
-      status: "pass",
-      message: `${worker.worker_id} evaluated during agent lifecycle cleanup`,
+      status: worker.timed_out ? "fail" : "pass",
+      message: worker.timed_out
+        ? `${worker.worker_id} timeout evaluated during agent lifecycle cleanup`
+        : `${worker.worker_id} evaluated during agent lifecycle cleanup`,
       created_at: createdAt,
-      cleanup: { automatic: true, reason: "missing_evaluation" }
+      issues: worker.timed_out ? [issue("agent_lifecycle_worker_timeout", worker.latest_issue || "worker timed out", "worker_timeout")] : [],
+      cleanup: { automatic: true, reason: worker.timed_out ? "timeout_evaluation" : "missing_evaluation" }
     });
     if (result.status !== "pass") return result;
     nextState = result.workflow_state;
@@ -426,7 +485,7 @@ export function cleanupAgentLifecyclePool(workflowState = {}, input = {}) {
   }
 
   const afterWorkerCleanup = summarizeAgentLifecyclePool(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
-  if (afterWorkerCleanup.open === 0 && afterWorkerCleanup.unevaluated === 0 && afterWorkerCleanup.unclosed === 0 && !afterWorkerCleanup.iteration_closed) {
+  if (afterWorkerCleanup.timed_out === 0 && afterWorkerCleanup.open === 0 && afterWorkerCleanup.unevaluated === 0 && afterWorkerCleanup.unclosed === 0 && !afterWorkerCleanup.iteration_closed) {
     const result = recordAgentLifecycleFact(nextState, {
       event_type: "PoolIterationClosed",
       pool_id: before.pool_id,
@@ -460,6 +519,11 @@ export function summarizeAgentLifecyclePool(manifest = {}, artifactLedger = {}) 
       completed: 0,
       evaluated: 0,
       closed: 0,
+      timed_out: 0,
+      heartbeat_count: 0,
+      latest_heartbeat_at: null,
+      latest_timeout_at: null,
+      timed_out_workers: [],
       open: 0,
       unevaluated: 0,
       unclosed: 0,
@@ -477,12 +541,31 @@ export function summarizeAgentLifecyclePool(manifest = {}, artifactLedger = {}) 
   const workers = new Map();
   let iterationClosed = false;
   let latestIssue = null;
+  let latestHeartbeatAt = null;
+  let latestTimeoutAt = null;
+  let heartbeatCount = 0;
   let blocked = false;
 
   for (const record of poolRecords) {
     const worker = addWorker(workers, record.worker_id);
-    if (record.kind === "worker_spawned" || record.kind === "workerspawned") worker.spawned = true;
+    const recordCreatedAt = record.event?.created_at || record.artifact?.created_at || record.metadata?.created_at || null;
+    if (record.kind === "worker_spawned" || record.kind === "workerspawned") {
+      worker.spawned = true;
+      worker.spawned_at = recordCreatedAt || worker.spawned_at;
+    }
     if (record.kind === "worker_completed" || record.kind === "workercompleted") worker.completed = true;
+    if (record.kind === "worker_heartbeat" || record.kind === "workerheartbeat") {
+      worker.heartbeat_count += 1;
+      heartbeatCount += 1;
+      worker.latest_heartbeat_at = recordCreatedAt || worker.latest_heartbeat_at;
+      latestHeartbeatAt = recordCreatedAt || latestHeartbeatAt;
+    }
+    if (record.kind === "worker_timeout" || record.kind === "workertimeout") {
+      worker.timed_out = true;
+      worker.latest_timeout_at = recordCreatedAt || worker.latest_timeout_at;
+      latestTimeoutAt = recordCreatedAt || latestTimeoutAt;
+      worker.latest_issue = lifecycleIssue(record.event, record.metadata) || worker.latest_issue;
+    }
     if (record.kind === "worker_evaluation" || record.kind === "workerevaluation") worker.evaluated = true;
     if (record.kind === "worker_closed" || record.kind === "workerclosed") worker.closed = true;
     if (record.kind === "pool_iteration_closed" || record.kind === "pooliterationclosed") iterationClosed = true;
@@ -495,12 +578,20 @@ export function summarizeAgentLifecyclePool(manifest = {}, artifactLedger = {}) 
   const workerList = Array.from(workers.values());
   const spawned = workerList.filter((worker) => worker.spawned).length;
   const completed = workerList.filter((worker) => worker.completed).length;
+  const timedOut = workerList.filter((worker) => worker.timed_out).length;
   const evaluated = workerList.filter((worker) => worker.evaluated).length;
   const closed = workerList.filter((worker) => worker.closed).length;
-  const open = workerList.filter((worker) => worker.spawned && !worker.completed).length;
-  const unevaluated = workerList.filter((worker) => worker.completed && !worker.evaluated).length;
+  const open = workerList.filter((worker) => worker.spawned && !worker.completed && !worker.timed_out).length;
+  const unevaluated = workerList.filter((worker) => (worker.completed || worker.timed_out) && !worker.evaluated).length;
   const unclosed = workerList.filter((worker) => worker.spawned && !worker.closed).length;
   const latest = poolRecords.at(-1);
+  const timedOutWorkers = workerList
+    .filter((worker) => worker.timed_out)
+    .map((worker) => ({
+      worker_id: worker.worker_id,
+      latest_timeout_at: worker.latest_timeout_at,
+      latest_issue: worker.latest_issue
+    }));
   const status = blocked
     ? "blocked"
     : open > 0
@@ -518,6 +609,11 @@ export function summarizeAgentLifecyclePool(manifest = {}, artifactLedger = {}) 
     pool_id: poolId,
     spawned,
     completed,
+    timed_out: timedOut,
+    heartbeat_count: heartbeatCount,
+    latest_heartbeat_at: latestHeartbeatAt,
+    latest_timeout_at: latestTimeoutAt,
+    timed_out_workers: timedOutWorkers,
     evaluated,
     closed,
     open,

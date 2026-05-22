@@ -132,6 +132,66 @@ test("agent lifecycle pool gaps schedule cleanup without human intervention", ()
   assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === cleanupPackage.id));
 });
 
+test("timed-out agent lifecycle pool schedules smaller retry worker slice", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    agent_lifecycle_pool: {
+      status: "open",
+      pool_id: "pool-main-child",
+      timed_out: 1,
+      open: 1,
+      unevaluated: 0,
+      unclosed: 1,
+      latest_issue: "child implementation heartbeat timed out",
+      timed_out_workers: [
+        {
+          worker_id: "child-implementation-2",
+          owned_files: ["src/workflow/autonomous-continuation.js"],
+          timeout_ms: 300000
+        }
+      ]
+    }
+  });
+
+  const retryPackage = decision.next_work_packages.find((workPackage) => {
+    return workPackage.action === "retry_agent_worker";
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.should_continue, true);
+  assert.ok(retryPackage);
+  assert.equal(retryPackage.worker_id, "child-implementation-2");
+  assert.equal(retryPackage.retry_worker.worker_id, "child-implementation-2");
+  assert.deepEqual(retryPackage.owned_files, ["src/workflow/autonomous-continuation.js"]);
+  assert.deepEqual(retryPackage.timed_out_workers.map((worker) => worker.worker_id), ["child-implementation-2"]);
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.action === "cleanup_agent_lifecycle_pool"));
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === retryPackage.id));
+});
+
+test("timed-out agent lifecycle retry package has default owned files", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    agent_lifecycle_pool: {
+      status: "blocked",
+      pool_id: "pool-main-child",
+      timed_out: 1,
+      latest_issue: "worker timed out",
+      timed_out_workers: [{ worker_id: "child-implementation-3" }]
+    }
+  });
+
+  const retryPackage = decision.next_work_packages.find((workPackage) => {
+    return workPackage.action === "retry_agent_worker";
+  });
+  const retrySubtask = decision.context_pack_seed.subtasks.find((subtask) => subtask.id === retryPackage.id);
+
+  assert.ok(retryPackage.owned_files.includes("src/workflow/agent-lifecycle-pool.js"));
+  assert.ok(retryPackage.owned_files.includes("src/workflow/autonomous-continuation.js"));
+  assert.deepEqual(retrySubtask.owned_files, retryPackage.owned_files);
+});
+
 test("reviewer scope split facts generate concrete shard work packages", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),

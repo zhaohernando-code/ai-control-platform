@@ -113,6 +113,29 @@ test("creates agent lifecycle facts from camel and snake case event types", () =
   assert.equal(spawned.validation_issues.length, 0);
 });
 
+test("creates heartbeat and timeout lifecycle facts", () => {
+  const heartbeat = createAgentLifecycleFact({
+    event_type: "worker_heartbeat",
+    pool_id: "pool-fact",
+    worker_id: "worker-1",
+    created_at: "2026-05-22T08:01:30.000Z"
+  });
+  const timeout = createAgentLifecycleFact({
+    event_type: "WorkerTimeout",
+    pool_id: "pool-fact",
+    worker_id: "worker-1",
+    status: "timeout",
+    issue: "worker stopped sending heartbeat",
+    created_at: "2026-05-22T08:02:30.000Z"
+  });
+
+  assert.equal(heartbeat.event_type, "WorkerHeartbeat");
+  assert.equal(timeout.event_type, "WorkerTimeout");
+  assert.equal(timeout.status, "fail");
+  assert.equal(heartbeat.validation_issues.length, 0);
+  assert.equal(timeout.validation_issues.length, 0);
+});
+
 test("records lifecycle fact into manifest and artifact ledger", () => {
   const result = recordAgentLifecycleFact(workflowState(), {
     event_type: "WorkerSpawned",
@@ -125,6 +148,54 @@ test("records lifecycle fact into manifest and artifact ledger", () => {
   assert.equal(result.workflow_state.manifest.events.at(-1).type, "WorkerSpawned");
   assert.equal(result.workflow_state.manifest.artifacts.at(-1).metadata.lifecycle_event, "WorkerSpawned");
   assert.equal(result.workflow_state.artifact_ledger.artifacts.at(-1).metadata.pool_id, "pool-record");
+});
+
+test("records heartbeat and timeout facts into summary readout", () => {
+  let state = workflowState();
+  for (const input of [
+    {
+      event_type: "WorkerSpawned",
+      pool_id: "pool-heartbeat",
+      worker_id: "worker-1",
+      created_at: "2026-05-22T08:00:00.000Z"
+    },
+    {
+      event_type: "WorkerHeartbeat",
+      pool_id: "pool-heartbeat",
+      worker_id: "worker-1",
+      created_at: "2026-05-22T08:01:00.000Z"
+    },
+    {
+      event_type: "WorkerHeartbeat",
+      pool_id: "pool-heartbeat",
+      worker_id: "worker-1",
+      created_at: "2026-05-22T08:02:00.000Z"
+    },
+    {
+      event_type: "WorkerTimeout",
+      pool_id: "pool-heartbeat",
+      worker_id: "worker-1",
+      status: "timeout",
+      issue: "silent worker exceeded threshold",
+      created_at: "2026-05-22T08:05:00.000Z"
+    }
+  ]) {
+    const result = recordAgentLifecycleFact(state, input);
+    assert.equal(result.status, "pass");
+    state = result.workflow_state;
+  }
+
+  assert.equal(state.manifest.events.at(-1).type, "WorkerTimeout");
+  assert.equal(state.manifest.artifacts.at(-1).metadata.lifecycle_event, "WorkerTimeout");
+  assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.worker_id, "worker-1");
+
+  const summary = summarizeAgentLifecyclePool(state.manifest, state.artifact_ledger);
+  assert.equal(summary.timed_out, 1);
+  assert.equal(summary.heartbeat_count, 2);
+  assert.equal(summary.latest_heartbeat_at, "2026-05-22T08:02:00.000Z");
+  assert.equal(summary.latest_timeout_at, "2026-05-22T08:05:00.000Z");
+  assert.match(summary.latest_issue, /silent worker/);
+  assert.equal(summary.timed_out_workers[0].worker_id, "worker-1");
 });
 
 test("cleanup latest pool records missing evaluation close and iteration close", () => {
@@ -149,6 +220,36 @@ test("cleanup latest pool records missing evaluation close and iteration close",
   ]);
   assert.equal(cleanup.after.status, "pass");
   assert.equal(cleanup.after.next_action, null);
+});
+
+test("cleanup records timeout for silent worker once when threshold is exceeded", () => {
+  let state = workflowState();
+  const spawned = recordAgentLifecycleFact(state, {
+    event_type: "WorkerSpawned",
+    pool_id: "pool-timeout",
+    worker_id: "worker-silent",
+    created_at: "2026-05-22T08:00:00.000Z"
+  });
+  state = spawned.workflow_state;
+
+  const cleanup = cleanupAgentLifecyclePool(state, {
+    now: "2026-05-22T08:05:00.000Z",
+    timeout_threshold_ms: 60_000
+  });
+
+  assert.equal(cleanup.status, "cleanup_required");
+  assert.equal(cleanup.facts.filter((fact) => fact.event_type === "WorkerTimeout").length, 1);
+  assert.equal(cleanup.after.timed_out, 1);
+  assert.equal(cleanup.after.latest_timeout_at, "2026-05-22T08:05:00.000Z");
+  assert.match(cleanup.after.latest_issue, /timed out/);
+
+  const secondCleanup = cleanupAgentLifecyclePool(cleanup.workflow_state, {
+    now: "2026-05-22T08:06:00.000Z",
+    timeout_threshold_ms: 60_000
+  });
+
+  assert.equal(secondCleanup.facts.filter((fact) => fact.event_type === "WorkerTimeout").length, 0);
+  assert.equal(secondCleanup.after.timed_out, 1);
 });
 
 test("cleanup latest pool closes open spawned workers without looping", () => {
