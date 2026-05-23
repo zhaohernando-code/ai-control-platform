@@ -568,6 +568,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Workbench next-action failures for unsupported inspect/resume actions must return schema-valid projection terminal evidence, not only an issue code."
+    },
+    {
+      "id": "headless-terminal-action-progress-not-recorded",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Headless projected loops that stop on inspect/wait terminal actions must record durable projected_action_progress evidence instead of returning only an in-memory stopped result."
     }
   ],
   "hardening_items": [
@@ -1433,6 +1440,14 @@
       "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; src/workflow/workbench-projection-schema.js; docs/examples/process-hardening-current.json",
       "regression_test": "workbench server fails closed for unsupported projected next action",
       "verification": "node --test test/workbench-server.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-terminal-action-progress-not-recorded",
+      "invariant": "Headless CLI projected next-action loops must record headless_projected_action_progress events and artifacts for stopped terminal actions, including terminal_action and terminal_reason, so continuation and workbench projection can distinguish intentional terminal stop from missing progress evidence.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop records terminal projected next-action stops",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

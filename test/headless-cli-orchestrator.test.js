@@ -412,6 +412,35 @@ test("headless CLI loop blocks projected next action without progress evidence",
   assert.ok(result.issues.some((item) => item.code === "projected_action_missing_progress_evidence"));
 });
 
+test("headless CLI loop records terminal projected next-action stops", () => {
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-terminal-projected",
+    created_at: "2026-05-23T02:00:45.000Z",
+    max_package_count: 1,
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    projected_next_action_readout: {
+      status: "pending",
+      action: "inspect_latest_driver",
+      reason: "latest driver needs inspection"
+    }
+  });
+
+  const progressEvent = result.last_result.workflow_state.manifest.events.find((event) => event.type === "headless_projected_action_progress");
+  const progressArtifact = result.last_result.workflow_state.artifact_ledger.artifacts.find((artifact) => artifact.metadata?.type === "headless_projected_action_progress");
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.iterations[0].projected_next_action_status, "stopped");
+  assert.equal(progressEvent.metadata.status, "stopped");
+  assert.equal(progressEvent.metadata.terminal_action, "inspect_latest_driver");
+  assert.equal(progressEvent.metadata.terminal_reason, "latest driver needs inspection");
+  assert.equal(progressArtifact.status, "pass");
+});
+
 test("headless CLI loop rejects nonlocal workbench next-action service URLs", () => {
   assert.throws(() => runHeadlessCliMainOrchestratorLoop({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,

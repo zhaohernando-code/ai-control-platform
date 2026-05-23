@@ -1086,13 +1086,16 @@ function workbenchNextActionRunnerFrom(options = {}) {
 }
 
 function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
-  const runner = projectedNextActionRunnerFrom(options);
-  if (!projectedNextActionMode(options) || !runner) {
+  if (!projectedNextActionMode(options)) {
     return {
       status: "not_configured",
       workflow_state: run.workflow_state,
       projection: run.projection
     };
+  }
+
+  if (normalizeString(options.workbench_base_url || options.workbenchBaseUrl)) {
+    localWorkbenchBaseUrl(options.workbench_base_url || options.workbenchBaseUrl);
   }
 
   let serviceProjection = null;
@@ -1114,6 +1117,14 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
       status: "stopped",
       action,
       reason: readout.reason || "projected next action is terminal or not ready",
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+  const runner = projectedNextActionRunnerFrom(options);
+  if (!runner) {
+    return {
+      status: "not_configured",
       workflow_state: run.workflow_state,
       projection: run.projection
     };
@@ -1170,7 +1181,7 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
 }
 
 function recordHeadlessProjectedActionProgress(workflowState = {}, projectedAction = {}, options = {}) {
-  if (projectedAction.status === "not_configured" || projectedAction.status === "stopped") {
+  if (projectedAction.status === "not_configured") {
     return {
       status: "not_configured",
       workflow_state: workflowState
@@ -1192,6 +1203,8 @@ function recordHeadlessProjectedActionProgress(workflowState = {}, projectedActi
       type: "headless_projected_action_progress",
       status: projectedAction.status,
       action: projectedAction.action || null,
+      terminal_action: projectedAction.status === "stopped" ? projectedAction.action || null : null,
+      terminal_reason: projectedAction.status === "stopped" ? projectedAction.reason || null : null,
       next_projection_id: projectedAction.next_projection_id || projectedAction.result?.result?.next_item?.id || projectedAction.result?.next_item?.id || null,
       has_workflow_state: isObject(projectedAction.workflow_state || projectedAction.workflowState),
       has_projection: isObject(projectedAction.projection),
