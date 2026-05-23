@@ -304,6 +304,39 @@ function defaultChildWorkerOutput(workPackage = {}, options = {}) {
   };
 }
 
+function mockChildWorkerAllowed(options = {}) {
+  return options.allow_mock_child_worker === true ||
+    options.allowMockChildWorker === true ||
+    normalizeToken(options.child_worker_mode || options.childWorkerMode) === "mock" ||
+    normalizeToken(options.child_worker_execution_profile || options.childWorkerExecutionProfile) === "mock";
+}
+
+function missingChildWorkerOutput(workPackage = {}) {
+  return {
+    status: "fail",
+    role: CHILD_WORKER_ROLE,
+    host: "platform_core",
+    changed_files: [],
+    test_results: [],
+    durable_state_updated: false,
+    process_hardening: { required: true, status: "pending" },
+    continuation_readiness: { ready: false },
+    self_evaluation: {
+      aligned: false,
+      drifted: false,
+      evidence_sufficient: false
+    },
+    blocker: `child worker execution evidence is required for ${workPackage.id || "work package"}`,
+    read_files: [],
+    next_minimal_patch_position: "headless_cli.child_worker_execution",
+    command_evidence: {
+      executor_configured: false,
+      mock_allowed: false,
+      reason: "headless main orchestrator must not use implicit mock child output"
+    }
+  };
+}
+
 function childOutputsByPackage(options = {}) {
   const outputs = options.child_worker_outputs || options.childWorkerOutputs || [];
   const byId = new Map();
@@ -592,17 +625,21 @@ function createHeadlessProviderExecutor(options = {}) {
   return ({ selected_work_packages: selectedWorkPackages, execution_plan: executionPlan }) => {
     const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
     const packageResults = asArray(selectedWorkPackages).map((workPackage) => {
-      const workerOutput = outputsById.get(normalizeString(workPackage.id)) ||
-        executeRealChildWorker(options.workflow_state || {}, workPackage, {
-          ...options,
-          acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
-            ?.routing_request?.context_pack?.acceptance_gates
-        }) ||
-        defaultChildWorkerOutput(workPackage, {
+      const explicitOutput = outputsById.get(normalizeString(workPackage.id));
+      const realOutput = explicitOutput ? null : executeRealChildWorker(options.workflow_state || {}, workPackage, {
           ...options,
           acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
             ?.routing_request?.context_pack?.acceptance_gates
         });
+      const workerOutput = explicitOutput ||
+        realOutput ||
+        (mockChildWorkerAllowed(options)
+          ? defaultChildWorkerOutput(workPackage, {
+              ...options,
+              acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
+                ?.routing_request?.context_pack?.acceptance_gates
+            })
+          : missingChildWorkerOutput(workPackage));
       const evaluation = evaluateHeadlessChildWorkerOutput(workPackage, workerOutput);
 
       return {

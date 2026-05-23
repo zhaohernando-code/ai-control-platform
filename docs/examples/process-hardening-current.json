@@ -631,6 +631,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Global-goal work package identity must survive context pack seed materialization into manifest/task_dag records; otherwise the next continuation cannot prove completed goals and repeatedly schedules the first pending global goal."
+    },
+    {
+      "id": "implicit-mock-child-worker-completes-global-goal",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Headless main orchestrator must not use an implicit built-in mock child worker to complete repository global-goal work packages; deterministic mock completion is allowed only when explicitly requested for tests or service trials."
     }
   ],
   "hardening_items": [
@@ -1568,6 +1575,14 @@
       "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/context-pack.js; src/workflow/global-goal-completion.js; test/autonomous-continuation.test.js; test/context-pack.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "global goal identity survives context pack materialization and drives the next continuation; work packages preserve global goal identity for durable continuation",
       "verification": "node --test test/autonomous-continuation.test.js test/context-pack.test.js test/run-manifest.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "implicit-mock-child-worker-completes-global-goal",
+      "invariant": "Headless CLI main orchestration must fail closed when no child_worker_output, child_worker_runner, child_worker_command, or explicit allow-mock-child-worker control is provided; the built-in deterministic child output can support tests and isolated service trials only after the caller makes mock execution explicit.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator blocks implicit mock child worker completion; run-headless-cli-orchestrator CLI exposes projected next-action workbench controls",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

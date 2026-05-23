@@ -27,6 +27,7 @@ function usage() {
     "  --child-worker-arg <arg>             Repeatable argument; supports {prompt_file}, {work_package_id}, {run_id}, {cycle_id}",
     "  --child-worker-timeout-ms <ms>       Child command timeout",
     "  --child-worker-output-path <path>    Optional structured JSON output path template",
+    "  --allow-mock-child-worker            Explicitly allow the built-in deterministic mock child worker",
     "  --default-child-provider-command <cmd>  Configured default child provider command",
     "  --default-child-provider-arg <arg>      Repeatable default provider argument",
     "  --child-worker-max-attempts <n>         Retry bound, capped at 3",
@@ -158,6 +159,7 @@ try {
     child_worker_split_retry: hasFlag("--child-worker-split-retry", args),
     child_worker_timeout_ms: childWorkerTimeoutMs,
     child_worker_output_path: childWorkerOutputPath,
+    allow_mock_child_worker: hasFlag("--allow-mock-child-worker", args),
     command_runner_kind: childWorkerCommand || defaultChildProviderCommand ? "codex_proxy_child_process" : undefined
   };
 

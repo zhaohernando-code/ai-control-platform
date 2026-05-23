@@ -149,7 +149,8 @@ test("headless CLI orchestrator runs one main_orchestrator cycle with bounded ch
   }, {
     cycle_id: "cycle-headless-cli",
     created_at: "2026-05-23T00:01:00.000Z",
-    max_package_count: 1
+    max_package_count: 1,
+    allow_mock_child_worker: true
   });
   const eventTypes = result.workflow_state.manifest.events.map((event) => event.type);
 
@@ -173,6 +174,25 @@ test("headless CLI orchestrator runs one main_orchestrator cycle with bounded ch
   assert.equal(result.projection.agent_lifecycle_pool.status, "pass");
   assert.equal(result.continuation.should_continue, true);
   assert.equal(result.must_continue, true);
+});
+
+test("headless CLI orchestrator blocks implicit mock child worker completion", () => {
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-implicit-mock-blocked",
+    created_at: "2026-05-23T00:01:15.000Z",
+    max_package_count: 1
+  });
+  const childOutput = result.child_run.package_results[0].completion_evidence.child_output;
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "child_worker_acceptance");
+  assert.ok(result.issues.some((item) => item.code === "package_result_not_pass"));
+  assert.equal(childOutput.command_evidence.reason, "headless main orchestrator must not use implicit mock child output");
+  assert.equal(result.hardening.finding.id, "headless-child-worker-acceptance-failed");
 });
 
 test("headless child worker acceptance checks host, owned files, tests, durable state, hardening, and continuation", () => {
@@ -301,6 +321,7 @@ test("headless CLI orchestrator persists workflow snapshots into projection hist
     cycle_id: "cycle-headless-persist",
     created_at: "2026-05-23T00:02:00.000Z",
     max_package_count: 1,
+    allow_mock_child_worker: true,
     projection_history_path: historyPath,
     snapshots_root: snapshotsRoot,
     snapshot_prefix: "headless-test"
@@ -329,6 +350,7 @@ test("headless CLI loop continues from persisted workflow state and snapshots ev
     created_at: "2026-05-23T00:02:30.000Z",
     max_package_count: 1,
     max_iterations: 2,
+    allow_mock_child_worker: true,
     projection_history_path: historyPath,
     snapshots_root: snapshotsRoot,
     snapshot_prefix: "headless-loop-test"
@@ -355,6 +377,7 @@ test("headless CLI loop can execute projected next_action_readout through an inj
     created_at: "2026-05-23T02:00:00.000Z",
     max_package_count: 1,
     max_iterations: 1,
+    allow_mock_child_worker: true,
     execution_strategy: "projected_next_action",
     projected_next_action_readout: {
       status: "ready",
@@ -398,6 +421,7 @@ test("headless CLI loop refreshes same service projection after in-place project
     created_at: "2026-05-23T02:00:15.000Z",
     max_package_count: 1,
     max_iterations: 2,
+    allow_mock_child_worker: true,
     execution_strategy: "projected_next_action",
     workbench_base_url: "http://127.0.0.1:1",
     workbench_projection_id: "same-service-projection",
@@ -440,6 +464,7 @@ test("headless CLI loop blocks projected next action without progress evidence",
     created_at: "2026-05-23T02:00:30.000Z",
     max_package_count: 1,
     max_iterations: 1,
+    allow_mock_child_worker: true,
     execution_strategy: "projected_next_action",
     projected_next_action_readout: {
       status: "ready",
@@ -466,6 +491,7 @@ test("headless CLI loop records terminal projected next-action stops", () => {
     created_at: "2026-05-23T02:00:45.000Z",
     max_package_count: 1,
     max_iterations: 1,
+    allow_mock_child_worker: true,
     execution_strategy: "projected_next_action",
     projected_next_action_readout: {
       status: "pending",
@@ -510,6 +536,7 @@ test("headless CLI loop blocks when configured service projection cannot be load
     created_at: "2026-05-23T10:40:00.000Z",
     max_package_count: 1,
     max_iterations: 1,
+    allow_mock_child_worker: true,
     execution_strategy: "projected_next_action",
     workbench_base_url: "http://127.0.0.1:9",
     workbench_projection_id: "missing"
@@ -533,6 +560,7 @@ test("headless snapshot ids stay within publisher-safe length", () => {
     cycle_id: "cycle-headless-cli-persistence-with-a-very-long-generated-cycle-identifier-01",
     created_at: "2026-05-23T00:02:45.000Z",
     max_package_count: 1,
+    allow_mock_child_worker: true,
     projection_history_path: historyPath,
     snapshots_root: snapshotsRoot,
     snapshot_prefix: "headless-cli-current"
@@ -654,7 +682,8 @@ test("run-headless-cli-orchestrator CLI writes replayable output", () => {
     "--cycle-id",
     "cycle-headless-cli-file",
     "--created-at",
-    "2026-05-23T00:03:00.000Z"
+    "2026-05-23T00:03:00.000Z",
+    "--allow-mock-child-worker"
   ], {
     cwd: process.cwd(),
     encoding: "utf8"
@@ -702,7 +731,8 @@ test("run-headless-cli-orchestrator CLI can persist a bounded loop to projection
     "--cycle-id",
     "cycle-headless-cli-loop",
     "--created-at",
-    "2026-05-23T00:03:30.000Z"
+    "2026-05-23T00:03:30.000Z",
+    "--allow-mock-child-worker"
   ], {
     cwd: process.cwd(),
     encoding: "utf8"
@@ -782,6 +812,7 @@ test("run-headless-cli-orchestrator CLI executes projected action through local 
       "cycle-headless-service",
       "--created-at",
       "2026-05-23T03:20:00.000Z",
+      "--allow-mock-child-worker",
       "--execution-strategy",
       "projected_next_action",
       "--workbench-base-url",
@@ -861,6 +892,7 @@ test("run-headless-cli-orchestrator CLI passes reviewer controls to projected se
       "cycle-headless-service-reviewer",
       "--created-at",
       "2026-05-23T04:30:00.000Z",
+      "--allow-mock-child-worker",
       "--execution-strategy",
       "projected_next_action",
       "--workbench-base-url",
@@ -949,6 +981,7 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
       "cycle-headless-service-reviewer-aggregate",
       "--created-at",
       "2026-05-23T04:45:00.000Z",
+      "--allow-mock-child-worker",
       "--execution-strategy",
       "projected_next_action",
       "--workbench-base-url",
@@ -1042,6 +1075,7 @@ test("run-headless-cli-orchestrator CLI follows service next projection into con
       "cycle-headless-service-projection-cursor",
       "--created-at",
       "2026-05-23T10:25:00.000Z",
+      "--allow-mock-child-worker",
       "--execution-strategy",
       "projected_next_action",
       "--workbench-base-url",
