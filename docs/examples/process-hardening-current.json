@@ -554,6 +554,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "After reviewer aggregate continuation, stale reviewer timeout/provider recovery facts and source workflow work_package counts must not poison the next context_pack_seed or scheduler-next-cycle validation."
+    },
+    {
+      "id": "headless-projected-loop-sticks-to-source-projection",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless projected loops must switch to the next projection id returned by create_context_pack_from_seed or scheduler enqueue actions, and action-specific controls must not leak reviewer profiles into context work package execution; otherwise they can repeatedly inspect the source projection or block executable work in the materialized child projection."
     }
   ],
   "hardening_items": [
@@ -1387,6 +1394,14 @@
       "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/project-status-continuation.js; src/workflow/reviewer-shard-runner.js; tools/workbench-server.mjs; tools/check-workbench-browser-events.mjs; test/autonomous-continuation.test.js; test/project-status-continuation.test.js; test/reviewer-shard-runner.test.js; test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/examples/process-hardening-current.json",
       "regression_test": "reviewer shard aggregate pass clears stale reviewer recovery artifacts; project status next work packages are durable continuation inputs; reviewer shard loop artifact prepares continuation input; workbench server runs approved mocked non-dry-run scheduler dispatch from profile",
       "verification": "node --test test/autonomous-continuation.test.js test/project-status-continuation.test.js test/reviewer-shard-runner.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-projected-loop-sticks-to-source-projection",
+      "invariant": "When a projected next-action returns next_item.id, headless CLI projected loops must use that id as the workbench projection id for subsequent service reads and next-action posts, so materialized context-pack cycles and enqueued scheduler cycles can execute their own ready work instead of repeatedly inspecting the source projection. Reviewer/scheduler execution controls must be action-scoped and must not be forwarded to run_context_work_packages unless a context-work-package-specific profile is explicitly configured.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json; docs/contracts/CODEX_PROXY_HANDOFF_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

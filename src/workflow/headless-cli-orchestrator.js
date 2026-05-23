@@ -1014,7 +1014,12 @@ function workbenchProjectionFrom(options = {}) {
   const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
   if (!baseValue) return null;
   const base = localWorkbenchBaseUrl(baseValue);
-  const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
+  const projectionId = normalizeString(
+    options.current_workbench_projection_id ||
+      options.currentWorkbenchProjectionId ||
+      options.workbench_projection_id ||
+      options.workbenchProjectionId
+  );
   const url = new URL("/api/workbench/projection", base);
   if (projectionId) url.searchParams.set("id", projectionId);
   return getJsonSync(url, {
@@ -1026,9 +1031,14 @@ function workbenchNextActionRunnerFrom(options = {}) {
   const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
   if (!baseValue) return null;
   const base = localWorkbenchBaseUrl(baseValue);
-  const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
   return ({ action, iteration }) => {
     const url = new URL("/api/workbench/next-action", base);
+    const projectionId = normalizeString(
+      options.current_workbench_projection_id ||
+        options.currentWorkbenchProjectionId ||
+        options.workbench_projection_id ||
+        options.workbenchProjectionId
+    );
     if (projectionId) url.searchParams.set("id", projectionId);
     const body = {
       expected_action: action,
@@ -1037,8 +1047,19 @@ function workbenchNextActionRunnerFrom(options = {}) {
       created_at: normalizeString(options.created_at || options.createdAt),
       iteration
     };
+    const reviewerOrSchedulerAction = new Set([
+      "run_reviewer_scope_shard",
+      "run_autonomous_scheduler_loop",
+      "resume_autonomous_scheduler_loop",
+      "enqueue_scheduler_next_cycle"
+    ]).has(action);
+    const contextExecutionProfile = options.context_work_package_execution_profile || options.contextWorkPackageExecutionProfile;
     for (const [target, source] of [
-      ["execution_profile", options.execution_profile || options.executionProfile],
+      ["execution_profile", action === "run_context_work_packages"
+        ? contextExecutionProfile
+        : reviewerOrSchedulerAction
+          ? (options.execution_profile || options.executionProfile)
+          : undefined],
       ["reviewer_mock_status", options.reviewer_mock_status || options.reviewerMockStatus],
       ["reviewer_mock_findings_json", options.reviewer_mock_findings_json || options.reviewerMockFindingsJson],
       ["max_external_reviewer_calls", options.max_external_reviewer_calls ?? options.maxExternalReviewerCalls],
@@ -1448,6 +1469,7 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
   const iterations = [];
   let currentInput = input;
   let lastResult = null;
+  let currentWorkbenchProjectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
   for (let index = 0; index < bounded.value; index += 1) {
     const sourceCycleId = currentInput?.workflow_state?.manifest?.cycle_id || currentInput?.workflowState?.manifest?.cycle_id;
     const cycleSeed = normalizeString(options.cycle_id || options.cycleId) || `${safeIdPart(sourceCycleId)}-headless`;
@@ -1461,7 +1483,10 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
     });
     lastResult = run;
     const persisted = run.snapshot_publish?.status === "created";
-    const projectedAction = executeHeadlessProjectedNextAction(run, options, index);
+    const iterationOptions = currentWorkbenchProjectionId
+      ? { ...options, current_workbench_projection_id: currentWorkbenchProjectionId }
+      : options;
+    const projectedAction = executeHeadlessProjectedNextAction(run, iterationOptions, index);
     iterations.push({
       index: index + 1,
       status: run.status,
@@ -1474,9 +1499,13 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
       projected_next_action_status: projectedAction.status,
       projected_next_action: projectedAction.action || null,
       projected_next_projection_id: projectedAction.next_projection_id || null,
+      workbench_projection_id: currentWorkbenchProjectionId || null,
       must_continue: run.must_continue === true,
       issue_count: asArray(run.issues).length
     });
+    if (projectedAction.next_projection_id) {
+      currentWorkbenchProjectionId = projectedAction.next_projection_id;
+    }
 
     if (run.status !== "pass") {
       return {

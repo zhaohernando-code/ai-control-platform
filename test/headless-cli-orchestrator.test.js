@@ -832,7 +832,7 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
       "headless-service-reviewer-aggregate",
       "--loop",
       "--max-iterations",
-      "3",
+      "5",
       "--cycle-id",
       "cycle-headless-service-reviewer-aggregate",
       "--created-at",
@@ -864,12 +864,17 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
     assert.deepEqual(output.iterations.map((iteration) => iteration.projected_next_action), [
       "run_reviewer_scope_shard",
       "run_reviewer_scope_shard",
-      "continue_after_reviewer_aggregate"
+      "continue_after_reviewer_aggregate",
+      "create_context_pack_from_seed",
+      "run_context_work_packages"
     ]);
-    assert.equal(progressActions.at(-1), "continue_after_reviewer_aggregate");
-    assert.equal(serviceState.manifest.events.at(-2).type, "reviewer_shard_aggregate");
-    assert.equal(serviceState.manifest.events.at(-1).type, "project_status_continuation");
-    assert.equal(output.last_result.projection.next_action_readout.action, "create_context_pack_from_seed");
+    assert.equal(output.iterations[3].workbench_projection_id, "headless-service-reviewer-aggregate");
+    assert.equal(output.iterations[4].workbench_projection_id, output.iterations[3].projected_next_projection_id);
+    assert.equal(progressActions.at(-1), "run_context_work_packages");
+    assert.ok(serviceState.manifest.events.some((event) => event.type === "reviewer_shard_aggregate"));
+    assert.ok(serviceState.manifest.events.some((event) => event.type === "project_status_continuation"));
+    assert.ok(serviceState.manifest.events.some((event) => event.type === "context_pack_cycle_materialized"));
+    assert.equal(output.last_result.projected_next_action.action, "run_context_work_packages");
   }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
 });
 
