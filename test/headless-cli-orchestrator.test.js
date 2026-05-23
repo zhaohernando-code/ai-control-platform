@@ -386,6 +386,50 @@ test("headless CLI loop can execute projected next_action_readout through an inj
   assert.ok(result.last_result.workflow_state.artifact_ledger.artifacts.some((artifact) => artifact.metadata?.type === "headless_projected_action_progress"));
 });
 
+test("headless CLI loop refreshes same service projection after in-place projected action writes", () => {
+  const actions = ["run_reviewer_scope_shard", "continue_after_reviewer_aggregate"];
+  let serviceReadCount = 0;
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-in-place-projection",
+    created_at: "2026-05-23T02:00:15.000Z",
+    max_package_count: 1,
+    max_iterations: 2,
+    execution_strategy: "projected_next_action",
+    workbench_base_url: "http://127.0.0.1:1",
+    workbench_projection_id: "same-service-projection",
+    projected_next_action_runner: ({ action, workflow_state }) => ({
+      status: "executed",
+      workflow_state,
+      projection: {
+        next_action_readout: {
+          status: "ready",
+          action: action === "run_reviewer_scope_shard"
+            ? "continue_after_reviewer_aggregate"
+            : "create_context_pack_from_seed"
+        }
+      }
+    }),
+    workbench_projection_loader: () => ({
+      next_action_readout: {
+        status: "ready",
+        action: actions[Math.min(serviceReadCount++, actions.length - 1)]
+      }
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(result.iterations.map((iteration) => iteration.projected_next_action), actions);
+  assert.deepEqual(result.iterations.map((iteration) => iteration.workbench_projection_id), [
+    "same-service-projection",
+    "same-service-projection"
+  ]);
+  assert.equal(result.last_result.projection.next_action_readout.action, "create_context_pack_from_seed");
+});
+
 test("headless CLI loop blocks projected next action without progress evidence", () => {
   const result = runHeadlessCliMainOrchestratorLoop({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,

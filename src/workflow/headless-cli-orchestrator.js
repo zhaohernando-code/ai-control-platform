@@ -1011,6 +1011,14 @@ function getJsonSync(url, options = {}) {
 }
 
 function workbenchProjectionFrom(options = {}) {
+  const loader = typeof options.workbench_projection_loader === "function"
+    ? options.workbench_projection_loader
+    : typeof options.workbenchProjectionLoader === "function"
+      ? options.workbenchProjectionLoader
+      : null;
+  if (loader) {
+    return loader(options);
+  }
   const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
   if (!baseValue) return null;
   const base = localWorkbenchBaseUrl(baseValue);
@@ -1193,14 +1201,20 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
     action,
     result,
     workflow_state: result.workflow_state || result.workflowState || run.workflow_state,
-    projection: result.projection || result.result?.projection || result.result?.current_projection || run.projection,
+    projection: result.projection || result.result?.projection || result.result?.current_projection || serviceProjection || run.projection,
     next_projection_id: result.result?.next_item?.id || result.next_item?.id || null
   };
 }
 
 function nextProjectedActionOptions(options = {}, projectedAction = {}) {
   const nextProjectionId = normalizeString(projectedAction.next_projection_id);
-  if (!nextProjectionId) return options;
+  if (!nextProjectionId) {
+    return {
+      ...options,
+      projected_next_action_readout: null,
+      projectedNextActionReadout: null
+    };
+  }
   return {
     ...options,
     workbench_projection_id: nextProjectionId,
