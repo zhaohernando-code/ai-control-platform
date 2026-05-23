@@ -1357,6 +1357,64 @@ test("workbench server runs reviewer shard through projected next action", async
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server continues after reviewer aggregate through projected next action", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-aggregate-"));
+  const inputPath = join(snapshotsRoot, "next-action-reviewer-aggregate-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "next-action-reviewer-aggregate",
+    items: [
+      {
+        id: "next-action-reviewer-aggregate",
+        label: "Next action reviewer aggregate",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    for (const createdAt of ["2026-05-22T02:53:00.000Z", "2026-05-22T02:53:20.000Z"]) {
+      const shard = await request(`${baseUrl}/api/workbench/next-action?id=next-action-reviewer-aggregate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          expected_action: "run_reviewer_scope_shard",
+          reviewer_mock_status: "pass",
+          created_at: createdAt
+        })
+      });
+      assert.equal(shard.status, 201);
+    }
+
+    const before = await request(`${baseUrl}/api/workbench/projection?id=next-action-reviewer-aggregate`);
+    assert.equal(before.json().next_action_readout.action, "continue_after_reviewer_aggregate");
+
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=next-action-reviewer-aggregate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "continue_after_reviewer_aggregate",
+        created_at: "2026-05-22T02:53:40.000Z"
+      })
+    });
+    const created = response.json();
+    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(created.status, "executed");
+    assert.equal(created.action, "continue_after_reviewer_aggregate");
+    assert.equal(created.result.status, "created");
+    assert.equal(created.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+    assert.equal(created.projection.next_action_readout.action, "create_context_pack_from_seed");
+    assert.equal(state.manifest.events.at(-2).type, "reviewer_shard_aggregate");
+    assert.equal(state.manifest.events.at(-1).type, "project_status_continuation");
+  }, { historyPath, snapshotsRoot });
+});
+
 test("workbench server executes retry_agent_worker through context work package next action", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-retry-agent-"));

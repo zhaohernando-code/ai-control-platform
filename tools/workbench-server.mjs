@@ -575,6 +575,7 @@ function appendEvent(eventsPath, event) {
 
 const SUPPORTED_NEXT_ACTIONS = new Set([
   "prepare_project_status_continuation",
+  "continue_after_reviewer_aggregate",
   "create_context_pack_from_seed",
   "run_context_work_packages",
   "enqueue_scheduler_next_cycle",
@@ -687,6 +688,13 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
   }
 
   if (action === "prepare_project_status_continuation") {
+    const result = await client.prepareProjectStatusContinuation(selectedId, {
+      created_at: input.created_at || input.createdAt
+    });
+    return { status: "executed", action, result };
+  }
+
+  if (action === "continue_after_reviewer_aggregate") {
     const result = await client.prepareProjectStatusContinuation(selectedId, {
       created_at: input.created_at || input.createdAt
     });

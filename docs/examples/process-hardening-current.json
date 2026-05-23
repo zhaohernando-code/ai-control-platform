@@ -540,6 +540,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Headless service-readout runs that execute projected next actions must pass reviewer execution controls to the workbench next-action API; reading the action alone is not enough to advance reviewer shard continuations."
+    },
+    {
+      "id": "headless-reviewer-aggregate-continuation-unsupported",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Projected headless loops must not stop after reviewer shard aggregate because continue_after_reviewer_aggregate is visible but unsupported by the service or headless allowlist."
     }
   ],
   "hardening_items": [
@@ -1357,6 +1364,14 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "run-headless-cli-orchestrator CLI passes reviewer controls to projected service actions",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-reviewer-aggregate-continuation-unsupported",
+      "invariant": "continue_after_reviewer_aggregate must be an allowlisted workbench/headless next action that records project_status_continuation from reviewer aggregate findings and then advances projection readout to create_context_pack_from_seed instead of repeating the aggregate action.",
+      "enforcement_target": "src/workflow/workbench-projection.js; tools/workbench-server.mjs; src/workflow/headless-cli-orchestrator.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/headless-cli-orchestrator.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection advances from reviewer aggregate continuation fact; workbench server continues after reviewer aggregate through projected next action; run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-server.test.js test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

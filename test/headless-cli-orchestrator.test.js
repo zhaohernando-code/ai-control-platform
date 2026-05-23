@@ -785,6 +785,94 @@ test("run-headless-cli-orchestrator CLI passes reviewer controls to projected se
   }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
 });
 
+test("run-headless-cli-orchestrator CLI continues after reviewer aggregate through service", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/headless-cli-service-reviewer-aggregate-"));
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const workflowStatePath = join(dir, "workflow-state.json");
+  const serviceHistoryPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const serviceInputPath = join(snapshotsRoot, "service-reviewer-aggregate-input.json");
+  const outputPath = join(dir, "headless-service-reviewer-aggregate-output.json");
+  const workflowOutputPath = join(dir, "headless-service-reviewer-aggregate-workflow.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+
+  mkdirSync(snapshotsRoot, { recursive: true });
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
+  writeFileSync(workflowStatePath, `${JSON.stringify(sourceWorkflowState(), null, 2)}\n`);
+  writeFileSync(serviceInputPath, `${JSON.stringify(workflowState, null, 2)}\n`);
+  writeFileSync(serviceHistoryPath, `${JSON.stringify({
+    version: "projection-history.v1",
+    latest: "headless-service-reviewer-aggregate",
+    items: [
+      {
+        id: "headless-service-reviewer-aggregate",
+        label: "Headless service reviewer aggregate",
+        input_path: relative(process.cwd(), serviceInputPath)
+      }
+    ]
+  }, null, 2)}\n`);
+
+  await withWorkbenchServer(async (baseUrl) => {
+    const result = spawnSync(process.execPath, [
+      "tools/run-headless-cli-orchestrator.mjs",
+      "--project-status",
+      projectStatusPath,
+      "--workflow-state",
+      workflowStatePath,
+      "--output",
+      outputPath,
+      "--workflow-output",
+      workflowOutputPath,
+      "--history-path",
+      join(dir, "headless-history.json"),
+      "--snapshots-root",
+      snapshotsRoot,
+      "--snapshot-prefix",
+      "headless-service-reviewer-aggregate",
+      "--loop",
+      "--max-iterations",
+      "3",
+      "--cycle-id",
+      "cycle-headless-service-reviewer-aggregate",
+      "--created-at",
+      "2026-05-23T04:45:00.000Z",
+      "--execution-strategy",
+      "projected_next_action",
+      "--workbench-base-url",
+      baseUrl,
+      "--workbench-projection-id",
+      "headless-service-reviewer-aggregate",
+      "--execution-profile",
+      "approved_mock_non_dry_run",
+      "--reviewer-mock-status",
+      "pass"
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    const workflowOutput = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
+    const serviceState = JSON.parse(readFileSync(serviceInputPath, "utf8"));
+    const progressActions = workflowOutput.manifest.events
+      .filter((event) => event.type === "headless_projected_action_progress")
+      .map((event) => event.metadata.action);
+
+    assert.equal(output.status, "pass");
+    assert.deepEqual(output.iterations.map((iteration) => iteration.projected_next_action), [
+      "run_reviewer_scope_shard",
+      "run_reviewer_scope_shard",
+      "continue_after_reviewer_aggregate"
+    ]);
+    assert.equal(progressActions.at(-1), "continue_after_reviewer_aggregate");
+    assert.equal(serviceState.manifest.events.at(-2).type, "reviewer_shard_aggregate");
+    assert.equal(serviceState.manifest.events.at(-1).type, "project_status_continuation");
+    assert.equal(output.last_result.projection.next_action_readout.action, "create_context_pack_from_seed");
+  }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
+});
+
 test("run-headless-cli-orchestrator CLI exposes projected next-action workbench controls", () => {
   const result = spawnSync(process.execPath, [
     "tools/run-headless-cli-orchestrator.mjs",

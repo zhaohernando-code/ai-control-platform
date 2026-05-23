@@ -854,46 +854,12 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   }
 
   const driver = operationsTimeline.latest_driver || null;
+  const latest = operationsTimeline.latest || null;
+  if (latest && (!driver || Number(latest.sequence || 0) > Number(driver.sequence || 0))) {
+    const latestReadout = nextActionReadoutFromLatestOperatorFact(latest, summaries);
+    if (latestReadout) return latestReadout;
+  }
   if (!driver) {
-    const latest = operationsTimeline.latest || null;
-    if (latest?.type === "project_status_continuation") {
-      return {
-        status: "ready",
-        action: "create_context_pack_from_seed",
-        source_event_id: latest.event_id,
-        source_type: latest.type,
-        target_projection_id: null,
-        reason: latest.summary,
-        requires_operator: false
-      };
-    }
-    if (
-      latest?.type === "context_pack_cycle_materialized" ||
-      latest?.type === "context_pack_cycle_created" ||
-      latest?.type === "context_work_packages_run"
-    ) {
-      const taskDag = summaries.taskDag || {};
-      if (Number(taskDag.dispatchable?.length || 0) > 0) {
-        return {
-          status: "ready",
-          action: "run_context_work_packages",
-          source_event_id: latest.event_id,
-          source_type: latest.type,
-          target_projection_id: null,
-          reason: latest.summary,
-          requires_operator: false
-        };
-      }
-      return {
-        status: "pending",
-        action: "inspect_context_work_packages",
-        source_event_id: latest.event_id,
-        source_type: latest.type,
-        target_projection_id: null,
-        reason: latest.summary,
-        requires_operator: false
-      };
-    }
     const globalGoals = summaries.globalGoalCompletion || {};
     if (Number(globalGoals.pending || 0) > 0 && globalGoals.status === "in_progress") {
       return {
@@ -1021,6 +987,48 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     reason: driver.summary,
     requires_operator: false
   };
+}
+
+function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
+  if (latest?.type === "project_status_continuation") {
+    return {
+      status: "ready",
+      action: "create_context_pack_from_seed",
+      source_event_id: latest.event_id,
+      source_type: latest.type,
+      target_projection_id: null,
+      reason: latest.summary,
+      requires_operator: false
+    };
+  }
+  if (
+    latest?.type === "context_pack_cycle_materialized" ||
+    latest?.type === "context_pack_cycle_created" ||
+    latest?.type === "context_work_packages_run"
+  ) {
+    const taskDag = summaries.taskDag || {};
+    if (Number(taskDag.dispatchable?.length || 0) > 0) {
+      return {
+        status: "ready",
+        action: "run_context_work_packages",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: latest.summary,
+        requires_operator: false
+      };
+    }
+    return {
+      status: "pending",
+      action: "inspect_context_work_packages",
+      source_event_id: latest.event_id,
+      source_type: latest.type,
+      target_projection_id: null,
+      reason: latest.summary,
+      requires_operator: false
+    };
+  }
+  return null;
 }
 
 export function validateWorkbenchProjectionInput(input = {}) {

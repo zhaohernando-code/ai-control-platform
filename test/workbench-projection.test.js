@@ -885,6 +885,78 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
   assert.equal(projection.one_screen.counters.reviewer_shards_completed, 2);
   assert.equal(mobile.shard_review.failed_finding_count, 1);
   assert.equal(mobile.shard_review.latest_executor_kind, "claude_deepseek");
+  assert.equal(projection.next_action_readout.action, "continue_after_reviewer_aggregate");
+});
+
+test("workbench projection advances from reviewer aggregate continuation fact", () => {
+  const input = baseInput();
+  const aggregateArtifact = {
+    id: "reviewer-shard-aggregate-run-projection-cycle-20260521-001",
+    type: "review",
+    status: "pass",
+    uri: "codex://reviewer-shard-aggregate/run-projection/cycle-20260521/reviewer-shard-aggregate-run-projection-cycle-20260521-001",
+    producer: "reviewer-shard-aggregate",
+    created_at: "2026-05-21T12:12:00.000Z",
+    metadata: {
+      type: "reviewer_shard_aggregate",
+      status: "pass",
+      total_shards: 2,
+      completed_shards: 2,
+      pending_shards: 0,
+      finding_count: 0,
+      failed_finding_count: 0,
+      merged_findings: []
+    }
+  };
+  const continuationArtifact = {
+    id: "project-status-continuation-after-reviewer-aggregate",
+    type: "evaluation",
+    status: "pass",
+    uri: "project-status://continuation/run-projection/cycle-20260521/project-status-continuation-after-reviewer-aggregate",
+    producer: "project-status-continuation",
+    created_at: "2026-05-21T12:13:00.000Z",
+    metadata: {
+      type: "project_status_continuation",
+      version: "project-status-continuation.v1",
+      status: "ready",
+      next_work_package_count: 1
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${aggregateArtifact.id}`,
+        type: "reviewer_shard_aggregate",
+        status: "pass",
+        artifact_id: aggregateArtifact.id,
+        created_at: aggregateArtifact.created_at,
+        metadata: aggregateArtifact.metadata
+      },
+      {
+        id: `event-${continuationArtifact.id}`,
+        type: "project_status_continuation",
+        status: "ready",
+        artifact_id: continuationArtifact.id,
+        created_at: continuationArtifact.created_at,
+        metadata: continuationArtifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, aggregateArtifact, continuationArtifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, aggregateArtifact, continuationArtifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.operations_timeline.latest_driver.type, "reviewer_shard_aggregate");
+  assert.equal(projection.operations_timeline.latest.type, "project_status_continuation");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "create_context_pack_from_seed");
+  assert.equal(projection.next_action_readout.source_type, "project_status_continuation");
 });
 
 test("workbench projection advances next reviewer shard after partial result", () => {

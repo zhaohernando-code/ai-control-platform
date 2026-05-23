@@ -26,6 +26,7 @@ export const MAX_HEADLESS_LOOP_ITERATIONS = 5;
 const HEADLESS_PROJECTED_NEXT_ACTIONS = new Set([
   "enqueue_scheduler_next_cycle",
   "prepare_project_status_continuation",
+  "continue_after_reviewer_aggregate",
   "create_context_pack_from_seed",
   "run_context_work_packages",
   "run_reviewer_scope_shard",
