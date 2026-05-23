@@ -78,6 +78,30 @@ function updateWorkPackages(workflowState = {}, selected = [], options = {}) {
   });
 }
 
+function isLocalBoundedExecution(options = {}) {
+  const executionMode = normalizeString(options.execution_mode || options.executionMode);
+  const executionProfile = normalizeString(options.execution_profile || options.executionProfile);
+  const executorKind = normalizeString(options.executor_kind || options.executorKind);
+  return (!executionMode || executionMode === "local_bounded") &&
+    (!executionProfile || executionProfile === "local_bounded") &&
+    (!executorKind || executorKind === "local_bounded");
+}
+
+function localBoundedCompletionIssues(selected = [], options = {}) {
+  if (!isLocalBoundedExecution(options)) return [];
+  if (options.allow_local_bounded_global_goal_completion === true ||
+    options.allowLocalBoundedGlobalGoalCompletion === true) {
+    return [];
+  }
+  return selected
+    .filter((node) => normalizeString(node.action) === "continue_global_goal" && normalizeString(node.id).startsWith("global-goal-"))
+    .map((node) => issue(
+      "local_bounded_global_goal_completion_requires_child_authority",
+      `local_bounded runner cannot complete broad global-goal work package without verified child-worker/provider completion authority: ${node.id}`,
+      `manifest.work_packages.${node.id}`
+    ));
+}
+
 export function adapterResultAllowsWorkPackageCompletion(adapterResult = {}) {
   return adapterResult?.allows_work_package_completion === true ||
     adapterResult?.completion_authority?.allows_work_package_completion === true;
@@ -171,6 +195,87 @@ function retryAgentPoolId(node = {}) {
   ) || "default";
 }
 
+function contextWorkerId(node = {}, index = 0) {
+  return `child-${safeIdPart(node.id || node.work_package_id || index + 1)}`;
+}
+
+function contextWorkerPoolId(workflowState = {}, options = {}) {
+  return normalizeString(options.pool_id || options.poolId) ||
+    `context-work-package-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`;
+}
+
+function nonRetryAgentFactsForNode(workflowState = {}, node = {}, index = 0, createdAt, options = {}) {
+  if (normalizeString(node.action) === "retry_agent_worker") return [];
+  const workerId = contextWorkerId(node, index);
+  const poolId = contextWorkerPoolId(workflowState, options);
+  const baseSource = {
+    action: normalizeString(node.action) || "run_context_work_package",
+    work_package_id: node.id,
+    owned_files: asArray(node.owned_files),
+    executor_kind: normalizeString(options.executor_kind || options.executorKind) || "local_bounded",
+    execution_mode: normalizeString(options.execution_mode || options.executionMode) || "local_bounded",
+    execution_profile: normalizeString(options.execution_profile || options.executionProfile) ||
+      normalizeString(options.executor_kind || options.executorKind) ||
+      "local_bounded"
+  };
+
+  return [
+    {
+      event_type: "WorkerSpawned",
+      pool_id: poolId,
+      worker_id: workerId,
+      status: "pass",
+      message: `${workerId} spawned for context work package ${node.id}`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "WorkerHeartbeat",
+      pool_id: poolId,
+      worker_id: workerId,
+      status: "pass",
+      message: `${workerId} heartbeat recorded before bounded execution`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "WorkerCompleted",
+      pool_id: poolId,
+      worker_id: workerId,
+      status: "pass",
+      message: `${workerId} completed context work package ${node.id}`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "WorkerEvaluation",
+      pool_id: poolId,
+      worker_id: workerId,
+      status: "pass",
+      message: `${workerId} evaluation recorded as pass`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "WorkerClosed",
+      pool_id: poolId,
+      worker_id: workerId,
+      status: "pass",
+      message: `${workerId} closed after evaluation`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "PoolIterationClosed",
+      pool_id: poolId,
+      status: "pass",
+      message: `agent lifecycle pool ${poolId} iteration closed after ${workerId}`,
+      created_at: createdAt,
+      source: baseSource
+    }
+  ];
+}
+
 function retryAgentFactsForNode(node = {}, createdAt) {
   if (normalizeString(node.action) !== "retry_agent_worker") return [];
   const workerId = retryAgentWorkerId(node);
@@ -242,29 +347,36 @@ function retryAgentFactsForNode(node = {}, createdAt) {
   ];
 }
 
-function recordRetryAgentWorkerFacts(workflowState = {}, selected = [], createdAt) {
+function recordExecutedWorkPackageLifecycleFacts(workflowState = {}, selected = [], createdAt, options = {}) {
   let nextState = workflowState;
   const facts = [];
+  const retryAgentWorkerFacts = [];
 
-  for (const node of selected) {
-    for (const factInput of retryAgentFactsForNode(node, createdAt)) {
+  for (const [index, node] of selected.entries()) {
+    const factInputs = normalizeString(node.action) === "retry_agent_worker"
+      ? retryAgentFactsForNode(node, createdAt)
+      : nonRetryAgentFactsForNode(workflowState, node, index, createdAt, options);
+    for (const factInput of factInputs) {
       const result = recordAgentLifecycleFact(nextState, factInput);
       if (result.status !== "pass") {
         return {
           status: "fail",
           issues: result.issues || [],
           facts,
+          retry_agent_worker_facts: retryAgentWorkerFacts,
           workflow_state: nextState
         };
       }
       nextState = result.workflow_state;
       facts.push(result.fact);
+      if (normalizeString(node.action) === "retry_agent_worker") retryAgentWorkerFacts.push(result.fact);
     }
   }
 
   return {
     status: "pass",
     facts,
+    retry_agent_worker_facts: retryAgentWorkerFacts,
     workflow_state: nextState
   };
 }
@@ -438,6 +550,25 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
       model_routing: adapterResult.execution_plan?.model_routing
     };
     eventMessage = "context work packages executed by provider/model-routed adapter";
+  } else {
+    const localCompletionIssues = localBoundedCompletionIssues(selected, executionOptions);
+    if (localCompletionIssues.length > 0) {
+      return {
+        status: "blocked",
+        phase: "local_bounded_completion_authority",
+        issues: localCompletionIssues,
+        dispatchable_count: dispatchable.length,
+        selected_work_package_ids: selected.map((node) => node.id),
+        fixed_development_mode_gate: fixedDevelopmentModeGate,
+        allows_work_package_completion: false,
+        completion_authority: {
+          allows_work_package_completion: false,
+          authority: "local_bounded_runner",
+          evidence_kind: "local_execution",
+          reason: "broad global-goal work packages require verified child-worker/provider completion authority"
+        }
+      };
+    }
   }
 
   const artifact = runArtifact(workflowState, executedNodes, executionOptions);
@@ -479,24 +610,25 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     artifact_ledger: artifactLedger,
     task_dag: nextWorkPackages
   };
-  const retryFactResult = recordRetryAgentWorkerFacts(workflow_state, executedNodes, createdAt);
-  if (retryFactResult.status !== "pass") {
+  const lifecycleFactResult = recordExecutedWorkPackageLifecycleFacts(workflow_state, executedNodes, createdAt, executionOptions);
+  if (lifecycleFactResult.status !== "pass") {
     return {
       status: "blocked",
-      phase: "retry_agent_worker_fact_recording",
-      issues: retryFactResult.issues,
+      phase: "agent_lifecycle_fact_recording",
+      issues: lifecycleFactResult.issues,
       dispatchable_count: dispatchable.length,
       selected_work_package_ids: selected.map((node) => node.id),
-      workflow_state: retryFactResult.workflow_state
+      workflow_state: lifecycleFactResult.workflow_state
     };
   }
-  workflow_state = retryFactResult.workflow_state;
+  workflow_state = lifecycleFactResult.workflow_state;
 
   return {
     status: "pass",
     phase: "context_work_packages_run",
     artifact,
-    retry_agent_worker_facts: retryFactResult.facts,
+    agent_lifecycle_facts: lifecycleFactResult.facts,
+    retry_agent_worker_facts: lifecycleFactResult.retry_agent_worker_facts,
     executed_work_packages: artifact.metadata.executed_work_packages,
     executed_count: artifact.metadata.executed_count,
     remaining_dispatchable_count: getDispatchableNodes(buildTaskDag(nextWorkPackages)).length,

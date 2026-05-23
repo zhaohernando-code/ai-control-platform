@@ -645,6 +645,34 @@
       "category": "observability",
       "severity": "p1",
       "message": "Workbench projections must expose when headless child-worker completion used an explicit deterministic mock; otherwise operators can confuse service-chain validation with real child-worker implementation evidence."
+    },
+    {
+      "id": "context-work-package-lifecycle-side-channel",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Ordinary context work package execution must not mark a child-worker package completed without durable WorkerSpawned, WorkerHeartbeat, WorkerCompleted, WorkerEvaluation, WorkerClosed, and PoolIterationClosed facts."
+    },
+    {
+      "id": "closed-lifecycle-hides-dispatchable-context-work",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A pass PoolIterationClosed driver must not advance to repository global-goal continuation while the current context cycle still has dispatchable work packages."
+    },
+    {
+      "id": "local-bounded-global-goal-false-completion",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Local bounded context work package execution must not mark broad continue_global_goal packages completed without verified child-worker or provider completion authority."
+    },
+    {
+      "id": "project-status-next-step-hidden-after-context-cycle",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "A closed context work package cycle must not become inspect_latest_driver while PROJECT_STATUS.next_step remains; project status continuation is still required."
     }
   ],
   "hardening_items": [
@@ -1598,6 +1626,38 @@
       "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "workbench projection exposes explicit mock child worker provenance",
       "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-work-package-lifecycle-side-channel",
+      "invariant": "Every successful non-retry context work package execution must record a closed child-worker lifecycle chain before the work package can be considered durably completed.",
+      "enforcement_target": "src/workflow/context-work-package-runner.js; test/context-work-package-runner.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "context work package runner records lifecycle facts for ordinary local bounded packages",
+      "verification": "node --test test/context-work-package-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closed-lifecycle-hides-dispatchable-context-work",
+      "invariant": "Closed child-worker lifecycle facts prove the previous pool iteration is complete, but projected next-action must continue run_context_work_packages before prepare_project_status_continuation whenever task_dag still has dispatchable context work packages.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "closed agent lifecycle drivers do not hide dispatchable context work packages",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "local-bounded-global-goal-false-completion",
+      "invariant": "Broad continue_global_goal work packages require verified child-worker/provider completion authority; local_bounded execution may close ordinary scoped packages but must fail closed before completing global-goal continuation packages by default.",
+      "enforcement_target": "src/workflow/context-work-package-runner.js; test/context-work-package-runner.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "context work package runner blocks local bounded global-goal completion without child authority",
+      "verification": "node --test test/context-work-package-runner.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "project-status-next-step-hidden-after-context-cycle",
+      "invariant": "When task_dag has no dispatchable packages and lifecycle cleanup is complete, PROJECT_STATUS.next_step still drives prepare_project_status_continuation even if global-goal completion for the current cycle is complete.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "closed agent lifecycle drivers continue when project status next step remains",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

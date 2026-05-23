@@ -6,11 +6,18 @@ export function currentSessionWorkflowState(options = {}) {
 
   const reviewerShardEventTypes = new Set([
     "reviewer_shard_result",
-    "reviewer_shard_aggregate"
+    "reviewer_shard_aggregate",
+    "project_status_continuation",
+    "context_pack_cycle_materialized",
+    "context_pack_cycle_created",
+    "context_work_packages_run"
   ]);
   const reviewerShardArtifactPrefixes = [
     "reviewer-shard-result",
-    "reviewer-shard-aggregate"
+    "reviewer-shard-aggregate",
+    "project-status-continuation",
+    "context-pack-cycle",
+    "context-work-packages-run"
   ];
 
   return {

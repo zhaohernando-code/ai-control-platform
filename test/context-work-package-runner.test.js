@@ -130,6 +130,49 @@ function workflowStateWithRetryAgentWorker() {
   };
 }
 
+function workflowStateWithGlobalGoalPackage() {
+  const contextPack = {
+    requirement_summary: "Continue repository global goal",
+    host: "platform_core",
+    target_project_id: "ai-control-platform",
+    non_goals: ["Do not fake broad global-goal completion"],
+    forbidden_actions: ["Do not complete without child-worker authority"],
+    owned_files: ["src/workflow/context-work-package-runner.js"],
+    acceptance_gates: ["node --test test/context-work-package-runner.test.js"],
+    rollback_conditions: ["global goal package completed without authority"],
+    subtasks: [
+      {
+        id: "global-goal-autonomous-scheduler-and-reviewer-loop",
+        title: "Continue scheduler/reviewer loop",
+        action: "continue_global_goal",
+        owned_files: ["src/workflow/context-work-package-runner.js"]
+      }
+    ]
+  };
+  const manifest = createRunManifest({
+    run_id: "run-global-goal",
+    cycle_id: "cycle-global-goal",
+    goal: contextPack.requirement_summary,
+    context_pack: contextPack,
+    events: [],
+    artifacts: [],
+    gate_results: [],
+    review_findings: [],
+    recovery_attempts: [],
+    created_at: "2026-05-24T03:30:00.000Z"
+  });
+
+  return {
+    manifest,
+    artifact_ledger: {
+      run_id: manifest.run_id,
+      cycle_id: manifest.cycle_id,
+      artifacts: []
+    },
+    task_dag: manifest.work_packages
+  };
+}
+
 test("context work package runner executes dispatchable packages and updates workflow state", () => {
   const workflowState = workflowStateWithContextCycle();
   const first = runContextWorkPackages(workflowState, {
@@ -141,21 +184,59 @@ test("context work package runner executes dispatchable packages and updates wor
   assert.equal(first.executed_count, 1);
   assert.equal(first.executed_work_packages[0].id, "runtime");
   assert.equal(first.workflow_state.manifest.work_packages.find((item) => item.id === "runtime").status, "completed");
-  assert.equal(first.workflow_state.manifest.events.at(-1).type, "context_work_packages_run");
+  assert.ok(first.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_run"));
   assert.equal(first.artifact.metadata.fixed_development_mode_gate.status, "pass");
   assert.equal(first.artifact.metadata.fixed_development_mode_gate.gate_id, "fixed-development-mode-dispatch");
   assert.equal(first.artifact.metadata.execution_profile, "local_bounded");
   assert.deepEqual(first.artifact.metadata.package_results, []);
   assert.equal(first.artifact.metadata.executor_provenance.executor_kind, "local_bounded");
+  assert.equal(first.agent_lifecycle_facts.length, 6);
   assert.equal(first.retry_agent_worker_facts.length, 0);
   assert.equal(first.workflow_state.manifest.gate_results.at(-1).gate_id, "fixed-development-mode-dispatch");
-  assert.equal(first.workflow_state.artifact_ledger.artifacts.at(-1).metadata.executed_work_package_ids[0], "runtime");
-  assert.ok(!first.workflow_state.manifest.events.some((event) => event.type === "WorkerSpawned"));
-  assert.ok(!first.workflow_state.manifest.events.some((event) => event.type === "WorkerHeartbeat"));
+  assert.equal(
+    first.workflow_state.artifact_ledger.artifacts
+      .find((artifact) => artifact.metadata?.type === "context_work_packages_run")
+      .metadata.executed_work_package_ids[0],
+    "runtime"
+  );
+  const eventTypes = first.workflow_state.manifest.events.map((event) => event.type);
+  assert.ok(eventTypes.includes("WorkerSpawned"));
+  assert.ok(eventTypes.includes("WorkerHeartbeat"));
+  assert.ok(eventTypes.includes("WorkerCompleted"));
+  assert.ok(eventTypes.includes("WorkerEvaluation"));
+  assert.ok(eventTypes.includes("WorkerClosed"));
+  assert.ok(eventTypes.includes("PoolIterationClosed"));
 
   const projection = createWorkbenchProjection(first.workflow_state);
-  assert.equal(projection.next_action_readout.action, "run_context_work_packages");
-  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.agent_lifecycle_pool.pool_id, "context-work-package-run-context-work-cycle-context-work");
+  assert.equal(projection.agent_lifecycle_pool.status, "pass");
+  assert.equal(projection.agent_lifecycle_pool.spawned, 1);
+  assert.equal(projection.agent_lifecycle_pool.heartbeat_count, 1);
+  assert.equal(projection.agent_lifecycle_pool.completed, 1);
+  assert.equal(projection.agent_lifecycle_pool.evaluated, 1);
+  assert.equal(projection.agent_lifecycle_pool.closed, 1);
+  assert.equal(projection.agent_lifecycle_pool.iteration_closed, true);
+  assert.equal(projection.agent_lifecycle_pool.open, 0);
+  assert.equal(projection.agent_lifecycle_pool.unevaluated, 0);
+  assert.equal(projection.agent_lifecycle_pool.unclosed, 0);
+  assert.notEqual(projection.next_action_readout.action, "cleanup_agent_lifecycle_pool");
+});
+
+test("context work package runner blocks local bounded global-goal completion without child authority", () => {
+  const workflowState = workflowStateWithGlobalGoalPackage();
+
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-24T03:31:00.000Z"
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "local_bounded_completion_authority");
+  assert.equal(result.allows_work_package_completion, false);
+  assert.ok(result.issues.some((item) => item.code === "local_bounded_global_goal_completion_requires_child_authority"));
+  assert.equal(workflowState.manifest.work_packages[0].status, undefined);
+  assert.equal(workflowState.manifest.events.some((event) => event.type === "WorkerSpawned"), false);
+  assert.equal(workflowState.artifact_ledger.artifacts.length, 0);
 });
 
 test("context work package runner executes retry_agent_worker by recording a closed lifecycle chain", () => {
@@ -170,6 +251,7 @@ test("context work package runner executes retry_agent_worker by recording a clo
   assert.equal(result.status, "pass");
   assert.equal(result.executed_count, 1);
   assert.equal(result.workflow_state.manifest.work_packages[0].status, "completed");
+  assert.equal(result.agent_lifecycle_facts.length, 6);
   assert.equal(result.retry_agent_worker_facts.length, 6);
   assert.ok(eventTypes.includes("WorkerSpawned"));
   assert.ok(eventTypes.includes("WorkerHeartbeat"));

@@ -673,7 +673,7 @@ console.log(${JSON.stringify(providerPassJson())});
   assert.equal(artifact.status, "pass");
   assert.equal(artifact.workflow_output_path, workflowOutputPath);
   assert.deepEqual(artifact.result.provider_attempts.map((attempt) => attempt.workflow_output_written), [false, true]);
-  assert.deepEqual(artifact.workflow_state.manifest.artifacts.at(-1).metadata.executor_provenance.provider_attempts, artifact.result.provider_attempts);
+  assert.deepEqual(latestContextRunArtifact(artifact.workflow_state).metadata.executor_provenance.provider_attempts, artifact.result.provider_attempts);
   assert.deepEqual(workflowAttempts, artifact.result.provider_attempts);
   assert.deepEqual(ledgerAttempts, artifact.result.provider_attempts);
   assert.equal(workflowAttempts[0].model, "deepseek-v4-pro[1m]");

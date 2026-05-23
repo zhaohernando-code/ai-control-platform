@@ -22,7 +22,7 @@
     "status": "pass",
     "issues": [],
     "work_package_count": 3,
-    "event_count": 8
+    "event_count": 10
   },
   "operator_events": {
     "status": "pass",
@@ -34,14 +34,14 @@
     "issues": []
   },
   "artifacts": {
-    "total": 8,
+    "total": 10,
     "by_type": {
       "test": 1,
       "review": 4,
-      "evaluation": 3
+      "evaluation": 5
     },
     "by_status": {
-      "pass": 7,
+      "pass": 9,
       "fail": 1
     }
   },
@@ -298,12 +298,13 @@
   },
   "operations_timeline": {
     "status": "available",
-    "count": 5,
+    "count": 7,
     "group_counts": {
-      "reviewer_recovery": 5
+      "reviewer_recovery": 5,
+      "scheduler": 2
     },
     "driver_count": 3,
-    "operator_only_count": 2,
+    "operator_only_count": 4,
     "latest_driver": {
       "sequence": 7,
       "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
@@ -316,15 +317,15 @@
       "summary": "pass / 0 failed"
     },
     "latest": {
-      "sequence": 7,
-      "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "type": "reviewer_shard_aggregate",
-      "group": "reviewer_recovery",
-      "next_action_role": "automation_driver",
-      "status": "pass",
-      "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "created_at": "2026-05-24T02:37:00.000Z",
-      "summary": "pass / 0 failed"
+      "sequence": 9,
+      "event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "type": "context_pack_cycle_materialized",
+      "group": "scheduler",
+      "next_action_role": "operator_observable",
+      "status": "ready",
+      "artifact_id": "context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "created_at": "2026-05-24T03:08:00.000Z",
+      "summary": "ready -> cycle-20260521-autonomous-platform-context-pack-1779557971220"
     },
     "items": [
       {
@@ -381,16 +382,38 @@
         "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
         "created_at": "2026-05-24T02:37:00.000Z",
         "summary": "pass / 0 failed"
+      },
+      {
+        "sequence": 8,
+        "event_id": "event-project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "project_status_continuation",
+        "group": "scheduler",
+        "next_action_role": "operator_observable",
+        "status": "ready",
+        "artifact_id": "project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-24T03:05:00.000Z",
+        "summary": "ready / 3 package(s)"
+      },
+      {
+        "sequence": 9,
+        "event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "context_pack_cycle_materialized",
+        "group": "scheduler",
+        "next_action_role": "operator_observable",
+        "status": "ready",
+        "artifact_id": "context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-24T03:08:00.000Z",
+        "summary": "ready -> cycle-20260521-autonomous-platform-context-pack-1779557971220"
       }
     ]
   },
   "next_action_readout": {
     "status": "ready",
-    "action": "continue_after_reviewer_aggregate",
-    "source_event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-    "source_type": "reviewer_shard_aggregate",
+    "action": "prepare_project_status_continuation",
+    "source_event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "source_type": "context_pack_cycle_materialized",
     "target_projection_id": null,
-    "reason": "pass / 0 failed",
+    "reason": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
     "requires_operator": false
   },
   "next_action_terminal": {
@@ -450,8 +473,8 @@
         "unknown": 0
       },
       "artifacts": {
-        "total": 8,
-        "passed": 7,
+        "total": 10,
+        "passed": 9,
         "failed": 1,
         "unknown": 0
       },
@@ -527,7 +550,7 @@
     ],
     "counters": {
       "work_packages": 3,
-      "artifacts": 8,
+      "artifacts": 10,
       "reviewer_findings": 1,
       "dispatchable_tasks": 0,
       "closeout_publishes": 0,
@@ -549,8 +572,8 @@
       "agent_lifecycle_heartbeats": 0,
       "global_goals_pending": 3,
       "global_goals_completed": 0,
-      "operation_events": 5
+      "operation_events": 7
     },
-    "recommended_action": "continue_after_reviewer_aggregate"
+    "recommended_action": "prepare_project_status_continuation"
   }
 }

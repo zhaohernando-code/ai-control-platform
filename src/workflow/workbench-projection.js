@@ -854,6 +854,7 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
 
 function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const lifecyclePool = summaries.agentLifecyclePool || {};
+  const projectStatus = summaries.projectStatus || {};
   if (lifecyclePool.next_action === "cleanup_agent_lifecycle_pool") {
     return {
       status: lifecyclePool.status === "blocked" ? "blocked" : "ready",
@@ -992,7 +993,23 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     };
   }
   if (AGENT_LIFECYCLE_EVENT_TYPES.has(driver.type)) {
+    const taskDag = summaries.taskDag || {};
     const globalGoals = summaries.globalGoalCompletion || {};
+    if (
+      lifecyclePool.status === "pass" &&
+      !lifecyclePool.next_action &&
+      Number(taskDag.dispatchable?.length || 0) > 0
+    ) {
+      return {
+        status: "ready",
+        action: "run_context_work_packages",
+        source_event_id: driver.event_id,
+        source_type: driver.type,
+        target_projection_id: null,
+        reason: "closed agent lifecycle pool still has dispatchable context work packages",
+        requires_operator: false
+      };
+    }
     if (
       lifecyclePool.status === "pass" &&
       !lifecyclePool.next_action &&
@@ -1006,6 +1023,21 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
         source_type: driver.type,
         target_projection_id: null,
         reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || driver.summary,
+        requires_operator: false
+      };
+    }
+    if (
+      lifecyclePool.status === "pass" &&
+      !lifecyclePool.next_action &&
+      normalizeString(projectStatus.next_step || projectStatus.nextStep)
+    ) {
+      return {
+        status: "ready",
+        action: "prepare_project_status_continuation",
+        source_event_id: driver.event_id,
+        source_type: driver.type,
+        target_projection_id: null,
+        reason: normalizeString(projectStatus.next_step || projectStatus.nextStep),
         requires_operator: false
       };
     }
@@ -1171,7 +1203,8 @@ export function createWorkbenchProjection(input = {}) {
     reviewerShardReview,
     agentLifecyclePool,
     globalGoalCompletion,
-    taskDag: dagSummary
+    taskDag: dagSummary,
+    projectStatus: input.project_status || input.projectStatus || {}
   });
   const operatorEventSummary = summarizeOperatorEvents(operatorApplication, operatorEventLedger);
   const status = maxStatus([

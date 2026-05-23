@@ -1,7 +1,23 @@
 {
   "version": "projection-history.v1",
-  "latest": "current-session",
+  "latest": "context-pack-cycle-next-step-1779557971220",
   "items": [
+    {
+      "id": "context-pack-cycle-next-step-1779557971220",
+      "label": "Context pack cycle next step",
+      "input_path": "docs/examples/context-pack-cycle-next-step-1779557971220.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-24T03:38:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "context-pack-cycle-current-session-1779557971220",
+      "label": "Context pack cycle from current-session",
+      "input_path": "docs/examples/context-pack-cycle-current-session-1779557971220.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-24T03:08:00.000Z",
+      "status": "rerun"
+    },
     {
       "id": "current-session",
       "label": "Current autonomous platform self-trial",
