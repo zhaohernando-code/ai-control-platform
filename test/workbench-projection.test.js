@@ -518,6 +518,65 @@ test("workbench projection exposes materialized context pack cycle as ready exec
   assert.equal(projection.next_action_readout.action, "run_context_work_packages");
 });
 
+test("workbench projection continues after context work packages when global goals remain", () => {
+  const input = baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      next_step: "Continue from completed context package.",
+      global_goals: [
+        {
+          id: "continuation-loop",
+          title: "Continuation loop",
+          status: "in_progress",
+          next_step: "Prepare the next project status continuation."
+        }
+      ]
+    }
+  });
+  const artifact = {
+    id: "context-work-packages-run-projection-cycle-20260521-001",
+    type: "evaluation",
+    status: "pass",
+    uri: "context-work-packages://run/run-projection/cycle-20260521/context-work-packages-run-projection-cycle-20260521-001",
+    producer: "context-work-package-runner",
+    created_at: "2026-05-21T00:05:00.000Z",
+    metadata: {
+      type: "context_work_packages_run",
+      status: "pass",
+      executed_count: 1
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "context_work_packages_run",
+        status: "pass",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+  input.task_dag = input.task_dag.map((node) => ({ ...node, status: "completed" }));
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.task_dag.dispatchable.length, 0);
+  assert.equal(projection.global_goal_completion.pending, 1);
+  assert.equal(projection.operations_timeline.latest.type, "context_work_packages_run");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "prepare_project_status_continuation");
+  assert.equal(projection.next_action_readout.source_type, "context_work_packages_run");
+});
+
 test("workbench projection exposes latest closeout publication evidence", () => {
   const input = baseInput();
   const artifact = {

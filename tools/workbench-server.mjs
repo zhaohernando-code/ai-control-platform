@@ -404,11 +404,15 @@ function createWorkbenchLoopClient(baseUrl) {
 }
 
 function contextWorkPackageRunOptions(input = {}) {
+  const executionProfile = input.context_work_package_execution_profile ||
+    input.contextWorkPackageExecutionProfile ||
+    input.execution_profile ||
+    input.executionProfile;
   return {
     max_package_count: input.max_package_count ?? input.maxPackageCount,
     created_at: input.created_at || input.createdAt,
     execution_mode: input.execution_mode || input.executionMode,
-    execution_profile: input.execution_profile || input.executionProfile,
+    execution_profile: executionProfile,
     executor_profile: input.executor_profile || input.executorProfile,
     executor_kind: input.executor_kind || input.executorKind,
     adapter_profile: input.adapter_profile || input.adapterProfile,
@@ -1960,19 +1964,57 @@ export function createWorkbenchServer(options = {}) {
   });
 }
 
-export function startWorkbenchServer({ port = 4180, host = "127.0.0.1" } = {}) {
-  const server = createWorkbenchServer();
+export function startWorkbenchServer({
+  port = 4180,
+  host = "127.0.0.1",
+  historyPath: configuredHistoryPath,
+  snapshotsRoot: configuredSnapshotsRoot,
+  eventsPath: configuredEventsPath,
+  projectStatusPath
+} = {}) {
+  const server = createWorkbenchServer({
+    historyPath: configuredHistoryPath,
+    snapshotsRoot: configuredSnapshotsRoot,
+    eventsPath: configuredEventsPath,
+    projectStatusPath
+  });
   server.listen(port, host);
   return server;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
-    console.log("Usage: node tools/workbench-server.mjs [port]");
+    console.log([
+      "Usage: node tools/workbench-server.mjs [port] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>]",
+      "",
+      "Starts the local workbench service. Paths are resolved from the platform repo root."
+    ].join("\n"));
     process.exit(0);
   }
-  const port = Number(process.env.PORT || process.argv[2] || 4180);
-  const server = startWorkbenchServer({ port });
+  const args = process.argv.slice(2);
+  const optionNames = new Set(["--history-path", "--snapshots-root", "--events-path", "--project-status"]);
+  const positionalArgs = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (optionNames.has(arg)) {
+      index += 1;
+      continue;
+    }
+    if (!arg.startsWith("-")) positionalArgs.push(arg);
+  }
+  const positionalPort = positionalArgs[0];
+  const optionValue = (name) => {
+    const index = args.indexOf(name);
+    return index >= 0 ? args[index + 1] : undefined;
+  };
+  const port = Number(process.env.PORT || positionalPort || 4180);
+  const server = startWorkbenchServer({
+    port,
+    historyPath: optionValue("--history-path"),
+    snapshotsRoot: optionValue("--snapshots-root"),
+    eventsPath: optionValue("--events-path"),
+    projectStatusPath: optionValue("--project-status")
+  });
   server.on("listening", () => {
     const address = server.address();
     console.log(`Workbench server listening on http://${address.address}:${address.port}`);

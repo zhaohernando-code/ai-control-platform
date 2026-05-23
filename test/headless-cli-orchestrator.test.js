@@ -427,6 +427,27 @@ test("headless CLI loop rejects nonlocal workbench next-action service URLs", ()
   }), /local http/);
 });
 
+test("headless CLI loop blocks when configured service projection cannot be loaded", () => {
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-missing-service-projection",
+    created_at: "2026-05-23T10:40:00.000Z",
+    max_package_count: 1,
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    workbench_base_url: "http://127.0.0.1:9",
+    workbench_projection_id: "missing"
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "headless_projected_next_action");
+  assert.equal(result.iterations[0].projected_next_action_status, "blocked");
+  assert.ok(result.issues.some((item) => item.code === "projected_service_projection_unavailable"));
+});
+
 test("headless snapshot ids stay within publisher-safe length", () => {
   const dir = mkdtempSync(join(tmpdir(), "headless-cli-long-snapshot-"));
   const historyPath = join(dir, "projection-history.json");
@@ -759,6 +780,8 @@ test("run-headless-cli-orchestrator CLI passes reviewer controls to projected se
       "headless-service-reviewer",
       "--execution-profile",
       "approved_mock_non_dry_run",
+      "--context-work-package-execution-profile",
+      "local_bounded",
       "--reviewer-mock-status",
       "pass"
     ], {
@@ -873,6 +896,98 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
   }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
 });
 
+test("run-headless-cli-orchestrator CLI follows service next projection into context work packages", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/headless-cli-service-projection-cursor-"));
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const workflowStatePath = join(dir, "workflow-state.json");
+  const serviceHistoryPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const serviceInputPath = join(snapshotsRoot, "service-projection-cursor-input.json");
+  const outputPath = join(dir, "headless-service-projection-cursor-output.json");
+  const workflowOutputPath = join(dir, "headless-service-projection-cursor-workflow.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+
+  mkdirSync(snapshotsRoot, { recursive: true });
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
+  writeFileSync(workflowStatePath, `${JSON.stringify(sourceWorkflowState(), null, 2)}\n`);
+  writeFileSync(serviceInputPath, `${JSON.stringify(workflowState, null, 2)}\n`);
+  writeFileSync(serviceHistoryPath, `${JSON.stringify({
+    version: "projection-history.v1",
+    latest: "headless-service-projection-cursor",
+    items: [
+      {
+        id: "headless-service-projection-cursor",
+        label: "Headless service projection cursor",
+        input_path: relative(process.cwd(), serviceInputPath)
+      }
+    ]
+  }, null, 2)}\n`);
+
+  await withWorkbenchServer(async (baseUrl) => {
+    const result = spawnSync(process.execPath, [
+      "tools/run-headless-cli-orchestrator.mjs",
+      "--project-status",
+      projectStatusPath,
+      "--workflow-state",
+      workflowStatePath,
+      "--output",
+      outputPath,
+      "--workflow-output",
+      workflowOutputPath,
+      "--history-path",
+      join(dir, "headless-history.json"),
+      "--snapshots-root",
+      snapshotsRoot,
+      "--snapshot-prefix",
+      "headless-service-projection-cursor",
+      "--loop",
+      "--max-iterations",
+      "5",
+      "--cycle-id",
+      "cycle-headless-service-projection-cursor",
+      "--created-at",
+      "2026-05-23T10:25:00.000Z",
+      "--execution-strategy",
+      "projected_next_action",
+      "--workbench-base-url",
+      baseUrl,
+      "--workbench-projection-id",
+      "headless-service-projection-cursor",
+      "--execution-profile",
+      "approved_mock_non_dry_run",
+      "--context-work-package-execution-profile",
+      "local_bounded",
+      "--reviewer-mock-status",
+      "pass"
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    const serviceHistory = JSON.parse(readFileSync(serviceHistoryPath, "utf8"));
+    const nextItem = serviceHistory.items.find((item) => item.id.startsWith("context-pack-cycle-headless-service-projection-cursor-"));
+    assert.ok(nextItem, "context pack cycle snapshot must be published into service history");
+    const nextState = JSON.parse(readFileSync(join(process.cwd(), nextItem.input_path), "utf8"));
+    const nextEventTypes = nextState.manifest.events.map((event) => event.type);
+
+    assert.equal(output.status, "pass");
+    assert.deepEqual(output.iterations.map((iteration) => iteration.projected_next_action), [
+      "run_reviewer_scope_shard",
+      "run_reviewer_scope_shard",
+      "continue_after_reviewer_aggregate",
+      "create_context_pack_from_seed",
+      "run_context_work_packages"
+    ]);
+    assert.ok(output.iterations[3].projected_next_projection_id);
+    assert.equal(output.iterations[4].projected_next_action, "run_context_work_packages");
+    assert.ok(nextEventTypes.includes("context_work_packages_run"));
+    assert.equal(nextState.manifest.work_packages[0].status, "completed");
+  }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
+});
+
 test("run-headless-cli-orchestrator CLI exposes projected next-action workbench controls", () => {
   const result = spawnSync(process.execPath, [
     "tools/run-headless-cli-orchestrator.mjs",
@@ -887,5 +1002,6 @@ test("run-headless-cli-orchestrator CLI exposes projected next-action workbench 
   assert.match(result.stdout, /--workbench-base-url/);
   assert.match(result.stdout, /--workbench-projection-id/);
   assert.match(result.stdout, /--projected-next-action/);
+  assert.match(result.stdout, /--context-work-package-execution-profile/);
   assert.match(result.stdout, /--reviewer-mock-status/);
 });

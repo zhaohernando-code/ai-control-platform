@@ -1026,9 +1026,9 @@ function workbenchNextActionRunnerFrom(options = {}) {
   const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
   if (!baseValue) return null;
   const base = localWorkbenchBaseUrl(baseValue);
-  const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
   return ({ action, iteration }) => {
     const url = new URL("/api/workbench/next-action", base);
+    const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
     if (projectionId) url.searchParams.set("id", projectionId);
     const body = {
       expected_action: action,
@@ -1039,6 +1039,10 @@ function workbenchNextActionRunnerFrom(options = {}) {
     };
     for (const [target, source] of [
       ["execution_profile", options.execution_profile || options.executionProfile],
+      [
+        "context_work_package_execution_profile",
+        options.context_work_package_execution_profile || options.contextWorkPackageExecutionProfile
+      ],
       ["reviewer_mock_status", options.reviewer_mock_status || options.reviewerMockStatus],
       ["reviewer_mock_findings_json", options.reviewer_mock_findings_json || options.reviewerMockFindingsJson],
       ["max_external_reviewer_calls", options.max_external_reviewer_calls ?? options.maxExternalReviewerCalls],
@@ -1078,8 +1082,22 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
   if (!options.projected_next_action_readout && !options.projectedNextActionReadout) {
     try {
       serviceProjection = workbenchProjectionFrom(options);
-    } catch {
-      serviceProjection = null;
+    } catch (error) {
+      if (normalizeString(options.workbench_base_url || options.workbenchBaseUrl)) {
+        return {
+          status: "blocked",
+          action: null,
+          issues: [
+            issue(
+              "projected_service_projection_unavailable",
+              error.message,
+              "workbench_projection"
+            )
+          ],
+          workflow_state: run.workflow_state,
+          projection: run.projection
+        };
+      }
     }
   }
   const readout = options.projected_next_action_readout ||
@@ -1145,6 +1163,18 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
     workflow_state: result.workflow_state || result.workflowState || run.workflow_state,
     projection: result.projection || result.result?.projection || result.result?.current_projection || run.projection,
     next_projection_id: result.result?.next_item?.id || result.next_item?.id || null
+  };
+}
+
+function nextProjectedActionOptions(options = {}, projectedAction = {}) {
+  const nextProjectionId = normalizeString(projectedAction.next_projection_id);
+  if (!nextProjectionId) return options;
+  return {
+    ...options,
+    workbench_projection_id: nextProjectionId,
+    workbenchProjectionId: nextProjectionId,
+    projected_next_action_readout: null,
+    projectedNextActionReadout: null
   };
 }
 
@@ -1447,21 +1477,22 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
 
   const iterations = [];
   let currentInput = input;
+  let loopOptions = { ...options };
   let lastResult = null;
   for (let index = 0; index < bounded.value; index += 1) {
     const sourceCycleId = currentInput?.workflow_state?.manifest?.cycle_id || currentInput?.workflowState?.manifest?.cycle_id;
     const cycleSeed = normalizeString(options.cycle_id || options.cycleId) || `${safeIdPart(sourceCycleId)}-headless`;
     const run = runHeadlessCliMainOrchestrator(currentInput, {
-      ...options,
+      ...loopOptions,
       cycle_id: `${safeIdPart(cycleSeed)}-${String(index + 1).padStart(2, "0")}`,
-      snapshot_id: normalizeString(options.snapshot_id || options.snapshotId)
-        ? `${safeIdPart(options.snapshot_id || options.snapshotId)}-${String(index + 1).padStart(2, "0")}`
+      snapshot_id: normalizeString(loopOptions.snapshot_id || loopOptions.snapshotId)
+        ? `${safeIdPart(loopOptions.snapshot_id || loopOptions.snapshotId)}-${String(index + 1).padStart(2, "0")}`
         : "",
-      snapshot_prefix: normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-loop"
+      snapshot_prefix: normalizeString(loopOptions.snapshot_prefix || loopOptions.snapshotPrefix) || "headless-loop"
     });
     lastResult = run;
     const persisted = run.snapshot_publish?.status === "created";
-    const projectedAction = executeHeadlessProjectedNextAction(run, options, index);
+    const projectedAction = executeHeadlessProjectedNextAction(run, loopOptions, index);
     iterations.push({
       index: index + 1,
       status: run.status,
@@ -1513,7 +1544,7 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
       const progress = recordHeadlessProjectedActionProgress(
         projectedAction.workflow_state || run.workflow_state,
         projectedAction,
-        options
+        loopOptions
       );
       if (progress.status === "pass") {
         projectedAction.workflow_state = progress.workflow_state;
@@ -1524,6 +1555,7 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
         workflow_state: projectedAction.workflow_state || run.workflow_state,
         projection: projectedAction.projection || run.projection
       };
+      loopOptions = nextProjectedActionOptions(loopOptions, projectedAction);
     }
     if (!run.must_continue) {
       return {

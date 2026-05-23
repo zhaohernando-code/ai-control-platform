@@ -1018,6 +1018,18 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
         requires_operator: false
       };
     }
+    const globalGoals = summaries.globalGoalCompletion || {};
+    if (Number(globalGoals.pending || 0) > 0 && globalGoals.status === "in_progress") {
+      return {
+        status: "ready",
+        action: "prepare_project_status_continuation",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || "repository global goals remain pending",
+        requires_operator: false
+      };
+    }
     return {
       status: "pending",
       action: "inspect_context_work_packages",

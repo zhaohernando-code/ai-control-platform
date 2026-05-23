@@ -2631,3 +2631,87 @@ test("workbench server rejects malformed operator event json", async () => {
     assert.equal(response.json().error, "invalid json");
   }, { eventsPath });
 });
+
+test("workbench server CLI honors isolated history snapshots and events paths", async () => {
+  const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-server-cli-isolated-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const eventsPath = join(dir, "operator-events.json");
+  const defaultHistoryBefore = readFileSync("docs/examples/projection-history.json", "utf8");
+  const defaultEventsBefore = readFileSync("docs/examples/operator-events.json", "utf8");
+
+  mkdirSync(snapshotsRoot, { recursive: true });
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "cli-isolated",
+    items: [
+      {
+        id: "cli-isolated",
+        label: "CLI isolated",
+        input_path: "docs/examples/current-session-workbench-input.json"
+      }
+    ]
+  }, null, 2));
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }, null, 2));
+
+  const server = spawn(process.execPath, [
+    "tools/workbench-server.mjs",
+    "--history-path",
+    historyPath,
+    "--snapshots-root",
+    snapshotsRoot,
+    "--events-path",
+    eventsPath
+  ], {
+    cwd: process.cwd(),
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  let stderr = "";
+  server.stderr.on("data", (chunk) => {
+    stderr += chunk.toString();
+  });
+  const baseUrl = await new Promise((resolveUrl, rejectUrl) => {
+    server.stdout.on("data", (chunk) => {
+      const line = chunk.toString().split(/\r?\n/).find((entry) => entry.includes("http://"));
+      if (line) resolveUrl(line.match(/http:\/\/[^\s]+/)?.[0]);
+    });
+    server.once("exit", (code) => rejectUrl(new Error(`workbench server exited before listening: ${code}\n${stderr}`)));
+    server.once("error", rejectUrl);
+  });
+
+  try {
+    const eventResponse = await request(`${baseUrl}/api/workbench/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "validate",
+        run_id: "run-cli-isolated",
+        cycle_id: "cycle-cli-isolated",
+        created_at: "2026-05-23T10:30:00.000Z"
+      })
+    });
+    const snapshotResponse = await request(`${baseUrl}/api/workbench/snapshots`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "cli-isolated-snapshot",
+        input: JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8")),
+        label: "CLI isolated snapshot"
+      })
+    });
+    const isolatedEvents = JSON.parse(readFileSync(eventsPath, "utf8"));
+    const isolatedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
+
+    assert.equal(eventResponse.status, 201);
+    assert.equal(snapshotResponse.status, 201);
+    assert.equal(isolatedEvents.events.length, 1);
+    assert.equal(isolatedHistory.latest, "cli-isolated-snapshot");
+    assert.equal(readFileSync("docs/examples/projection-history.json", "utf8"), defaultHistoryBefore);
+    assert.equal(readFileSync("docs/examples/operator-events.json", "utf8"), defaultEventsBefore);
+  } finally {
+    if (server.exitCode === null) {
+      server.kill();
+      await once(server, "exit");
+    }
+  }
+});

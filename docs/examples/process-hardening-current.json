@@ -554,6 +554,34 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "After reviewer aggregate continuation, stale reviewer timeout/provider recovery facts and source workflow work_package counts must not poison the next context_pack_seed or scheduler-next-cycle validation."
+    },
+    {
+      "id": "headless-service-projection-cursor-stale",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless projected next-action loops must follow service-returned next_item.id after create_context_pack_from_seed; otherwise they keep executing the stale projection and never reach run_context_work_packages."
+    },
+    {
+      "id": "workbench-server-cli-isolation-not-wired",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Workbench server CLI isolation flags must configure the actual service history, snapshot, and event paths; accepting flags while writing default fixtures is false isolation."
+    },
+    {
+      "id": "headless-service-projection-unavailable-fallback",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Headless projected_next_action mode must not silently fall back to local projection readout when the configured workbench service projection cannot be loaded."
+    },
+    {
+      "id": "context-work-packages-complete-hides-global-continuation",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "After run_context_work_packages completes all dispatchable packages, workbench next_action_readout must continue from PROJECT_STATUS/global goals instead of stopping at inspect_context_work_packages while global goals remain pending."
     }
   ],
   "hardening_items": [
@@ -1387,6 +1415,38 @@
       "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/project-status-continuation.js; src/workflow/reviewer-shard-runner.js; tools/workbench-server.mjs; tools/check-workbench-browser-events.mjs; test/autonomous-continuation.test.js; test/project-status-continuation.test.js; test/reviewer-shard-runner.test.js; test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/examples/process-hardening-current.json",
       "regression_test": "reviewer shard aggregate pass clears stale reviewer recovery artifacts; project status next work packages are durable continuation inputs; reviewer shard loop artifact prepares continuation input; workbench server runs approved mocked non-dry-run scheduler dispatch from profile",
       "verification": "node --test test/autonomous-continuation.test.js test/project-status-continuation.test.js test/reviewer-shard-runner.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-service-projection-cursor-stale",
+      "invariant": "When headless projected next-action execution receives a service next_item.id, subsequent loop iterations must use that projection id and clear explicit readout overrides so create_context_pack_from_seed can advance into run_context_work_packages instead of repeating the source projection.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "run-headless-cli-orchestrator CLI follows service next projection into context work packages",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "workbench-server-cli-isolation-not-wired",
+      "invariant": "Workbench server CLI startup must parse and pass --history-path, --snapshots-root, --events-path, and --project-status into createWorkbenchServer; isolated service trials must not mutate docs/examples fixtures unless explicitly configured to use them.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server CLI honors isolated history snapshots and events paths",
+      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-service-projection-unavailable-fallback",
+      "invariant": "When execution_strategy=projected_next_action and workbench_base_url is configured, service projection fetch failures must block the headless loop with durable issues instead of executing or stopping from a local fallback projection.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop blocks when configured service projection cannot be loaded",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-work-packages-complete-hides-global-continuation",
+      "invariant": "A completed context_work_packages_run with no dispatchable task_dag entries must recommend prepare_project_status_continuation whenever repository global goals remain in_progress; inspect_context_work_packages is only acceptable when no durable continuation source remains.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection continues after context work packages when global goals remain",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
