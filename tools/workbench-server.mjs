@@ -1960,19 +1960,33 @@ export function createWorkbenchServer(options = {}) {
   });
 }
 
-export function startWorkbenchServer({ port = 4180, host = "127.0.0.1" } = {}) {
-  const server = createWorkbenchServer();
+function valueAfter(flag, args = process.argv.slice(2)) {
+  const index = args.indexOf(flag);
+  return index >= 0 ? args[index + 1] : "";
+}
+
+export function startWorkbenchServer({ port = 4180, host = "127.0.0.1", historyPath: configuredHistoryPath, snapshotsRoot: configuredSnapshotsRoot, eventsPath: configuredEventsPath } = {}) {
+  const server = createWorkbenchServer({
+    historyPath: configuredHistoryPath,
+    snapshotsRoot: configuredSnapshotsRoot,
+    eventsPath: configuredEventsPath
+  });
   server.listen(port, host);
   return server;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
-    console.log("Usage: node tools/workbench-server.mjs [port]");
+    console.log("Usage: node tools/workbench-server.mjs [port] [--history-path path] [--snapshots-root path] [--events-path path]");
     process.exit(0);
   }
   const port = Number(process.env.PORT || process.argv[2] || 4180);
-  const server = startWorkbenchServer({ port });
+  const server = startWorkbenchServer({
+    port,
+    historyPath: valueAfter("--history-path"),
+    snapshotsRoot: valueAfter("--snapshots-root"),
+    eventsPath: valueAfter("--events-path")
+  });
   server.on("listening", () => {
     const address = server.address();
     console.log(`Workbench server listening on http://${address.address}:${address.port}`);

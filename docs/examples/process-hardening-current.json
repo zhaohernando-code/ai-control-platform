@@ -575,6 +575,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Headless projected loops that stop on inspect/wait terminal actions must record durable projected_action_progress evidence instead of returning only an in-memory stopped result."
+    },
+    {
+      "id": "workbench-service-trial-fixture-pollution",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Headless service-readout trials must not write runtime reviewer/context facts into committed docs/examples fixtures; the workbench server CLI needs explicit isolated history, snapshot, and event paths."
     }
   ],
   "hardening_items": [
@@ -1448,6 +1455,14 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI loop records terminal projected next-action stops",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "workbench-service-trial-fixture-pollution",
+      "invariant": "Workbench service CLI runs used by headless service-readout trials must accept explicit history_path, snapshots_root, and events_path so projected next-action execution can run against isolated durable state instead of mutating committed docs/examples fixtures.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server CLI can start with isolated history and snapshot roots",
+      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

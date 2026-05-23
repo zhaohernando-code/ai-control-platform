@@ -79,6 +79,36 @@ function runNode(args, options = {}) {
   });
 }
 
+function waitForOutput(child, pattern) {
+  return new Promise((resolveWait, reject) => {
+    let stdout = "";
+    let stderr = "";
+    const timeout = setTimeout(() => {
+      reject(new Error(`timed out waiting for ${pattern}: ${stdout}${stderr}`));
+    }, 5000);
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+      if (pattern.test(stdout)) {
+        clearTimeout(timeout);
+        resolveWait(stdout);
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on("exit", (status) => {
+      if (status !== null && !pattern.test(stdout)) {
+        clearTimeout(timeout);
+        reject(new Error(`server exited before readiness: ${status} ${stdout}${stderr}`));
+      }
+    });
+  });
+}
+
 function providerContextWorkPackageWorkflowState() {
   const workPackages = [
     {
@@ -206,6 +236,53 @@ test("workbench server returns latest projection", async () => {
     assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
     assert.equal(projection.reviewer_scope_split.shard_count, 2);
   });
+});
+
+test("workbench server CLI can start with isolated history and snapshot roots", async () => {
+  const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-server-cli-isolated-"));
+  const snapshotsRoot = join(dir, "snapshots");
+  const eventsPath = join(dir, "operator-events.json");
+  const inputPath = join(snapshotsRoot, "input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  mkdirSync(snapshotsRoot, { recursive: true });
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "isolated",
+    items: [{
+      id: "isolated",
+      label: "Isolated",
+      input_path: relative(process.cwd(), inputPath)
+    }]
+  }, null, 2));
+
+  const child = spawn(process.execPath, [
+    "tools/workbench-server.mjs",
+    "0",
+    "--history-path",
+    historyPath,
+    "--snapshots-root",
+    snapshotsRoot,
+    "--events-path",
+    eventsPath
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  try {
+    const ready = await waitForOutput(child, /Workbench server listening on http:\/\/127\.0\.0\.1:\d+/);
+    const port = ready.match(/:(\d+)/)?.[1];
+    const response = await request(`http://127.0.0.1:${port}/api/workbench/projection?id=isolated`);
+    assert.equal(response.status, 200);
+    assert.equal(response.json().run_id, workflowState.manifest.run_id);
+  } finally {
+    child.kill();
+    await once(child, "close").catch(() => {});
+  }
 });
 
 test("workbench server builds latest projection from workflow state input", async () => {
