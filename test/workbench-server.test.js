@@ -14,6 +14,7 @@ import {
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
+import { assertWorkbenchProjectionSchema } from "../src/workflow/workbench-projection-schema.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
 mkdirSync("tmp", { recursive: true });
@@ -1840,6 +1841,10 @@ test("workbench server fails closed for unsupported projected next action", asyn
 
     assert.equal(response.status, 409);
     assert.equal(rejected.next_action_readout.action, "inspect_resume_target");
+    assert.equal(rejected.projection.next_action_terminal.status, "ready");
+    assert.equal(rejected.projection.next_action_terminal.terminal_action, null);
+    assert.equal(rejected.projection.next_action_terminal.terminal_reason, null);
+    assert.equal(assertWorkbenchProjectionSchema(rejected.projection).status, "pass");
     assert.equal(rejected.issues[0].code, "unsupported_projected_next_action");
   }, { historyPath, snapshotsRoot });
 });

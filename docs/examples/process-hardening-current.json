@@ -561,6 +561,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Headless projected loops must switch to the next projection id returned by create_context_pack_from_seed or scheduler enqueue actions, and action-specific controls must not leak reviewer profiles into context work package execution; otherwise they can repeatedly inspect the source projection or block executable work in the materialized child projection."
+    },
+    {
+      "id": "unsupported-next-action-terminal-response",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Workbench next-action failures for unsupported inspect/resume actions must return schema-valid projection terminal evidence, not only an issue code."
     }
   ],
   "hardening_items": [
@@ -1418,6 +1425,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/workbench-shell.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
       "regression_test": "workbench projection exposes terminal next-action details for inspect states; rejects projections missing terminal next-action evidence; workbench browser events terminal_next_action_readout",
       "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "unsupported-next-action-terminal-response",
+      "invariant": "Unsupported or non-executable workbench next-action responses must return the current schema-valid projection with next_action_readout and next_action_terminal evidence so CLI/headless callers can distinguish fail-closed terminal state from transport failure.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; src/workflow/workbench-projection-schema.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server fails closed for unsupported projected next action",
+      "verification": "node --test test/workbench-server.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
