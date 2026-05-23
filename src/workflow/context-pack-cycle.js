@@ -75,10 +75,43 @@ function contextPackArtifact(runId, cycleId, contextPack, options = {}) {
   };
 }
 
+function completedGlobalGoalIdsFrom(workflowState = {}) {
+  return new Set([
+    ...asArray(workflowState?.manifest?.work_packages),
+    ...asArray(workflowState?.task_dag || workflowState?.taskDag)
+  ]
+    .filter((workPackage) => ["complete", "completed", "done", "pass", "passed", "accepted", "closed"].includes(normalizeString(workPackage?.status || workPackage?.result).toLowerCase()))
+    .map((workPackage) => normalizeString(workPackage?.global_goal_id || workPackage?.globalGoalId))
+    .filter(Boolean));
+}
+
+function projectStatusWithCompletedGlobalGoals(sourceWorkflowState = {}) {
+  const projectStatus = sourceWorkflowState.project_status || sourceWorkflowState.projectStatus || null;
+  if (!isObject(projectStatus)) return null;
+
+  const completedIds = completedGlobalGoalIdsFrom(sourceWorkflowState);
+  if (completedIds.size === 0) return projectStatus;
+
+  return {
+    ...projectStatus,
+    global_goals: asArray(projectStatus.global_goals || projectStatus.globalGoals).map((goal) => {
+      const id = normalizeString(goal?.id || goal?.goal_id || goal?.key);
+      if (!completedIds.has(id)) return goal;
+      return {
+        ...goal,
+        status: "completed",
+        completed: true
+      };
+    })
+  };
+}
+
 function buildNextWorkflowState(sourceWorkflowState = {}, contextPack, options = {}) {
   const runId = normalizeString(options.run_id || options.runId || sourceWorkflowState?.manifest?.run_id);
   const cycleId = nextCycleId(sourceWorkflowState, options);
   const artifact = contextPackArtifact(runId, cycleId, contextPack, options);
+  const projectStatus = projectStatusWithCompletedGlobalGoals(sourceWorkflowState);
+  const sourceGlobalGoals = asArray(sourceWorkflowState.global_goals || sourceWorkflowState.globalGoals);
   const manifest = createRunManifest({
     run_id: runId,
     cycle_id: cycleId,
@@ -109,6 +142,10 @@ function buildNextWorkflowState(sourceWorkflowState = {}, contextPack, options =
 
   return {
     ...sourceWorkflowState,
+    project_status: projectStatus,
+    global_goals: sourceGlobalGoals.length > 0
+      ? sourceGlobalGoals
+      : asArray(projectStatus?.global_goals || projectStatus?.globalGoals),
     manifest,
     artifact_ledger: ledger,
     task_dag: manifest.work_packages,

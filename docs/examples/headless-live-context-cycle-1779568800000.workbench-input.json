@@ -59,7 +59,8 @@
         "src/workflow/reviewer-shard-runner.js",
         "src/workflow/context-work-package-execution-adapter.js",
         "test/context-work-package-execution-adapter.test.js",
-        "docs/contracts/MODEL_ROUTING_POLICY_CN.md"
+        "docs/contracts/MODEL_ROUTING_POLICY_CN.md",
+        "test/autonomous-scheduler-loop.test.js"
       ],
       "acceptance_gates": [
         "npm test",
@@ -130,7 +131,10 @@
             "tools/workbench-server.mjs",
             "src/workflow/context-work-package-execution-adapter.js",
             "test/context-work-package-execution-adapter.test.js",
-            "docs/contracts/MODEL_ROUTING_POLICY_CN.md"
+            "docs/contracts/MODEL_ROUTING_POLICY_CN.md",
+            "PROJECT_STATUS.json",
+            "test/autonomous-scheduler-loop.test.js",
+            "docs/examples/process-hardening-current.json"
           ],
           "depends_on": [],
           "source": {
@@ -216,7 +220,10 @@
           "tools/workbench-server.mjs",
           "src/workflow/context-work-package-execution-adapter.js",
           "test/context-work-package-execution-adapter.test.js",
-          "docs/contracts/MODEL_ROUTING_POLICY_CN.md"
+          "docs/contracts/MODEL_ROUTING_POLICY_CN.md",
+          "PROJECT_STATUS.json",
+          "test/autonomous-scheduler-loop.test.js",
+          "docs/examples/process-hardening-current.json"
         ],
         "depends_on": [],
         "source": {
@@ -4672,7 +4679,10 @@
         "tools/workbench-server.mjs",
         "src/workflow/context-work-package-execution-adapter.js",
         "test/context-work-package-execution-adapter.test.js",
-        "docs/contracts/MODEL_ROUTING_POLICY_CN.md"
+        "docs/contracts/MODEL_ROUTING_POLICY_CN.md",
+        "PROJECT_STATUS.json",
+        "test/autonomous-scheduler-loop.test.js",
+        "docs/examples/process-hardening-current.json"
       ],
       "depends_on": [],
       "source": {

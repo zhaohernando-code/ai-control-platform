@@ -118,6 +118,38 @@ function projectedActionResultProjection(actionResult = {}) {
     null;
 }
 
+function projectedReadoutKey(readout = {}) {
+  return JSON.stringify({
+    status: normalizeString(readout?.status),
+    action: normalizeString(readout?.action),
+    target_projection_id: normalizeString(readout?.target_projection_id || readout?.targetProjectionId),
+    source_event_id: normalizeString(readout?.source_event_id || readout?.sourceEventId),
+    source_type: normalizeString(readout?.source_type || readout?.sourceType),
+    reason: normalizeString(readout?.reason)
+  });
+}
+
+function projectedProgressKey(projection = {}) {
+  return JSON.stringify({
+    next_action_readout: projection?.next_action_readout || null,
+    reviewer_shard_review: projection?.reviewer_shard_review || null,
+    agent_lifecycle_pool: projection?.agent_lifecycle_pool || null,
+    scheduler_dispatch: projection?.scheduler_dispatch || null,
+    scheduler_continuation: projection?.scheduler_continuation || null,
+    scheduler_loop: projection?.scheduler_loop || null,
+    projected_action_progress: projection?.projected_action_progress || null,
+    global_goal_completion: projection?.global_goal_completion || null
+  });
+}
+
+function projectionShowsProjectedActionProgress(beforeReadout = {}, resultProjection = {}) {
+  if (!resultProjection) return false;
+  if (projectedReadoutKey(resultProjection.next_action_readout || {}) !== projectedReadoutKey(beforeReadout || {})) {
+    return true;
+  }
+  return false;
+}
+
 function isTerminalProjectedAction(action = "") {
   return !action ||
     action === "wait_for_driver_event" ||
@@ -173,6 +205,7 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
       if (normalized.execution_strategy === "projected_next_action") {
         const projection = await options.client.loadProjection(currentProjectionId);
         const readout = projection?.next_action_readout || {};
+        const beforeProgressKey = projectedProgressKey(projection);
         iteration.projected_action = readout.action || null;
         iteration.next_action_status = readout.status || null;
 
@@ -207,11 +240,13 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
         iteration.status = actionResult.status || "executed";
         iteration.next_projection_id = projectedNextProjectionId(actionResult);
         const resultProjection = projectedActionResultProjection(actionResult);
-        if (!iteration.next_projection_id && !resultProjection) {
+        const hasProgress = projectionShowsProjectedActionProgress(readout, resultProjection) ||
+          (resultProjection && projectedProgressKey(resultProjection) !== beforeProgressKey);
+        if (!iteration.next_projection_id && !hasProgress) {
           iteration.status = "blocked";
           iteration.issues.push(issue(
             "projected_action_missing_progress_evidence",
-            "projected next-action execution must return either next_item.id or an updated projection",
+            "projected next-action execution must return either next_item.id or an updated projection with changed next_action_readout",
             "action_result"
           ));
           return {

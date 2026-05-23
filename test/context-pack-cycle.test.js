@@ -56,6 +56,40 @@ test("context pack cycle materializes latest project status continuation seed", 
   assert.equal(result.source_record.workflow_state.manifest.events.at(-1).type, "context_pack_cycle_materialized");
 });
 
+test("context pack cycle carries project status for global goal completion across cycles", () => {
+  const source = sourceWithProjectStatusContinuation();
+  source.project_status = {
+    project: "ai-control-platform",
+    global_goals: [
+      {
+        id: "context-cycle",
+        title: "Context cycle",
+        status: "in_progress"
+      }
+    ]
+  };
+  source.manifest.work_packages = [
+    {
+      id: "global-goal-context-cycle",
+      global_goal_id: "context-cycle",
+      status: "completed"
+    }
+  ];
+
+  const result = materializeContextPackCycleFromWorkflowState(source, {
+    cycle_id: "cycle-context-pack-preserve-status",
+    created_at: "2026-05-24T05:25:00.000Z"
+  });
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.workflow_state.project_status.project, "ai-control-platform");
+  assert.equal(result.workflow_state.project_status.global_goals[0].id, "context-cycle");
+  assert.equal(result.workflow_state.project_status.global_goals[0].status, "completed");
+  assert.equal(result.workflow_state.global_goals[0].id, "context-cycle");
+  assert.equal(result.workflow_state.global_goals[0].status, "completed");
+  assert.equal(result.workflow_state.manifest.work_packages[0].id, "global-goal-context-cycle");
+});
+
 test("context pack cycle blocks without a project status continuation fact", () => {
   const result = materializeContextPackCycleFromWorkflowState(sourceWorkflowState());
 

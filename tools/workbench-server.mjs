@@ -1851,6 +1851,8 @@ export function createWorkbenchServer(options = {}) {
           });
           return;
         }
+        const updatedWorkflowState = readJson(inputPath);
+        const updatedProjection = workbenchProjection(updatedWorkflowState);
 
         jsonResponse(res, 201, {
           status: "executed",
@@ -1858,7 +1860,8 @@ export function createWorkbenchServer(options = {}) {
           item,
           next_action_readout: projection.next_action_readout,
           result: executed.result,
-          projection: executed.result?.projection || executed.result?.current_projection || null
+          projection: updatedProjection,
+          previous_projection: projection
         });
         return;
       }

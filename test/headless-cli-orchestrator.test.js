@@ -563,6 +563,50 @@ test("headless CLI loop refreshes same service projection after in-place project
   assert.equal(result.last_result.projection.next_action_readout.action, "create_context_pack_from_seed");
 });
 
+test("headless CLI loop executes service projected action before local package materialization", () => {
+  const calls = [];
+  const result = runHeadlessCliMainOrchestratorLoop({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-service-first-projection",
+    created_at: "2026-05-24T05:20:00.000Z",
+    max_package_count: 1,
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    workbench_base_url: "http://127.0.0.1:1",
+    workbench_projection_id: "service-first",
+    workbench_projection_loader: () => ({
+      next_action_readout: {
+        status: "ready",
+        action: "prepare_project_status_continuation"
+      }
+    }),
+    projected_next_action_runner: ({ action, workflow_state }) => {
+      calls.push(action);
+      return {
+        status: "executed",
+        workflow_state,
+        projection: {
+          next_action_readout: {
+            status: "ready",
+            action: "create_context_pack_from_seed"
+          }
+        }
+      };
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(calls, ["prepare_project_status_continuation"]);
+  assert.equal(result.iterations.length, 1);
+  assert.equal(result.iterations[0].phase, "headless_projected_next_action");
+  assert.equal(result.iterations[0].projected_next_action_status, "executed");
+  assert.equal(result.iterations[0].projected_next_action, "prepare_project_status_continuation");
+  assert.equal(result.last_result.projection.next_action_readout.action, "create_context_pack_from_seed");
+});
+
 test("headless CLI loop blocks projected next action without progress evidence", () => {
   const result = runHeadlessCliMainOrchestratorLoop({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
@@ -1122,7 +1166,7 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
       "create_context_pack_from_seed",
       "run_context_work_packages"
     ]);
-    assert.equal(output.iterations[3].workbench_projection_id, "headless-service-reviewer-aggregate");
+    assert.match(output.iterations[3].workbench_projection_id, /^context-pack-cycle-headless-service-reviewer-aggregate-/);
     assert.equal(output.iterations[4].workbench_projection_id, output.iterations[3].projected_next_projection_id);
     assert.equal(progressActions.at(-1), "run_context_work_packages");
     assert.ok(serviceState.manifest.events.some((event) => event.type === "reviewer_shard_aggregate"));

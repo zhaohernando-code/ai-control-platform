@@ -58,6 +58,27 @@ function pendingReviewerShardWorkflowState(workflowState) {
     .filter((artifact) => !reviewerShardArtifactPrefixes.some((prefix) => String(artifact.id).startsWith(prefix)));
 }
 
+function writePendingReviewerProjectStatus(dir) {
+  const projectStatus = {
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: [
+      {
+        id: "reviewer-loop-browser-fixture",
+        title: "Reviewer loop browser fixture",
+        status: "in_progress",
+        next_step: "Run pending reviewer shards through projected scheduler loop.",
+        owned_files: ["src/workflow/reviewer-shard-runner.js"]
+      }
+    ]
+  };
+  const path = join(dir, "PROJECT_STATUS.reviewer-loop.json");
+  writeFileSync(path, `${JSON.stringify(projectStatus, null, 2)}\n`);
+  return path;
+}
+
 function createRunArtifact() {
   return {
     version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
@@ -122,6 +143,8 @@ async function withWorkbenchServer(fn, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-ui-events-"));
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-browser-snapshots-"));
   const eventsPath = join(dir, "operator-events.json");
+  const projectStatusPath = options.projectStatusPath ||
+    (typeof options.projectStatusFactory === "function" ? options.projectStatusFactory(dir) : undefined);
   const inputPath = join(snapshotsRoot, "current-session-workbench-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
@@ -150,6 +173,7 @@ async function withWorkbenchServer(fn, options = {}) {
     eventsPath,
     historyPath,
     snapshotsRoot,
+    projectStatusPath,
     realReviewerExecutor: options.realReviewerExecutor
   });
   server.listen(0, "127.0.0.1");
@@ -762,7 +786,10 @@ async function verifyProjectedMockLoopClick(browser) {
       next_action_readout: nextActionReadout,
       dimensions
     });
-  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
+  }, {
+    workflowStateMutator: pendingReviewerShardWorkflowState,
+    projectStatusFactory: writePendingReviewerProjectStatus
+  });
 }
 
 async function verifyProjectedRealPartialShardReadout(browser) {
@@ -944,8 +971,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
 }
 
 async function verifyLatestDurableGlobalGoalLifecycleProjection(browser) {
-  const durableProjectionId = "headless-live-context-cycle-1779567840000";
-  const durableInputPath = resolve("docs/examples/headless-live-context-cycle-1779567840000.workbench-input.json");
+  const durableProjectionId = "headless-live-context-cycle-1779570720000";
+  const durableInputPath = resolve("docs/examples/headless-live-context-cycle-1779570720000.workbench-input.json");
   const durableWorkflowState = JSON.parse(readFileSync(durableInputPath, "utf8"));
   await withWorkbenchServer(async ({ port }) => {
     const url = `http://127.0.0.1:${port}`;
@@ -980,18 +1007,18 @@ async function verifyLatestDurableGlobalGoalLifecycleProjection(browser) {
     await desktop.close();
     await mobile.close();
 
-    assert(desktopGlobalCompleted === "1", "desktop latest projection must render one completed global goal");
+    assert(desktopGlobalCompleted === "3", "desktop latest projection must render three completed global goals");
     assert(desktopGlobalTotal === "3", "desktop latest projection must render three total global goals");
     assert(desktopGlobalBlocked === "0", "desktop latest projection must render zero blocked global goals");
-    assert(desktopLifecycleCompleted === "1", "desktop latest projection must render one completed lifecycle worker");
-    assert(desktopLifecycleEvaluated === "1", "desktop latest projection must render one evaluated lifecycle worker");
-    assert(desktopLifecycleClosed === "1", "desktop latest projection must render one closed lifecycle worker");
-    assert(mobileGlobalCompleted === "1", "mobile latest projection must render one completed global goal");
+    assert(desktopLifecycleCompleted === "3", "desktop latest projection must render three completed lifecycle workers");
+    assert(desktopLifecycleEvaluated === "3", "desktop latest projection must render three evaluated lifecycle workers");
+    assert(desktopLifecycleClosed === "3", "desktop latest projection must render three closed lifecycle workers");
+    assert(mobileGlobalCompleted === "3", "mobile latest projection must render three completed global goals");
     assert(mobileGlobalTotal === "3", "mobile latest projection must render three total global goals");
     assert(mobileGlobalBlocked === "0", "mobile latest projection must render zero blocked global goals");
-    assert(mobileLifecycleCompleted === "1", "mobile latest projection must render one completed lifecycle worker");
-    assert(mobileLifecycleEvaluated === "1", "mobile latest projection must render one evaluated lifecycle worker");
-    assert(mobileLifecycleClosed === "1", "mobile latest projection must render one closed lifecycle worker");
+    assert(mobileLifecycleCompleted === "3", "mobile latest projection must render three completed lifecycle workers");
+    assert(mobileLifecycleEvaluated === "3", "mobile latest projection must render three evaluated lifecycle workers");
+    assert(mobileLifecycleClosed === "3", "mobile latest projection must render three closed lifecycle workers");
     assert(desktopDimensions.scrollWidth <= desktopDimensions.width, "desktop latest durable readout must not create horizontal overflow");
     assert(mobileDimensions.scrollWidth <= mobileDimensions.width, "mobile latest durable readout must not create horizontal overflow");
 

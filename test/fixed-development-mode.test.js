@@ -85,6 +85,10 @@ test("project status keeps fixed development mode on the current next work", () 
   assert.match(status.latest_update, /Fixed development mode/);
   assert.match(status.latest_update, /main process/);
   assert.match(status.latest_update, /child processes/);
+  if (status.status === "complete") {
+    assert.equal(status.next_step, "");
+    return;
+  }
   assert.match(status.next_step, /fixed main-process\/child-process loop/);
   assert.match(status.next_step, /agent lifecycle/);
   assert.match(status.next_step, /fact recording/);

@@ -271,6 +271,53 @@ test("scheduler loop blocks projected lifecycle cleanup without progress evidenc
   assert.deepEqual(calls.map((call) => call[0]), ["loadHistory", "projection", "nextAction"]);
 });
 
+test("scheduler loop blocks projected next action when returned projection preserves the same readout", async () => {
+  const staleReadout = {
+    status: "ready",
+    action: "cleanup_agent_lifecycle_pool",
+    source_event_id: "event-stale",
+    source_type: "WorkerCompleted",
+    reason: "cleanup still appears pending"
+  };
+  const calls = [];
+  const client = {
+    async loadHistory() {
+      calls.push(["loadHistory"]);
+      return { latest: "current" };
+    },
+    async loadProjection(id) {
+      calls.push(["projection", id]);
+      return { next_action_readout: staleReadout };
+    },
+    async runNextAction(id, body) {
+      calls.push(["nextAction", id, body]);
+      return {
+        status: "executed",
+        action: body.expected_action,
+        result: {
+          projection: {
+            id,
+            next_action_readout: staleReadout
+          }
+        }
+      };
+    }
+  };
+  const result = await runSchedulerLoopDriver({
+    max_iterations: 2,
+    execution_strategy: "projected_next_action",
+    snapshot_prefix: "stale-loop"
+  }, { client });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.phase, "projected_action_missing_progress_evidence");
+  assert.equal(result.iterations.length, 1);
+  assert.equal(result.iterations[0].status, "blocked");
+  assert.equal(result.iterations[0].projected_action, "cleanup_agent_lifecycle_pool");
+  assert.ok(result.issues.some((entry) => entry.code === "projected_action_missing_progress_evidence"));
+  assert.deepEqual(calls.map((call) => call[0]), ["loadHistory", "projection", "nextAction"]);
+});
+
 test("scheduler loop real reviewer profile requires projected strategy and passes reviewer controls", async () => {
   const calls = [];
   const client = {

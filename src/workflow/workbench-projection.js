@@ -855,6 +855,8 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
 function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const lifecyclePool = summaries.agentLifecyclePool || {};
   const projectStatus = summaries.projectStatus || {};
+  const globalGoals = summaries.globalGoalCompletion || {};
+  const taskDag = summaries.taskDag || {};
   if (lifecyclePool.next_action === "cleanup_agent_lifecycle_pool") {
     return {
       status: lifecyclePool.status === "blocked" ? "blocked" : "ready",
@@ -874,7 +876,6 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     if (latestReadout) return latestReadout;
   }
   if (!driver) {
-    const globalGoals = summaries.globalGoalCompletion || {};
     if (Number(globalGoals.pending || 0) > 0 && globalGoals.status === "in_progress") {
       return {
         status: "ready",
@@ -883,6 +884,22 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
         source_type: "global_goal_completion",
         target_projection_id: null,
         reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || "repository global goals remain pending",
+        requires_operator: false
+      };
+    }
+    if (
+      globalGoals.status === "complete" &&
+      Number(globalGoals.pending || 0) === 0 &&
+      Number(taskDag.dispatchable?.length || 0) === 0 &&
+      !normalizeString(projectStatus.next_step || projectStatus.nextStep)
+    ) {
+      return {
+        status: "complete",
+        action: "no_next_action",
+        source_event_id: null,
+        source_type: "global_goal_completion",
+        target_projection_id: null,
+        reason: "all global goals are complete and no continuation remains",
         requires_operator: false
       };
     }
@@ -993,8 +1010,6 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     };
   }
   if (AGENT_LIFECYCLE_EVENT_TYPES.has(driver.type)) {
-    const taskDag = summaries.taskDag || {};
-    const globalGoals = summaries.globalGoalCompletion || {};
     if (
       lifecyclePool.status === "pass" &&
       !lifecyclePool.next_action &&
@@ -1068,6 +1083,7 @@ function nextActionTerminalInfoFromReadout(readout = {}) {
 }
 
 function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
+  const projectStatus = summaries.projectStatus || {};
   if (latest?.type === "project_status_continuation") {
     return {
       status: "ready",
@@ -1105,6 +1121,21 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
         source_type: latest.type,
         target_projection_id: null,
         reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || latest.summary,
+        requires_operator: false
+      };
+    }
+    if (
+      globalGoals.status === "complete" &&
+      Number(globalGoals.pending || 0) === 0 &&
+      !normalizeString(projectStatus.next_step || projectStatus.nextStep)
+    ) {
+      return {
+        status: "complete",
+        action: "no_next_action",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: "all global goals are complete and context work is exhausted",
         requires_operator: false
       };
     }

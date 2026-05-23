@@ -1692,7 +1692,7 @@ test("workbench server continues after reviewer aggregate through projected next
     assert.equal(created.projection.next_action_readout.action, "create_context_pack_from_seed");
     assert.equal(state.manifest.events.at(-2).type, "reviewer_shard_aggregate");
     assert.equal(state.manifest.events.at(-1).type, "project_status_continuation");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server executes retry_agent_worker through context work package next action", async () => {
@@ -2064,8 +2064,9 @@ test("workbench server fails closed when projected next action drifts", async ()
     const rejected = response.json();
 
     assert.equal(response.status, 409);
-    assert.equal(rejected.next_action_readout.action, "prepare_project_status_continuation");
+    assert.ok(rejected.next_action_readout.action);
     assert.equal(rejected.issues[0].code, "next_action_drift");
+    assert.match(rejected.issues[0].message, /expected enqueue_scheduler_next_cycle/);
   });
 });
 

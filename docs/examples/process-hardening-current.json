@@ -694,6 +694,62 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Headless CLI continuation from an already materialized context cycle must not rematerialize PROJECT_STATUS work packages and reselect previously completed packages while dispatchable packages remain in the current workflow_state."
+    },
+    {
+      "id": "scheduler-projected-action-stale-projection-progress",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Autonomous scheduler projected next-action loops must not treat a returned projection as progress when it preserves the same next_action_readout and no next_item.id is produced."
+    },
+    {
+      "id": "scheduler-loop-owned-tests-missing",
+      "status": "fail",
+      "category": "host_boundary",
+      "severity": "p1",
+      "message": "The autonomous-scheduler-and-reviewer-loop global goal must own its scheduler loop regression test file whenever child workers are expected to harden scheduler loop runtime behavior."
+    },
+    {
+      "id": "headless-service-next-action-after-local-rematerialization",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless projected loops with a configured local workbench service must execute the service projection next_action before local PROJECT_STATUS materialization; otherwise a ready service action can be followed by stale local package dispatch and false blockers."
+    },
+    {
+      "id": "context-pack-cycle-drops-project-status-global-goals",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Context Pack cycle materialization must carry repository project_status/global_goals into the next workflow_state so completed global-goal package evidence can prevent repeat scheduling across cycles."
+    },
+    {
+      "id": "project-status-next-step-owned-tests-missing",
+      "status": "fail",
+      "category": "host_boundary",
+      "severity": "p1",
+      "message": "PROJECT_STATUS next-step continuation packages that authorize src/workflow hardening must also authorize the focused workflow regression test files required to prove the hardening."
+    },
+    {
+      "id": "workbench-next-action-returns-stale-projection",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Workbench /api/workbench/next-action must return the projection generated from the workflow state after the action writeback; returning the pre-action projection makes scheduler progress detection treat real shard progress as stale."
+    },
+    {
+      "id": "fixed-mode-complete-status-next-step-conflict",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Fixed development mode status gates must allow PROJECT_STATUS.next_step to be empty only when PROJECT_STATUS.status is complete; in-progress states must still preserve the fixed main-process/child-process next-step wording."
+    },
+    {
+      "id": "complete-projection-stale-inspect-next-action",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Workbench projection must not expose stale inspect_context_work_packages as a remaining next action after global goals and context work are complete."
     }
   ],
   "hardening_items": [
@@ -1711,6 +1767,70 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI orchestrator continues existing context cycle without rematerializing completed packages",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-projected-action-stale-projection-progress",
+      "invariant": "Projected next-action scheduler loops must require concrete progress: either a next_item.id handoff or a returned projection whose next_action_readout differs from the pre-action readout.",
+      "enforcement_target": "src/workflow/autonomous-scheduler-loop.js; test/autonomous-scheduler-loop.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "scheduler loop blocks projected next action when returned projection preserves the same readout",
+      "verification": "node --test test/autonomous-scheduler-loop.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-loop-owned-tests-missing",
+      "invariant": "The autonomous-scheduler-and-reviewer-loop global goal owned_files must include the scheduler loop regression test file and process-hardening fixture before child workers harden scheduler loop behavior.",
+      "enforcement_target": "PROJECT_STATUS.json; docs/examples/process-hardening-current.json",
+      "regression_test": "PROJECT_STATUS autonomous-scheduler-and-reviewer-loop owned_files includes test/autonomous-scheduler-loop.test.js and docs/examples/process-hardening-current.json",
+      "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-service-next-action-after-local-rematerialization",
+      "invariant": "When execution_strategy=projected_next_action and a local workbench service is configured, headless CLI loop iterations must execute the service projection next_action before starting local PROJECT_STATUS continuation or context-pack materialization.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop executes service projected action before local package materialization",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-pack-cycle-drops-project-status-global-goals",
+      "invariant": "Context Pack cycle materialization must preserve project_status/global_goals on the next workflow_state so global goal completion can be evaluated from completed prior-cycle work packages.",
+      "enforcement_target": "src/workflow/context-pack-cycle.js; test/context-pack-cycle.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "context pack cycle carries project status for global goal completion across cycles",
+      "verification": "node --test test/context-pack-cycle.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "project-status-next-step-owned-tests-missing",
+      "invariant": "PROJECT_STATUS next-step continuation work packages must include focused workflow regression tests in owned_files whenever the patch changes src/workflow runtime behavior.",
+      "enforcement_target": "docs/examples/process-hardening-current.json; tmp/workbench-snapshots/headless-live-context-cycle-1779571440000.workbench-input.json",
+      "regression_test": "headless child-worker owned-files gate rejects missing focused tests until the Context Pack owned_files is expanded",
+      "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "workbench-next-action-returns-stale-projection",
+      "invariant": "After a projected next-action writes workflow_state, /api/workbench/next-action must reread that input and return the updated projection so scheduler loops can prove changed next_action_readout progress.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; tools/check-workbench-browser-events.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server runs reviewer shard through projected next action; projected_mock_loop_click browser scenario",
+      "verification": "node --test test/workbench-server.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "fixed-mode-complete-status-next-step-conflict",
+      "invariant": "PROJECT_STATUS fixed-development-mode gate must require next_step fixed-loop wording for active work, but allow an empty next_step when status=complete and latest_update still records main process/child processes evidence.",
+      "enforcement_target": "test/fixed-development-mode.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "project status keeps fixed development mode on the current next work",
+      "verification": "node --test test/fixed-development-mode.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "complete-projection-stale-inspect-next-action",
+      "invariant": "When all global goals are complete, no context work is dispatchable, and PROJECT_STATUS.next_step is empty, Workbench projection must emit a complete no_next_action readout instead of a stale inspect action.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; tools/check-workbench-browser-events.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection reports complete when goals and context work are exhausted",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
   ]

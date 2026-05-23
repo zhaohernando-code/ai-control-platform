@@ -909,6 +909,56 @@ test("workbench projection advances from completed context work packages to glob
   assert.equal(projection.next_action_readout.source_type, "context_work_packages_run");
 });
 
+test("workbench projection reports complete when goals and context work are exhausted", () => {
+  const input = baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      next_step: "",
+      global_goals: [
+        { id: "foundation", title: "Foundation", status: "completed", completed: true },
+        { id: "completion-loop", title: "Completion loop", status: "completed", completed: true }
+      ]
+    },
+    task_dag: [
+      {
+        id: "runtime",
+        title: "Runtime",
+        status: "completed",
+        action: "implement",
+        owned_files: ["src/workflow/context-work-package-runner.js"]
+      }
+    ]
+  });
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "context-work-packages-run-complete",
+        type: "context_work_packages_run",
+        status: "pass",
+        created_at: "2026-05-21T00:06:00.000Z",
+        metadata: {
+          type: "context_work_packages_run",
+          status: "pass",
+          executed_count: 1
+        }
+      }
+    ]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.global_goal_completion.status, "complete");
+  assert.equal(projection.task_dag.dispatchable.length, 0);
+  assert.equal(projection.next_action_readout.status, "complete");
+  assert.equal(projection.next_action_readout.action, "no_next_action");
+  assert.equal(projection.next_action_terminal.terminal_action, "no_next_action");
+  assert.equal(mobile.next_action_readout.status, "complete");
+  assert.equal(mobile.next_action_readout.action, "no_next_action");
+});
+
 test("workbench projection exposes terminal next-action details for inspect states", () => {
   const input = baseInput();
   input.manifest = {
