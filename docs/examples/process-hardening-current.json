@@ -526,6 +526,13 @@
       "category": "runtime_drift",
       "severity": "p1",
       "message": "Headless CLI workbench service clients must not depend on global fetch in subprocesses, because run-with-node18 can launch an outer runtime while process.execPath for nested sync calls is still Node 16."
+    },
+    {
+      "id": "headless-service-readout-override-only",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless CLI service trials must be able to load next_action_readout from the local workbench projection service instead of requiring a manually supplied projected action override."
     }
   ],
   "hardening_items": [
@@ -1325,6 +1332,14 @@
       "finding_id": "headless-service-client-fetch-runtime-drift",
       "invariant": "Headless CLI local workbench service calls must use Node built-in http/https from the nested subprocess and must be verified by a real local service trial, so CLI orchestration works even when the shell Node is older than the closeout wrapper runtime.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "run-headless-cli-orchestrator CLI executes projected action through local workbench service",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-service-readout-override-only",
+      "invariant": "When execution_strategy=projected_next_action and a local workbench base URL is configured, the headless CLI must load projection.next_action_readout from /api/workbench/projection before executing /api/workbench/next-action unless an explicit test override is provided.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "run-headless-cli-orchestrator CLI executes projected action through local workbench service",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"

@@ -677,11 +677,7 @@ test("run-headless-cli-orchestrator CLI executes projected action through local 
       "--workbench-base-url",
       baseUrl,
       "--workbench-projection-id",
-      "headless-service-source",
-      "--projected-next-action",
-      "prepare_project_status_continuation",
-      "--projected-next-action-status",
-      "ready"
+      "headless-service-source"
     ], {
       cwd: process.cwd(),
       encoding: "utf8"

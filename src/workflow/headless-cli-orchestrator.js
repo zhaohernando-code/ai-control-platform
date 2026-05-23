@@ -960,20 +960,22 @@ function localWorkbenchBaseUrl(value = "") {
   return url;
 }
 
-function postJsonSync(url, body = {}, options = {}) {
+function requestJsonSync(url, body = null, options = {}) {
   const timeoutMs = Number(options.timeout_ms || options.timeoutMs || 30000);
-  const payload = JSON.stringify(body);
+  const method = normalizeString(options.method).toUpperCase() || (body === null ? "GET" : "POST");
+  const payload = body === null ? "" : JSON.stringify(body);
   const script = [
     "const http = await import('node:http');",
     "const https = await import('node:https');",
     "const url = process.argv[1];",
-    "const payload = JSON.parse(process.argv[2]);",
-    "const timeoutMs = Number(process.argv[3] || 30000);",
-    "const body = JSON.stringify(payload);",
+    "const method = process.argv[2] || 'GET';",
+    "const body = process.argv[3] || '';",
+    "const timeoutMs = Number(process.argv[4] || 30000);",
     "const target = new URL(url);",
     "const transport = target.protocol === 'https:' ? https : http;",
     "const result = await new Promise((resolveRequest, rejectRequest) => {",
-    "  const req = transport.request(target, { method: 'POST', headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, (res) => {",
+    "  const headers = body ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } : {};",
+    "  const req = transport.request(target, { method, headers }, (res) => {",
     "    let text = '';",
     "    res.setEncoding('utf8');",
     "    res.on('data', (chunk) => { text += chunk; });",
@@ -987,7 +989,7 @@ function postJsonSync(url, body = {}, options = {}) {
     "if (result.statusCode < 200 || result.statusCode >= 300) { console.error(result.text); process.exit(result.statusCode || 1); }",
     "process.stdout.write(result.text);"
   ].join("\n");
-  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script, url.toString(), payload, String(timeoutMs)], {
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script, url.toString(), method, payload, String(timeoutMs)], {
     encoding: "utf8",
     timeout: timeoutMs + 1000
   });
@@ -997,6 +999,26 @@ function postJsonSync(url, body = {}, options = {}) {
     throw error;
   }
   return JSON.parse(result.stdout || "{}");
+}
+
+function postJsonSync(url, body = {}, options = {}) {
+  return requestJsonSync(url, body, { ...options, method: "POST" });
+}
+
+function getJsonSync(url, options = {}) {
+  return requestJsonSync(url, null, { ...options, method: "GET" });
+}
+
+function workbenchProjectionFrom(options = {}) {
+  const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
+  if (!baseValue) return null;
+  const base = localWorkbenchBaseUrl(baseValue);
+  const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
+  const url = new URL("/api/workbench/projection", base);
+  if (projectionId) url.searchParams.set("id", projectionId);
+  return getJsonSync(url, {
+    timeout_ms: options.workbench_request_timeout_ms || options.workbenchRequestTimeoutMs
+  });
 }
 
 function workbenchNextActionRunnerFrom(options = {}) {
@@ -1036,7 +1058,19 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
     };
   }
 
-  const readout = options.projected_next_action_readout || options.projectedNextActionReadout || run.projection?.next_action_readout || {};
+  let serviceProjection = null;
+  if (!options.projected_next_action_readout && !options.projectedNextActionReadout) {
+    try {
+      serviceProjection = workbenchProjectionFrom(options);
+    } catch {
+      serviceProjection = null;
+    }
+  }
+  const readout = options.projected_next_action_readout ||
+    options.projectedNextActionReadout ||
+    serviceProjection?.next_action_readout ||
+    run.projection?.next_action_readout ||
+    {};
   const action = normalizeString(readout.action);
   if (readout.status !== "ready" || isTerminalProjectedAction(action)) {
     return {
