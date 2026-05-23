@@ -569,6 +569,47 @@ test("workbench projection advances from completed context work packages to glob
   assert.equal(projection.next_action_readout.source_type, "context_work_packages_run");
 });
 
+test("workbench projection exposes terminal next-action details for inspect states", () => {
+  const input = baseInput();
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "scheduler-loop-terminal",
+        type: "autonomous_scheduler_loop_run",
+        status: "pass",
+        created_at: "2026-05-21T00:08:00.000Z",
+        metadata: {
+          type: "autonomous_scheduler_loop_run",
+          version: "autonomous-scheduler-loop-run.v1",
+          status: "pass",
+          phase: "terminal_projected_action",
+          execution_strategy: "projected_next_action",
+          iterations: [
+            {
+              index: 1,
+              projection_id: "current",
+              projected_action: "inspect_scheduler_loop",
+              terminal_action: "inspect_scheduler_loop",
+              terminal_reason: "projected next action is not executable"
+            }
+          ]
+        }
+      }
+    ]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.next_action_readout.status, "blocked");
+  assert.equal(projection.next_action_readout.action, "inspect_scheduler_loop");
+  assert.equal(projection.next_action_terminal.terminal_action, "inspect_scheduler_loop");
+  assert.ok(projection.next_action_terminal.terminal_reason);
+  assert.equal(mobile.next_action_terminal.terminal_action, "inspect_scheduler_loop");
+});
+
 test("workbench projection exposes latest closeout publication evidence", () => {
   const input = baseInput();
   const artifact = {

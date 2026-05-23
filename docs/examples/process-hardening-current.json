@@ -1411,6 +1411,14 @@
       "regression_test": "workbench projection advances from completed context work packages to global goal continuation; workbench server advances from completed context work packages to project status continuation",
       "verification": "node --test test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "inspect-terminal-state-hidden",
+      "invariant": "Projected loops that end in inspect_* or wait_for_driver_event must expose terminal_action and terminal_reason in both scheduler_loop and next_action_terminal so workbench projection and mobile projection can show why the loop stopped instead of hiding termination in a transient phase string.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection exposes terminal next-action details for inspect states",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

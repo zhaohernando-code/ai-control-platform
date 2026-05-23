@@ -989,6 +989,19 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   };
 }
 
+function nextActionTerminalInfoFromReadout(readout = {}) {
+  if (!readout || typeof readout !== "object") {
+    return { terminal_action: null, terminal_reason: null };
+  }
+  if (readout.status === "ready") {
+    return { terminal_action: null, terminal_reason: null };
+  }
+  return {
+    terminal_action: readout.action || null,
+    terminal_reason: readout.reason || null
+  };
+}
+
 function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
   if (latest?.type === "project_status_continuation") {
     return {
@@ -1136,6 +1149,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewerSummary.recommended_decision_signal || reviewerSummary.status,
     dagSummary.status === "pass" ? "pass" : "human_intervention"
   ]);
+  const nextActionTerminal = nextActionTerminalInfoFromReadout(nextActionReadout);
 
   return {
     projection_version: "workbench.v1",
@@ -1166,6 +1180,11 @@ export function createWorkbenchProjection(input = {}) {
     global_goal_completion: globalGoalCompletion,
     operations_timeline: operationsTimeline,
     next_action_readout: nextActionReadout,
+    next_action_terminal: {
+      status: nextActionReadout.status,
+      terminal_action: nextActionTerminal.terminal_action,
+      terminal_reason: nextActionTerminal.terminal_reason
+    },
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -1378,6 +1397,11 @@ export function createMobileWorkbenchProjection(input = {}) {
       source_type: projection.next_action_readout.source_type,
       target_projection_id: projection.next_action_readout.target_projection_id,
       requires_operator: projection.next_action_readout.requires_operator
+    },
+    next_action_terminal: {
+      status: projection.next_action_terminal.status,
+      terminal_action: projection.next_action_terminal.terminal_action,
+      terminal_reason: projection.next_action_terminal.terminal_reason
     },
     model: {
       selected_model: projection.model_routing.selected_model,
