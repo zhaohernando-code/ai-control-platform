@@ -1029,13 +1029,28 @@ function workbenchNextActionRunnerFrom(options = {}) {
   return ({ action, iteration }) => {
     const url = new URL("/api/workbench/next-action", base);
     if (projectionId) url.searchParams.set("id", projectionId);
-    const result = postJsonSync(url, {
+    const body = {
       expected_action: action,
       max_iterations: 1,
       snapshot_prefix: normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-projected-action",
       created_at: normalizeString(options.created_at || options.createdAt),
       iteration
-    }, {
+    };
+    for (const [target, source] of [
+      ["execution_profile", options.execution_profile || options.executionProfile],
+      ["reviewer_mock_status", options.reviewer_mock_status || options.reviewerMockStatus],
+      ["reviewer_mock_findings_json", options.reviewer_mock_findings_json || options.reviewerMockFindingsJson],
+      ["max_external_reviewer_calls", options.max_external_reviewer_calls ?? options.maxExternalReviewerCalls],
+      ["provider_cost_mode", options.provider_cost_mode || options.providerCostMode],
+      ["budget_tier", options.budget_tier || options.budgetTier],
+      ["risk", options.risk || options.risk_level || options.riskLevel],
+      ["timeout_seconds", options.timeout_seconds || options.timeoutSeconds],
+      ["record_provider_health_on_timeout", options.record_provider_health_on_timeout ?? options.recordProviderHealthOnTimeout],
+      ["provider_smoke_status", options.provider_smoke_status || options.providerSmokeStatus]
+    ]) {
+      if (source !== undefined && source !== null && source !== "") body[target] = source;
+    }
+    const result = postJsonSync(url, body, {
       timeout_ms: options.workbench_request_timeout_ms || options.workbenchRequestTimeoutMs
     });
     return {

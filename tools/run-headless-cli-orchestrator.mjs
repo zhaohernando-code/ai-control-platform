@@ -42,7 +42,13 @@ function usage() {
     "  --workbench-base-url <url>           Local workbench service URL for projected next actions",
     "  --workbench-projection-id <id>       Projection history id to execute through the workbench service",
     "  --projected-next-action <action>     Override the projected action readout for service trials",
-    "  --projected-next-action-status <status>  Override projected action status, usually ready"
+    "  --projected-next-action-status <status>  Override projected action status, usually ready",
+    "  --execution-profile <profile>        Reviewer/projected action execution profile",
+    "  --reviewer-mock-status <status>      Mock reviewer status for approved mock projected shard runs",
+    "  --reviewer-mock-findings-json <json> Mock reviewer findings JSON",
+    "  --max-external-reviewer-calls <n>    Bounded real reviewer external-call budget",
+    "  --provider-cost-mode <mode>          Bounded real reviewer provider cost mode",
+    "  --timeout-seconds <n>                Bounded real reviewer timeout"
   ].join("\n");
 }
 
@@ -74,6 +80,8 @@ const workbenchBaseUrl = valueAfter("--workbench-base-url", args);
 const workbenchProjectionId = valueAfter("--workbench-projection-id", args);
 const projectedNextAction = valueAfter("--projected-next-action", args);
 const projectedNextActionStatus = valueAfter("--projected-next-action-status", args);
+const reviewerMockStatus = valueAfter("--reviewer-mock-status", args);
+const reviewerMockFindingsJson = valueAfter("--reviewer-mock-findings-json", args);
 const childWorkerCommand = valueAfter("--child-worker-command", args);
 const defaultChildProviderCommand = valueAfter("--default-child-provider-command", args);
 const childWorkerTimeoutMs = valueAfter("--child-worker-timeout-ms", args);
@@ -115,6 +123,16 @@ try {
     execution_strategy: executionStrategy,
     workbench_base_url: workbenchBaseUrl,
     workbench_projection_id: workbenchProjectionId,
+    execution_profile: valueAfter("--execution-profile", args),
+    reviewer_mock_status: reviewerMockStatus,
+    reviewer_mock_findings_json: reviewerMockFindingsJson,
+    max_external_reviewer_calls: valueAfter("--max-external-reviewer-calls", args),
+    provider_cost_mode: valueAfter("--provider-cost-mode", args),
+    budget_tier: valueAfter("--budget-tier", args),
+    risk: valueAfter("--risk", args),
+    timeout_seconds: valueAfter("--timeout-seconds", args),
+    record_provider_health_on_timeout: hasFlag("--record-provider-health-on-timeout", args) ? true : undefined,
+    provider_smoke_status: valueAfter("--provider-smoke-status", args),
     projected_next_action_readout: projectedNextAction || projectedNextActionStatus ? {
       status: projectedNextActionStatus || "ready",
       action: projectedNextAction

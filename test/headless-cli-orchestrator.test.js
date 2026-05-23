@@ -699,6 +699,92 @@ test("run-headless-cli-orchestrator CLI executes projected action through local 
   }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
 });
 
+test("run-headless-cli-orchestrator CLI passes reviewer controls to projected service actions", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/headless-cli-service-reviewer-"));
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const workflowStatePath = join(dir, "workflow-state.json");
+  const serviceHistoryPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(dir, "snapshots");
+  const serviceInputPath = join(snapshotsRoot, "service-reviewer-input.json");
+  const outputPath = join(dir, "headless-service-reviewer-output.json");
+  const workflowOutputPath = join(dir, "headless-service-reviewer-workflow.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+
+  mkdirSync(snapshotsRoot, { recursive: true });
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
+  writeFileSync(workflowStatePath, `${JSON.stringify(sourceWorkflowState(), null, 2)}\n`);
+  writeFileSync(serviceInputPath, `${JSON.stringify(workflowState, null, 2)}\n`);
+  writeFileSync(serviceHistoryPath, `${JSON.stringify({
+    version: "projection-history.v1",
+    latest: "headless-service-reviewer",
+    items: [
+      {
+        id: "headless-service-reviewer",
+        label: "Headless service reviewer",
+        input_path: relative(process.cwd(), serviceInputPath)
+      }
+    ]
+  }, null, 2)}\n`);
+
+  await withWorkbenchServer(async (baseUrl) => {
+    const result = spawnSync(process.execPath, [
+      "tools/run-headless-cli-orchestrator.mjs",
+      "--project-status",
+      projectStatusPath,
+      "--workflow-state",
+      workflowStatePath,
+      "--output",
+      outputPath,
+      "--workflow-output",
+      workflowOutputPath,
+      "--history-path",
+      join(dir, "headless-history.json"),
+      "--snapshots-root",
+      snapshotsRoot,
+      "--snapshot-prefix",
+      "headless-service-reviewer",
+      "--loop",
+      "--max-iterations",
+      "1",
+      "--cycle-id",
+      "cycle-headless-service-reviewer",
+      "--created-at",
+      "2026-05-23T04:30:00.000Z",
+      "--execution-strategy",
+      "projected_next_action",
+      "--workbench-base-url",
+      baseUrl,
+      "--workbench-projection-id",
+      "headless-service-reviewer",
+      "--execution-profile",
+      "approved_mock_non_dry_run",
+      "--reviewer-mock-status",
+      "pass"
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    const workflowOutput = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
+    const serviceState = JSON.parse(readFileSync(serviceInputPath, "utf8"));
+    const progressEvent = workflowOutput.manifest.events.find((event) => event.type === "headless_projected_action_progress");
+    const shardEvent = serviceState.manifest.events.find((event) => event.type === "reviewer_shard_result");
+
+    assert.equal(output.status, "pass");
+    assert.equal(output.iterations[0].projected_next_action_status, "executed");
+    assert.equal(output.iterations[0].projected_next_action, "run_reviewer_scope_shard");
+    assert.ok(shardEvent);
+    assert.equal(shardEvent.metadata.shard_id, "reviewer-scope-shard-001");
+    assert.equal(shardEvent.metadata.executor_provenance.executor_kind, "mock");
+    assert.ok(progressEvent);
+    assert.equal(progressEvent.metadata.action, "run_reviewer_scope_shard");
+    assert.equal(progressEvent.metadata.has_projection, true);
+  }, { historyPath: serviceHistoryPath, snapshotsRoot, projectStatusPath });
+});
+
 test("run-headless-cli-orchestrator CLI exposes projected next-action workbench controls", () => {
   const result = spawnSync(process.execPath, [
     "tools/run-headless-cli-orchestrator.mjs",
@@ -713,4 +799,5 @@ test("run-headless-cli-orchestrator CLI exposes projected next-action workbench 
   assert.match(result.stdout, /--workbench-base-url/);
   assert.match(result.stdout, /--workbench-projection-id/);
   assert.match(result.stdout, /--projected-next-action/);
+  assert.match(result.stdout, /--reviewer-mock-status/);
 });

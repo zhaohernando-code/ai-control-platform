@@ -533,6 +533,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Headless CLI service trials must be able to load next_action_readout from the local workbench projection service instead of requiring a manually supplied projected action override."
+    },
+    {
+      "id": "headless-service-projected-action-controls-missing",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless service-readout runs that execute projected next actions must pass reviewer execution controls to the workbench next-action API; reading the action alone is not enough to advance reviewer shard continuations."
     }
   ],
   "hardening_items": [
@@ -1341,6 +1348,14 @@
       "invariant": "When execution_strategy=projected_next_action and a local workbench base URL is configured, the headless CLI must load projection.next_action_readout from /api/workbench/projection before executing /api/workbench/next-action unless an explicit test override is provided.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "run-headless-cli-orchestrator CLI executes projected action through local workbench service",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-service-projected-action-controls-missing",
+      "invariant": "When headless CLI executes a projected next action through the local workbench service, reviewer execution controls such as execution_profile and reviewer_mock_status must be forwarded to /api/workbench/next-action so run_reviewer_scope_shard can satisfy reviewer policy or fail closed with durable evidence.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "run-headless-cli-orchestrator CLI passes reviewer controls to projected service actions",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
