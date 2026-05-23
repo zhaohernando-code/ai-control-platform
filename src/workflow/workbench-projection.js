@@ -365,6 +365,8 @@ function summarizeHeadlessChildProvider(manifest = {}, artifactLedger = {}) {
       provider: null,
       model: null,
       command_runner_kind: null,
+      executor_kind: null,
+      mock_child_worker: false,
       max_attempts: 0,
       split_retry: false,
       package_count: 0,
@@ -393,12 +395,23 @@ function summarizeHeadlessChildProvider(manifest = {}, artifactLedger = {}) {
     asArray(result?.completion_evidence?.child_output?.command_evidence?.attempts)
       .map((attempt) => ({ ...attempt, work_package_id: result.work_package_id || result.workPackageId || null }))
   ));
+  const explicitMockChildWorker = packageResults.some((result) => {
+    const childOutput = result?.completion_evidence?.child_output || {};
+    return childOutput.mock_allowed === true ||
+      childOutput.command_evidence?.mock_allowed === true ||
+      childOutput.completion_evidence?.mock_allowed === true;
+  });
 
   return {
     status: latestEvent.status || metadata.status || artifact?.status || "unknown",
     provider: provenance.provider || null,
     model: provenance.model || null,
     command_runner_kind: provenance.command_runner_kind || null,
+    executor_kind: provenance.executor_kind || null,
+    mock_child_worker: explicitMockChildWorker ||
+      provenance.mock_child_worker === true ||
+      provenance.mockChildWorker === true ||
+      normalizeString(provenance.command_runner_kind || provenance.commandRunnerKind) === "mock_child_worker",
     max_attempts: Number(retryPolicy.max_attempts || retryPolicy.maxAttempts || 0),
     split_retry: retryPolicy.split_retry === true || retryPolicy.splitRetry === true,
     package_count: packageResults.length,
@@ -1317,6 +1330,8 @@ export function createMobileWorkbenchProjection(input = {}) {
       provider: projection.headless_child_provider.provider,
       model: projection.headless_child_provider.model,
       command_runner_kind: projection.headless_child_provider.command_runner_kind,
+      executor_kind: projection.headless_child_provider.executor_kind,
+      mock_child_worker: projection.headless_child_provider.mock_child_worker,
       max_attempts: projection.headless_child_provider.max_attempts,
       split_retry: projection.headless_child_provider.split_retry,
       package_count: projection.headless_child_provider.package_count,

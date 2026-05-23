@@ -117,6 +117,7 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.scheduler_continuation.status, "not_configured");
   assert.equal(projection.scheduler_loop.status, "not_configured");
   assert.equal(projection.headless_child_provider.status, "not_configured");
+  assert.equal(projection.headless_child_provider.mock_child_worker, false);
   assert.equal(projection.projected_action_progress.status, "not_configured");
   assert.equal(projection.agent_lifecycle_pool.status, "not_configured");
   assert.equal(projection.operations_timeline.status, "not_configured");
@@ -391,6 +392,8 @@ test("workbench projection exposes headless child provider retry and split evide
 
   assert.equal(projection.headless_child_provider.status, "pass");
   assert.equal(projection.headless_child_provider.provider, "codex_proxy");
+  assert.equal(projection.headless_child_provider.executor_kind, "codex_proxy_cli_worker");
+  assert.equal(projection.headless_child_provider.mock_child_worker, false);
   assert.equal(projection.headless_child_provider.command_runner_kind, "codex_proxy_child_process");
   assert.equal(projection.headless_child_provider.max_attempts, 2);
   assert.equal(projection.headless_child_provider.split_retry, true);
@@ -402,7 +405,75 @@ test("workbench projection exposes headless child provider retry and split evide
   assert.equal(projection.one_screen.counters.headless_child_attempts, 2);
   assert.equal(projection.one_screen.counters.headless_child_retry_attempts, 1);
   assert.equal(mobile.headless_child_provider.attempt_count, 2);
+  assert.equal(mobile.headless_child_provider.mock_child_worker, false);
   assert.equal(mobile.headless_child_provider.split_retry_attempt_count, 1);
+});
+
+test("workbench projection exposes explicit mock child worker provenance", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "context-work-packages-run-explicit-mock-child",
+    type: "evaluation",
+    status: "pass",
+    uri: "context-work-packages://run/run-projection/cycle-20260521/context-work-packages-run-explicit-mock-child",
+    producer: "context-work-package-runner",
+    created_at: "2026-05-21T00:08:00.000Z",
+    metadata: {
+      type: "context_work_packages_run",
+      status: "pass",
+      package_results: [
+        {
+          work_package_id: "projection-runtime",
+          status: "pass",
+          completion_evidence: {
+            child_output: {
+              mock_allowed: true,
+              command_evidence: {
+                mock_allowed: true,
+                attempts: []
+              }
+            }
+          }
+        }
+      ],
+      executor_provenance: {
+        executor_kind: "codex_proxy_cli_worker",
+        command_runner_kind: "mock_child_worker",
+        provider: "codex_proxy",
+        model: "codex-cli",
+        retry_policy: {
+          max_attempts: 1,
+          split_retry: false
+        }
+      }
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: `event-${artifact.id}`,
+        type: "context_work_packages_run",
+        status: "pass",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.headless_child_provider.mock_child_worker, true);
+  assert.equal(projection.headless_child_provider.command_runner_kind, "mock_child_worker");
+  assert.equal(mobile.headless_child_provider.mock_child_worker, true);
 });
 
 test("workbench projection exposes headless projected action progress evidence", () => {

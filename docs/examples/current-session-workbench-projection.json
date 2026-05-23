@@ -124,6 +124,8 @@
     "provider": null,
     "model": null,
     "command_runner_kind": null,
+    "executor_kind": null,
+    "mock_child_worker": false,
     "max_attempts": 0,
     "split_retry": false,
     "package_count": 0,

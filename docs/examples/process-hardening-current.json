@@ -638,6 +638,13 @@
       "category": "false_success",
       "severity": "p1",
       "message": "Headless main orchestrator must not use an implicit built-in mock child worker to complete repository global-goal work packages; deterministic mock completion is allowed only when explicitly requested for tests or service trials."
+    },
+    {
+      "id": "explicit-mock-child-worker-hidden-in-projection",
+      "status": "fail",
+      "category": "observability",
+      "severity": "p1",
+      "message": "Workbench projections must expose when headless child-worker completion used an explicit deterministic mock; otherwise operators can confuse service-chain validation with real child-worker implementation evidence."
     }
   ],
   "hardening_items": [
@@ -1583,6 +1590,14 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI orchestrator blocks implicit mock child worker completion; run-headless-cli-orchestrator CLI exposes projected next-action workbench controls",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "explicit-mock-child-worker-hidden-in-projection",
+      "invariant": "Workbench PC/mobile projections must expose headless_child_provider.mock_child_worker and executor_kind so explicit mock service trials are visibly distinct from real codex_proxy/CLI child-worker execution.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection exposes explicit mock child worker provenance",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
