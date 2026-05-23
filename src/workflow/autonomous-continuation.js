@@ -105,7 +105,7 @@ function nextWorkPackagesFrom(input) {
     ...scopeSplitPackages,
     ...lifecyclePoolPackages
   ];
-  if (directPackages.length > 0 || nextStepFrom(input)) {
+  if (directPackages.length > 0) {
     return directPackages;
   }
   return asArray(globalGoalCompletion.next_work_packages);
@@ -405,9 +405,11 @@ function createContextPackSeed(input, action) {
       id: normalizeString(workPackage.id || workPackage.work_package_id) || `continuation-${index + 1}`,
       title: normalizeString(workPackage.title || workPackage.reason || workPackage.action) || `Continuation ${index + 1}`,
       action: normalizeString(workPackage.action),
+      global_goal_id: normalizeString(workPackage.global_goal_id || workPackage.globalGoalId),
       owned_files: compactStrings(workPackage.owned_files || workPackage.ownedFiles),
       depends_on: compactStrings(workPackage.depends_on || workPackage.dependencies),
       source: {
+        global_goal_id: normalizeString(workPackage.global_goal_id || workPackage.globalGoalId),
         pool_id: normalizeString(workPackage.pool_id || workPackage.poolId),
         worker_id: normalizeString(workPackage.worker_id || workPackage.workerId),
         retry_worker: workPackage.retry_worker || workPackage.retryWorker || null,

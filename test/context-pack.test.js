@@ -130,3 +130,24 @@ test("work package action and source metadata are preserved for scheduler retry 
   assert.equal(workPackages[0].source.retry_worker.worker_id, "child-1");
   assert.deepEqual(workPackages[0].source.timed_out_workers.map((worker) => worker.worker_id), ["child-1"]);
 });
+
+test("work packages preserve global goal identity for durable continuation", () => {
+  const workPackages = createWorkPackages(validContextPack({
+    subtasks: [
+      {
+        id: "global-goal-platform-foundation",
+        title: "Continue platform foundation",
+        action: "continue_global_goal",
+        global_goal_id: "platform-foundation",
+        owned_files: ["src/workflow/context-pack.js"],
+        source: {
+          global_goal_id: "platform-foundation",
+          reason: "global goal remains incomplete"
+        }
+      }
+    ]
+  }));
+
+  assert.equal(workPackages[0].global_goal_id, "platform-foundation");
+  assert.equal(workPackages[0].source.global_goal_id, "platform-foundation");
+});

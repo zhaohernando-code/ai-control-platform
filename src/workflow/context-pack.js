@@ -36,6 +36,10 @@ function compactStrings(value) {
   return asArray(value).map(normalizeString).filter(Boolean);
 }
 
+function globalGoalIdFrom(value = {}) {
+  return normalizeString(value.global_goal_id || value.globalGoalId || value.source?.global_goal_id || value.source?.globalGoalId);
+}
+
 function issue(code, message, path) {
   return { code, message, path };
 }
@@ -224,6 +228,7 @@ export function createWorkPackages(contextPack) {
       id,
       title: normalizeString(subtask?.title || subtask?.summary || id),
       action: normalizeString(subtask?.action),
+      global_goal_id: globalGoalIdFrom(subtask) || null,
       owned_files: ownedFiles,
       depends_on: dependsOn,
       source: subtask?.source && typeof subtask.source === "object" && !Array.isArray(subtask.source)

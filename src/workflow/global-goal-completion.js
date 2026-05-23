@@ -82,11 +82,32 @@ function globalGoalsFrom(input = {}) {
   const source = goalSources(input).find((value) => Array.isArray(value));
   if (!source) return { goals: [], issues: [] };
 
+  const completedGoalIds = completedGlobalGoalIdsFromWorkflowState(input);
   const normalized = source.map((goal, index) => normalizeGoal(goal, index));
   return {
-    goals: normalized.map((entry) => entry.goal).filter(Boolean),
+    goals: normalized.map((entry) => entry.goal).filter(Boolean).map((goal) => {
+      if (!completedGoalIds.has(goal.id)) return goal;
+      return {
+        ...goal,
+        status: "completed",
+        completed: true,
+        blocked: false
+      };
+    }),
     issues: normalized.map((entry) => entry.issue).filter(Boolean)
   };
+}
+
+function completedGlobalGoalIdsFromWorkflowState(input = {}) {
+  const workflowState = input?.workflow_state || input?.workflowState || input;
+  const packages = [
+    ...asArray(workflowState?.manifest?.work_packages),
+    ...asArray(workflowState?.task_dag || workflowState?.taskDag)
+  ];
+  return new Set(packages
+    .filter((workPackage) => COMPLETE_STATUSES.has(statusOf(workPackage)))
+    .map((workPackage) => normalizeString(workPackage.global_goal_id || workPackage.globalGoalId))
+    .filter(Boolean));
 }
 
 function workPackagesForGoal(goal) {

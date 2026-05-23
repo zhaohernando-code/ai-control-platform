@@ -624,6 +624,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Closed agent lifecycle pool driver facts must not hide pending repository global-goal continuation by producing terminal inspect_latest_driver readouts."
+    },
+    {
+      "id": "global-goal-identity-lost-in-context-pack-cycle",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Global-goal work package identity must survive context pack seed materialization into manifest/task_dag records; otherwise the next continuation cannot prove completed goals and repeatedly schedules the first pending global goal."
     }
   ],
   "hardening_items": [
@@ -1553,6 +1560,14 @@
       "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "workbench server truncates generated context pack snapshot ids for long projection ids",
       "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "global-goal-identity-lost-in-context-pack-cycle",
+      "invariant": "Continuation-generated global-goal work packages must preserve global_goal_id through context_pack_seed subtasks, createWorkPackages, run manifest work_packages, and task_dag so completed durable workflow state can advance to the next repository global goal instead of repeating the first one.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/context-pack.js; src/workflow/global-goal-completion.js; test/autonomous-continuation.test.js; test/context-pack.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "global goal identity survives context pack materialization and drives the next continuation; work packages preserve global goal identity for durable continuation",
+      "verification": "node --test test/autonomous-continuation.test.js test/context-pack.test.js test/run-manifest.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
