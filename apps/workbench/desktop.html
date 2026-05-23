@@ -94,6 +94,10 @@
               <span>Global Pending</span>
               <strong data-bind="counter_global_goals_pending">0</strong>
             </article>
+            <article class="metric">
+              <span>Global Done</span>
+              <strong data-bind="counter_global_goals_completed">0</strong>
+            </article>
           </section>
 
           <section class="panel wide">
@@ -165,12 +169,18 @@
               <div><span>Resume</span><strong data-bind="scheduler_loop_resume_status">--</strong></div>
               <div><span>Lifecycle</span><strong data-bind="agent_lifecycle_pool_status">--</strong></div>
               <div><span>Open workers</span><strong data-bind="agent_lifecycle_pool_open">0</strong></div>
+              <div><span>Completed</span><strong data-bind="agent_lifecycle_pool_completed">0</strong></div>
+              <div><span>Evaluated</span><strong data-bind="agent_lifecycle_pool_evaluated">0</strong></div>
+              <div><span>Closed</span><strong data-bind="agent_lifecycle_pool_closed">0</strong></div>
               <div><span>Unevaluated</span><strong data-bind="agent_lifecycle_pool_unevaluated">0</strong></div>
               <div><span>Unclosed</span><strong data-bind="agent_lifecycle_pool_unclosed">0</strong></div>
               <div><span>Timed out</span><strong data-bind="agent_lifecycle_pool_timed_out">0</strong></div>
               <div><span>Heartbeats</span><strong data-bind="agent_lifecycle_pool_heartbeats">0</strong></div>
               <div><span>Goals</span><strong data-bind="global_goals_status">--</strong></div>
+              <div><span>Goal total</span><strong data-bind="global_goals_total">0</strong></div>
+              <div><span>Goal done</span><strong data-bind="global_goals_completed">0</strong></div>
               <div><span>Goal pending</span><strong data-bind="global_goals_pending">0</strong></div>
+              <div><span>Goal blocked</span><strong data-bind="global_goals_blocked">0</strong></div>
               <div><span>Action</span><strong data-bind="next_action_readout_action">--</strong></div>
               <div><span>Action status</span><strong data-bind="next_action_readout_status">--</strong></div>
               <div><span>Terminal</span><strong data-bind="next_action_terminal_status">--</strong></div>

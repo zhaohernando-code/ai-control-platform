@@ -1292,8 +1292,13 @@ export function createWorkbenchProjection(input = {}) {
         agent_lifecycle_unclosed: agentLifecyclePool.unclosed || 0,
         agent_lifecycle_timed_out: agentLifecyclePool.timed_out || 0,
         agent_lifecycle_heartbeats: agentLifecyclePool.heartbeat_count || 0,
+        agent_lifecycle_completed: agentLifecyclePool.completed || 0,
+        agent_lifecycle_evaluated: agentLifecyclePool.evaluated || 0,
+        agent_lifecycle_closed: agentLifecyclePool.closed || 0,
+        global_goals_total: globalGoalCompletion.total || 0,
         global_goals_pending: globalGoalCompletion.pending || 0,
         global_goals_completed: globalGoalCompletion.completed || 0,
+        global_goals_blocked: globalGoalCompletion.blocked || 0,
         operation_events: operationsTimeline.count || 0
       },
       recommended_action: nextActionReadout.action

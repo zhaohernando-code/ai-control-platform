@@ -133,6 +133,13 @@ function selectedWorkPackages(workflowState = {}, options = {}) {
     .slice(0, maxPackageCount);
 }
 
+function hasMaterializedContextCycle(workflowState = {}) {
+  return asArray(workflowState?.manifest?.events).some((event) => [
+    "context_pack_cycle_created",
+    "context_pack_cycle_materialized"
+  ].includes(event?.type));
+}
+
 function continuationRunEvaluationFromProjectStatus(projectStatus = {}) {
   const globalGoalCompletion = evaluateGlobalGoalCompletion({
     project_status: projectStatus,
@@ -1384,26 +1391,34 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
     };
   }
 
-  const materialized = materializeContextPackCycleFromWorkflowState(workflowState, {
-    cycle_id: normalizeString(options.cycle_id || options.cycleId),
-    created_at: createdAt
-  });
-  if (materialized.status !== "ready") {
-    return {
-      status: "blocked",
+  if (hasMaterializedContextCycle(workflowState) && selectedWorkPackages(workflowState, options).length > 0) {
+    steps.push({
       phase: "context_pack_cycle",
-      role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
-      steps,
-      issues: materialized.issues || [],
-      workflow_state: materialized.workflow_state || workflowState
-    };
+      status: "existing",
+      work_package_count: asArray(workflowState?.manifest?.work_packages).length
+    });
+  } else {
+    const materialized = materializeContextPackCycleFromWorkflowState(workflowState, {
+      cycle_id: normalizeString(options.cycle_id || options.cycleId),
+      created_at: createdAt
+    });
+    if (materialized.status !== "ready") {
+      return {
+        status: "blocked",
+        phase: "context_pack_cycle",
+        role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+        steps,
+        issues: materialized.issues || [],
+        workflow_state: materialized.workflow_state || workflowState
+      };
+    }
+    workflowState = materialized.workflow_state;
+    steps.push({
+      phase: "context_pack_cycle",
+      status: "ready",
+      work_package_count: asArray(materialized.work_packages).length
+    });
   }
-  workflowState = materialized.workflow_state;
-  steps.push({
-    phase: "context_pack_cycle",
-    status: "ready",
-    work_package_count: asArray(materialized.work_packages).length
-  });
 
   const selected = selectedWorkPackages(workflowState, options);
   if (selected.length === 0) {

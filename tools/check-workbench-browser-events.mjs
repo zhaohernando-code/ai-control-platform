@@ -78,6 +78,7 @@ function createRunArtifact() {
       "projected_real_partial_shard_readout",
       "terminal_next_action_readout",
       "autonomous_scheduler_loop_click",
+      "latest_durable_global_goal_lifecycle_projection",
       "mobile_projection"
     ],
     scenarios: scenarioResults
@@ -124,18 +125,21 @@ async function withWorkbenchServer(fn, options = {}) {
   const inputPath = join(snapshotsRoot, "current-session-workbench-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = typeof options.workflowStateFactory === "function"
+    ? options.workflowStateFactory()
+    : JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
   if (typeof options.workflowStateMutator === "function") {
     options.workflowStateMutator(workflowState);
   }
+  const projectionId = options.projectionId || "current-session";
   writeFileSync(inputPath, `${JSON.stringify(workflowState, null, 2)}\n`);
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
-    latest: "current-session",
+    latest: projectionId,
     items: [
       {
-        id: "current-session",
-        label: "Current session",
+        id: projectionId,
+        label: options.projectionLabel || "Current session",
         status: "rerun",
         input_path: inputPath.replace(`${process.cwd()}/`, "")
       }
@@ -939,6 +943,84 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
   }, { workflowStateMutator: pendingReviewerShardWorkflowState });
 }
 
+async function verifyLatestDurableGlobalGoalLifecycleProjection(browser) {
+  const durableProjectionId = "headless-live-context-cycle-1779567840000";
+  const durableInputPath = resolve("docs/examples/headless-live-context-cycle-1779567840000.workbench-input.json");
+  const durableWorkflowState = JSON.parse(readFileSync(durableInputPath, "utf8"));
+  await withWorkbenchServer(async ({ port }) => {
+    const url = `http://127.0.0.1:${port}`;
+    const projectionQuery = `?projection=/api/workbench/projection%3Fid%3D${durableProjectionId}&history=/api/workbench/projections`;
+    const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await desktop.goto(`${url}/apps/workbench/desktop.html${projectionQuery}`, { waitUntil: "networkidle" });
+    await desktop.waitForFunction((projectionId) => document.querySelector("[data-history-select]")?.selectedOptions[0]?.dataset.projectionId === projectionId, durableProjectionId);
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+    await mobile.goto(`${url}/apps/workbench/mobile.html${projectionQuery}`, { waitUntil: "networkidle" });
+    await mobile.waitForFunction((projectionId) => document.querySelector("[data-history-select]")?.selectedOptions[0]?.dataset.projectionId === projectionId, durableProjectionId);
+
+    const desktopGlobalCompleted = await desktop.textContent('[data-bind="global_goals_completed"]');
+    const desktopGlobalTotal = await desktop.textContent('[data-bind="global_goals_total"]');
+    const desktopGlobalBlocked = await desktop.textContent('[data-bind="global_goals_blocked"]');
+    const desktopLifecycleCompleted = await desktop.textContent('[data-bind="agent_lifecycle_pool_completed"]');
+    const desktopLifecycleEvaluated = await desktop.textContent('[data-bind="agent_lifecycle_pool_evaluated"]');
+    const desktopLifecycleClosed = await desktop.textContent('[data-bind="agent_lifecycle_pool_closed"]');
+    const mobileGlobalCompleted = await mobile.textContent('[data-bind="global_goals_completed"]');
+    const mobileGlobalTotal = await mobile.textContent('[data-bind="global_goals_total"]');
+    const mobileGlobalBlocked = await mobile.textContent('[data-bind="global_goals_blocked"]');
+    const mobileLifecycleCompleted = await mobile.textContent('[data-bind="agent_lifecycle_pool_completed"]');
+    const mobileLifecycleEvaluated = await mobile.textContent('[data-bind="agent_lifecycle_pool_evaluated"]');
+    const mobileLifecycleClosed = await mobile.textContent('[data-bind="agent_lifecycle_pool_closed"]');
+    const desktopDimensions = await desktop.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    const mobileDimensions = await mobile.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await desktop.close();
+    await mobile.close();
+
+    assert(desktopGlobalCompleted === "1", "desktop latest projection must render one completed global goal");
+    assert(desktopGlobalTotal === "3", "desktop latest projection must render three total global goals");
+    assert(desktopGlobalBlocked === "0", "desktop latest projection must render zero blocked global goals");
+    assert(desktopLifecycleCompleted === "1", "desktop latest projection must render one completed lifecycle worker");
+    assert(desktopLifecycleEvaluated === "1", "desktop latest projection must render one evaluated lifecycle worker");
+    assert(desktopLifecycleClosed === "1", "desktop latest projection must render one closed lifecycle worker");
+    assert(mobileGlobalCompleted === "1", "mobile latest projection must render one completed global goal");
+    assert(mobileGlobalTotal === "3", "mobile latest projection must render three total global goals");
+    assert(mobileGlobalBlocked === "0", "mobile latest projection must render zero blocked global goals");
+    assert(mobileLifecycleCompleted === "1", "mobile latest projection must render one completed lifecycle worker");
+    assert(mobileLifecycleEvaluated === "1", "mobile latest projection must render one evaluated lifecycle worker");
+    assert(mobileLifecycleClosed === "1", "mobile latest projection must render one closed lifecycle worker");
+    assert(desktopDimensions.scrollWidth <= desktopDimensions.width, "desktop latest durable readout must not create horizontal overflow");
+    assert(mobileDimensions.scrollWidth <= mobileDimensions.width, "mobile latest durable readout must not create horizontal overflow");
+
+    recordScenario({
+      scenario: "latest_durable_global_goal_lifecycle_projection",
+      projection_id: durableProjectionId,
+      durable_input_path: durableInputPath,
+      desktop_global_completed: desktopGlobalCompleted,
+      desktop_global_total: desktopGlobalTotal,
+      desktop_global_blocked: desktopGlobalBlocked,
+      desktop_lifecycle_completed: desktopLifecycleCompleted,
+      desktop_lifecycle_evaluated: desktopLifecycleEvaluated,
+      desktop_lifecycle_closed: desktopLifecycleClosed,
+      mobile_global_completed: mobileGlobalCompleted,
+      mobile_global_total: mobileGlobalTotal,
+      mobile_global_blocked: mobileGlobalBlocked,
+      mobile_lifecycle_completed: mobileLifecycleCompleted,
+      mobile_lifecycle_evaluated: mobileLifecycleEvaluated,
+      mobile_lifecycle_closed: mobileLifecycleClosed,
+      desktop_dimensions: desktopDimensions,
+      mobile_dimensions: mobileDimensions
+    });
+  }, {
+    projectionId: durableProjectionId,
+    projectionLabel: "Headless live context cycle",
+    workflowStateFactory: () => durableWorkflowState
+  });
+}
+
 async function verifyMobileProjectionLoad(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
@@ -969,6 +1051,12 @@ async function verifyMobileProjectionLoad(browser) {
     const lifecyclePoolUnclosed = await page.textContent('[data-bind="agent_lifecycle_pool_unclosed"]');
     const lifecyclePoolTimedOut = await page.textContent('[data-bind="agent_lifecycle_pool_timed_out"]');
     const lifecyclePoolHeartbeats = await page.textContent('[data-bind="agent_lifecycle_pool_heartbeats"]');
+    const lifecyclePoolCompleted = await page.textContent('[data-bind="agent_lifecycle_pool_completed"]');
+    const lifecyclePoolEvaluated = await page.textContent('[data-bind="agent_lifecycle_pool_evaluated"]');
+    const lifecyclePoolClosed = await page.textContent('[data-bind="agent_lifecycle_pool_closed"]');
+    const globalGoalsCompleted = await page.textContent('[data-bind="global_goals_completed"]');
+    const globalGoalsTotal = await page.textContent('[data-bind="global_goals_total"]');
+    const globalGoalsBlocked = await page.textContent('[data-bind="global_goals_blocked"]');
     const lifecyclePoolNextAction = await page.textContent('[data-bind="agent_lifecycle_pool_next_action"]');
     const operationRows = await page.locator('[data-list="operations_timeline"] article').count();
     const nextActionReadout = await page.textContent('[data-bind="next_action_readout_action"]');
@@ -990,6 +1078,12 @@ async function verifyMobileProjectionLoad(browser) {
     assert(lifecyclePoolUnclosed !== null, "mobile workbench must render lifecycle unclosed count");
     assert(lifecyclePoolTimedOut !== null, "mobile workbench must render lifecycle timeout count");
     assert(lifecyclePoolHeartbeats !== null, "mobile workbench must render lifecycle heartbeat count");
+    assert(lifecyclePoolCompleted !== null, "mobile workbench must render lifecycle completed count");
+    assert(lifecyclePoolEvaluated !== null, "mobile workbench must render lifecycle evaluated count");
+    assert(lifecyclePoolClosed !== null, "mobile workbench must render lifecycle closed count");
+    assert(globalGoalsCompleted !== null, "mobile workbench must render global goals completed count");
+    assert(globalGoalsTotal !== null, "mobile workbench must render global goals total count");
+    assert(globalGoalsBlocked !== null, "mobile workbench must render global goals blocked count");
     assert(lifecyclePoolNextAction !== null, "mobile workbench must render lifecycle next action");
     assert(operationRows >= 1, "mobile workbench must render operation timeline rows");
     assert(nextActionReadout, "mobile workbench must render next-action readout");
@@ -1013,6 +1107,12 @@ async function verifyMobileProjectionLoad(browser) {
       agent_lifecycle_pool_unclosed: lifecyclePoolUnclosed,
       agent_lifecycle_pool_timed_out: lifecyclePoolTimedOut,
       agent_lifecycle_pool_heartbeats: lifecyclePoolHeartbeats,
+      agent_lifecycle_pool_completed: lifecyclePoolCompleted,
+      agent_lifecycle_pool_evaluated: lifecyclePoolEvaluated,
+      agent_lifecycle_pool_closed: lifecyclePoolClosed,
+      global_goals_completed: globalGoalsCompleted,
+      global_goals_total: globalGoalsTotal,
+      global_goals_blocked: globalGoalsBlocked,
       agent_lifecycle_pool_next_action: lifecyclePoolNextAction,
       operation_rows: operationRows,
       next_action_readout: nextActionReadout,
@@ -1036,6 +1136,7 @@ try {
   await verifyProjectedRealPartialShardReadout(browser);
   await verifyTerminalNextActionReadout(browser);
   await verifyAutonomousSchedulerLoopClick(browser);
+  await verifyLatestDurableGlobalGoalLifecycleProjection(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {
   await browser.close();

@@ -687,6 +687,13 @@
       "category": "false_success",
       "severity": "p1",
       "message": "Headless child-worker acceptance must treat owned_files directory entries as bounded path prefixes; exact-file-only checks reject legitimate owned directory work and can block verified child-worker completion."
+    },
+    {
+      "id": "headless-context-cycle-rematerializes-completed-packages",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless CLI continuation from an already materialized context cycle must not rematerialize PROJECT_STATUS work packages and reselect previously completed packages while dispatchable packages remain in the current workflow_state."
     }
   ],
   "hardening_items": [
@@ -1695,6 +1702,14 @@
       "invariant": "Headless child-worker acceptance must allow changed files under owned_files directory prefixes while still rejecting sibling path escapes.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless child worker acceptance allows changed files under owned directories; headless child worker acceptance rejects sibling paths outside owned directories",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-context-cycle-rematerializes-completed-packages",
+      "invariant": "When workflow_state already contains a materialized context cycle with dispatchable packages, headless CLI main orchestration must continue that existing DAG instead of generating a fresh context cycle from PROJECT_STATUS.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator continues existing context cycle without rematerializing completed packages",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
       "status": "completed"
     }

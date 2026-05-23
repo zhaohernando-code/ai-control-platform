@@ -122,6 +122,8 @@ function renderProjection(projection) {
   setText("counter_scheduler_dispatch_steps", counters.scheduler_dispatch_steps ?? schedulerDispatch.step_count ?? 0);
   setText("counter_global_goals_pending", counters.global_goals_pending ?? globalGoals.pending ?? 0);
   setText("counter_global_goals_completed", counters.global_goals_completed ?? globalGoals.completed ?? 0);
+  setText("counter_global_goals_total", counters.global_goals_total ?? globalGoals.total ?? 0);
+  setText("counter_global_goals_blocked", counters.global_goals_blocked ?? globalGoals.blocked ?? 0);
   setText("counter_operation_events", counters.operation_events ?? projection.operations_timeline?.count ?? 0);
   setText("closeout_status", closeout.status);
   setText("closeout_publish_status", closeout.publish_status);
@@ -178,6 +180,9 @@ function renderProjection(projection) {
   setText("scheduler_loop_resume_status", schedulerLoop.latest_resume_status);
   setText("agent_lifecycle_pool_status", lifecyclePool.status);
   setText("agent_lifecycle_pool_open", lifecyclePool.open ?? 0);
+  setText("agent_lifecycle_pool_completed", lifecyclePool.completed ?? 0);
+  setText("agent_lifecycle_pool_evaluated", lifecyclePool.evaluated ?? 0);
+  setText("agent_lifecycle_pool_closed", lifecyclePool.closed ?? 0);
   setText("agent_lifecycle_pool_unevaluated", lifecyclePool.unevaluated ?? 0);
   setText("agent_lifecycle_pool_unclosed", lifecyclePool.unclosed ?? 0);
   setText("agent_lifecycle_pool_timed_out", lifecyclePool.timed_out ?? 0);

@@ -44,6 +44,10 @@
             <span>总目标</span>
             <strong data-bind="counter_global_goals_pending">0</strong>
           </article>
+          <article>
+            <span>完成</span>
+            <strong data-bind="counter_global_goals_completed">0</strong>
+          </article>
         </section>
 
         <section class="mobile-section">
@@ -178,6 +182,18 @@
               <strong data-bind="agent_lifecycle_pool_open">0</strong>
             </div>
             <div>
+              <span>Completed</span>
+              <strong data-bind="agent_lifecycle_pool_completed">0</strong>
+            </div>
+            <div>
+              <span>Evaluated</span>
+              <strong data-bind="agent_lifecycle_pool_evaluated">0</strong>
+            </div>
+            <div>
+              <span>Closed</span>
+              <strong data-bind="agent_lifecycle_pool_closed">0</strong>
+            </div>
+            <div>
               <span>Unevaluated</span>
               <strong data-bind="agent_lifecycle_pool_unevaluated">0</strong>
             </div>
@@ -198,8 +214,20 @@
               <strong data-bind="global_goals_status">--</strong>
             </div>
             <div>
+              <span>Total</span>
+              <strong data-bind="global_goals_total">0</strong>
+            </div>
+            <div>
+              <span>Done</span>
+              <strong data-bind="global_goals_completed">0</strong>
+            </div>
+            <div>
               <span>Pending</span>
               <strong data-bind="global_goals_pending">0</strong>
+            </div>
+            <div>
+              <span>Blocked</span>
+              <strong data-bind="global_goals_blocked">0</strong>
             </div>
             <div>
               <span>Action</span>

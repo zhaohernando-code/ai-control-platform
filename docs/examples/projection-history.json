@@ -1,7 +1,15 @@
 {
   "version": "projection-history.v1",
-  "latest": "headless-live-context-cycle-1779567840000",
+  "latest": "headless-live-context-cycle-1779568800000",
   "items": [
+    {
+      "id": "headless-live-context-cycle-1779568800000",
+      "label": "Headless live context cycle after workbench package",
+      "input_path": "docs/examples/headless-live-context-cycle-1779568800000.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-24T04:40:00.000Z",
+      "status": "rerun"
+    },
     {
       "id": "headless-live-context-cycle-1779567840000",
       "label": "Headless live context cycle after platform boundary package",

@@ -141,6 +141,40 @@ function sourceWorkflowState() {
   };
 }
 
+function materializedWorkflowStateWithCompletedFirstPackage() {
+  const state = sourceWorkflowState();
+  const secondPackage = {
+    id: "pc-mobile-workbench",
+    title: "PC/mobile workbench",
+    action: "continue_global_goal",
+    global_goal_id: "pc-mobile-autonomous-workbench",
+    owned_files: ["apps/workbench"]
+  };
+  state.manifest.context_pack.owned_files = [
+    ...state.manifest.context_pack.owned_files,
+    "apps/workbench"
+  ];
+  state.manifest.context_pack.subtasks = [
+    {
+      ...state.manifest.work_packages[0],
+      status: "completed",
+      result: "pass",
+      completed_at: "2026-05-24T04:24:00.000Z"
+    },
+    secondPackage
+  ];
+  state.manifest.work_packages = state.manifest.context_pack.subtasks;
+  state.task_dag = state.manifest.work_packages;
+  state.manifest.events.push({
+    id: "context-pack-cycle-created-existing",
+    type: "context_pack_cycle_created",
+    status: "ready",
+    created_at: "2026-05-24T04:20:00.000Z",
+    metadata: { work_package_count: 2 }
+  });
+  return state;
+}
+
 test("headless CLI orchestrator runs one main_orchestrator cycle with bounded child lifecycle facts", () => {
   const result = runHeadlessCliMainOrchestrator({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
@@ -175,6 +209,36 @@ test("headless CLI orchestrator runs one main_orchestrator cycle with bounded ch
   assert.equal(result.projection.agent_lifecycle_pool.status, "pass");
   assert.equal(result.continuation.should_continue, true);
   assert.equal(result.must_continue, true);
+});
+
+test("headless CLI orchestrator continues existing context cycle without rematerializing completed packages", () => {
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: materializedWorkflowStateWithCompletedFirstPackage()
+  }, {
+    created_at: "2026-05-24T04:36:00.000Z",
+    max_package_count: 1,
+    child_worker_outputs: [
+      {
+        work_package_id: "pc-mobile-workbench",
+        host: "platform_core",
+        changed_files: ["apps/workbench/workbench.js"],
+        test_results: [{ command: "npm run check:workbench:browser-events", status: "pass" }],
+        durable_state_updated: true,
+        process_hardening: { required: false },
+        continuation_readiness: { ready: true },
+        self_evaluation: { aligned: true, drifted: false }
+      }
+    ]
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.steps[1].phase, "context_pack_cycle");
+  assert.equal(result.steps[1].status, "existing");
+  assert.equal(result.child_run.executed_work_packages[0].id, "pc-mobile-workbench");
+  assert.equal(result.workflow_state.manifest.work_packages[0].status, "completed");
+  assert.equal(result.workflow_state.manifest.work_packages[1].status, "completed");
 });
 
 test("headless CLI orchestrator blocks implicit mock child worker completion", () => {

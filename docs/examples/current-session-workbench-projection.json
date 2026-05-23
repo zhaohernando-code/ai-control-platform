@@ -570,8 +570,13 @@
       "agent_lifecycle_unclosed": 0,
       "agent_lifecycle_timed_out": 0,
       "agent_lifecycle_heartbeats": 0,
+      "agent_lifecycle_completed": 0,
+      "agent_lifecycle_evaluated": 0,
+      "agent_lifecycle_closed": 0,
+      "global_goals_total": 3,
       "global_goals_pending": 3,
       "global_goals_completed": 0,
+      "global_goals_blocked": 0,
       "operation_events": 7
     },
     "recommended_action": "prepare_project_status_continuation"
