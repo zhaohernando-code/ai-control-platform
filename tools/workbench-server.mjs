@@ -1974,7 +1974,54 @@ export function createWorkbenchServer(options = {}) {
 
 function valueAfter(flag, args = process.argv.slice(2)) {
   const index = args.indexOf(flag);
-  return index >= 0 ? args[index + 1] : "";
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+function normalizeCliPort(value) {
+  const raw = String(value ?? "").trim();
+  const port = Number(raw);
+  if (!raw || !Number.isInteger(port) || port < 0 || port > 65535) {
+    const error = new Error(`Invalid workbench server port: ${raw || "(empty)"}. Expected an integer from 0 to 65535.`);
+    error.code = "INVALID_WORKBENCH_PORT";
+    throw error;
+  }
+  return port;
+}
+
+function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process.env) {
+  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status"]);
+  const positionalArgs = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (optionNames.has(arg.split("=")[0])) {
+      if (!arg.includes("=")) index += 1;
+      continue;
+    }
+    if (optionNames.has(arg)) {
+      index += 1;
+      continue;
+    }
+    if (!arg.startsWith("-")) positionalArgs.push(arg);
+  }
+
+  const optionValue = (name) => {
+    const equalsPrefix = `${name}=`;
+    const inline = args.find((arg) => arg.startsWith(equalsPrefix));
+    if (inline) return inline.slice(equalsPrefix.length);
+    return valueAfter(name, args);
+  };
+  const portValue = args.includes("--port")
+    || args.some((arg) => arg.startsWith("--port="))
+    ? optionValue("--port")
+    : env.PORT ?? positionalArgs[0] ?? "4180";
+  return {
+    port: normalizeCliPort(portValue),
+    host: optionValue("--host") || "127.0.0.1",
+    historyPath: optionValue("--history-path"),
+    snapshotsRoot: optionValue("--snapshots-root"),
+    eventsPath: optionValue("--events-path"),
+    projectStatusPath: optionValue("--project-status")
+  };
 }
 
 export function startWorkbenchServer({
@@ -1991,43 +2038,28 @@ export function startWorkbenchServer({
     eventsPath: configuredEventsPath,
     projectStatusPath
   });
-  server.listen(port, host);
+  const listenPort = normalizeCliPort(port);
+  server.listen(listenPort, host);
   return server;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
-      "Usage: node tools/workbench-server.mjs [port] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>]",
+      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>]",
       "",
       "Starts the local workbench service. Paths are resolved from the platform repo root."
     ].join("\n"));
     process.exit(0);
   }
-  const args = process.argv.slice(2);
-  const optionNames = new Set(["--history-path", "--snapshots-root", "--events-path", "--project-status"]);
-  const positionalArgs = [];
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (optionNames.has(arg)) {
-      index += 1;
-      continue;
-    }
-    if (!arg.startsWith("-")) positionalArgs.push(arg);
+  let cliOptions;
+  try {
+    cliOptions = parseWorkbenchServerCliArgs();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
   }
-  const positionalPort = positionalArgs[0];
-  const optionValue = (name) => {
-    const index = args.indexOf(name);
-    return index >= 0 ? args[index + 1] : undefined;
-  };
-  const port = Number(process.env.PORT || positionalPort || 4180);
-  const server = startWorkbenchServer({
-    port,
-    historyPath: optionValue("--history-path"),
-    snapshotsRoot: optionValue("--snapshots-root"),
-    eventsPath: optionValue("--events-path"),
-    projectStatusPath: optionValue("--project-status")
-  });
+  const server = startWorkbenchServer(cliOptions);
   server.on("listening", () => {
     const address = server.address();
     console.log(`Workbench server listening on http://${address.address}:${address.port}`);

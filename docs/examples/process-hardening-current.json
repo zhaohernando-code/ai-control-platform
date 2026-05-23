@@ -1573,6 +1573,14 @@
       "status": "completed"
     },
     {
+      "finding_id": "workbench-server-cli-port-flag-drift",
+      "invariant": "Workbench server CLI startup must accept automation-style --host and --port flags while preserving positional port compatibility, and invalid ports must fail closed before calling server.listen.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server CLI accepts explicit host and port flags; workbench server CLI fails closed for invalid port",
+      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening",
+      "status": "completed"
+    },
+    {
       "finding_id": "headless-service-projection-unavailable-fallback",
       "invariant": "When execution_strategy=projected_next_action and workbench_base_url is configured, service projection fetch failures must block the headless loop with durable issues instead of executing or stopping from a local fallback projection.",
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",

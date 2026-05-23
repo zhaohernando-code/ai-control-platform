@@ -290,6 +290,44 @@ test("workbench server CLI can start with isolated history and snapshot roots", 
   }
 });
 
+test("workbench server CLI accepts explicit host and port flags", async () => {
+  const child = spawn(process.execPath, [
+    "tools/workbench-server.mjs",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "0"
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  try {
+    const ready = await waitForOutput(child, /Workbench server listening on http:\/\/127\.0\.0\.1:\d+/);
+    const port = Number(ready.match(/:(\d+)/)?.[1]);
+    assert.ok(port > 0);
+  } finally {
+    child.kill();
+    await once(child, "close").catch(() => {});
+  }
+});
+
+test("workbench server CLI fails closed for invalid port", async () => {
+  const result = await runNode([
+    "tools/workbench-server.mjs",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "not-a-port"
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Invalid workbench server port: not-a-port/);
+  assert.doesNotMatch(result.stderr, /ERR_SOCKET_BAD_PORT/);
+  assert.equal(result.stdout, "");
+});
+
 test("workbench server builds latest projection from workflow state input", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/projection?id=current-session`);
@@ -2902,6 +2940,8 @@ test("workbench server CLI honors isolated history snapshots and events paths", 
 
   const server = spawn(process.execPath, [
     "tools/workbench-server.mjs",
+    "--port",
+    "0",
     "--history-path",
     historyPath,
     "--snapshots-root",
