@@ -214,6 +214,50 @@ test("headless child worker acceptance checks host, owned files, tests, durable 
   assert.equal(evaluation.checked.host_boundary, "platform_core");
 });
 
+test("headless child worker acceptance allows changed files under owned directories", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    id: "global-goal-platform-boundary-and-state-foundation",
+    owned_files: [
+      "PROJECT_STATUS.json",
+      "docs/contracts",
+      "docs/examples/process-hardening-current.json"
+    ]
+  }, {
+    host: "platform_core",
+    changed_files: [
+      "PROJECT_STATUS.json",
+      "docs/contracts/CODEX_PROXY_HANDOFF_CN.md",
+      "docs/examples/process-hardening-current.json"
+    ],
+    test_results: [{ command: "npm run check:process-hardening", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: true, status: "completed" },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false }
+  });
+
+  assert.equal(evaluation.status, "pass");
+  assert.equal(evaluation.issues.length, 0);
+});
+
+test("headless child worker acceptance rejects sibling paths outside owned directories", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    id: "global-goal-platform-boundary-and-state-foundation",
+    owned_files: ["docs/contracts"]
+  }, {
+    host: "platform_core",
+    changed_files: ["docs/contracts-extra/drift.md"],
+    test_results: [{ command: "npm run check:process-hardening", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: false },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false }
+  });
+
+  assert.equal(evaluation.status, "fail");
+  assert.ok(evaluation.issues.some((item) => item.code === "child_worker_owned_file_violation"));
+});
+
 test("headless CLI orchestrator can execute a real child command runner and parse structured output", () => {
   const calls = [];
   const result = runHeadlessCliMainOrchestrator({

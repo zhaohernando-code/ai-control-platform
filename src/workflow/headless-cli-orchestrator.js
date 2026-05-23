@@ -222,9 +222,19 @@ function durableStatePass(output = {}) {
     isObject(output.workflow_state);
 }
 
+function pathMatchesOwnedFile(changedFile = "", ownedFile = "") {
+  const changed = normalizeString(changedFile).replace(/\\/g, "/").replace(/^\.\/+/, "");
+  const owned = normalizeString(ownedFile).replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return Boolean(changed && owned && (changed === owned || changed.startsWith(`${owned}/`)));
+}
+
+function changedFileAllowedByOwnedFiles(changedFile = "", ownedFiles = []) {
+  return compactStrings(ownedFiles).some((ownedFile) => pathMatchesOwnedFile(changedFile, ownedFile));
+}
+
 export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {}) {
   const issues = [];
-  const ownedFiles = new Set(compactStrings(workPackage.owned_files));
+  const ownedFiles = compactStrings(workPackage.owned_files);
   const changedFiles = compactStrings(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles);
   const testResults = asArray(output.test_results || output.testResults);
   const selfEvaluation = output.self_evaluation || output.selfEvaluation || {};
@@ -244,7 +254,7 @@ export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {})
     issues.push(issue("child_worker_no_diff", "child worker produced no changed files", "child_output.changed_files"));
   }
   for (const changedFile of changedFiles) {
-    if (!ownedFiles.has(changedFile)) {
+    if (!changedFileAllowedByOwnedFiles(changedFile, ownedFiles)) {
       issues.push(issue("child_worker_owned_file_violation", `${changedFile} is outside work package owned_files`, "child_output.changed_files"));
     }
   }

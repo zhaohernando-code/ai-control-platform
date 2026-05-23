@@ -673,6 +673,20 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "A closed context work package cycle must not become inspect_latest_driver while PROJECT_STATUS.next_step remains; project status continuation is still required."
+    },
+    {
+      "id": "global-goal-owned-files-missing-headless-runtime",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "Global-goal owned_files that omit headless runtime CLI and test landing points can prevent real workbench service and headless orchestrator startup fixes from being accepted by the matching work package."
+    },
+    {
+      "id": "headless-child-owned-directory-rejected",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Headless child-worker acceptance must treat owned_files directory entries as bounded path prefixes; exact-file-only checks reject legitimate owned directory work and can block verified child-worker completion."
     }
   ],
   "hardening_items": [
@@ -1666,6 +1680,22 @@
       "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "closed agent lifecycle drivers continue when project status next step remains",
       "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "global-goal-owned-files-missing-headless-runtime",
+      "invariant": "The platform-boundary-and-state-foundation global goal must own the concrete headless/workbench runtime startup and acceptance landing points whenever continuation can generate Context Packs for that goal.",
+      "enforcement_target": "PROJECT_STATUS.json; tools/workbench-server.mjs; test/workbench-server.test.js; tools/run-headless-cli-orchestrator.mjs; test/headless-cli-orchestrator.test.js; docs/contracts/CODEX_PROXY_HANDOFF_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "PROJECT_STATUS continuation includes workbench server CLI and headless CLI orchestrator CLI/test files for the platform boundary global goal",
+      "verification": "npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-child-owned-directory-rejected",
+      "invariant": "Headless child-worker acceptance must allow changed files under owned_files directory prefixes while still rejecting sibling path escapes.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless child worker acceptance allows changed files under owned directories; headless child worker acceptance rejects sibling paths outside owned directories",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
   ]
