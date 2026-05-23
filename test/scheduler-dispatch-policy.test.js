@@ -8,9 +8,10 @@ import {
   normalizeSchedulerDispatchControlRequest,
   recordSchedulerDispatchPolicyDecision
 } from "../src/workflow/scheduler-dispatch-policy.js";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 function workflowState() {
-  return JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  return currentSessionWorkflowState();
 }
 
 function continuationInput() {

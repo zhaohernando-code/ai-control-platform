@@ -6,9 +6,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 function workflowState() {
-  return JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  return currentSessionWorkflowState();
 }
 
 function continuationInput() {

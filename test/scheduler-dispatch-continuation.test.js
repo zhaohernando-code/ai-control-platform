@@ -14,9 +14,10 @@ import {
   recordSchedulerDispatchContinuationPrepared,
   recordSchedulerNextCycleEnqueue
 } from "../src/workflow/scheduler-dispatch-continuation.js";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 function workflowInput() {
-  return JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  return currentSessionWorkflowState();
 }
 
 async function createSchedulerRunArtifact(dir) {

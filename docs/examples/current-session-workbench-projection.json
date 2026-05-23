@@ -22,7 +22,7 @@
     "status": "pass",
     "issues": [],
     "work_package_count": 3,
-    "event_count": 5
+    "event_count": 8
   },
   "operator_events": {
     "status": "pass",
@@ -34,14 +34,14 @@
     "issues": []
   },
   "artifacts": {
-    "total": 5,
+    "total": 8,
     "by_type": {
       "test": 1,
-      "review": 1,
+      "review": 4,
       "evaluation": 3
     },
     "by_status": {
-      "pass": 4,
+      "pass": 7,
       "fail": 1
     }
   },
@@ -103,21 +103,21 @@
     "created_at": "2026-05-21T20:20:30.000Z"
   },
   "reviewer_shard_review": {
-    "status": "not_configured",
+    "status": "pass",
     "total_shards": 2,
-    "completed_shards": 0,
-    "pending_shards": 2,
+    "completed_shards": 2,
+    "pending_shards": 0,
     "failed_finding_count": 0,
-    "finding_count": 0,
-    "next_shard": "reviewer-scope-shard-001",
+    "finding_count": 1,
+    "next_shard": null,
     "latest_executor_kind": null,
     "latest_execution_profile": null,
-    "latest_provider": null,
-    "latest_model": null,
+    "latest_provider": "claude-code",
+    "latest_model": "deepseek-v4-pro",
     "latest_external_call_budget_used": 0,
-    "event_id": null,
-    "artifact_id": null,
-    "created_at": null
+    "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "created_at": "2026-05-24T02:37:00.000Z"
   },
   "headless_child_provider": {
     "status": "not_configured",
@@ -298,33 +298,33 @@
   },
   "operations_timeline": {
     "status": "available",
-    "count": 2,
+    "count": 5,
     "group_counts": {
-      "reviewer_recovery": 2
+      "reviewer_recovery": 5
     },
-    "driver_count": 2,
-    "operator_only_count": 0,
+    "driver_count": 3,
+    "operator_only_count": 2,
     "latest_driver": {
-      "sequence": 4,
-      "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "type": "reviewer_scope_split",
+      "sequence": 7,
+      "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "type": "reviewer_shard_aggregate",
       "group": "reviewer_recovery",
       "next_action_role": "automation_driver",
-      "status": "planned",
-      "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "created_at": "2026-05-21T20:20:30.000Z",
-      "summary": "2 shard(s)"
+      "status": "pass",
+      "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "created_at": "2026-05-24T02:37:00.000Z",
+      "summary": "pass / 0 failed"
     },
     "latest": {
-      "sequence": 4,
-      "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "type": "reviewer_scope_split",
+      "sequence": 7,
+      "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "type": "reviewer_shard_aggregate",
       "group": "reviewer_recovery",
       "next_action_role": "automation_driver",
-      "status": "planned",
-      "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "created_at": "2026-05-21T20:20:30.000Z",
-      "summary": "2 shard(s)"
+      "status": "pass",
+      "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "created_at": "2026-05-24T02:37:00.000Z",
+      "summary": "pass / 0 failed"
     },
     "items": [
       {
@@ -348,16 +348,49 @@
         "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
         "created_at": "2026-05-21T20:20:30.000Z",
         "summary": "2 shard(s)"
+      },
+      {
+        "sequence": 5,
+        "event_id": "event-reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_shard_result",
+        "group": "reviewer_recovery",
+        "next_action_role": "operator_observable",
+        "status": "pass",
+        "artifact_id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "summary": "reviewer-scope-shard-001"
+      },
+      {
+        "sequence": 6,
+        "event_id": "event-reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_shard_result",
+        "group": "reviewer_recovery",
+        "next_action_role": "operator_observable",
+        "status": "pass",
+        "artifact_id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "summary": "reviewer-scope-shard-002"
+      },
+      {
+        "sequence": 7,
+        "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_shard_aggregate",
+        "group": "reviewer_recovery",
+        "next_action_role": "automation_driver",
+        "status": "pass",
+        "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "created_at": "2026-05-24T02:37:00.000Z",
+        "summary": "pass / 0 failed"
       }
     ]
   },
   "next_action_readout": {
     "status": "ready",
-    "action": "run_reviewer_scope_shard",
-    "source_event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-    "source_type": "reviewer_scope_split",
+    "action": "continue_after_reviewer_aggregate",
+    "source_event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "source_type": "reviewer_shard_aggregate",
     "target_projection_id": null,
-    "reason": "2 shard(s)",
+    "reason": "pass / 0 failed",
     "requires_operator": false
   },
   "next_action_terminal": {
@@ -417,8 +450,8 @@
         "unknown": 0
       },
       "artifacts": {
-        "total": 5,
-        "passed": 4,
+        "total": 8,
+        "passed": 7,
         "failed": 1,
         "unknown": 0
       },
@@ -429,8 +462,8 @@
         "unknown": 0
       },
       "review_findings": {
-        "total": 1,
-        "passed": 0,
+        "total": 2,
+        "passed": 1,
         "failed": 1,
         "unknown": 0
       },
@@ -494,7 +527,7 @@
     ],
     "counters": {
       "work_packages": 3,
-      "artifacts": 5,
+      "artifacts": 8,
       "reviewer_findings": 1,
       "dispatchable_tasks": 0,
       "closeout_publishes": 0,
@@ -502,7 +535,7 @@
       "resume_blockers": 0,
       "provider_health_events": 1,
       "reviewer_scope_shards": 2,
-      "reviewer_shards_completed": 0,
+      "reviewer_shards_completed": 2,
       "headless_child_attempts": 0,
       "headless_child_retry_attempts": 0,
       "projected_action_progress_events": 0,
@@ -516,8 +549,8 @@
       "agent_lifecycle_heartbeats": 0,
       "global_goals_pending": 3,
       "global_goals_completed": 0,
-      "operation_events": 2
+      "operation_events": 5
     },
-    "recommended_action": "run_reviewer_scope_shard"
+    "recommended_action": "continue_after_reviewer_aggregate"
   }
 }

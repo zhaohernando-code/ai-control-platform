@@ -75,7 +75,7 @@ test("reruns when autonomous run returns recoverable next work packages", () => 
   assert.equal(decision.context_pack_seed.subtasks[0].id, "rerun-reviewer");
 });
 
-test("reviewer provider health facts generate scheduler follow-up work packages", () => {
+test("current reviewer aggregate fixture advances after provider health follow-up packages", () => {
   const workflowState = readJson("docs/examples/current-session-workbench-input.json");
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),
@@ -84,10 +84,10 @@ test("reviewer provider health facts generate scheduler follow-up work packages"
   });
 
   assert.equal(decision.action, CONTINUE);
-  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-rerun-without-tools"));
-  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-split-scope"));
-  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-001"));
-  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-provider-rerun-without-tools"));
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-rerun-without-tools"));
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-001"));
+  assert.equal(decision.global_goal_completion.status, "in_progress");
+  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.global_goal_id === "platform-boundary-and-state-foundation"));
 });
 
 test("agent lifecycle pool gaps schedule cleanup without human intervention", () => {

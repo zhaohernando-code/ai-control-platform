@@ -385,7 +385,6 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
       });
       button.dataset.eventState = "recorded";
       button.textContent = projectedMock || projectedReal ? "Projected Loop 已记录" : "Loop 已记录";
-      currentProjectionId = result.item?.id || currentProjectionId;
       if (result.projection) {
         currentProjection = result.projection;
         renderProjection(result.projection);

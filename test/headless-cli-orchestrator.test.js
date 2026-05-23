@@ -15,6 +15,7 @@ import {
   runHeadlessCliMainOrchestrator,
   runHeadlessCliMainOrchestratorLoop
 } from "../src/workflow/headless-cli-orchestrator.js";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 async function withWorkbenchServer(fn, options = {}) {
   const script = [
@@ -850,7 +851,7 @@ test("run-headless-cli-orchestrator CLI passes reviewer controls to projected se
   const serviceInputPath = join(snapshotsRoot, "service-reviewer-input.json");
   const outputPath = join(dir, "headless-service-reviewer-output.json");
   const workflowOutputPath = join(dir, "headless-service-reviewer-workflow.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
 
   mkdirSync(snapshotsRoot, { recursive: true });
   writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
@@ -939,7 +940,7 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
   const serviceInputPath = join(snapshotsRoot, "service-reviewer-aggregate-input.json");
   const outputPath = join(dir, "headless-service-reviewer-aggregate-output.json");
   const workflowOutputPath = join(dir, "headless-service-reviewer-aggregate-workflow.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
 
   mkdirSync(snapshotsRoot, { recursive: true });
   writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
@@ -1033,7 +1034,7 @@ test("run-headless-cli-orchestrator CLI follows service next projection into con
   const serviceInputPath = join(snapshotsRoot, "service-projection-cursor-input.json");
   const outputPath = join(dir, "headless-service-projection-cursor-output.json");
   const workflowOutputPath = join(dir, "headless-service-projection-cursor-workflow.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
 
   mkdirSync(snapshotsRoot, { recursive: true });
   writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);

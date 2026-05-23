@@ -363,6 +363,148 @@
           "created_at": "2026-05-21T20:20:30.000Z",
           "issues": []
         }
+      },
+      {
+        "id": "event-reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_shard_result",
+        "status": "pass",
+        "artifact_id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "message": "reviewer-scope-shard-001 reviewer shard completed with 0 failed finding(s).",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_result",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "shard_id": "reviewer-scope-shard-001",
+          "files": [
+            "src/workflow/model-router.js"
+          ],
+          "questions": [
+            "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+          ],
+          "findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-001",
+                "files": [
+                  "src/workflow/model-router.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "executor_provenance": null,
+          "created_at": "2026-05-24T02:36:00.000Z",
+          "issues": []
+        }
+      },
+      {
+        "id": "event-reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_shard_result",
+        "status": "pass",
+        "artifact_id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "message": "reviewer-scope-shard-002 reviewer shard completed with 0 failed finding(s).",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_result",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "shard_id": "reviewer-scope-shard-002",
+          "files": [
+            "src/workflow/llm-reviewer-gate.js"
+          ],
+          "questions": [
+            "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+          ],
+          "findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-002",
+                "files": [
+                  "src/workflow/llm-reviewer-gate.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "executor_provenance": null,
+          "created_at": "2026-05-24T02:36:00.000Z",
+          "issues": []
+        }
+      },
+      {
+        "id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "reviewer_shard_aggregate",
+        "status": "pass",
+        "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "message": "Reviewer shard aggregate 2/2 completed with 0 failed finding(s).",
+        "created_at": "2026-05-24T02:37:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_aggregate",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "total_shards": 2,
+          "completed_shards": 2,
+          "pending_shards": 0,
+          "pending_shard_ids": [],
+          "shard_result_count": 2,
+          "failed_result_count": 0,
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "merged_findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-001",
+                "files": [
+                  "src/workflow/model-router.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "created_at": "2026-05-24T02:37:00.000Z",
+          "issues": []
+        }
       }
     ],
     "artifacts": [
@@ -580,6 +722,148 @@
           "created_at": "2026-05-21T20:20:30.000Z",
           "issues": []
         }
+      },
+      {
+        "id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "review",
+        "status": "pass",
+        "uri": "codex://reviewer-shard-result/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-shard-result",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_result",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "shard_id": "reviewer-scope-shard-001",
+          "files": [
+            "src/workflow/model-router.js"
+          ],
+          "questions": [
+            "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+          ],
+          "findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-001",
+                "files": [
+                  "src/workflow/model-router.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "executor_provenance": null,
+          "created_at": "2026-05-24T02:36:00.000Z",
+          "issues": []
+        }
+      },
+      {
+        "id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "review",
+        "status": "pass",
+        "uri": "codex://reviewer-shard-result/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-shard-result",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_result",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "shard_id": "reviewer-scope-shard-002",
+          "files": [
+            "src/workflow/llm-reviewer-gate.js"
+          ],
+          "questions": [
+            "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+          ],
+          "findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-002",
+                "files": [
+                  "src/workflow/llm-reviewer-gate.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "executor_provenance": null,
+          "created_at": "2026-05-24T02:36:00.000Z",
+          "issues": []
+        }
+      },
+      {
+        "id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "review",
+        "status": "pass",
+        "uri": "codex://reviewer-shard-aggregate/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-shard-aggregate",
+        "created_at": "2026-05-24T02:37:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_aggregate",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "total_shards": 2,
+          "completed_shards": 2,
+          "pending_shards": 0,
+          "pending_shard_ids": [],
+          "shard_result_count": 2,
+          "failed_result_count": 0,
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "merged_findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-001",
+                "files": [
+                  "src/workflow/model-router.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "created_at": "2026-05-24T02:37:00.000Z",
+          "issues": []
+        }
       }
     ],
     "gate_results": [
@@ -606,11 +890,28 @@
           "model": "deepseek-v4-pro",
           "timeout_seconds": 120
         }
+      },
+      {
+        "finding_id": "durable-fixture-reviewer-shard-pass",
+        "status": "pass",
+        "category": "reviewer",
+        "severity": "info",
+        "message": "durable current-session reviewer shard passed in bounded mock mode",
+        "requires_rollback": false,
+        "requires_human": false,
+        "evidence": {
+          "shard_id": "reviewer-scope-shard-001",
+          "files": [
+            "src/workflow/model-router.js"
+          ]
+        },
+        "provider": "claude-code",
+        "model": "deepseek-v4-pro"
       }
     ],
     "recovery_attempts": [],
     "created_at": "2026-05-21T08:00:00.000Z",
-    "updated_at": "2026-05-21T20:20:30.000Z"
+    "updated_at": "2026-05-24T02:37:00.000Z"
   },
   "artifact_ledger": {
     "run_id": "run-20260521-platform-self-trial",
@@ -838,10 +1139,152 @@
           "created_at": "2026-05-21T20:20:30.000Z",
           "issues": []
         }
+      },
+      {
+        "id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "review",
+        "status": "pass",
+        "uri": "codex://reviewer-shard-result/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-shard-result",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_result",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "shard_id": "reviewer-scope-shard-001",
+          "files": [
+            "src/workflow/model-router.js"
+          ],
+          "questions": [
+            "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+          ],
+          "findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-001",
+                "files": [
+                  "src/workflow/model-router.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "executor_provenance": null,
+          "created_at": "2026-05-24T02:36:00.000Z",
+          "issues": []
+        }
+      },
+      {
+        "id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "review",
+        "status": "pass",
+        "uri": "codex://reviewer-shard-result/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-shard-result",
+        "created_at": "2026-05-24T02:36:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_result",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "shard_id": "reviewer-scope-shard-002",
+          "files": [
+            "src/workflow/llm-reviewer-gate.js"
+          ],
+          "questions": [
+            "是否把多模型协同建模为策略而不是固定 Claude+DeepSeek？"
+          ],
+          "findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-002",
+                "files": [
+                  "src/workflow/llm-reviewer-gate.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "executor_provenance": null,
+          "created_at": "2026-05-24T02:36:00.000Z",
+          "issues": []
+        }
+      },
+      {
+        "id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "review",
+        "status": "pass",
+        "uri": "codex://reviewer-shard-aggregate/run-20260521-platform-self-trial/cycle-20260521-autonomous-platform/reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "producer": "reviewer-shard-aggregate",
+        "created_at": "2026-05-24T02:37:00.000Z",
+        "metadata": {
+          "id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+          "type": "reviewer_shard_aggregate",
+          "status": "pass",
+          "run_id": "run-20260521-platform-self-trial",
+          "cycle_id": "cycle-20260521-autonomous-platform",
+          "provider": "claude-code",
+          "model": "deepseek-v4-pro",
+          "total_shards": 2,
+          "completed_shards": 2,
+          "pending_shards": 0,
+          "pending_shard_ids": [],
+          "shard_result_count": 2,
+          "failed_result_count": 0,
+          "finding_count": 1,
+          "failed_finding_count": 0,
+          "merged_findings": [
+            {
+              "finding_id": "durable-fixture-reviewer-shard-pass",
+              "status": "pass",
+              "category": "reviewer",
+              "severity": "info",
+              "message": "durable current-session reviewer shard passed in bounded mock mode",
+              "requires_rollback": false,
+              "requires_human": false,
+              "evidence": {
+                "shard_id": "reviewer-scope-shard-001",
+                "files": [
+                  "src/workflow/model-router.js"
+                ]
+              },
+              "provider": "claude-code",
+              "model": "deepseek-v4-pro"
+            }
+          ],
+          "created_at": "2026-05-24T02:37:00.000Z",
+          "issues": []
+        }
       }
     ],
     "created_at": "2026-05-21T08:00:00.000Z",
-    "updated_at": "2026-05-21T20:20:30.000Z"
+    "updated_at": "2026-05-24T02:37:00.000Z"
   },
   "operator_event_ledger": {
     "version": "operator-events.v1",

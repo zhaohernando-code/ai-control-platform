@@ -31,6 +31,26 @@ function recordScenario(result) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+function pendingReviewerShardWorkflowState(workflowState) {
+  const reviewerShardEventTypes = new Set([
+    "reviewer_shard_result",
+    "reviewer_shard_aggregate"
+  ]);
+  const reviewerShardArtifactPrefixes = [
+    "reviewer-shard-result",
+    "reviewer-shard-aggregate"
+  ];
+
+  workflowState.manifest.events = (workflowState.manifest.events || [])
+    .filter((event) => !reviewerShardEventTypes.has(event.type));
+  workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+    .filter((artifact) => !reviewerShardArtifactPrefixes.some((prefix) => String(artifact.id).startsWith(prefix)));
+  workflowState.manifest.review_findings = (workflowState.manifest.review_findings || [])
+    .filter((finding) => finding.category !== "reviewer");
+  workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+    .filter((artifact) => !reviewerShardArtifactPrefixes.some((prefix) => String(artifact.id).startsWith(prefix)));
+}
+
 function createRunArtifact() {
   return {
     version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
@@ -300,7 +320,7 @@ async function verifySchedulerDispatchClick(browser) {
       scheduler_policy_mode: schedulerPolicyMode,
       dimensions
     });
-  });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
 }
 
 async function verifyApprovedMockSchedulerDispatchClick(browser) {
@@ -346,7 +366,7 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
       scheduler_continuation_ready: schedulerContinuationReady,
       dimensions
     });
-  });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
 }
 
 async function verifyGuardedNextActionClick(browser) {
@@ -382,7 +402,7 @@ async function verifyGuardedNextActionClick(browser) {
       scheduler_continuation_ready: schedulerContinuationReady,
       dimensions
     });
-  });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
 }
 
 function injectLifecycleCleanupState(workflowState) {
@@ -731,7 +751,7 @@ async function verifyProjectedMockLoopClick(browser) {
       next_action_readout: nextActionReadout,
       dimensions
     });
-  });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
 }
 
 async function verifyProjectedRealPartialShardReadout(browser) {
@@ -783,6 +803,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
       dimensions
     });
   }, {
+    workflowStateMutator: pendingReviewerShardWorkflowState,
     realReviewerExecutor: async ({ shard }) => {
       calls.push(shard.id);
       return {
@@ -908,7 +929,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       next_action_readout: nextActionReadout,
       dimensions
     });
-  });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
 }
 
 async function verifyMobileProjectionLoad(browser) {

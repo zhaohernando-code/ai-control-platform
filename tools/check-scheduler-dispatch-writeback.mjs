@@ -54,6 +54,26 @@ function runNode(args) {
   });
 }
 
+function removeReviewerShardCompletion(workflowState) {
+  const reviewerShardEventTypes = new Set([
+    "reviewer_shard_result",
+    "reviewer_shard_aggregate"
+  ]);
+  const reviewerShardArtifactPrefixes = [
+    "reviewer-shard-result",
+    "reviewer-shard-aggregate"
+  ];
+
+  workflowState.manifest.events = (workflowState.manifest.events || [])
+    .filter((event) => !reviewerShardEventTypes.has(event.type));
+  workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+    .filter((artifact) => !reviewerShardArtifactPrefixes.some((prefix) => String(artifact.id).startsWith(prefix)));
+  workflowState.manifest.review_findings = (workflowState.manifest.review_findings || [])
+    .filter((finding) => finding.category !== "reviewer");
+  workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+    .filter((artifact) => !reviewerShardArtifactPrefixes.some((prefix) => String(artifact.id).startsWith(prefix)));
+}
+
 async function withWorkbenchServer(options, fn) {
   const server = createWorkbenchServer(options);
   server.listen(0, "127.0.0.1");
@@ -104,6 +124,7 @@ const planPath = join(snapshotsRoot, "scheduler-writeback-plan.json");
 const outputPath = join(snapshotsRoot, "scheduler-writeback-run.json");
 const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
 const projectionId = "scheduler-writeback";
+removeReviewerShardCompletion(workflowState);
 
 writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
 writeFileSync(historyPath, JSON.stringify({

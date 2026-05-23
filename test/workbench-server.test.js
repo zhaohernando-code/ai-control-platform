@@ -16,6 +16,7 @@ import { createRunManifest } from "../src/workflow/run-manifest.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { assertWorkbenchProjectionSchema } from "../src/workflow/workbench-projection-schema.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 mkdirSync("tmp", { recursive: true });
 
@@ -231,8 +232,8 @@ test("workbench server returns latest projection", async () => {
     assert.equal(projection.run_id, "run-20260521-platform-self-trial");
     assert.equal(projection.operator_events.status, "pass");
     assert.equal(projection.operator_events.applied_artifacts, 1);
-    assert.equal(projection.manifest.event_count, 5);
-    assert.equal(projection.artifacts.total, 5);
+    assert.equal(projection.manifest.event_count, 8);
+    assert.equal(projection.artifacts.total, 8);
     assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
     assert.equal(projection.reviewer_scope_split.shard_count, 2);
   });
@@ -244,7 +245,7 @@ test("workbench server CLI can start with isolated history and snapshot roots", 
   const eventsPath = join(dir, "operator-events.json");
   const inputPath = join(snapshotsRoot, "input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   mkdirSync(snapshotsRoot, { recursive: true });
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
@@ -293,7 +294,7 @@ test("workbench server builds latest projection from workflow state input", asyn
     assert.equal(response.status, 200);
     assert.equal(projection.operator_events.event_count, 1);
     assert.equal(projection.artifacts.by_type.evaluation, 3);
-    assert.equal(projection.autonomous_run.summaries.artifacts.total, 5);
+    assert.equal(projection.autonomous_run.summaries.artifacts.total, 8);
     assert.equal(projection.reviewer_provider_health.next_action, "rerun_without_tools");
     assert.equal(projection.reviewer_scope_split.next_shard, "reviewer-scope-shard-001");
   });
@@ -304,7 +305,7 @@ test("workbench server overlays repository PROJECT_STATUS into workflow projecti
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "project-status-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.project_status = {
     project: "ai-control-platform",
     next_step: "",
@@ -355,7 +356,7 @@ test("workbench server executes project status continuation next action", async 
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "project-status-next-action-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
@@ -594,7 +595,7 @@ test("workbench server truncates generated context pack snapshot ids for long pr
   const inputPath = join(snapshotsRoot, "long-context-id-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
   const longProjectionId = "headless-continuation-third-cycle-20260521-autonomous-platform-headless-01-headl";
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
@@ -825,7 +826,7 @@ test("workbench server persists workflow state snapshots and updates history", a
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
   const historyPath = join(dir, "projection-history.json");
   writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
 
   await withServer(async (baseUrl) => {
     const createResponse = await request(`${baseUrl}/api/workbench/snapshots`, {
@@ -859,7 +860,7 @@ test("workbench server records reviewer provider health into workflow state inpu
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-provider-health-"));
   const inputPath = join(snapshotsRoot, "provider-health-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events = workflowState.manifest.events.filter((event) => event.type !== "reviewer_provider_health");
   workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
   workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
@@ -918,7 +919,7 @@ test("workbench server records reviewer shard results into workflow state input"
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-shard-result-"));
   const inputPath = join(snapshotsRoot, "shard-result-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -978,7 +979,7 @@ test("workbench server records agent lifecycle cleanup into workflow state input
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-agent-lifecycle-"));
   const inputPath = join(snapshotsRoot, "agent-lifecycle-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
     "WorkerSpawned",
     "WorkerCompleted",
@@ -1063,7 +1064,7 @@ test("workbench server records workbench browser event run artifacts", async () 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-browser-events-"));
   const inputPath = join(snapshotsRoot, "browser-events-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1113,7 +1114,7 @@ test("workbench server creates scheduler dispatch plans from projection history 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-plan-"));
   const inputPath = join(snapshotsRoot, "scheduler-plan-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1154,7 +1155,7 @@ test("workbench server runs guarded scheduler dispatch dry-run from projection h
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-control-"));
   const inputPath = join(snapshotsRoot, "scheduler-control-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1195,7 +1196,7 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-approved-mock-"));
   const inputPath = join(snapshotsRoot, "scheduler-approved-mock-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1266,7 +1267,7 @@ test("workbench server runs approved non-dry-run scheduler dispatch for lifecycl
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-cleanup-"));
   const inputPath = join(snapshotsRoot, "scheduler-cleanup-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events = workflowState.manifest.events.filter((event) => ![
     "WorkerSpawned",
     "WorkerCompleted",
@@ -1356,7 +1357,7 @@ test("workbench server rejects scheduler next-cycle without dispatch run artifac
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-cycle-missing-"));
   const inputPath = join(snapshotsRoot, "next-cycle-missing-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1390,7 +1391,7 @@ test("workbench server executes allowlisted projected next actions", async () =>
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-"));
   const inputPath = join(snapshotsRoot, "next-action-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1464,7 +1465,7 @@ test("workbench server advances from completed context work packages to project 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-context-work-packages-next-action-"));
   const inputPath = join(snapshotsRoot, "context-work-packages-next-action-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.project_status = {
     project: "ai-control-platform",
     next_step: "",
@@ -1541,7 +1542,7 @@ test("workbench server runs reviewer shard through projected next action", async
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-"));
   const inputPath = join(snapshotsRoot, "next-action-reviewer-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1583,7 +1584,7 @@ test("workbench server continues after reviewer aggregate through projected next
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-aggregate-"));
   const inputPath = join(snapshotsRoot, "next-action-reviewer-aggregate-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1687,7 +1688,7 @@ test("workbench server blocks reviewer shard execution when mock profile has no 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-reviewer-policy-block-"));
   const inputPath = join(snapshotsRoot, "reviewer-policy-block-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1725,7 +1726,7 @@ test("workbench server runs bounded real reviewer profile only with explicit bud
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-real-reviewer-policy-"));
   const inputPath = join(snapshotsRoot, "real-reviewer-policy-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events.push({
     id: "event-real-reviewer-health",
     type: "reviewer_provider_health",
@@ -1800,7 +1801,7 @@ test("workbench server blocks bounded real reviewer profile without healthy prov
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-real-reviewer-preflight-"));
   const inputPath = join(snapshotsRoot, "real-reviewer-preflight-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   workflowState.manifest.events = workflowState.manifest.events.filter((event) => event.type !== "reviewer_provider_health");
   workflowState.manifest.artifacts = workflowState.manifest.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
   workflowState.artifact_ledger.artifacts = workflowState.artifact_ledger.artifacts.filter((artifact) => artifact.metadata?.type !== "reviewer_provider_health");
@@ -1844,7 +1845,7 @@ test("workbench server records direct reviewer shard runs", async () => {
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-reviewer-shard-run-"));
   const inputPath = join(snapshotsRoot, "reviewer-shard-run-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1883,7 +1884,7 @@ test("workbench server resumes scheduler loop through projected next action", as
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-resume-"));
   const inputPath = join(snapshotsRoot, "next-action-resume-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1936,7 +1937,7 @@ test("workbench server fails closed for unsupported projected next action", asyn
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-unsupported-"));
   const inputPath = join(snapshotsRoot, "next-action-unsupported-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2005,7 +2006,7 @@ test("workbench server fails closed when projected next action drifts", async ()
     const rejected = response.json();
 
     assert.equal(response.status, 409);
-    assert.equal(rejected.next_action_readout.action, "run_reviewer_scope_shard");
+    assert.equal(rejected.next_action_readout.action, "continue_after_reviewer_aggregate");
     assert.equal(rejected.issues[0].code, "next_action_drift");
   });
 });
@@ -2015,7 +2016,7 @@ test("workbench server runs bounded autonomous scheduler loop from projection hi
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-"));
   const inputPath = join(snapshotsRoot, "autonomous-loop-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2063,7 +2064,7 @@ test("workbench server can run autonomous scheduler loop through projected next 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-loop-"));
   const inputPath = join(snapshotsRoot, "projected-loop-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2108,7 +2109,7 @@ test("workbench server can run projected real reviewer loop with injected execut
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-real-loop-"));
   const inputPath = join(snapshotsRoot, "projected-real-loop-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2174,7 +2175,7 @@ test("workbench server continues projected real reviewer loop from durable parti
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-real-resume-"));
   const inputPath = join(snapshotsRoot, "projected-real-resume-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2267,7 +2268,7 @@ test("workbench server resumes autonomous scheduler loop from registry recovery 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-"));
   const inputPath = join(snapshotsRoot, "autonomous-loop-resume-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2326,7 +2327,7 @@ test("workbench server rejects autonomous scheduler loop resume without ready re
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-blocked-"));
   const inputPath = join(snapshotsRoot, "autonomous-loop-resume-blocked-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2377,7 +2378,7 @@ test("workbench server records scheduler dispatch runs into workflow state input
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-dispatch-"));
   const inputPath = join(snapshotsRoot, "scheduler-dispatch-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   const plan = createSchedulerDispatchPlan({
     project_status: {
       project: "ai-control-platform",
@@ -2433,7 +2434,7 @@ test("run-scheduler-dispatch-plan CLI records scheduler dispatch run through wor
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const planPath = join(snapshotsRoot, "scheduler-cli-plan.json");
   const outputPath = join(snapshotsRoot, "scheduler-cli-run.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   const plan = createSchedulerDispatchPlan({
     project_status: {
       project: "ai-control-platform",
@@ -2540,7 +2541,7 @@ test("workbench server rejects unauthorized non-dry-run scheduler dispatch from 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-control-reject-"));
   const inputPath = join(snapshotsRoot, "scheduler-control-reject-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2578,7 +2579,7 @@ test("workbench server rejects unsupported scheduler dispatch execution profiles
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-profile-reject-"));
   const inputPath = join(snapshotsRoot, "scheduler-profile-reject-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2613,7 +2614,7 @@ test("workbench server rejects scheduler dispatch plan creation with unsafe host
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-plan-host-"));
   const inputPath = join(snapshotsRoot, "scheduler-plan-host-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2648,7 +2649,7 @@ test("workbench server rejects scheduler dispatch run identity drift", async () 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-drift-"));
   const inputPath = join(snapshotsRoot, "scheduler-drift-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2751,7 +2752,7 @@ test("workbench server rejects workflow state snapshots that are not projection-
 test("workbench server rejects workflow state snapshots without operator event facts", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-history-"));
   const historyPath = join(dir, "projection-history.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   delete workflowState.operator_event_ledger;
   writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
 
@@ -2920,7 +2921,7 @@ test("workbench server CLI honors isolated history snapshots and events paths", 
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         id: "cli-isolated-snapshot",
-        input: JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8")),
+        input: currentSessionWorkflowState(),
         label: "CLI isolated snapshot"
       })
     });

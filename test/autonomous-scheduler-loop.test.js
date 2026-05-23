@@ -17,6 +17,7 @@ import {
   validateSchedulerLoopRunArtifact
 } from "../src/workflow/autonomous-scheduler-loop.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 async function withServer(options, fn) {
   const server = createWorkbenchServer(options);
@@ -381,7 +382,7 @@ test("scheduler loop run artifact validation rejects damaged run history", async
 });
 
 test("scheduler loop run artifact records into workflow state", async () => {
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
   const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result);
   const recorded = recordAutonomousSchedulerLoopRunArtifact(workflowState, artifact, {
@@ -394,7 +395,7 @@ test("scheduler loop run artifact records into workflow state", async () => {
 });
 
 test("scheduler loop registry and recovery policy resume from latest queued projection", async () => {
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
   const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result, {
     created_at: "2026-05-22T01:05:00.000Z"
@@ -415,7 +416,7 @@ test("scheduler loop registry and recovery policy resume from latest queued proj
 });
 
 test("scheduler loop registry blocks invalid durable artifacts", async () => {
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
   const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result);
   const recorded = recordAutonomousSchedulerLoopRunArtifact(workflowState, artifact, {
@@ -451,7 +452,7 @@ test("scheduler loop registry blocks invalid durable artifacts", async () => {
 });
 
 test("scheduler loop resume attempts are durable workflow facts", () => {
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   const recorded = recordSchedulerLoopResumeAttempt(workflowState, {
     status: "blocked",
     source_projection_id: "source",
@@ -503,7 +504,7 @@ test("run-autonomous-scheduler-loop CLI can drive one workbench service cycle", 
   const inputPath = join(snapshotsRoot, "loop-service-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const outputPath = join(snapshotsRoot, "autonomous-scheduler-loop-run.json");
-  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  const workflowState = currentSessionWorkflowState();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
