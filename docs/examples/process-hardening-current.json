@@ -1403,6 +1403,14 @@
       "regression_test": "run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
+    },
+    {
+      "finding_id": "context-work-packages-stop-before-global-goals",
+      "invariant": "When the latest workflow fact is context_work_packages_run or context_pack_cycle_created/materialized and the task DAG is exhausted, the next-action readout must continue to prepare_project_status_continuation whenever global goals remain in progress; inspect_context_work_packages is only allowed after both dispatchable work packages and global-goal continuations are exhausted.",
+      "enforcement_target": "src/workflow/workbench-projection.js; tools/workbench-server.mjs; test/workbench-projection.test.js; test/workbench-server.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "workbench projection advances from completed context work packages to global goal continuation; workbench server advances from completed context work packages to project status continuation",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
     }
   ]
 }

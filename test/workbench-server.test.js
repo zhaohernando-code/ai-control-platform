@@ -1315,6 +1315,83 @@ test("workbench server executes allowlisted projected next actions", async () =>
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server advances from completed context work packages to project status continuation", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-context-work-packages-next-action-"));
+  const inputPath = join(snapshotsRoot, "context-work-packages-next-action-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.project_status = {
+    project: "ai-control-platform",
+    next_step: "",
+    global_goals: [
+      { id: "foundation", title: "Foundation", status: "completed" },
+      {
+        id: "completion-loop",
+        title: "Completion loop",
+        status: "in_progress",
+        next_step: "Continue detecting unfinished platform goals."
+      }
+    ]
+  };
+  workflowState.task_dag = [
+    {
+      id: "runtime",
+      title: "Runtime",
+      status: "completed",
+      owned_files: ["src/workflow/context-work-package-runner.js"]
+    }
+  ];
+  workflowState.manifest.events = [
+    ...workflowState.manifest.events,
+    {
+      id: "event-context-work-packages-run",
+      type: "context_work_packages_run",
+      status: "pass",
+      created_at: "2026-05-22T03:10:00.000Z",
+      metadata: {
+        type: "context_work_packages_run",
+        status: "pass",
+        executed_count: 1
+      }
+    }
+  ];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "context-work-packages-next-action",
+    items: [
+      {
+        id: "context-work-packages-next-action",
+        label: "Context work packages next action",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const projection = await request(`${baseUrl}/api/workbench/projection?id=context-work-packages-next-action`);
+    assert.equal(projection.json().next_action_readout.action, "prepare_project_status_continuation");
+
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=context-work-packages-next-action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "prepare_project_status_continuation",
+        created_at: "2026-05-22T03:11:00.000Z"
+      })
+    });
+    const executed = response.json();
+
+    assert.equal(response.status, 201);
+    assert.equal(executed.status, "executed");
+    assert.equal(executed.action, "prepare_project_status_continuation");
+    assert.equal(executed.next_action_readout.action, "prepare_project_status_continuation");
+    assert.equal(executed.result.status, "created");
+    assert.equal(executed.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
+});
+
 test("workbench server runs reviewer shard through projected next action", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-"));

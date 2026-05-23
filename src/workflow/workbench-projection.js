@@ -1007,6 +1007,7 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
     latest?.type === "context_work_packages_run"
   ) {
     const taskDag = summaries.taskDag || {};
+    const globalGoals = summaries.globalGoalCompletion || {};
     if (Number(taskDag.dispatchable?.length || 0) > 0) {
       return {
         status: "ready",
@@ -1015,6 +1016,17 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
         source_type: latest.type,
         target_projection_id: null,
         reason: latest.summary,
+        requires_operator: false
+      };
+    }
+    if (globalGoals.status === "in_progress" && Number(globalGoals.pending || 0) > 0) {
+      return {
+        status: "ready",
+        action: "prepare_project_status_continuation",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || latest.summary,
         requires_operator: false
       };
     }

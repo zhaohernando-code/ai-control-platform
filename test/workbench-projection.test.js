@@ -518,6 +518,57 @@ test("workbench projection exposes materialized context pack cycle as ready exec
   assert.equal(projection.next_action_readout.action, "run_context_work_packages");
 });
 
+test("workbench projection advances from completed context work packages to global goal continuation", () => {
+  const input = baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      next_step: "",
+      global_goals: [
+        { id: "foundation", title: "Foundation", status: "completed" },
+        {
+          id: "completion-loop",
+          title: "Completion loop",
+          status: "in_progress",
+          next_step: "Continue detecting unfinished platform goals."
+        }
+      ]
+    },
+    task_dag: [
+      {
+        id: "runtime",
+        title: "Runtime",
+        status: "completed",
+        action: "implement",
+        owned_files: ["src/workflow/context-work-package-runner.js"]
+      }
+    ]
+  });
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "context-work-packages-run-001",
+        type: "context_work_packages_run",
+        status: "pass",
+        created_at: "2026-05-21T00:05:00.000Z",
+        metadata: {
+          type: "context_work_packages_run",
+          status: "pass",
+          executed_count: 1
+        }
+      }
+    ]
+  };
+
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.operations_timeline.latest.type, "context_work_packages_run");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "prepare_project_status_continuation");
+  assert.equal(projection.next_action_readout.source_type, "context_work_packages_run");
+});
+
 test("workbench projection exposes latest closeout publication evidence", () => {
   const input = baseInput();
   const artifact = {
