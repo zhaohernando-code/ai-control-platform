@@ -1097,13 +1097,13 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
     assert.equal(created.result.status, "pass");
     assert.equal(created.projection.scheduler_dispatch.dry_run, false);
     assert.equal(created.projection.scheduler_dispatch.policy_execution_mode, "execute");
-    assert.equal(created.projection.scheduler_dispatch.next_continuation_action, "rerun");
-    assert.equal(created.projection.scheduler_dispatch.next_work_package_count, 3);
+    assert.equal(created.projection.scheduler_dispatch.next_continuation_action, "continue");
+    assert.equal(created.projection.scheduler_dispatch.next_work_package_count, 1);
     assert.equal(created.projection.scheduler_continuation.ready, true);
-    assert.equal(created.projection.scheduler_continuation.next_work_package_count, 3);
+    assert.equal(created.projection.scheduler_continuation.next_work_package_count, 1);
     assert.equal(readyItem.scheduler_dispatch.continuation_ready, true);
     assert.equal(readyItem.scheduler_dispatch.enqueue_available, true);
-    assert.equal(readyItem.scheduler_dispatch.next_work_package_count, 3);
+    assert.equal(readyItem.scheduler_dispatch.next_work_package_count, 1);
     assert.equal(nextCycle.status, 201);
     assert.equal(queued.status, "queued");
     assert.equal(queued.next_item.id, "scheduler-approved-mock-next");

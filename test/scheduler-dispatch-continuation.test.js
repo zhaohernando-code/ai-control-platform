@@ -192,6 +192,6 @@ test("run-scheduler-dispatch-plan CLI can write next continuation input", () => 
 
   assert.equal(summary.status, "pass");
   assert.equal(summary.continuation_status, "ready");
-  assert.equal(summary.continuation_next_work_packages, 3);
+  assert.equal(summary.continuation_next_work_packages, 1);
   assert.equal(continuation.project_status.project, "ai-control-platform");
 });

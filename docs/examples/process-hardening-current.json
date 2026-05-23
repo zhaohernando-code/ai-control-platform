@@ -547,6 +547,13 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Projected headless loops must not stop after reviewer shard aggregate because continue_after_reviewer_aggregate is visible but unsupported by the service or headless allowlist."
+    },
+    {
+      "id": "context-pack-seed-after-reviewer-aggregate-invalid",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "After reviewer aggregate continuation, stale reviewer timeout/provider recovery facts and source workflow work_package counts must not poison the next context_pack_seed or scheduler-next-cycle validation."
     }
   ],
   "hardening_items": [
@@ -1372,6 +1379,14 @@
       "enforcement_target": "src/workflow/workbench-projection.js; tools/workbench-server.mjs; src/workflow/headless-cli-orchestrator.js; test/workbench-projection.test.js; test/workbench-server.test.js; test/headless-cli-orchestrator.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
       "regression_test": "workbench projection advances from reviewer aggregate continuation fact; workbench server continues after reviewer aggregate through projected next action; run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
       "verification": "node --test test/workbench-projection.test.js test/workbench-server.test.js test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-pack-seed-after-reviewer-aggregate-invalid",
+      "invariant": "Completed reviewer shard aggregates must suppress stale pre-aggregate reviewer recovery work packages and artifacts before creating continuation decisions; a PROJECT_STATUS.next_step-only continuation must synthesize a bounded default work package; scheduler-next-cycle validation must compare generated durable next_work_packages to replay-validated next_work_packages instead of comparing against the source workflow_state manifest work_packages.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/project-status-continuation.js; src/workflow/reviewer-shard-runner.js; tools/workbench-server.mjs; tools/check-workbench-browser-events.mjs; test/autonomous-continuation.test.js; test/project-status-continuation.test.js; test/reviewer-shard-runner.test.js; test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "reviewer shard aggregate pass clears stale reviewer recovery artifacts; project status next work packages are durable continuation inputs; reviewer shard loop artifact prepares continuation input; workbench server runs approved mocked non-dry-run scheduler dispatch from profile",
+      "verification": "node --test test/autonomous-continuation.test.js test/project-status-continuation.test.js test/reviewer-shard-runner.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

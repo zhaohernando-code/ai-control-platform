@@ -164,6 +164,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - `pending_shards > 0` 或 `status=pending` 时，不得把 aggregate 当成最终决策。
 - `status=fail` 且存在失败 finding 时，必须覆盖旧的 pass evaluation，进入 `rerun`、`rollback` 或 `human_intervention` 的统一决策路径。
 - `status=pass` 时，可以覆盖旧的 reviewer timeout rerun，避免已经被 split/shard 恢复的问题继续制造无效重试。
+- `status=pass` 后生成的 `context_pack_seed` 必须清理过期的 reviewer provider health、timeout recovery、scope split 和 shard result 恢复包，避免把 aggregate 前的恢复动作带进下一轮 seed。
 - 显式 human/rollback evaluation 优先级仍然高于 aggregate，避免人工阻塞和边界回退被误清除。
 
 这保证 smoke 通过但 DS tool review 超时时，下一轮会沿着“生成 split plan -> 分片复审 -> 汇总 findings”继续，而不是原样重跑同一个会超时的工具请求。
@@ -202,6 +203,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - Scheduler dispatch plan 必须携带 `continuation_output` 文件目标；非 dry-run runner 在没有显式 CLI flag 时使用 plan 内目标，dry-run 不生成 continuation input。
 - 工作台服务执行受控非 dry-run scheduler dispatch 后，必须同步生成 plan 声明的 continuation input，并把 `scheduler_dispatch_continuation` 作为 durable workflow fact 写回 manifest 和 artifact ledger；projection history 必须能展示 `continuation_ready`、`enqueue_available`、continuation input path 和 next work package count。
 - 工作台服务必须提供 `POST /api/workbench/scheduler-next-cycle`：它只能消费 projection history `input_path` 中最新的 scheduler dispatch run artifact，重新运行 scheduler dispatch continuation adapter，读取并校验已生成的 continuation input，然后写入 `scheduler_next_cycle_enqueue` fact 并发布下一轮 workflow snapshot。没有 `input_path`、没有 dispatch run、adapter blocked、continuation path 越界或 generated input 身份不一致时必须失败闭合，不得写入半状态。
+- 该接口校验 generated continuation input 的 work package count 时，必须优先读取生成结果里的 `next_work_packages`，而不是拿源 `workflow_state.manifest.work_packages` 当作下一轮 continuation 的数量；否则会把上一轮的旧工作包误当成新 continuation。
 - `tools/run-autonomous-scheduler-loop.mjs` / `npm run run:autonomous-scheduler-loop` 是当前最小自运行 loop driver。它只能连接本机 HTTP workbench server，只允许命名 profile `approved_mock_non_dry_run`，`max_iterations` 必须在 1-5 之间，并且每轮都按 `scheduler-dispatch-plan -> scheduler-dispatch -> scheduler-next-cycle` 推进；没有 dispatchable scheduler steps、continuation 未 ready、enqueue 未返回 next history id 或达到迭代上限时必须停止并输出 `autonomous-scheduler-loop-run.v1` artifact。
 - 自运行 loop 的服务端集成测试不得用同步子进程阻塞同一进程里的 workbench server；必须使用异步 child process，让本地 server 仍能处理 loop driver 的 HTTP 请求。
 - 工作台服务必须能通过 `POST /api/workbench/autonomous-scheduler-loop` 触发一轮 bounded loop，并把 `autonomous_scheduler_loop_run` fact 写回发起的 history input；PC/mobile projection 必须展示 loop status、phase、iteration count 和 latest projection id，前端只能发送 bounded 参数，不能拼底层 scheduler policy 字段。

@@ -13,6 +13,12 @@ const COMPLETE = "complete";
 const STOP_STATUSES = new Set(["human_intervention", "blocked", "stop_for_human"]);
 const RERUN_STATUSES = new Set(["rerun", "retry"]);
 const ROLLBACK_STATUSES = new Set(["rollback"]);
+const DEFAULT_NEXT_STEP_OWNED_FILES = [
+  "PROJECT_STATUS.json",
+  "src/workflow",
+  "docs/contracts",
+  "docs/examples/process-hardening-current.json"
+];
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -83,13 +89,16 @@ function nextStepFrom(input) {
 
 function nextWorkPackagesFrom(input) {
   const runEvaluation = runEvaluationFrom(input);
-  const providerPackages = reviewerProviderWorkPackagesFrom(input);
-  const scopeSplitPackages = reviewerScopeSplitWorkPackagesFrom(input);
+  const aggregate = latestCompletedReviewerShardAggregate(input);
+  const providerPackages = aggregate ? [] : reviewerProviderWorkPackagesFrom(input);
+  const scopeSplitPackages = aggregate ? [] : reviewerScopeSplitWorkPackagesFrom(input);
   const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const directPackages = [
     ...asArray(input?.next_work_packages),
     ...asArray(input?.nextWorkPackages),
+    ...asArray(input?.project_status?.next_work_packages),
+    ...asArray(input?.projectStatus?.next_work_packages),
     ...asArray(runEvaluation?.next_work_packages),
     ...asArray(runEvaluation?.projection?.next_work_packages),
     ...providerPackages,
@@ -115,17 +124,43 @@ function latestReviewerShardAggregate(input = {}) {
   return events.at(-1)?.metadata || null;
 }
 
-function reviewerShardAggregateEvaluation(input = {}) {
+function latestCompletedReviewerShardAggregate(input = {}) {
   const aggregate = latestReviewerShardAggregate(input);
+  if (!aggregate) return null;
+  if (normalizeToken(aggregate.status) === "pending" || Number(aggregate.pending_shards || 0) > 0) return null;
+  return aggregate;
+}
+
+function reviewerShardAggregateEvaluation(input = {}) {
+  const aggregate = latestCompletedReviewerShardAggregate(input);
   const workflowState = workflowStateFrom(input);
   const manifest = workflowState?.manifest;
   if (!aggregate || !manifest) return null;
-  if (normalizeToken(aggregate.status) === "pending" || Number(aggregate.pending_shards || 0) > 0) return null;
 
   return evaluateRunResult({
     ...manifest,
+    artifacts: asArray(manifest.artifacts).filter((artifact) => !preAggregateReviewerRecoveryArtifact(artifact)),
     review_findings: asArray(aggregate.merged_findings)
   });
+}
+
+function preAggregateReviewerRecoveryArtifact(artifact = {}) {
+  const metadata = artifact.metadata || {};
+  const type = normalizeToken(metadata.type || artifact.type || artifact.producer);
+  const category = normalizeToken(metadata.category || metadata.source?.category || artifact.category);
+  const producer = normalizeToken(artifact.producer || metadata.producer);
+  return Boolean(
+    type === "reviewer_gate" ||
+      type === "reviewer_provider_health" ||
+      type === "reviewer_scope_split" ||
+      type === "reviewer_shard_result" ||
+      category === "reviewer_timeout" ||
+      producer === "reviewer-provider-health" ||
+      producer === "reviewer-scope-splitter" ||
+      producer === "reviewer-shard-result" ||
+      producer === "reviewer-shard-aggregate" ||
+      normalizeString(artifact.id).includes("reviewer-timeout")
+  );
 }
 
 function runEvaluationFrom(input = {}) {
@@ -341,7 +376,7 @@ function continuationReasons(input, action) {
 function createContextPackSeed(input, action) {
   const status = projectStatus(input);
   const nextStep = nextStepFrom(input);
-  const nextWorkPackages = nextWorkPackagesFrom(input);
+  const nextWorkPackages = nextWorkPackagesWithNextStepFallback(input);
   const explicitOwnedFiles = compactStrings(input?.owned_files || input?.ownedFiles);
   const workPackageOwnedFiles = compactStrings(nextWorkPackages.flatMap((workPackage) => workPackage.owned_files || workPackage.ownedFiles));
 
@@ -383,6 +418,35 @@ function createContextPackSeed(input, action) {
     })),
     continuation_action: action
   };
+}
+
+function nextWorkPackagesWithNextStepFallback(input) {
+  const packages = nextWorkPackagesFrom(input);
+  if (packages.length > 0) return packages;
+
+  const nextStep = nextStepFrom(input);
+  if (!nextStep) return [];
+
+  return [
+    {
+      id: "project-status-next-step",
+      title: nextStep,
+      action: "continue_next_step",
+      owned_files: defaultNextStepOwnedFiles(input),
+      reason: "PROJECT_STATUS.next_step requires a bounded continuation package"
+    }
+  ];
+}
+
+function defaultNextStepOwnedFiles(input = {}) {
+  const explicit = compactStrings(input?.owned_files || input?.ownedFiles);
+  if (explicit.length > 0) return explicit;
+
+  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
+  const goalOwnedFiles = compactStrings(globalGoalCompletion.next_work_packages.flatMap((workPackage) => workPackage.owned_files || workPackage.ownedFiles));
+  if (goalOwnedFiles.length > 0) return [...new Set(goalOwnedFiles)];
+
+  return DEFAULT_NEXT_STEP_OWNED_FILES;
 }
 
 function snapshotIdFrom(input) {

@@ -250,7 +250,19 @@ test("reviewer shard loop artifact prepares continuation input", async () => {
   assert.equal(prepared.should_continue, true);
   assert.equal(prepared.continuation_input.project_status.project, "ai-control-platform");
   assert.equal(prepared.continuation_input.project_status.next_step, "Continue from reviewer shard loop artifact.");
+  assert.equal(prepared.continuation_input.project_status.next_work_packages[0].id, "reviewer-shard-loop-continuation");
+  assert.deepEqual(
+    prepared.continuation_input.project_status.next_work_packages[0].owned_files,
+    [
+      "src/workflow/reviewer-shard-runner.js",
+      "src/workflow/autonomous-continuation.js",
+      "tools/prepare-reviewer-shard-loop-continuation.mjs",
+      "test/reviewer-shard-runner.test.js",
+      "test/autonomous-continuation.test.js"
+    ]
+  );
   assert.equal(prepared.continuation_input.run_evaluation.source, "reviewer-shard-loop-run.v1");
+  assert.equal(prepared.continuation_input.run_evaluation.next_work_packages[0].id, "reviewer-shard-loop-continuation");
   assert.equal(prepared.continuation_input.workflow_state.manifest.events.at(-1).type, "reviewer_shard_aggregate");
 
   const damaged = JSON.parse(JSON.stringify(artifact));

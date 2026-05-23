@@ -203,7 +203,15 @@ function generatedContinuationInputIssues(generated = {}, prepared = {}) {
     issues.push("generated continuation input cycle_id must match scheduler dispatch run");
   }
   const expectedWorkPackages = asArray(prepared.next_decision?.next_work_packages).length;
-  const generatedWorkPackages = asArray(generated.workflow_state?.manifest?.work_packages).length;
+  const generatedNextPackages = [
+    ...asArray(generated.project_status?.next_work_packages),
+    ...asArray(generated.projectStatus?.next_work_packages),
+    ...asArray(generated.run_evaluation?.next_work_packages),
+    ...asArray(generated.runEvaluation?.next_work_packages)
+  ];
+  const generatedWorkPackages = generatedNextPackages.length > 0
+    ? generatedNextPackages.length
+    : asArray(generated.workflow_state?.manifest?.work_packages).length;
   if (expectedWorkPackages !== generatedWorkPackages) {
     issues.push("generated continuation input work package count must match replay-validated continuation");
   }

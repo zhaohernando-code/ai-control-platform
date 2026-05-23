@@ -330,7 +330,7 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
     assert(schedulerPolicyStatus === "pass", "approved mock dispatch must render policy pass");
     assert(schedulerPolicyMode === "execute", "approved mock dispatch must render execute policy mode");
     assert(schedulerNextStatus === "pass", "approved mock dispatch must render next continuation status");
-    assert(schedulerNextPackages === "3", "approved mock dispatch must render next work package count");
+    assert(schedulerNextPackages === "1", "approved mock dispatch must render next work package count");
     assert(schedulerContinuationReady === "ready", "approved mock dispatch must render scheduler continuation readiness");
     assert(dimensions.scrollWidth <= dimensions.width, "approved mock dispatch must not create horizontal overflow");
 

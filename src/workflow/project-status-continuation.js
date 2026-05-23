@@ -53,6 +53,7 @@ function normalizeProjectStatus(projectStatus = {}) {
     updated_at: normalizeString(projectStatus.updated_at),
     blockers: asArray(projectStatus.blockers),
     next_step: normalizeString(projectStatus.next_step),
+    next_work_packages: asArray(projectStatus.next_work_packages || projectStatus.nextWorkPackages),
     global_goals: asArray(projectStatus.global_goals),
     linked_docs: asArray(projectStatus.linked_docs)
   };

@@ -437,6 +437,19 @@ export function prepareReviewerShardLoopContinuationInput(artifact = {}, options
 
   const nextStep = normalizeString(options.next_step || options.nextStep) ||
     "Continue after reviewer shard loop artifact validation.";
+  const nextWorkPackage = {
+    id: "reviewer-shard-loop-continuation",
+    title: nextStep,
+    action: "continue_reviewer_shard_loop",
+    owned_files: [
+      "src/workflow/reviewer-shard-runner.js",
+      "src/workflow/autonomous-continuation.js",
+      "tools/prepare-reviewer-shard-loop-continuation.mjs",
+      "test/reviewer-shard-runner.test.js",
+      "test/autonomous-continuation.test.js"
+    ],
+    reason: "reviewer shard loop completed and produced a durable continuation step"
+  };
   return {
     status: "ready",
     phase: "reviewer_shard_loop_continuation",
@@ -446,12 +459,14 @@ export function prepareReviewerShardLoopContinuationInput(artifact = {}, options
       project_status: {
         project: "ai-control-platform",
         blockers: [],
-        next_step: nextStep
+        next_step: nextStep,
+        next_work_packages: [nextWorkPackage]
       },
       run_evaluation: {
         status: "pass",
         source: REVIEWER_SHARD_LOOP_ARTIFACT_VERSION,
-        artifact_phase: artifact.phase
+        artifact_phase: artifact.phase,
+        next_work_packages: [nextWorkPackage]
       },
       workflow_state: artifact.result.workflow_state
     },

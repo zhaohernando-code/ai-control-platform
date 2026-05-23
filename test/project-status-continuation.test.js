@@ -34,6 +34,7 @@ test("project status continuation keeps next step and global goals in durable in
 
   assert.equal(input.project_status.project, "ai-control-platform");
   assert.equal(input.project_status.next_step, "Continue from repository status.");
+  assert.deepEqual(input.project_status.next_work_packages, []);
   assert.equal(input.project_status.global_goals.length, 1);
   assert.equal(input.run_evaluation.source, "PROJECT_STATUS.json");
 });

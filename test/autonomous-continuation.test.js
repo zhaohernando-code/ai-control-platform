@@ -351,6 +351,77 @@ test("reviewer shard aggregate pass clears stale rerun evaluation", () => {
   assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "stale-timeout-rerun"));
 });
 
+test("reviewer shard aggregate pass clears stale reviewer recovery artifacts", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "Continue after reviewer aggregate." }),
+    run_evaluation: {
+      status: "rerun",
+      next_work_packages: [{ id: "stale-timeout-rerun", title: "Stale timeout rerun" }]
+    },
+    workflow_state: {
+      manifest: {
+        run_id: "run-shard-aggregate-pass-artifacts",
+        cycle_id: "cycle-shard-aggregate-pass-artifacts",
+        work_packages: [{ id: "reviewer-shard-loop", status: "pass" }],
+        artifacts: [
+          { id: "tests", status: "pass" },
+          { id: "reviewer-timeout", status: "fail" },
+          {
+            id: "reviewer-provider-health",
+            type: "evaluation",
+            status: "pass",
+            producer: "reviewer-provider-health",
+            metadata: {
+              type: "reviewer_provider_health",
+              scheduled_actions: ["rerun_without_tools", "split_scope"]
+            }
+          }
+        ],
+        gate_results: [],
+        recovery_attempts: [],
+        review_findings: [
+          {
+            finding_id: "stale-reviewer-timeout",
+            status: "fail",
+            category: "reviewer_timeout",
+            severity: "medium"
+          }
+        ],
+        events: [
+          {
+            type: "reviewer_provider_health",
+            metadata: {
+              status: "pass",
+              scheduled_actions: ["rerun_without_tools", "split_scope"]
+            }
+          },
+          {
+            type: "reviewer_shard_aggregate",
+            metadata: {
+              status: "pass",
+              pending_shards: 0,
+              merged_findings: []
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.deepEqual(decision.next_work_packages, []);
+  assert.equal(decision.context_pack_seed.requirement_summary, "Continue after reviewer aggregate.");
+  assert.deepEqual(decision.context_pack_seed.owned_files, [
+    "PROJECT_STATUS.json",
+    "src/workflow",
+    "docs/contracts",
+    "docs/examples/process-hardening-current.json"
+  ]);
+  assert.equal(decision.context_pack_seed.subtasks[0].id, "project-status-next-step");
+  assert.equal(decision.context_pack_seed.subtasks[0].action, "continue_next_step");
+  assert.ok(!decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "reviewer-provider-rerun-without-tools"));
+});
+
 test("provider health fallback schedules model fallback work package", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),
@@ -524,6 +595,28 @@ test("global goals do not dilute explicit scheduler continuation packages", () =
   assert.equal(decision.next_work_packages.length, 1);
   assert.equal(decision.next_work_packages[0].id, "explicit-next");
   assert.equal(decision.global_goal_completion.pending, 2);
+});
+
+test("project status next work packages are durable continuation inputs", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "Continue from scheduler continuation.",
+      next_work_packages: [
+        {
+          id: "scheduler-continuation-next",
+          title: "Continue from scheduler continuation.",
+          action: "continue_scheduler",
+          owned_files: ["src/workflow/scheduler-dispatch-continuation.js"]
+        }
+      ]
+    }),
+    run_evaluation: { status: "pass", next_work_packages: [] }
+  });
+
+  assert.equal(decision.should_continue, true);
+  assert.equal(decision.next_work_packages.length, 1);
+  assert.equal(decision.next_work_packages[0].id, "scheduler-continuation-next");
+  assert.deepEqual(decision.context_pack_seed.owned_files, ["src/workflow/scheduler-dispatch-continuation.js"]);
 });
 
 test("marks continuation complete only when all configured global goals are done", () => {
