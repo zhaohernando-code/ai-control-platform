@@ -1414,10 +1414,10 @@
     },
     {
       "finding_id": "inspect-terminal-state-hidden",
-      "invariant": "Projected loops that end in inspect_* or wait_for_driver_event must expose terminal_action and terminal_reason in both scheduler_loop and next_action_terminal so workbench projection and mobile projection can show why the loop stopped instead of hiding termination in a transient phase string.",
-      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
-      "regression_test": "workbench projection exposes terminal next-action details for inspect states",
-      "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "invariant": "Projected loops that end in inspect_* or wait_for_driver_event must expose terminal_action and terminal_reason in both scheduler_loop and next_action_terminal, schema must require the terminal object, and PC/mobile browser closeout must render the terminal action and reason so stopping never depends on transient phase strings or stdout.",
+      "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/workbench-shell.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection exposes terminal next-action details for inspect states; rejects projections missing terminal next-action evidence; workbench browser events terminal_next_action_readout",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]

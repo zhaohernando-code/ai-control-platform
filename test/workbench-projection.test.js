@@ -580,33 +580,53 @@ test("workbench projection exposes terminal next-action details for inspect stat
         type: "autonomous_scheduler_loop_run",
         status: "pass",
         created_at: "2026-05-21T00:08:00.000Z",
-        metadata: {
-          type: "autonomous_scheduler_loop_run",
-          version: "autonomous-scheduler-loop-run.v1",
-          status: "pass",
-          phase: "terminal_projected_action",
-          execution_strategy: "projected_next_action",
-          iterations: [
-            {
-              index: 1,
-              projection_id: "current",
-              projected_action: "inspect_scheduler_loop",
-              terminal_action: "inspect_scheduler_loop",
-              terminal_reason: "projected next action is not executable"
-            }
-          ]
-        }
+        artifact_id: "scheduler-loop-terminal-artifact"
       }
     ]
   };
+  input.artifact_ledger.artifacts.push({
+    id: "scheduler-loop-terminal-artifact",
+    type: "scheduler_loop",
+    status: "pass",
+    created_at: "2026-05-21T00:08:00.000Z",
+    metadata: {
+      version: "autonomous-scheduler-loop-run.v1",
+      status: "pass",
+      phase: "terminal_projected_action",
+      created_at: "2026-05-21T00:08:00.000Z",
+      input: {
+        start_projection_id: "current",
+        max_iterations: 1,
+        execution_profile: "approved_mock_non_dry_run",
+        execution_strategy: "projected_next_action",
+        snapshot_prefix: "terminal-test"
+      },
+      result: {
+        status: "pass",
+        phase: "terminal_projected_action",
+        issues: [],
+        iterations: [
+          {
+            index: 1,
+            status: "stopped",
+            projection_id: "current",
+            projected_action: "inspect_scheduler_loop",
+            terminal_action: "inspect_scheduler_loop",
+            terminal_reason: "projected next action is not executable"
+          }
+        ]
+      }
+    }
+  });
 
   const projection = createWorkbenchProjection(input);
   const mobile = createMobileWorkbenchProjection(input);
 
-  assert.equal(projection.next_action_readout.status, "blocked");
+  assert.equal(projection.next_action_readout.status, "pending");
   assert.equal(projection.next_action_readout.action, "inspect_scheduler_loop");
+  assert.equal(projection.next_action_readout.reason, "projected next action is not executable");
   assert.equal(projection.next_action_terminal.terminal_action, "inspect_scheduler_loop");
-  assert.ok(projection.next_action_terminal.terminal_reason);
+  assert.equal(projection.next_action_terminal.terminal_reason, "projected next action is not executable");
   assert.equal(mobile.next_action_terminal.terminal_action, "inspect_scheduler_loop");
 });
 

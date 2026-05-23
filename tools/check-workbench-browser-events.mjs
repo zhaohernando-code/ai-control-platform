@@ -49,6 +49,7 @@ function createRunArtifact() {
       "agent_lifecycle_pool_cleanup_loop_click",
       "projected_mock_loop_click",
       "projected_real_partial_shard_readout",
+      "terminal_next_action_readout",
       "autonomous_scheduler_loop_click",
       "mobile_projection"
     ],
@@ -455,6 +456,51 @@ function injectLifecycleTimeoutState(workflowState) {
   );
 }
 
+function injectTerminalNextActionState(workflowState) {
+  workflowState.manifest.events = workflowState.manifest.events.filter((event) => event.type !== "autonomous_scheduler_loop_run");
+  workflowState.manifest.events.push({
+    id: "scheduler-loop-terminal-browser",
+    type: "autonomous_scheduler_loop_run",
+    status: "pass",
+    created_at: "2026-05-22T09:00:00.000Z",
+    artifact_id: "scheduler-loop-terminal-browser-artifact"
+  });
+  workflowState.artifact_ledger.artifacts.push({
+    id: "scheduler-loop-terminal-browser-artifact",
+    type: "scheduler_loop",
+    status: "pass",
+    created_at: "2026-05-22T09:00:00.000Z",
+    metadata: {
+      version: "autonomous-scheduler-loop-run.v1",
+      status: "pass",
+      phase: "terminal_projected_action",
+      created_at: "2026-05-22T09:00:00.000Z",
+      input: {
+        start_projection_id: "current-session",
+        max_iterations: 1,
+        execution_profile: "approved_mock_non_dry_run",
+        execution_strategy: "projected_next_action",
+        snapshot_prefix: "terminal-browser"
+      },
+      result: {
+        status: "pass",
+        phase: "terminal_projected_action",
+        issues: [],
+        iterations: [
+          {
+            index: 1,
+            status: "stopped",
+            projection_id: "current-session",
+            projected_action: "inspect_scheduler_loop",
+            terminal_action: "inspect_scheduler_loop",
+            terminal_reason: "projected next action is not executable"
+          }
+        ]
+      }
+    }
+  });
+}
+
 async function verifyAgentLifecyclePoolTimeoutReadout(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -754,6 +800,62 @@ async function verifyProjectedRealPartialShardReadout(browser) {
   });
 }
 
+async function verifyTerminalNextActionReadout(browser) {
+  await withWorkbenchServer(async ({ port }) => {
+    const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    await desktop.goto(
+      `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+    await mobile.goto(
+      `http://127.0.0.1:${port}/apps/workbench/mobile.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
+      { waitUntil: "networkidle" }
+    );
+
+    const desktopReadout = await desktop.textContent('[data-bind="next_action_readout_action"]');
+    const desktopTerminalStatus = await desktop.textContent('[data-bind="next_action_terminal_status"]');
+    const desktopTerminalAction = await desktop.textContent('[data-bind="next_action_terminal_action"]');
+    const desktopTerminalReason = await desktop.textContent('[data-bind="next_action_terminal_reason"]');
+    const mobileTerminalStatus = await mobile.textContent('[data-bind="next_action_terminal_status"]');
+    const mobileTerminalAction = await mobile.textContent('[data-bind="next_action_terminal_action"]');
+    const mobileTerminalReason = await mobile.textContent('[data-bind="next_action_terminal_reason"]');
+    const desktopDimensions = await desktop.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    const mobileDimensions = await mobile.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    }));
+    await desktop.close();
+    await mobile.close();
+
+    assert(desktopReadout === "inspect_scheduler_loop", "terminal next-action scenario must render inspect readout");
+    assert(desktopTerminalStatus && desktopTerminalStatus !== "ready", "desktop terminal next-action status must render non-ready");
+    assert(desktopTerminalAction === "inspect_scheduler_loop", "desktop terminal action must render inspect action");
+    assert(desktopTerminalReason.includes("projected next action"), "desktop terminal reason must render stop reason");
+    assert(mobileTerminalStatus && mobileTerminalStatus !== "ready", "mobile terminal next-action status must render non-ready");
+    assert(mobileTerminalAction === "inspect_scheduler_loop", "mobile terminal action must render inspect action");
+    assert(mobileTerminalReason.includes("projected next action"), "mobile terminal reason must render stop reason");
+    assert(desktopDimensions.scrollWidth <= desktopDimensions.width, "desktop terminal readout must not create horizontal overflow");
+    assert(mobileDimensions.scrollWidth <= mobileDimensions.width, "mobile terminal readout must not create horizontal overflow");
+
+    recordScenario({
+      scenario: "terminal_next_action_readout",
+      next_action_readout: desktopReadout,
+      desktop_terminal_status: desktopTerminalStatus,
+      desktop_terminal_action: desktopTerminalAction,
+      desktop_terminal_reason: desktopTerminalReason,
+      mobile_terminal_status: mobileTerminalStatus,
+      mobile_terminal_action: mobileTerminalAction,
+      mobile_terminal_reason: mobileTerminalReason,
+      desktop_dimensions: desktopDimensions,
+      mobile_dimensions: mobileDimensions
+    });
+  }, { workflowStateMutator: injectTerminalNextActionState });
+}
+
 async function verifyAutonomousSchedulerLoopClick(browser) {
   await withWorkbenchServer(async ({ port }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -904,6 +1006,7 @@ try {
   await verifyAgentLifecyclePoolCleanupLoopClick(browser);
   await verifyProjectedMockLoopClick(browser);
   await verifyProjectedRealPartialShardReadout(browser);
+  await verifyTerminalNextActionReadout(browser);
   await verifyAutonomousSchedulerLoopClick(browser);
   await verifyMobileProjectionLoad(browser);
 } finally {

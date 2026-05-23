@@ -86,3 +86,18 @@ test("rejects projections missing headless orchestrator evidence sections", () =
   assert.equal(mobileValidation.status, "fail");
   assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_object_field" && issue.path === "projected_action_progress"));
 });
+
+test("rejects projections missing terminal next-action evidence", () => {
+  const projection = readJson("docs/examples/current-session-workbench-projection.json");
+  const mobileProjection = createMobileWorkbenchProjection(readJson("docs/examples/current-session-workbench-input.json"));
+  delete projection.next_action_terminal;
+  delete mobileProjection.next_action_terminal.terminal_reason;
+
+  const pcValidation = validateWorkbenchProjectionSchema(projection);
+  const mobileValidation = validateWorkbenchProjectionSchema(mobileProjection);
+
+  assert.equal(pcValidation.status, "fail");
+  assert.ok(pcValidation.issues.some((issue) => issue.code === "missing_object_field" && issue.path === "next_action_terminal"));
+  assert.equal(mobileValidation.status, "fail");
+  assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_required_field" && issue.path === "next_action_terminal.terminal_reason"));
+});

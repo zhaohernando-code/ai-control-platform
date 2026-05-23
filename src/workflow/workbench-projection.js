@@ -923,13 +923,14 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
         requires_operator: false
       };
     }
+    const reason = loop.terminal_reason || loop.latest_issue || driver.summary;
     return {
       status: loop.recovery_status === "ready" ? "ready" : loop.recovery_status || "ready",
       action: loop.recovery_status === "ready" ? "resume_autonomous_scheduler_loop" : "inspect_scheduler_loop",
       source_event_id: driver.event_id,
       source_type: driver.type,
       target_projection_id: loop.resume_projection_id || loop.latest_projection_id || null,
-      reason: driver.summary,
+      reason,
       requires_operator: false
     };
   }
