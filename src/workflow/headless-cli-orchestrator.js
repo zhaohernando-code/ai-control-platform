@@ -1014,7 +1014,12 @@ function workbenchProjectionFrom(options = {}) {
   const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
   if (!baseValue) return null;
   const base = localWorkbenchBaseUrl(baseValue);
-  const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
+  const projectionId = normalizeString(
+    options.current_workbench_projection_id ||
+      options.currentWorkbenchProjectionId ||
+      options.workbench_projection_id ||
+      options.workbenchProjectionId
+  );
   const url = new URL("/api/workbench/projection", base);
   if (projectionId) url.searchParams.set("id", projectionId);
   return getJsonSync(url, {
@@ -1028,7 +1033,12 @@ function workbenchNextActionRunnerFrom(options = {}) {
   const base = localWorkbenchBaseUrl(baseValue);
   return ({ action, iteration }) => {
     const url = new URL("/api/workbench/next-action", base);
-    const projectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
+    const projectionId = normalizeString(
+      options.current_workbench_projection_id ||
+        options.currentWorkbenchProjectionId ||
+        options.workbench_projection_id ||
+        options.workbenchProjectionId
+    );
     if (projectionId) url.searchParams.set("id", projectionId);
     const body = {
       expected_action: action,
@@ -1037,8 +1047,19 @@ function workbenchNextActionRunnerFrom(options = {}) {
       created_at: normalizeString(options.created_at || options.createdAt),
       iteration
     };
+    const reviewerOrSchedulerAction = new Set([
+      "run_reviewer_scope_shard",
+      "run_autonomous_scheduler_loop",
+      "resume_autonomous_scheduler_loop",
+      "enqueue_scheduler_next_cycle"
+    ]).has(action);
+    const contextExecutionProfile = options.context_work_package_execution_profile || options.contextWorkPackageExecutionProfile;
     for (const [target, source] of [
-      ["execution_profile", options.execution_profile || options.executionProfile],
+      ["execution_profile", action === "run_context_work_packages"
+        ? contextExecutionProfile
+        : reviewerOrSchedulerAction
+          ? (options.execution_profile || options.executionProfile)
+          : undefined],
       [
         "context_work_package_execution_profile",
         options.context_work_package_execution_profile || options.contextWorkPackageExecutionProfile
@@ -1069,13 +1090,16 @@ function workbenchNextActionRunnerFrom(options = {}) {
 }
 
 function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
-  const runner = projectedNextActionRunnerFrom(options);
-  if (!projectedNextActionMode(options) || !runner) {
+  if (!projectedNextActionMode(options)) {
     return {
       status: "not_configured",
       workflow_state: run.workflow_state,
       projection: run.projection
     };
+  }
+
+  if (normalizeString(options.workbench_base_url || options.workbenchBaseUrl)) {
+    localWorkbenchBaseUrl(options.workbench_base_url || options.workbenchBaseUrl);
   }
 
   let serviceProjection = null;
@@ -1111,6 +1135,14 @@ function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
       status: "stopped",
       action,
       reason: readout.reason || "projected next action is terminal or not ready",
+      workflow_state: run.workflow_state,
+      projection: run.projection
+    };
+  }
+  const runner = projectedNextActionRunnerFrom(options);
+  if (!runner) {
+    return {
+      status: "not_configured",
       workflow_state: run.workflow_state,
       projection: run.projection
     };
@@ -1179,7 +1211,7 @@ function nextProjectedActionOptions(options = {}, projectedAction = {}) {
 }
 
 function recordHeadlessProjectedActionProgress(workflowState = {}, projectedAction = {}, options = {}) {
-  if (projectedAction.status === "not_configured" || projectedAction.status === "stopped") {
+  if (projectedAction.status === "not_configured") {
     return {
       status: "not_configured",
       workflow_state: workflowState
@@ -1201,6 +1233,8 @@ function recordHeadlessProjectedActionProgress(workflowState = {}, projectedActi
       type: "headless_projected_action_progress",
       status: projectedAction.status,
       action: projectedAction.action || null,
+      terminal_action: projectedAction.status === "stopped" ? projectedAction.action || null : null,
+      terminal_reason: projectedAction.status === "stopped" ? projectedAction.reason || null : null,
       next_projection_id: projectedAction.next_projection_id || projectedAction.result?.result?.next_item?.id || projectedAction.result?.next_item?.id || null,
       has_workflow_state: isObject(projectedAction.workflow_state || projectedAction.workflowState),
       has_projection: isObject(projectedAction.projection),
@@ -1479,6 +1513,7 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
   let currentInput = input;
   let loopOptions = { ...options };
   let lastResult = null;
+  let currentWorkbenchProjectionId = normalizeString(options.workbench_projection_id || options.workbenchProjectionId);
   for (let index = 0; index < bounded.value; index += 1) {
     const sourceCycleId = currentInput?.workflow_state?.manifest?.cycle_id || currentInput?.workflowState?.manifest?.cycle_id;
     const cycleSeed = normalizeString(options.cycle_id || options.cycleId) || `${safeIdPart(sourceCycleId)}-headless`;
@@ -1492,7 +1527,10 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
     });
     lastResult = run;
     const persisted = run.snapshot_publish?.status === "created";
-    const projectedAction = executeHeadlessProjectedNextAction(run, loopOptions, index);
+    const iterationOptions = currentWorkbenchProjectionId
+      ? { ...options, current_workbench_projection_id: currentWorkbenchProjectionId }
+      : options;
+    const projectedAction = executeHeadlessProjectedNextAction(run, iterationOptions, index);
     iterations.push({
       index: index + 1,
       status: run.status,
@@ -1505,9 +1543,14 @@ export function runHeadlessCliMainOrchestratorLoop(input = {}, options = {}) {
       projected_next_action_status: projectedAction.status,
       projected_next_action: projectedAction.action || null,
       projected_next_projection_id: projectedAction.next_projection_id || null,
+      workbench_projection_id: currentWorkbenchProjectionId || null,
       must_continue: run.must_continue === true,
       issue_count: asArray(run.issues).length
     });
+    if (projectedAction.next_projection_id) {
+      currentWorkbenchProjectionId = projectedAction.next_projection_id;
+      loopOptions = nextProjectedActionOptions(loopOptions, projectedAction);
+    }
 
     if (run.status !== "pass") {
       return {

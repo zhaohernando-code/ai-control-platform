@@ -358,6 +358,11 @@
     "reason": "2 shard(s)",
     "requires_operator": false
   },
+  "next_action_terminal": {
+    "status": "ready",
+    "terminal_action": null,
+    "terminal_reason": null
+  },
   "model_routing": {
     "status": "pass",
     "selected_model": "gpt",

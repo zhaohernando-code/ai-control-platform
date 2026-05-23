@@ -14,6 +14,7 @@ import {
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
+import { assertWorkbenchProjectionSchema } from "../src/workflow/workbench-projection-schema.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 
 mkdirSync("tmp", { recursive: true });
@@ -75,6 +76,36 @@ function runNode(args, options = {}) {
     });
     child.on("error", reject);
     child.on("close", (status) => resolveRun({ status, stdout, stderr }));
+  });
+}
+
+function waitForOutput(child, pattern) {
+  return new Promise((resolveWait, reject) => {
+    let stdout = "";
+    let stderr = "";
+    const timeout = setTimeout(() => {
+      reject(new Error(`timed out waiting for ${pattern}: ${stdout}${stderr}`));
+    }, 5000);
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+      if (pattern.test(stdout)) {
+        clearTimeout(timeout);
+        resolveWait(stdout);
+      }
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on("exit", (status) => {
+      if (status !== null && !pattern.test(stdout)) {
+        clearTimeout(timeout);
+        reject(new Error(`server exited before readiness: ${status} ${stdout}${stderr}`));
+      }
+    });
   });
 }
 
@@ -205,6 +236,53 @@ test("workbench server returns latest projection", async () => {
     assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
     assert.equal(projection.reviewer_scope_split.shard_count, 2);
   });
+});
+
+test("workbench server CLI can start with isolated history and snapshot roots", async () => {
+  const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-server-cli-isolated-"));
+  const snapshotsRoot = join(dir, "snapshots");
+  const eventsPath = join(dir, "operator-events.json");
+  const inputPath = join(snapshotsRoot, "input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  mkdirSync(snapshotsRoot, { recursive: true });
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "isolated",
+    items: [{
+      id: "isolated",
+      label: "Isolated",
+      input_path: relative(process.cwd(), inputPath)
+    }]
+  }, null, 2));
+
+  const child = spawn(process.execPath, [
+    "tools/workbench-server.mjs",
+    "0",
+    "--history-path",
+    historyPath,
+    "--snapshots-root",
+    snapshotsRoot,
+    "--events-path",
+    eventsPath
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  try {
+    const ready = await waitForOutput(child, /Workbench server listening on http:\/\/127\.0\.0\.1:\d+/);
+    const port = ready.match(/:(\d+)/)?.[1];
+    const response = await request(`http://127.0.0.1:${port}/api/workbench/projection?id=isolated`);
+    assert.equal(response.status, 200);
+    assert.equal(response.json().run_id, workflowState.manifest.run_id);
+  } finally {
+    child.kill();
+    await once(child, "close").catch(() => {});
+  }
 });
 
 test("workbench server builds latest projection from workflow state input", async () => {
@@ -1315,6 +1393,83 @@ test("workbench server executes allowlisted projected next actions", async () =>
   }, { historyPath, snapshotsRoot });
 });
 
+test("workbench server advances from completed context work packages to project status continuation", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-context-work-packages-next-action-"));
+  const inputPath = join(snapshotsRoot, "context-work-packages-next-action-input.json");
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.project_status = {
+    project: "ai-control-platform",
+    next_step: "",
+    global_goals: [
+      { id: "foundation", title: "Foundation", status: "completed" },
+      {
+        id: "completion-loop",
+        title: "Completion loop",
+        status: "in_progress",
+        next_step: "Continue detecting unfinished platform goals."
+      }
+    ]
+  };
+  workflowState.task_dag = [
+    {
+      id: "runtime",
+      title: "Runtime",
+      status: "completed",
+      owned_files: ["src/workflow/context-work-package-runner.js"]
+    }
+  ];
+  workflowState.manifest.events = [
+    ...workflowState.manifest.events,
+    {
+      id: "event-context-work-packages-run",
+      type: "context_work_packages_run",
+      status: "pass",
+      created_at: "2026-05-22T03:10:00.000Z",
+      metadata: {
+        type: "context_work_packages_run",
+        status: "pass",
+        executed_count: 1
+      }
+    }
+  ];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "context-work-packages-next-action",
+    items: [
+      {
+        id: "context-work-packages-next-action",
+        label: "Context work packages next action",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }));
+
+  await withServer(async (baseUrl) => {
+    const projection = await request(`${baseUrl}/api/workbench/projection?id=context-work-packages-next-action`);
+    assert.equal(projection.json().next_action_readout.action, "prepare_project_status_continuation");
+
+    const response = await request(`${baseUrl}/api/workbench/next-action?id=context-work-packages-next-action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "prepare_project_status_continuation",
+        created_at: "2026-05-22T03:11:00.000Z"
+      })
+    });
+    const executed = response.json();
+
+    assert.equal(response.status, 201);
+    assert.equal(executed.status, "executed");
+    assert.equal(executed.action, "prepare_project_status_continuation");
+    assert.equal(executed.next_action_readout.action, "prepare_project_status_continuation");
+    assert.equal(executed.result.status, "created");
+    assert.equal(executed.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
+});
+
 test("workbench server runs reviewer shard through projected next action", async () => {
   mkdirSync("tmp", { recursive: true });
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-"));
@@ -1763,6 +1918,10 @@ test("workbench server fails closed for unsupported projected next action", asyn
 
     assert.equal(response.status, 409);
     assert.equal(rejected.next_action_readout.action, "inspect_resume_target");
+    assert.equal(rejected.projection.next_action_terminal.status, "ready");
+    assert.equal(rejected.projection.next_action_terminal.terminal_action, null);
+    assert.equal(rejected.projection.next_action_terminal.terminal_reason, null);
+    assert.equal(assertWorkbenchProjectionSchema(rejected.projection).status, "pass");
     assert.equal(rejected.issues[0].code, "unsupported_projected_next_action");
   }, { historyPath, snapshotsRoot });
 });

@@ -518,54 +518,48 @@ test("workbench projection exposes materialized context pack cycle as ready exec
   assert.equal(projection.next_action_readout.action, "run_context_work_packages");
 });
 
-test("workbench projection continues after context work packages when global goals remain", () => {
+test("workbench projection advances from completed context work packages to global goal continuation", () => {
   const input = baseInput({
     project_status: {
       project: "ai-control-platform",
-      next_step: "Continue from completed context package.",
+      next_step: "",
       global_goals: [
+        { id: "foundation", title: "Foundation", status: "completed" },
         {
-          id: "continuation-loop",
-          title: "Continuation loop",
+          id: "completion-loop",
+          title: "Completion loop",
           status: "in_progress",
-          next_step: "Prepare the next project status continuation."
+          next_step: "Continue detecting unfinished platform goals."
         }
       ]
-    }
+    },
+    task_dag: [
+      {
+        id: "runtime",
+        title: "Runtime",
+        status: "completed",
+        action: "implement",
+        owned_files: ["src/workflow/context-work-package-runner.js"]
+      }
+    ]
   });
-  const artifact = {
-    id: "context-work-packages-run-projection-cycle-20260521-001",
-    type: "evaluation",
-    status: "pass",
-    uri: "context-work-packages://run/run-projection/cycle-20260521/context-work-packages-run-projection-cycle-20260521-001",
-    producer: "context-work-package-runner",
-    created_at: "2026-05-21T00:05:00.000Z",
-    metadata: {
-      type: "context_work_packages_run",
-      status: "pass",
-      executed_count: 1
-    }
-  };
   input.manifest = {
     ...input.manifest,
     events: [
       ...input.manifest.events,
       {
-        id: `event-${artifact.id}`,
+        id: "context-work-packages-run-001",
         type: "context_work_packages_run",
         status: "pass",
-        artifact_id: artifact.id,
-        created_at: artifact.created_at,
-        metadata: artifact.metadata
+        created_at: "2026-05-21T00:05:00.000Z",
+        metadata: {
+          type: "context_work_packages_run",
+          status: "pass",
+          executed_count: 1
+        }
       }
-    ],
-    artifacts: [...input.manifest.artifacts, artifact]
+    ]
   };
-  input.artifact_ledger = {
-    ...input.artifact_ledger,
-    artifacts: [...input.artifact_ledger.artifacts, artifact]
-  };
-  input.task_dag = input.task_dag.map((node) => ({ ...node, status: "completed" }));
 
   const projection = createWorkbenchProjection(input);
 
@@ -577,6 +571,66 @@ test("workbench projection continues after context work packages when global goa
   assert.equal(projection.next_action_readout.source_type, "context_work_packages_run");
 });
 
+test("workbench projection exposes terminal next-action details for inspect states", () => {
+  const input = baseInput();
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "scheduler-loop-terminal",
+        type: "autonomous_scheduler_loop_run",
+        status: "pass",
+        created_at: "2026-05-21T00:08:00.000Z",
+        artifact_id: "scheduler-loop-terminal-artifact"
+      }
+    ]
+  };
+  input.artifact_ledger.artifacts.push({
+    id: "scheduler-loop-terminal-artifact",
+    type: "scheduler_loop",
+    status: "pass",
+    created_at: "2026-05-21T00:08:00.000Z",
+    metadata: {
+      version: "autonomous-scheduler-loop-run.v1",
+      status: "pass",
+      phase: "terminal_projected_action",
+      created_at: "2026-05-21T00:08:00.000Z",
+      input: {
+        start_projection_id: "current",
+        max_iterations: 1,
+        execution_profile: "approved_mock_non_dry_run",
+        execution_strategy: "projected_next_action",
+        snapshot_prefix: "terminal-test"
+      },
+      result: {
+        status: "pass",
+        phase: "terminal_projected_action",
+        issues: [],
+        iterations: [
+          {
+            index: 1,
+            status: "stopped",
+            projection_id: "current",
+            projected_action: "inspect_scheduler_loop",
+            terminal_action: "inspect_scheduler_loop",
+            terminal_reason: "projected next action is not executable"
+          }
+        ]
+      }
+    }
+  });
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.next_action_readout.status, "pending");
+  assert.equal(projection.next_action_readout.action, "inspect_scheduler_loop");
+  assert.equal(projection.next_action_readout.reason, "projected next action is not executable");
+  assert.equal(projection.next_action_terminal.terminal_action, "inspect_scheduler_loop");
+  assert.equal(projection.next_action_terminal.terminal_reason, "projected next action is not executable");
+  assert.equal(mobile.next_action_terminal.terminal_action, "inspect_scheduler_loop");
+});
 test("workbench projection exposes latest closeout publication evidence", () => {
   const input = baseInput();
   const artifact = {

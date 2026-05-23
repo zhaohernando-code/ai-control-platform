@@ -48,6 +48,13 @@ function validateAgentLifecyclePool(projection, issues, path = "agent_lifecycle_
   }
 }
 
+function validateNextActionTerminal(projection, issues, path = "next_action_terminal") {
+  if (!hasObject(projection)) return;
+  for (const field of ["status", "terminal_action", "terminal_reason"]) {
+    requireOwnField(projection, field, issues, path);
+  }
+}
+
 function validateStatus(projection, issues) {
   const status = normalizeString(projection?.status);
   if (!PROJECTION_STATUSES.has(status)) {
@@ -78,6 +85,7 @@ function validatePcProjection(projection, issues) {
     "global_goal_completion",
     "operations_timeline",
     "next_action_readout",
+    "next_action_terminal",
     "model_routing",
     "reviewer_gate",
     "autonomous_run",
@@ -97,6 +105,7 @@ function validatePcProjection(projection, issues) {
     requireArray(projection.one_screen, "next_actions", issues);
   }
   validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
+  validateNextActionTerminal(projection.next_action_terminal, issues);
 }
 
 function validateMobileProjection(projection, issues) {
@@ -104,13 +113,14 @@ function validateMobileProjection(projection, issues) {
     requireString(projection, field, issues);
   }
 
-  for (const field of ["counters", "closeout", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "global_goal_completion", "operations_timeline", "next_action_readout", "model", "reviewer"]) {
+  for (const field of ["counters", "closeout", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
     requireObject(projection, field, issues);
   }
 
   requireArray(projection, "next_actions", issues);
   requireArray(projection, "blockers", issues);
   validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
+  validateNextActionTerminal(projection.next_action_terminal, issues);
 }
 
 export function validateWorkbenchProjectionSchema(projection) {

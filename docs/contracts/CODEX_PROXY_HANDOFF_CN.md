@@ -26,6 +26,7 @@
 - 派发子进程职责：用 Codex CLI/`codex_proxy` 或其他 provider 运行 bounded owned-files work package，并记录 WorkerSpawned、WorkerHeartbeat、WorkerCompleted、WorkerEvaluation、WorkerClosed、PoolIterationClosed。
 - 自恢复职责：检测无 diff、超时、模型失败、测试失败、host 漂移、owned-files 越界、假成功和 continuation 断裂；能自动选择 retry、rollback、split、fallback 或 process-hardening。
 - 工作台职责：把运行事实写入 workflow_state、artifact ledger、projection 和 PC/mobile workbench 输入；UI 只读 projection，不承担流程判断。
+- Projection 驱动职责：当服务端 next-action 返回 `next_item.id` 时，后续 headless loop 必须切换到该 projection id 继续读取和执行，不能一直停留在启动 source projection。
 - 退出职责：只有在所有 global goals 完成、没有 next_step、没有 next_work_packages、没有 workbench next_action_readout 且 closeout 通过时，CLI 总执行器才能停止。
 
 因此，`codex_proxy` 不是只能成为子进程。它在当前阶段作为子进程试运行，是为了验证 CLI 能力、收集失败模式并把门禁代码化；平台后续必须实现一个 CLI orchestrator adapter，让同一套 fixed-development-mode gate 在没有 Codex App 的情况下完整运行。

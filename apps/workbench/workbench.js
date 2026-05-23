@@ -98,6 +98,7 @@ function renderProjection(projection) {
   const lifecyclePool = projection.agent_lifecycle_pool || {};
   const globalGoals = projection.global_goal_completion || {};
   const nextActionReadout = projection.next_action_readout || {};
+  const nextActionTerminal = projection.next_action_terminal || {};
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
@@ -193,6 +194,9 @@ function renderProjection(projection) {
   setText("next_action_readout_status", nextActionReadout.status);
   setText("next_action_readout_action", nextActionReadout.action || projection.one_screen?.recommended_action);
   setText("next_action_readout_source", nextActionReadout.source_type);
+  setText("next_action_terminal_status", nextActionTerminal.status);
+  setText("next_action_terminal_action", nextActionTerminal.terminal_action);
+  setText("next_action_terminal_reason", nextActionTerminal.terminal_reason);
 
   renderNextActions(projection);
   renderOperationsTimeline(projection);

@@ -1964,6 +1964,11 @@ export function createWorkbenchServer(options = {}) {
   });
 }
 
+function valueAfter(flag, args = process.argv.slice(2)) {
+  const index = args.indexOf(flag);
+  return index >= 0 ? args[index + 1] : "";
+}
+
 export function startWorkbenchServer({
   port = 4180,
   host = "127.0.0.1",

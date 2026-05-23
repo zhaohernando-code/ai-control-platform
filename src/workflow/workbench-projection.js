@@ -923,13 +923,14 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
         requires_operator: false
       };
     }
+    const reason = loop.terminal_reason || loop.latest_issue || driver.summary;
     return {
       status: loop.recovery_status === "ready" ? "ready" : loop.recovery_status || "ready",
       action: loop.recovery_status === "ready" ? "resume_autonomous_scheduler_loop" : "inspect_scheduler_loop",
       source_event_id: driver.event_id,
       source_type: driver.type,
       target_projection_id: loop.resume_projection_id || loop.latest_projection_id || null,
-      reason: driver.summary,
+      reason,
       requires_operator: false
     };
   }
@@ -989,6 +990,19 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   };
 }
 
+function nextActionTerminalInfoFromReadout(readout = {}) {
+  if (!readout || typeof readout !== "object") {
+    return { terminal_action: null, terminal_reason: null };
+  }
+  if (readout.status === "ready") {
+    return { terminal_action: null, terminal_reason: null };
+  }
+  return {
+    terminal_action: readout.action || null,
+    terminal_reason: readout.reason || null
+  };
+}
+
 function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
   if (latest?.type === "project_status_continuation") {
     return {
@@ -1007,6 +1021,7 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
     latest?.type === "context_work_packages_run"
   ) {
     const taskDag = summaries.taskDag || {};
+    const globalGoals = summaries.globalGoalCompletion || {};
     if (Number(taskDag.dispatchable?.length || 0) > 0) {
       return {
         status: "ready",
@@ -1018,15 +1033,14 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
         requires_operator: false
       };
     }
-    const globalGoals = summaries.globalGoalCompletion || {};
-    if (Number(globalGoals.pending || 0) > 0 && globalGoals.status === "in_progress") {
+    if (globalGoals.status === "in_progress" && Number(globalGoals.pending || 0) > 0) {
       return {
         status: "ready",
         action: "prepare_project_status_continuation",
         source_event_id: latest.event_id,
         source_type: latest.type,
         target_projection_id: null,
-        reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || "repository global goals remain pending",
+        reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || latest.summary,
         requires_operator: false
       };
     }
@@ -1136,6 +1150,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewerSummary.recommended_decision_signal || reviewerSummary.status,
     dagSummary.status === "pass" ? "pass" : "human_intervention"
   ]);
+  const nextActionTerminal = nextActionTerminalInfoFromReadout(nextActionReadout);
 
   return {
     projection_version: "workbench.v1",
@@ -1166,6 +1181,11 @@ export function createWorkbenchProjection(input = {}) {
     global_goal_completion: globalGoalCompletion,
     operations_timeline: operationsTimeline,
     next_action_readout: nextActionReadout,
+    next_action_terminal: {
+      status: nextActionReadout.status,
+      terminal_action: nextActionTerminal.terminal_action,
+      terminal_reason: nextActionTerminal.terminal_reason
+    },
     model_routing: modelSummary,
     reviewer_gate: reviewerSummary,
     autonomous_run: runEvaluation.projection || runEvaluation,
@@ -1378,6 +1398,11 @@ export function createMobileWorkbenchProjection(input = {}) {
       source_type: projection.next_action_readout.source_type,
       target_projection_id: projection.next_action_readout.target_projection_id,
       requires_operator: projection.next_action_readout.requires_operator
+    },
+    next_action_terminal: {
+      status: projection.next_action_terminal.status,
+      terminal_action: projection.next_action_terminal.terminal_action,
+      terminal_reason: projection.next_action_terminal.terminal_reason
     },
     model: {
       selected_model: projection.model_routing.selected_model,

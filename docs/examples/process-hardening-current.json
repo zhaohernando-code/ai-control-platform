@@ -582,6 +582,34 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "After run_context_work_packages completes all dispatchable packages, workbench next_action_readout must continue from PROJECT_STATUS/global goals instead of stopping at inspect_context_work_packages while global goals remain pending."
+    },
+    {
+      "id": "headless-projected-loop-sticks-to-source-projection",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Headless projected loops must switch to the next projection id returned by create_context_pack_from_seed or scheduler enqueue actions, and action-specific controls must not leak reviewer profiles into context work package execution; otherwise they can repeatedly inspect the source projection or block executable work in the materialized child projection."
+    },
+    {
+      "id": "unsupported-next-action-terminal-response",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Workbench next-action failures for unsupported inspect/resume actions must return schema-valid projection terminal evidence, not only an issue code."
+    },
+    {
+      "id": "headless-terminal-action-progress-not-recorded",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Headless projected loops that stop on inspect/wait terminal actions must record durable projected_action_progress evidence instead of returning only an in-memory stopped result."
+    },
+    {
+      "id": "workbench-service-trial-fixture-pollution",
+      "status": "fail",
+      "category": "state_persistence",
+      "severity": "p1",
+      "message": "Headless service-readout trials must not write runtime reviewer/context facts into committed docs/examples fixtures; the workbench server CLI needs explicit isolated history, snapshot, and event paths."
     }
   ],
   "hardening_items": [
@@ -1415,6 +1443,54 @@
       "enforcement_target": "src/workflow/autonomous-continuation.js; src/workflow/project-status-continuation.js; src/workflow/reviewer-shard-runner.js; tools/workbench-server.mjs; tools/check-workbench-browser-events.mjs; test/autonomous-continuation.test.js; test/project-status-continuation.test.js; test/reviewer-shard-runner.test.js; test/workbench-server.test.js; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/examples/process-hardening-current.json",
       "regression_test": "reviewer shard aggregate pass clears stale reviewer recovery artifacts; project status next work packages are durable continuation inputs; reviewer shard loop artifact prepares continuation input; workbench server runs approved mocked non-dry-run scheduler dispatch from profile",
       "verification": "node --test test/autonomous-continuation.test.js test/project-status-continuation.test.js test/reviewer-shard-runner.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-projected-loop-sticks-to-source-projection",
+      "invariant": "When a projected next-action returns next_item.id, headless CLI projected loops must use that id as the workbench projection id for subsequent service reads and next-action posts, so materialized context-pack cycles and enqueued scheduler cycles can execute their own ready work instead of repeatedly inspecting the source projection. Reviewer/scheduler execution controls must be action-scoped and must not be forwarded to run_context_work_packages unless a context-work-package-specific profile is explicitly configured.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json; docs/contracts/CODEX_PROXY_HANDOFF_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-work-packages-stop-before-global-goals",
+      "invariant": "When the latest workflow fact is context_work_packages_run or context_pack_cycle_created/materialized and the task DAG is exhausted, the next-action readout must continue to prepare_project_status_continuation whenever global goals remain in progress; inspect_context_work_packages is only allowed after both dispatchable work packages and global-goal continuations are exhausted.",
+      "enforcement_target": "src/workflow/workbench-projection.js; tools/workbench-server.mjs; test/workbench-projection.test.js; test/workbench-server.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
+      "regression_test": "workbench projection advances from completed context work packages to global goal continuation; workbench server advances from completed context work packages to project status continuation",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "inspect-terminal-state-hidden",
+      "invariant": "Projected loops that end in inspect_* or wait_for_driver_event must expose terminal_action and terminal_reason in both scheduler_loop and next_action_terminal, schema must require the terminal object, and PC/mobile browser closeout must render the terminal action and reason so stopping never depends on transient phase strings or stdout.",
+      "enforcement_target": "src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; test/workbench-projection.test.js; test/workbench-projection-schema.test.js; test/workbench-shell.test.js; docs/contracts/WORKBENCH_PROJECTION_CN.md; docs/contracts/AUTONOMOUS_CONTINUATION_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench projection exposes terminal next-action details for inspect states; rejects projections missing terminal next-action evidence; workbench browser events terminal_next_action_readout",
+      "verification": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "unsupported-next-action-terminal-response",
+      "invariant": "Unsupported or non-executable workbench next-action responses must return the current schema-valid projection with next_action_readout and next_action_terminal evidence so CLI/headless callers can distinguish fail-closed terminal state from transport failure.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; src/workflow/workbench-projection-schema.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server fails closed for unsupported projected next action",
+      "verification": "node --test test/workbench-server.test.js test/workbench-projection-schema.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "headless-terminal-action-progress-not-recorded",
+      "invariant": "Headless CLI projected next-action loops must record headless_projected_action_progress events and artifacts for stopped terminal actions, including terminal_action and terminal_reason, so continuation and workbench projection can distinguish intentional terminal stop from missing progress evidence.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI loop records terminal projected next-action stops",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "workbench-service-trial-fixture-pollution",
+      "invariant": "Workbench service CLI runs used by headless service-readout trials must accept explicit history_path, snapshots_root, and events_path so projected next-action execution can run against isolated durable state instead of mutating committed docs/examples fixtures.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server CLI can start with isolated history and snapshot roots",
+      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     },
     {
