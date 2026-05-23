@@ -588,6 +588,72 @@ test("workbench server executes project status continuation next action", async 
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 
+test("workbench server truncates generated context pack snapshot ids for long projection ids", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-long-context-id-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "long-context-id-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const longProjectionId = "headless-continuation-third-cycle-20260521-autonomous-platform-headless-01-headl";
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: [
+      {
+        id: "repo-goal",
+        title: "Repository status goal",
+        status: "in_progress",
+        next_step: "Prepare the next global-goal cycle.",
+        owned_files: ["src/workflow/context-pack-cycle.js", "test/context-pack-cycle.test.js"]
+      }
+    ]
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: longProjectionId,
+    items: [
+      {
+        id: longProjectionId,
+        label: "Long projection id",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    await request(`${baseUrl}/api/workbench/next-action?id=${longProjectionId}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "prepare_project_status_continuation",
+        created_at: "2026-05-22T03:20:00.000Z"
+      })
+    });
+
+    const cycle = await request(`${baseUrl}/api/workbench/next-action?id=${longProjectionId}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "create_context_pack_from_seed",
+        cycle_id: "cycle-long-context-id",
+        created_at: "2026-05-22T03:21:00.000Z"
+      })
+    });
+    const created = cycle.json();
+
+    assert.equal(cycle.status, 201);
+    assert.equal(created.action, "create_context_pack_from_seed");
+    assert.ok(created.result.next_item.id.startsWith("context-pack-cycle-"));
+    assert.ok(created.result.next_item.id.length <= 80);
+    assert.equal(created.result.projection.next_action_readout.action, "run_context_work_packages");
+  }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
 test("workbench server only completes verified provider profile with configured executor", async () => {
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-provider-context-"));
   const historyPath = join(snapshotsRoot, "projection-history.json");

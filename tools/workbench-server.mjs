@@ -136,6 +136,14 @@ function normalizeString(value) {
   return String(value || "").trim();
 }
 
+function safeSnapshotIdPart(value) {
+  return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "snapshot";
+}
+
+function generatedContextPackSnapshotId(selectedId) {
+  return `context-pack-cycle-${safeSnapshotIdPart(selectedId)}-${Date.now()}`.slice(0, 80);
+}
+
 function artifactsOf(workflowState = {}) {
   return [
     ...asArray(workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts),
@@ -1213,7 +1221,7 @@ export function createWorkbenchServer(options = {}) {
         }
 
         const snapshotId = normalizeString(input.snapshot_id || input.snapshotId) ||
-          `context-pack-cycle-${selectedId}-${Date.now()}`;
+          generatedContextPackSnapshotId(selectedId);
         const published = publishWorkbenchSnapshot({
           id: snapshotId,
           label: input.label || `Context pack cycle from ${selectedId}`,

@@ -978,6 +978,25 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
       requires_operator: false
     };
   }
+  if (AGENT_LIFECYCLE_EVENT_TYPES.has(driver.type)) {
+    const globalGoals = summaries.globalGoalCompletion || {};
+    if (
+      lifecyclePool.status === "pass" &&
+      !lifecyclePool.next_action &&
+      globalGoals.status === "in_progress" &&
+      Number(globalGoals.pending || 0) > 0
+    ) {
+      return {
+        status: "ready",
+        action: "prepare_project_status_continuation",
+        source_event_id: driver.event_id,
+        source_type: driver.type,
+        target_projection_id: null,
+        reason: globalGoals.next_goal?.next_step || globalGoals.next_goal?.title || driver.summary,
+        requires_operator: false
+      };
+    }
+  }
 
   return {
     status: "pending",

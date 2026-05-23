@@ -241,6 +241,89 @@ test("workbench projection and mobile expose agent lifecycle heartbeat and timeo
   assert.equal(mobile.agent_lifecycle_pool.timed_out_workers[0].worker_id, "child-timeout-1");
 });
 
+test("closed agent lifecycle drivers do not hide pending global continuation", () => {
+  const input = baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      global_goals: [
+        {
+          id: "continue-platform",
+          title: "Continue platform",
+          status: "in_progress",
+          next_step: "Continue repository global goal."
+        }
+      ]
+    }
+  });
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "worker-spawned-closed",
+        type: "WorkerSpawned",
+        status: "pass",
+        created_at: "2026-05-21T00:05:00.000Z",
+        metadata: {
+          pool_id: "pool-agent-lifecycle-closed",
+          worker_id: "child-closed"
+        }
+      },
+      {
+        id: "worker-completed-closed",
+        type: "WorkerCompleted",
+        status: "pass",
+        created_at: "2026-05-21T00:06:00.000Z",
+        metadata: {
+          pool_id: "pool-agent-lifecycle-closed",
+          worker_id: "child-closed"
+        }
+      },
+      {
+        id: "worker-evaluation-closed",
+        type: "WorkerEvaluation",
+        status: "pass",
+        created_at: "2026-05-21T00:07:00.000Z",
+        metadata: {
+          pool_id: "pool-agent-lifecycle-closed",
+          worker_id: "child-closed"
+        }
+      },
+      {
+        id: "worker-closed-closed",
+        type: "WorkerClosed",
+        status: "pass",
+        created_at: "2026-05-21T00:08:00.000Z",
+        metadata: {
+          pool_id: "pool-agent-lifecycle-closed",
+          worker_id: "child-closed"
+        }
+      },
+      {
+        id: "pool-iteration-closed",
+        type: "PoolIterationClosed",
+        status: "pass",
+        created_at: "2026-05-21T00:09:00.000Z",
+        metadata: {
+          pool_id: "pool-agent-lifecycle-closed"
+        }
+      }
+    ]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.agent_lifecycle_pool.status, "pass");
+  assert.equal(projection.agent_lifecycle_pool.next_action, null);
+  assert.equal(projection.global_goal_completion.pending, 1);
+  assert.equal(projection.operations_timeline.latest_driver.type, "PoolIterationClosed");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "prepare_project_status_continuation");
+  assert.equal(projection.next_action_readout.source_type, "PoolIterationClosed");
+  assert.equal(mobile.next_action_readout.action, "prepare_project_status_continuation");
+});
+
 test("workbench projection exposes headless child provider retry and split evidence", () => {
   const input = baseInput();
   const artifact = {

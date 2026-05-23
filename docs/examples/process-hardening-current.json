@@ -610,6 +610,20 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Headless service-readout trials must not write runtime reviewer/context facts into committed docs/examples fixtures; the workbench server CLI needs explicit isolated history, snapshot, and event paths."
+    },
+    {
+      "id": "context-pack-cycle-generated-snapshot-id-too-long",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Workbench context-pack cycle next-action must not generate snapshot ids that exceed the safe publisher id limit when the source projection id is long."
+    },
+    {
+      "id": "closed-lifecycle-driver-hides-global-continuation",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Closed agent lifecycle pool driver facts must not hide pending repository global-goal continuation by producing terminal inspect_latest_driver readouts."
     }
   ],
   "hardening_items": [
@@ -1523,6 +1537,22 @@
       "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "workbench projection continues after context work packages when global goals remain",
       "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closed-lifecycle-driver-hides-global-continuation",
+      "invariant": "A pass PoolIterationClosed driver with no lifecycle cleanup action must not hide pending repository global goals; next_action_readout must return prepare_project_status_continuation instead of terminal inspect_latest_driver while global_goal_completion remains in_progress.",
+      "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "closed agent lifecycle drivers do not hide pending global continuation",
+      "verification": "node --test test/workbench-projection.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "context-pack-cycle-generated-snapshot-id-too-long",
+      "invariant": "Workbench server generated context-pack cycle snapshot ids must be normalized and truncated to the safe snapshot id length before publishing, even when the source projection id is already at the maximum length.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server truncates generated context pack snapshot ids for long projection ids",
+      "verification": "node --test test/workbench-server.test.js; npm run check:process-hardening; npm run check:closeout",
       "status": "completed"
     }
   ]
