@@ -1393,6 +1393,10 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
       ...options,
       created_at: createdAt
     });
+    const closed = cleanupAgentLifecyclePool(hardening.workflow_state || workflowState, {
+      created_at: createdAt,
+      failure: "headless main orchestrator rejected child worker output"
+    });
     return {
       status: "blocked",
       phase: "child_worker_acceptance",
@@ -1404,8 +1408,14 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
         finding: hardening.finding,
         plan: hardening.plan
       },
+      lifecycle_cleanup: {
+        status: closed.status,
+        facts: closed.facts || [],
+        before: closed.before || null,
+        after: closed.after || null
+      },
       child_run: runResult,
-      workflow_state: hardening.workflow_state || workflowState
+      workflow_state: closed.workflow_state || hardening.workflow_state || workflowState
     };
   }
 

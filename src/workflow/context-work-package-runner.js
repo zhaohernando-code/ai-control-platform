@@ -177,6 +177,13 @@ function retryAgentFactsForNode(node = {}, createdAt) {
   const poolId = retryAgentPoolId(node);
   if (!workerId) return [];
   const retryWorkerId = `${workerId}-retry`;
+  const baseSource = {
+    action: "retry_agent_worker",
+    work_package_id: node.id,
+    original_worker_id: workerId,
+    retry_worker: node.source?.retry_worker || null,
+    timed_out_workers: asArray(node.source?.timed_out_workers)
+  };
 
   return [
     {
@@ -186,13 +193,7 @@ function retryAgentFactsForNode(node = {}, createdAt) {
       status: "pass",
       message: `${retryWorkerId} spawned as retry for timed-out worker ${workerId}`,
       created_at: createdAt,
-      source: {
-        action: "retry_agent_worker",
-        work_package_id: node.id,
-        original_worker_id: workerId,
-        retry_worker: node.source?.retry_worker || null,
-        timed_out_workers: asArray(node.source?.timed_out_workers)
-      }
+      source: baseSource
     },
     {
       event_type: "WorkerHeartbeat",
@@ -201,11 +202,42 @@ function retryAgentFactsForNode(node = {}, createdAt) {
       status: "pass",
       message: `${retryWorkerId} retry heartbeat recorded by scheduler`,
       created_at: createdAt,
-      source: {
-        action: "retry_agent_worker",
-        work_package_id: node.id,
-        original_worker_id: workerId
-      }
+      source: baseSource
+    },
+    {
+      event_type: "WorkerCompleted",
+      pool_id: poolId,
+      worker_id: retryWorkerId,
+      status: "pass",
+      message: `${retryWorkerId} retry completed after bounded execution`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "WorkerEvaluation",
+      pool_id: poolId,
+      worker_id: retryWorkerId,
+      status: "pass",
+      message: `${retryWorkerId} retry evaluation recorded as pass`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "WorkerClosed",
+      pool_id: poolId,
+      worker_id: retryWorkerId,
+      status: "pass",
+      message: `${retryWorkerId} retry closed after evaluation`,
+      created_at: createdAt,
+      source: baseSource
+    },
+    {
+      event_type: "PoolIterationClosed",
+      pool_id: poolId,
+      status: "pass",
+      message: `agent lifecycle pool ${poolId} iteration closed after ${retryWorkerId} retry`,
+      created_at: createdAt,
+      source: baseSource
     }
   ];
 }

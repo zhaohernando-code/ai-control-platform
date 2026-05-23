@@ -521,6 +521,18 @@ test("headless CLI orchestrator hardens timed-out child command output before re
   assert.ok(result.issues.some((item) => item.code === "package_result_not_pass"));
   assert.equal(result.child_run.package_results[0].completion_evidence.child_output.command_evidence.timed_out, true);
   assert.equal(result.hardening.finding.id, "headless-child-worker-acceptance-failed");
+  assert.equal(result.lifecycle_cleanup.status, "blocked");
+  assert.deepEqual(result.lifecycle_cleanup.facts.map((fact) => fact.event_type), [
+    "WorkerCompleted",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ]);
+  assert.equal(result.lifecycle_cleanup.after.open, 0);
+  assert.equal(result.lifecycle_cleanup.after.unevaluated, 0);
+  assert.equal(result.lifecycle_cleanup.after.unclosed, 0);
+  assert.ok(result.workflow_state.manifest.events.some((event) => event.type === "WorkerClosed"));
+  assert.ok(result.workflow_state.manifest.events.some((event) => event.type === "PoolIterationClosed"));
 });
 
 test("headless child worker output parser accepts fenced json and rejects prose", () => {
@@ -557,7 +569,11 @@ test("headless CLI orchestrator hardens no-diff child worker output before retry
   assert.ok(result.issues.some((item) => item.code === "package_result_not_pass"));
   assert.equal(result.hardening.status, "pass");
   assert.equal(result.hardening.finding.id, "headless-child-worker-acceptance-failed");
-  assert.equal(latestEvent.type, "headless_cli_process_hardening");
+  assert.equal(result.lifecycle_cleanup.status, "blocked");
+  assert.equal(result.lifecycle_cleanup.after.open, 0);
+  assert.equal(result.lifecycle_cleanup.after.unevaluated, 0);
+  assert.equal(result.lifecycle_cleanup.after.unclosed, 0);
+  assert.equal(latestEvent.type, "PoolIterationClosed");
 });
 
 test("headless CLI orchestrator blocks wrong role before mutating workflow state", () => {

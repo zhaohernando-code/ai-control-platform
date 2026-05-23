@@ -384,20 +384,54 @@ export function cleanupAgentLifecyclePool(workflowState = {}, input = {}) {
 
   if (failureMessage) {
     const { workers } = latestWorkers(nextState.manifest, nextState.artifact_ledger || nextState.artifactLedger);
-    const worker = workers.find((entry) => entry.completed && !entry.evaluated) || workers.at(-1) || {};
-    const result = recordAgentLifecycleFact(nextState, {
-      event_type: "WorkerEvaluation",
-      pool_id: before.pool_id,
-      worker_id: worker.worker_id || "pool",
-      status: "fail",
-      message: failureMessage,
-      issues: [issue("agent_lifecycle_cleanup_blocked", failureMessage, "cleanup")],
-      created_at: createdAt,
-      cleanup: { automatic: true, blocked: true }
-    });
-    if (result.status !== "pass") return result;
-    nextState = result.workflow_state;
-    facts.push(result.fact);
+    const worker = workers.find((entry) => entry.completed && !entry.evaluated) ||
+      workers.find((entry) => entry.spawned && !entry.closed) ||
+      workers.at(-1) || {};
+    const workerId = worker.worker_id || "pool";
+    const cleanupFacts = [
+      {
+        event_type: "WorkerCompleted",
+        pool_id: before.pool_id,
+        worker_id: workerId,
+        status: "pass",
+        message: `${workerId} marked terminal during agent lifecycle cleanup`,
+        created_at: createdAt,
+        cleanup: { automatic: true, blocked: true, reason: "failure_cleanup", failure_message: failureMessage }
+      },
+      {
+        event_type: "WorkerEvaluation",
+        pool_id: before.pool_id,
+        worker_id: workerId,
+        status: "fail",
+        message: failureMessage,
+        issues: [issue("agent_lifecycle_cleanup_blocked", failureMessage, "cleanup")],
+        created_at: createdAt,
+        cleanup: { automatic: true, blocked: true, reason: "failure_cleanup", failure_message: failureMessage }
+      },
+      {
+        event_type: "WorkerClosed",
+        pool_id: before.pool_id,
+        worker_id: workerId,
+        status: "pass",
+        message: `${workerId} closed during agent lifecycle cleanup`,
+        created_at: createdAt,
+        cleanup: { automatic: true, blocked: true, reason: "failure_cleanup", failure_message: failureMessage }
+      },
+      {
+        event_type: "PoolIterationClosed",
+        pool_id: before.pool_id,
+        status: "pass",
+        message: `agent lifecycle pool ${before.pool_id} iteration closed during cleanup`,
+        created_at: createdAt,
+        cleanup: { automatic: true, blocked: true, reason: "failure_cleanup", failure_message: failureMessage }
+      }
+    ];
+    for (const factInput of cleanupFacts) {
+      const result = recordAgentLifecycleFact(nextState, factInput);
+      if (result.status !== "pass") return result;
+      nextState = result.workflow_state;
+      facts.push(result.fact);
+    }
     return {
       status: "blocked",
       facts,

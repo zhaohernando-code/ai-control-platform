@@ -296,7 +296,13 @@ test("blocked cleanup writes durable blocker and keeps projection blocked", () =
   });
 
   assert.equal(cleanup.status, "blocked");
-  assert.equal(cleanup.facts[0].status, "fail");
+  assert.deepEqual(cleanup.facts.map((fact) => fact.event_type), [
+    "WorkerCompleted",
+    "WorkerEvaluation",
+    "WorkerClosed",
+    "PoolIterationClosed"
+  ]);
+  assert.equal(cleanup.facts[1].status, "fail");
   assert.equal(cleanup.after.status, "blocked");
   assert.equal(cleanup.after.next_action, "cleanup_agent_lifecycle_pool");
   assert.match(cleanup.after.latest_issue, /child process exited/);

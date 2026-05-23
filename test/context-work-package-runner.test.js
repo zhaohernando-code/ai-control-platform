@@ -158,7 +158,7 @@ test("context work package runner executes dispatchable packages and updates wor
   assert.equal(projection.next_action_readout.status, "ready");
 });
 
-test("context work package runner executes retry_agent_worker by recording lifecycle spawn and heartbeat facts", () => {
+test("context work package runner executes retry_agent_worker by recording a closed lifecycle chain", () => {
   const workflowState = workflowStateWithRetryAgentWorker();
   const result = runContextWorkPackages(workflowState, {
     max_package_count: 1,
@@ -170,13 +170,23 @@ test("context work package runner executes retry_agent_worker by recording lifec
   assert.equal(result.status, "pass");
   assert.equal(result.executed_count, 1);
   assert.equal(result.workflow_state.manifest.work_packages[0].status, "completed");
-  assert.equal(result.retry_agent_worker_facts.length, 2);
+  assert.equal(result.retry_agent_worker_facts.length, 6);
   assert.ok(eventTypes.includes("WorkerSpawned"));
   assert.ok(eventTypes.includes("WorkerHeartbeat"));
+  assert.ok(eventTypes.includes("WorkerCompleted"));
+  assert.ok(eventTypes.includes("WorkerEvaluation"));
+  assert.ok(eventTypes.includes("WorkerClosed"));
+  assert.ok(eventTypes.includes("PoolIterationClosed"));
   assert.equal(projection.agent_lifecycle_pool.pool_id, "pool-main-child");
   assert.equal(projection.agent_lifecycle_pool.spawned, 1);
   assert.equal(projection.agent_lifecycle_pool.heartbeat_count, 1);
-  assert.equal(projection.agent_lifecycle_pool.open, 1);
+  assert.equal(projection.agent_lifecycle_pool.completed, 1);
+  assert.equal(projection.agent_lifecycle_pool.evaluated, 1);
+  assert.equal(projection.agent_lifecycle_pool.closed, 1);
+  assert.equal(projection.agent_lifecycle_pool.iteration_closed, true);
+  assert.equal(projection.agent_lifecycle_pool.open, 0);
+  assert.equal(projection.agent_lifecycle_pool.unevaluated, 0);
+  assert.equal(projection.agent_lifecycle_pool.unclosed, 0);
 });
 
 test("context work package runner blocks when no packages can dispatch", () => {
