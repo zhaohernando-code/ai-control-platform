@@ -1,5 +1,28 @@
 const DEFAULT_PROJECTION_URL = "../../docs/examples/current-session-workbench-projection.json";
 const DEFAULT_HISTORY_URL = "../../docs/examples/projection-history.json";
+const DEFAULT_WORKBENCH_PROJECTION_API_URL = "/api/workbench/projection";
+const DEFAULT_WORKBENCH_HISTORY_API_URL = "/api/workbench/projections";
+
+function mountedApiUrl(apiPath, locationLike = globalThis.location) {
+  const pathname = String(locationLike?.pathname || "");
+  const marker = "/apps/workbench/";
+  const markerIndex = pathname.indexOf(marker);
+  if (markerIndex > 0) {
+    return `${pathname.slice(0, markerIndex)}${apiPath}`;
+  }
+
+  const projectMatch = pathname.match(/^(\/projects\/[^/]+)(?:\/|$)/);
+  if (projectMatch) {
+    return `${projectMatch[1]}${apiPath}`;
+  }
+
+  return apiPath;
+}
+
+function isMountedWorkbench(locationLike = globalThis.location) {
+  const pathname = String(locationLike?.pathname || "");
+  return /^\/projects\/[^/]+(?:\/|$)/.test(pathname);
+}
 
 function isSafeProjectionUrl(value) {
   if (!value) return false;
@@ -12,12 +35,18 @@ function isSafeProjectionUrl(value) {
 function projectionUrlFromLocation(locationLike = globalThis.location) {
   const params = new URLSearchParams(locationLike?.search || "");
   const requested = params.get("projection");
+  if (!requested && isMountedWorkbench(locationLike)) {
+    return mountedApiUrl(DEFAULT_WORKBENCH_PROJECTION_API_URL, locationLike);
+  }
   return isSafeProjectionUrl(requested) ? requested : DEFAULT_PROJECTION_URL;
 }
 
 function historyUrlFromLocation(locationLike = globalThis.location) {
   const params = new URLSearchParams(locationLike?.search || "");
   const requested = params.get("history");
+  if (!requested && isMountedWorkbench(locationLike)) {
+    return mountedApiUrl(DEFAULT_WORKBENCH_HISTORY_API_URL, locationLike);
+  }
   return isSafeProjectionUrl(requested) ? requested : DEFAULT_HISTORY_URL;
 }
 
@@ -58,17 +87,18 @@ function requestBodyWithoutProjectionId(input = {}) {
 export function createProjectionSource(options = {}) {
   const url = options.url || projectionUrlFromLocation(options.location);
   const historyUrl = options.historyUrl || historyUrlFromLocation(options.location);
-  const eventsUrl = options.eventsUrl || "/api/workbench/events";
-  const providerHealthUrl = options.providerHealthUrl || "/api/workbench/reviewer-provider-health";
-  const shardResultUrl = options.shardResultUrl || "/api/workbench/reviewer-shard-result";
-  const agentLifecyclePoolUrl = options.agentLifecyclePoolUrl || "/api/workbench/agent-lifecycle-pool";
-  const schedulerDispatchPlanUrl = options.schedulerDispatchPlanUrl || "/api/workbench/scheduler-dispatch-plan";
-  const schedulerDispatchUrl = options.schedulerDispatchUrl || "/api/workbench/scheduler-dispatch";
-  const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || "/api/workbench/scheduler-dispatch-run";
-  const schedulerNextCycleUrl = options.schedulerNextCycleUrl || "/api/workbench/scheduler-next-cycle";
-  const autonomousSchedulerLoopUrl = options.autonomousSchedulerLoopUrl || "/api/workbench/autonomous-scheduler-loop";
-  const autonomousSchedulerLoopResumeUrl = options.autonomousSchedulerLoopResumeUrl || "/api/workbench/autonomous-scheduler-loop-resume";
-  const nextActionUrl = options.nextActionUrl || "/api/workbench/next-action";
+  const endpointLocation = options.location || globalThis.location;
+  const eventsUrl = options.eventsUrl || mountedApiUrl("/api/workbench/events", endpointLocation);
+  const providerHealthUrl = options.providerHealthUrl || mountedApiUrl("/api/workbench/reviewer-provider-health", endpointLocation);
+  const shardResultUrl = options.shardResultUrl || mountedApiUrl("/api/workbench/reviewer-shard-result", endpointLocation);
+  const agentLifecyclePoolUrl = options.agentLifecyclePoolUrl || mountedApiUrl("/api/workbench/agent-lifecycle-pool", endpointLocation);
+  const schedulerDispatchPlanUrl = options.schedulerDispatchPlanUrl || mountedApiUrl("/api/workbench/scheduler-dispatch-plan", endpointLocation);
+  const schedulerDispatchUrl = options.schedulerDispatchUrl || mountedApiUrl("/api/workbench/scheduler-dispatch", endpointLocation);
+  const schedulerDispatchRunUrl = options.schedulerDispatchRunUrl || mountedApiUrl("/api/workbench/scheduler-dispatch-run", endpointLocation);
+  const schedulerNextCycleUrl = options.schedulerNextCycleUrl || mountedApiUrl("/api/workbench/scheduler-next-cycle", endpointLocation);
+  const autonomousSchedulerLoopUrl = options.autonomousSchedulerLoopUrl || mountedApiUrl("/api/workbench/autonomous-scheduler-loop", endpointLocation);
+  const autonomousSchedulerLoopResumeUrl = options.autonomousSchedulerLoopResumeUrl || mountedApiUrl("/api/workbench/autonomous-scheduler-loop-resume", endpointLocation);
+  const nextActionUrl = options.nextActionUrl || mountedApiUrl("/api/workbench/next-action", endpointLocation);
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
@@ -309,4 +339,14 @@ export function createProjectionSource(options = {}) {
   };
 }
 
-export { DEFAULT_HISTORY_URL, DEFAULT_PROJECTION_URL, historyUrlFromLocation, isSafeProjectionUrl, projectionUrlFromLocation, validateProjectionShape };
+export {
+  DEFAULT_HISTORY_URL,
+  DEFAULT_PROJECTION_URL,
+  DEFAULT_WORKBENCH_HISTORY_API_URL,
+  DEFAULT_WORKBENCH_PROJECTION_API_URL,
+  historyUrlFromLocation,
+  isSafeProjectionUrl,
+  mountedApiUrl,
+  projectionUrlFromLocation,
+  validateProjectionShape
+};

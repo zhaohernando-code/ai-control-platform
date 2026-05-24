@@ -1,5 +1,11 @@
 # PROCESS
 
+## 2026-05-24 上线挂载流程
+
+- Problem: the platform workbench could run locally, but the workspace index still marked `ai-control-platform` as not deployed and the frontend assumed root-level `/api/workbench/*` endpoints, which would break when mounted under `/projects/ai-control-platform`.
+- Resolution: added mount-aware workbench API URL derivation, a project-mount redirect in the workbench server, local LaunchAgent scripts for the live workbench service, and workspace-index live route metadata for `https://hernando-zhao.cn/projects/ai-control-platform/`.
+- Prevention: any future public `/projects/<id>` mount for a tool with APIs must test both the entry redirect and mounted API prefix instead of only testing root-local `http://127.0.0.1:<port>/`.
+
 ## 防跑偏流程
 
 - **显式宿主优先于自动路由**：当用户明确说“新中台、新平台、新项目”时，自动路由到业务项目必须视为低可信信号。主进程要改用本仓库，除非用户指定业务项目集成。

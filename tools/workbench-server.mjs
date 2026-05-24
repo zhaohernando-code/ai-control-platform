@@ -814,6 +814,10 @@ function safeStaticPath(pathname) {
   return filePath;
 }
 
+function isProjectMountRoot(pathname) {
+  return /^\/projects\/[^/]+\/?$/.test(String(pathname || ""));
+}
+
 export function createWorkbenchServer(options = {}) {
   const eventsPath = options.eventsPath || defaultEventsPath;
   const serverHistoryPath = options.historyPath || historyPath;
@@ -1934,6 +1938,16 @@ export function createWorkbenchServer(options = {}) {
         const event = normalizeEvent(input, url.searchParams.get("projection_id"));
         const ledger = appendEvent(eventsPath, event);
         jsonResponse(res, 201, { status: "created", event, count: ledger.events.length });
+        return;
+      }
+
+      if (isProjectMountRoot(url.pathname)) {
+        const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
+        res.writeHead(302, {
+          location: `${basePath}apps/workbench/desktop.html${url.search}`,
+          "cache-control": "no-store"
+        });
+        res.end();
         return;
       }
 

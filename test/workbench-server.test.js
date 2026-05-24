@@ -2845,6 +2845,18 @@ test("workbench server serves desktop app shell", async () => {
   });
 });
 
+test("workbench server redirects project mount roots to the desktop shell", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/projects/ai-control-platform/?projection=/api/workbench/projection`);
+
+    assert.equal(response.status, 302);
+    assert.equal(
+      response.headers.location,
+      "/projects/ai-control-platform/apps/workbench/desktop.html?projection=/api/workbench/projection"
+    );
+  });
+});
+
 test("workbench server rejects unknown projection ids", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/projection?id=missing`);

@@ -7,6 +7,7 @@ import {
   DEFAULT_PROJECTION_URL,
   historyUrlFromLocation,
   isSafeProjectionUrl,
+  mountedApiUrl,
   projectionUrlFromLocation,
   validateProjectionShape
 } from "../apps/workbench/projection-source.js";
@@ -29,6 +30,23 @@ test("projection source uses default fixture without query param", () => {
 
   assert.equal(url, DEFAULT_PROJECTION_URL);
   assert.equal(historyUrl, DEFAULT_HISTORY_URL);
+});
+
+test("projection source derives API URLs from a mounted project route", () => {
+  const location = {
+    pathname: "/projects/ai-control-platform/apps/workbench/desktop.html",
+    search: ""
+  };
+  const source = createProjectionSource({
+    location,
+    fetch: async () => ({ ok: true, json: async () => ({}) })
+  });
+
+  assert.equal(mountedApiUrl("/api/workbench/events", location), "/projects/ai-control-platform/api/workbench/events");
+  assert.equal(projectionUrlFromLocation(location), "/projects/ai-control-platform/api/workbench/projection");
+  assert.equal(historyUrlFromLocation(location), "/projects/ai-control-platform/api/workbench/projections");
+  assert.equal(source.eventsUrl, "/projects/ai-control-platform/api/workbench/events");
+  assert.equal(source.nextActionUrl, "/projects/ai-control-platform/api/workbench/next-action");
 });
 
 test("projection source accepts safe service and relative URLs", () => {
