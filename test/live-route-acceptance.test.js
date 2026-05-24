@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -12,6 +12,14 @@ import {
   validateWorkbenchLiveRouteEvidenceArtifact,
   WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION
 } from "../src/workflow/live-route-acceptance.js";
+
+const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
+
+function withoutLiveRouteEvidenceEnv(env = process.env) {
+  const nextEnv = { ...env };
+  delete nextEnv[LIVE_ROUTE_EVIDENCE_ENV];
+  return nextEnv;
+}
 
 function projectStatus(overrides = {}) {
   return {
@@ -136,9 +144,14 @@ test("live route CLI blocks current project status without evidence and accepts 
   const evidencePath = join(dir, "live-route-evidence.json");
   writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus(), null, 2)}\n`);
   writeFileSync(evidencePath, `${JSON.stringify(liveEvidence(), null, 2)}\n`);
+  const closeoutContaminatedEnv = {
+    ...process.env,
+    [LIVE_ROUTE_EVIDENCE_ENV]: evidencePath
+  };
 
   const blocked = spawnSync(process.execPath, ["tools/check-workbench-live-route.mjs", "--project-status", projectStatusPath], {
-    encoding: "utf8"
+    encoding: "utf8",
+    env: withoutLiveRouteEvidenceEnv(closeoutContaminatedEnv)
   });
   assert.equal(blocked.status, 1);
   assert.match(blocked.stdout, /missing_verified_public_live_route_evidence/);
@@ -150,8 +163,56 @@ test("live route CLI blocks current project status without evidence and accepts 
     "--evidence",
     evidencePath
   ], {
-    encoding: "utf8"
+    encoding: "utf8",
+    env: closeoutContaminatedEnv
   });
   assert.equal(accepted.status, 0);
   assert.match(accepted.stdout, /"status": "pass"/);
+});
+
+test("live route CLI accepts PROJECT_STATUS durable evidence path when explicit evidence is absent", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-route-durable-"));
+  const evidenceRelativePath = "docs/examples/public-live-route-evidence.json";
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const evidencePath = join(dir, evidenceRelativePath);
+  mkdirSync(join(dir, "docs/examples"), { recursive: true });
+  writeFileSync(evidencePath, `${JSON.stringify(liveEvidence(), null, 2)}\n`);
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus({
+    workbench_live_route_evidence: {
+      status: "pass",
+      path: evidenceRelativePath,
+      schema: WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION,
+      durable: true
+    }
+  }), null, 2)}\n`);
+
+  const accepted = spawnSync(process.execPath, ["tools/check-workbench-live-route.mjs", "--project-status", projectStatusPath], {
+    encoding: "utf8",
+    env: withoutLiveRouteEvidenceEnv()
+  });
+
+  assert.equal(accepted.status, 0);
+  assert.match(accepted.stdout, /"status": "pass"/);
+  assert.match(accepted.stdout, /"evidence_source": "project_status"/);
+});
+
+test("live route CLI still fails closed when status has no durable evidence path", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-route-no-durable-"));
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus({
+    workbench_live_route_evidence: {
+      status: "missing",
+      path: "",
+      durable: false
+    }
+  }), null, 2)}\n`);
+
+  const blocked = spawnSync(process.execPath, ["tools/check-workbench-live-route.mjs", "--project-status", projectStatusPath], {
+    encoding: "utf8",
+    env: withoutLiveRouteEvidenceEnv()
+  });
+
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.stdout, /missing_verified_public_live_route_evidence/);
+  assert.doesNotMatch(blocked.stdout, /"evidence_source": "project_status"/);
 });

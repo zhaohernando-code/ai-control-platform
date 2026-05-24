@@ -51,3 +51,4 @@
 - **最终总执行器必须是 CLI**：Codex App 只能是观察、调试和人工干预入口，不能是中台创建项目、调度任务、验收结果或继续运行的必需条件。目标形态下，Codex CLI/`codex_proxy` 必须作为 headless main orchestrator 从 durable state 启动并执行完整主进程职责。
 - **CLI orchestrator 与 CLI worker 要分层**：同一个 Codex CLI 能力可以承担 main orchestrator 或 child worker，但运行模式必须显式声明。main orchestrator 可以拆任务、派发、验收和修流程；child worker 只能执行 Context Pack 授权的 owned-files 实现。
 - **主线必须保持干净**：`main` 只能承载已验收、可提交的结果，不允许在脏 `main` 工作树里直接累积 child-worker 实现。主进程发现当前分支是 `main` 且存在未提交修改时，必须先切到隔离分支或独立 worktree，再继续派发/验收；`npm run check:closeout` 必须用 git worktree isolation gate 拦截脏 `main`。
+- **child_worker 必须使用隔离 worktree**：分支名不是宿主边界。`execution_role`/`role` 为 `child_worker` 时，git worktree isolation gate 必须知道 primary platform worktree 和当前 worktree，并在当前路径是 primary worktree 时 fail closed；child_worker 只允许在 primary worktree 之外的隔离 worker worktree 中累积实现 diff，优先使用 `worker-workspaces`。`main_orchestrator`/integration closeout 可以在非 main integration 分支的 primary worktree 中运行验收和收敛。

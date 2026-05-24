@@ -1,0 +1,348 @@
+{
+  "version": "audit-skill-trial-run.v1",
+  "project_root": "/Users/hernando_zhao/codex/projects/ai-control-platform",
+  "input_mode": "real_project_state",
+  "scope": "Current ai-control-platform self-governance, reviewer, continuation, closeout, workbench, and audit skill trial integration flow",
+  "created_at": "2026-05-25T00:00:00.000Z",
+  "final_verdict": "带条件通过",
+  "dimensions": [
+    {
+      "id": "code_quality",
+      "status": "audited",
+      "skill_name": "code-quality-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/code-quality-audit/SKILL.md",
+      "prompt_scope": "Read current ai-control-platform workflow modules and focused tests for self-governance, continuation, reviewer shard executor, and audit skill trial gate.",
+      "input_artifacts": ["src/workflow/self-governance.js", "src/workflow/autonomous-continuation.js", "src/workflow/claude-deepseek-shard-executor.js", "src/workflow/audit-skill-trial-run.js", "test/self-governance.test.js", "test/autonomous-continuation.test.js", "test/claude-deepseek-shard-executor.test.js", "test/audit-skill-trial-run.test.js"],
+      "output_artifact": "current-session-subagent-code-robustness-security-cost-readout",
+      "evidence_ids": ["ev-focused-tests", "ev-self-governance-code", "ev-audit-gate-code"]
+    },
+    {
+      "id": "system_robustness",
+      "status": "audited",
+      "skill_name": "system-robustness-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/system-robustness-audit/SKILL.md",
+      "prompt_scope": "Inspect scheduler dispatch, closeout, continuation, and reviewer timeout behavior for bounded execution and recovery gaps.",
+      "input_artifacts": ["src/workflow/scheduler-dispatch-runner.js", "tools/check-closeout.mjs", "src/workflow/autonomous-continuation.js", "src/workflow/claude-deepseek-shard-executor.js"],
+      "output_artifact": "current-session-subagent-code-robustness-security-cost-readout",
+      "evidence_ids": ["ev-focused-tests", "ev-closeout-gate", "ev-ds-structured-output"]
+    },
+    {
+      "id": "security_permission",
+      "status": "audited",
+      "skill_name": "security-permission-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/security-permission-audit/SKILL.md",
+      "prompt_scope": "Check host boundary, durable public route evidence, and environment leakage around closeout and live route gates.",
+      "input_artifacts": ["src/workflow/live-route-acceptance.js", "tools/check-closeout.mjs", "test/live-route-acceptance.test.js", "src/workflow/host-boundary.js"],
+      "output_artifact": "current-session-subagent-code-robustness-security-cost-readout",
+      "evidence_ids": ["ev-live-route-pass", "ev-closeout-pass", "ev-focused-tests"]
+    },
+    {
+      "id": "cost_efficiency",
+      "status": "audited",
+      "skill_name": "cost-efficiency-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/cost-efficiency-audit/SKILL.md",
+      "prompt_scope": "Inspect reviewer execution and model routing for budget controls and missing cost measurement.",
+      "input_artifacts": ["src/workflow/reviewer-execution-policy.js", "src/workflow/claude-deepseek-shard-executor.js", "src/workflow/model-router.js"],
+      "output_artifact": "current-session-subagent-code-robustness-security-cost-readout",
+      "evidence_ids": ["ev-cost-policy-code", "ev-ds-structured-output"]
+    },
+    {
+      "id": "flow_integrity",
+      "status": "audited",
+      "skill_name": "flow-integrity-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/flow-integrity-audit/SKILL.md",
+      "prompt_scope": "Verify that self-governance findings move from report/projection into continuation work packages rather than stopping at display.",
+      "input_artifacts": ["src/workflow/self-governance.js", "src/workflow/autonomous-continuation.js", "test/autonomous-continuation.test.js"],
+      "output_artifact": "current-session-subagent-flow-quality-repair-recovery-readout",
+      "evidence_ids": ["ev-continuation-code", "ev-focused-tests"]
+    },
+    {
+      "id": "quality_gate",
+      "status": "audited",
+      "skill_name": "quality-gate-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/quality-gate-audit/SKILL.md",
+      "prompt_scope": "Check closeout gates, audit skill trial gate, focused tests, and process hardening integration for fail-closed behavior.",
+      "input_artifacts": ["tools/check-closeout.mjs", "tools/check-audit-skill-trial-run.mjs", "src/workflow/audit-skill-trial-run.js", "test/audit-skill-trial-run.test.js"],
+      "output_artifact": "current-session-subagent-flow-quality-repair-recovery-readout",
+      "evidence_ids": ["ev-audit-gate-code", "ev-focused-tests", "ev-closeout-gate", "ev-closeout-pass"]
+    },
+    {
+      "id": "auto_repair_authenticity",
+      "status": "audited",
+      "skill_name": "auto-repair-authenticity-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/auto-repair-authenticity-audit/SKILL.md",
+      "prompt_scope": "Check whether self-governance explicit defects produce repair work packages consumed by continuation and whether evidence gaps stay evidence-building tasks.",
+      "input_artifacts": ["src/workflow/self-governance.js", "src/workflow/autonomous-continuation.js", "test/autonomous-continuation.test.js"],
+      "output_artifact": "current-session-subagent-flow-quality-repair-recovery-readout",
+      "evidence_ids": ["ev-continuation-code", "ev-focused-tests"]
+    },
+    {
+      "id": "recovery_capability",
+      "status": "audited",
+      "skill_name": "recovery-capability-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/recovery-capability-audit/SKILL.md",
+      "prompt_scope": "Check whether closeout and continuation leave durable next work packages and keep public live-route evidence explicit.",
+      "input_artifacts": ["PROJECT_STATUS.json", "tools/check-closeout.mjs", "src/workflow/autonomous-continuation.js"],
+      "output_artifact": "current-session-subagent-flow-quality-repair-recovery-readout",
+      "evidence_ids": ["ev-live-route-pass", "ev-continuation-code", "ev-closeout-gate"]
+    },
+    {
+      "id": "iteration_evolution",
+      "status": "audited",
+      "skill_name": "iteration-evolution-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/iteration-evolution-audit/SKILL.md",
+      "prompt_scope": "Review current platform state, capability matrix drift, and whether governance improvements produce decisionable packages.",
+      "input_artifacts": ["docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md", "PROJECT_STATUS.json", "src/workflow/self-governance.js"],
+      "output_artifact": "current-session-subagent-product-ux-knowledge-model-readout",
+      "evidence_ids": ["ev-capability-matrix-drift", "ev-self-governance-code"]
+    },
+    {
+      "id": "product_capability_gap",
+      "status": "audited",
+      "skill_name": "product-capability-gap-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/product-capability-gap-audit/SKILL.md",
+      "prompt_scope": "Compare workbench and project claims with current closeout/public route reality and capability matrix.",
+      "input_artifacts": ["PROJECT_STATUS.json", "docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md", "apps/workbench/desktop.html", "apps/workbench/mobile.html"],
+      "output_artifact": "current-session-subagent-product-ux-knowledge-model-readout",
+      "evidence_ids": ["ev-live-route-pass", "ev-capability-matrix-drift", "ev-workbench-copy"]
+    },
+    {
+      "id": "user_experience",
+      "status": "audited",
+      "skill_name": "user-experience-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/user-experience-audit/SKILL.md",
+      "prompt_scope": "Inspect PC/mobile workbench visible copy and browser/frontend acceptance evidence for user-facing clarity gaps.",
+      "input_artifacts": ["apps/workbench/desktop.html", "apps/workbench/mobile.html", "tools/check-workbench-frontend-acceptance.mjs", "tools/check-workbench-browser-events.mjs"],
+      "output_artifact": "current-session-subagent-product-ux-knowledge-model-readout",
+      "evidence_ids": ["ev-workbench-copy", "ev-focused-tests"]
+    },
+    {
+      "id": "knowledge_retention",
+      "status": "audited",
+      "skill_name": "knowledge-retention-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/knowledge-retention-audit/SKILL.md",
+      "prompt_scope": "Check whether PROJECT_STATUS, capability matrix, process hardening, and audit trial artifacts can support fresh-session recovery.",
+      "input_artifacts": ["PROJECT_STATUS.json", "docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md", "docs/examples/process-hardening-current.json", "docs/examples/audit-skill-trial-current.json"],
+      "output_artifact": "current-session-subagent-product-ux-knowledge-model-readout",
+      "evidence_ids": ["ev-capability-matrix-drift", "ev-audit-gate-code", "ev-live-route-pass"]
+    },
+    {
+      "id": "model_collaboration",
+      "status": "audited",
+      "skill_name": "model-collaboration-audit",
+      "skill_version_or_path": "/Users/hernando_zhao/.codex/skills/model-collaboration-audit/SKILL.md",
+      "prompt_scope": "Evaluate multi-subagent audit trial, reviewer shard executor behavior, and DeepSeek structured output requirements.",
+      "input_artifacts": ["src/workflow/claude-deepseek-shard-executor.js", "test/claude-deepseek-shard-executor.test.js", "docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md", "docs/evaluations/20260521_REVIEWER_SHARD_LOOP_CLOSEOUT_TRIAL_CN.md"],
+      "output_artifact": "current-session-subagent-product-ux-knowledge-model-readout",
+      "evidence_ids": ["ev-ds-structured-output", "ev-real-ds-thin-coverage", "ev-focused-tests"]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-focused-tests",
+      "kind": "command",
+      "source": "node --test test/audit-skill-trial-run.test.js test/self-governance.test.js test/autonomous-continuation.test.js test/claude-deepseek-shard-executor.test.js",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "node --test test/audit-skill-trial-run.test.js test/self-governance.test.js test/autonomous-continuation.test.js test/claude-deepseek-shard-executor.test.js",
+      "exit_code": 0,
+      "result_summary": "Focused regression suite passed after adding audit skill trial gate, strict self-governance validation, continuation consumption of governance repair/evidence packages, and DeepSeek unstructured-output evidence gap handling."
+    },
+    {
+      "id": "ev-self-governance-code",
+      "kind": "code",
+      "source": "src/workflow/self-governance.js",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "src/workflow/self-governance.js:329",
+      "result_summary": "validateSelfGovernanceInput now checks raw category and dimension values before any fallback normalization."
+    },
+    {
+      "id": "ev-continuation-code",
+      "kind": "code",
+      "source": "src/workflow/autonomous-continuation.js",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "src/workflow/autonomous-continuation.js:98",
+      "result_summary": "nextWorkPackagesFrom now includes self-governance generated repair and evidence-building work packages; tests prove evolution opportunities do not auto-execute."
+    },
+    {
+      "id": "ev-ds-structured-output",
+      "kind": "code",
+      "source": "src/workflow/claude-deepseek-shard-executor.js",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "src/workflow/claude-deepseek-shard-executor.js:132",
+      "result_summary": "Exit-0 DeepSeek reviewer output without structured findings now fails as evidence_gap instead of becoming pass evidence."
+    },
+    {
+      "id": "ev-audit-gate-code",
+      "kind": "code",
+      "source": "src/workflow/audit-skill-trial-run.js",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "src/workflow/audit-skill-trial-run.js:1",
+      "result_summary": "New audit-skill-trial-run.v1 gate requires real project root, real_project_state input, all dimensions, evidence, repair schedules, evidence plans, decision packages, and clean coverage summary."
+    },
+    {
+      "id": "ev-closeout-gate",
+      "kind": "code",
+      "source": "tools/check-closeout.mjs",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "tools/check-closeout.mjs:122",
+      "result_summary": "Closeout runs public workbench live-route acceptance and can additionally run the audit skill trial gate when AUDIT_SKILL_TRIAL_RUN is provided."
+    },
+    {
+      "id": "ev-live-route-pass",
+      "kind": "command",
+      "source": "npm run check:workbench:live-route",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "npm run check:workbench:live-route",
+      "exit_code": 0,
+      "result_summary": "Workbench live-route gate passed from durable PROJECT_STATUS evidence path docs/examples/public-live-route-evidence-20260524.json, proving public HTTPS mounted route, rendered workbench, mounted API, and no auth redirect."
+    },
+    {
+      "id": "ev-closeout-pass",
+      "kind": "command",
+      "source": "npm run check:closeout",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "main-orchestrator",
+      "command_or_path": "npm run check:closeout",
+      "exit_code": 0,
+      "result_summary": "Current closeout passed from durable repository state, including unit tests, onboarding, worktree isolation, process hardening, live-route acceptance, browser events, frontend acceptance, and scheduler dispatch writeback."
+    },
+    {
+      "id": "ev-capability-matrix-drift",
+      "kind": "file",
+      "source": "docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "subagent-readonly-audit",
+      "command_or_path": "docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md",
+      "line": "21",
+      "result_summary": "Capability matrix contains stale partial/scaffold claims that no longer align with PROJECT_STATUS implementation claims."
+    },
+    {
+      "id": "ev-workbench-copy",
+      "kind": "file",
+      "source": "apps/workbench/desktop.html",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "subagent-readonly-audit",
+      "command_or_path": "apps/workbench/desktop.html",
+      "line": "73",
+      "result_summary": "Workbench visible copy still includes internal implementation labels such as Work Packages, Artifacts, Reviewer Findings, Dispatchable, and Scheduler Steps."
+    },
+    {
+      "id": "ev-cost-policy-code",
+      "kind": "code",
+      "source": "src/workflow/reviewer-execution-policy.js",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "subagent-readonly-audit",
+      "command_or_path": "src/workflow/reviewer-execution-policy.js:135",
+      "result_summary": "Reviewer policy bounds external call count and timeout but does not record token usage or cost estimates for DeepSeek calls."
+    },
+    {
+      "id": "ev-real-ds-thin-coverage",
+      "kind": "file",
+      "source": "docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md",
+      "collected_at": "2026-05-25T00:00:00.000Z",
+      "collector": "subagent-readonly-audit",
+      "command_or_path": "docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md",
+      "line": "24",
+      "result_summary": "Historical evidence shows a real no-tools DeepSeek shard run, but broader full-loop evidence still relies on mock trials."
+    }
+  ],
+  "findings": [
+    {
+      "id": "workbench-internal-copy-visible",
+      "dimension": "user_experience",
+      "type": "明确缺陷",
+      "severity": "中",
+      "disposition": "立即修复",
+      "user_visible": true,
+      "evidence_ids": ["ev-workbench-copy"],
+      "summary": "审计试跑仍从 closeout 输出中看到内部实现词和英文工程标签，虽然当前前端验收未判为阻塞，但这和用户侧说明预期不一致。",
+      "repair_schedule": {
+        "scope": "workbench user-facing copy and acceptance gate",
+        "target_files_or_modules": ["apps/workbench/desktop.html", "apps/workbench/mobile.html", "apps/workbench/workbench.js", "tools/check-workbench-frontend-acceptance.mjs"],
+        "owner_role": "frontend_integration_adapter",
+        "verification_commands": ["npm run check:workbench:frontend-acceptance", "npm run check:workbench:browser-events"],
+        "post_repair_evidence_required": "browser text extraction rejects internal tokens and shows Chinese user-facing decision language",
+        "rollback_risk": "Changing copy without updating acceptance gates can reintroduce internal vocabulary.",
+        "live_or_browser_verification": "Desktop and mobile workbench served pages should be checked by browser automation."
+      }
+    },
+    {
+      "id": "capability-matrix-stale",
+      "dimension": "knowledge_retention",
+      "type": "明确缺陷",
+      "severity": "中",
+      "disposition": "立即修复",
+      "evidence_ids": ["ev-capability-matrix-drift"],
+      "summary": "能力矩阵与当前实现状态冲突，新会话可能拿到错误的平台能力判断。",
+      "repair_schedule": {
+        "scope": "platform capability matrix refresh",
+        "target_files_or_modules": ["docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md", "test/project-onboarding-sync.test.js"],
+        "owner_role": "platform_documentation_gate",
+        "verification_commands": ["npm run check:onboarding", "npm run check:process-hardening"],
+        "post_repair_evidence_required": "matrix differentiates local deterministic, real DS shard, public-route blocked, and not-production states",
+        "rollback_risk": "Overstating capability as production-ready would hide the public route blocker."
+      }
+    },
+    {
+      "id": "real-ds-shard-coverage-thin",
+      "dimension": "model_collaboration",
+      "type": "证据缺口",
+      "severity": "中",
+      "disposition": "继续取证",
+      "evidence_ids": ["ev-real-ds-thin-coverage", "ev-ds-structured-output"],
+      "summary": "真实 DeepSeek shard 证据仍偏薄，完整 scheduler/reviewer loop 的强证据仍主要来自 mock trial。",
+      "evidence_plan": {
+        "missing_evidence": "At least two real DeepSeek shards or a real --all run with aggregate, provider health, timeout recovery, and continuation evidence.",
+        "how_to_collect": "Run bounded reviewer shard loop against a controlled snapshot with the real Claude+DeepSeek executor and persist reviewer_shard_result plus aggregate artifacts.",
+        "blocking_closure": false,
+        "minimum_command_or_entrypoint": "npm run run:reviewer-shard -- --input <workflow-state> --output <workflow-state> --all"
+      }
+    },
+    {
+      "id": "reviewer-cost-measurement-gap",
+      "dimension": "cost_efficiency",
+      "type": "证据缺口",
+      "severity": "低",
+      "disposition": "继续取证",
+      "evidence_ids": ["ev-cost-policy-code"],
+      "summary": "Reviewer policy 有调用次数和 timeout 控制，但缺 prompt/token/成本估算证据。",
+      "evidence_plan": {
+        "missing_evidence": "Prompt size, token estimate, model, attempt count, timeout, and estimated cost per external reviewer call.",
+        "how_to_collect": "Extend Claude+DeepSeek executor provenance and reviewer provider health artifacts with prompt bytes and cost estimate fields.",
+        "blocking_closure": false,
+        "minimum_command_or_entrypoint": "node --test test/claude-deepseek-shard-executor.test.js test/reviewer-shard-runner.test.js"
+      }
+    },
+    {
+      "id": "decision-package-workbench-panel",
+      "dimension": "product_capability_gap",
+      "type": "可选迭代",
+      "severity": "低",
+      "disposition": "用户决策",
+      "evidence_ids": ["ev-self-governance-code", "ev-workbench-copy"],
+      "summary": "工作台目前更像状态观测面，尚未把 self-governance 的用户决策包完整渲染成可理解的产品面板。",
+      "decision_package": {
+        "options": ["先做中文 copy 和内部 token 消隐", "增加待用户决策面板并展示选项/取舍/推荐动作", "直接接多模型仲裁报告和执行入口"],
+        "tradeoffs": "copy 消隐最快但只解决表层体验；决策面板能提升产品价值；接仲裁报告成本最高且需要更多真实 DS 证据。",
+        "recommended_option": "增加待用户决策面板并把 copy 消隐作为验收门禁",
+        "estimated_cost": "中",
+        "confidence_gain": "高"
+      }
+    }
+  ],
+  "coverage_summary": {
+    "required_dimensions_count": 13,
+    "covered_dimensions_count": 13,
+    "justified_not_applicable_count": 0,
+    "findings_without_evidence_count": 0,
+    "defects_without_repair_schedule_count": 0,
+    "optional_without_decision_package_count": 0
+  }
+}

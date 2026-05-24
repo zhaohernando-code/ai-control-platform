@@ -77,9 +77,17 @@ function findingDimension(finding = {}) {
   return GOVERNANCE_DIMENSIONS.includes(dimension) ? dimension : "flow_integrity";
 }
 
+function rawFindingDimension(finding = {}) {
+  return normalizeToken(finding.dimension || finding.area || finding.domain);
+}
+
 function findingCategory(finding = {}) {
   const category = normalizeToken(finding.category || finding.type || finding.kind);
   return VALID_CATEGORIES.has(category) ? category : "evolution_opportunity";
+}
+
+function rawFindingCategory(finding = {}) {
+  return normalizeToken(finding.category || finding.type || finding.kind);
 }
 
 function findingSeverity(finding = {}) {
@@ -327,10 +335,12 @@ export function validateSelfGovernanceInput(input = {}) {
       issues.push(issue("invalid_governance_finding", "self-governance finding must be an object", `findings[${index}]`));
       return;
     }
-    if (!VALID_CATEGORIES.has(findingCategory(finding))) {
+    const rawCategory = rawFindingCategory(finding);
+    const rawDimension = rawFindingDimension(finding);
+    if (!rawCategory || !VALID_CATEGORIES.has(rawCategory)) {
       issues.push(issue("invalid_governance_category", "governance category is invalid", `findings[${index}].category`));
     }
-    if (!GOVERNANCE_DIMENSIONS.includes(findingDimension(finding))) {
+    if (!rawDimension || !GOVERNANCE_DIMENSIONS.includes(rawDimension)) {
       issues.push(issue("invalid_governance_dimension", "governance dimension is invalid", `findings[${index}].dimension`));
     }
   });
@@ -346,10 +356,11 @@ export function createSelfGovernanceReport(input = {}) {
   const validation = validateSelfGovernanceInput(input);
   const cyclePlan = createSelfGovernanceCyclePlan(input);
   const rawFindings = [...explicitFindings(input), ...findingsFromManifest(input)];
-  const findings = rawFindings.map(normalizeFinding);
-  const defectFindings = rawFindings.filter((finding) => findingCategory(finding) === "defect");
-  const evidenceFindings = rawFindings.filter((finding) => findingCategory(finding) === "evidence_gap");
-  const evolutionFindings = rawFindings.filter((finding) => findingCategory(finding) === "evolution_opportunity");
+  const validRawFindings = validation.status === "pass" ? rawFindings : [];
+  const findings = validRawFindings.map(normalizeFinding);
+  const defectFindings = validRawFindings.filter((finding) => findingCategory(finding) === "defect");
+  const evidenceFindings = validRawFindings.filter((finding) => findingCategory(finding) === "evidence_gap");
+  const evolutionFindings = validRawFindings.filter((finding) => findingCategory(finding) === "evolution_opportunity");
   const autoRepairWorkPackages = defectFindings.map(remediationWorkPackage);
   const evidenceWorkPackages = evidenceFindings.map(evidenceWorkPackage);
   const decisionPackages = evolutionFindings.map(decisionPackage);

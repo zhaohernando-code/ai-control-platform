@@ -178,3 +178,49 @@ test("git worktree isolation blocks dirty main but allows isolated branch work",
   const cleanMain = evaluateGitWorktreeIsolation({ branch: "main", porcelain: "" });
   assert.equal(cleanMain.status, "pass");
 });
+
+test("git worktree isolation is role aware for child worker execution", () => {
+  const primaryWorktree = "/repo/ai-control-platform";
+  const workerRoot = "/repo/worker-workspaces";
+
+  const childInPrimaryWorktree = evaluateGitWorktreeIsolation({
+    role: "child_worker",
+    branch: "work/integration-closeout",
+    porcelain: " M src/workflow/git-worktree-isolation.js\n",
+    current_worktree_path: primaryWorktree,
+    primary_worktree_path: primaryWorktree,
+    worker_workspaces_root: workerRoot
+  });
+  assert.equal(childInPrimaryWorktree.status, "fail");
+  assert.ok(childInPrimaryWorktree.issues.some((item) => item.code === "child_worker_primary_worktree_not_allowed"));
+
+  const childInWorkerWorktree = evaluateGitWorktreeIsolation({
+    execution_role: "child_worker",
+    branch: "task/ai-control-platform/role-gate",
+    porcelain: " M src/workflow/git-worktree-isolation.js\n",
+    current_worktree_path: "/repo/worker-workspaces/ai-control-platform/role-gate",
+    primary_worktree_path: primaryWorktree,
+    worker_workspaces_root: workerRoot
+  });
+  assert.equal(childInWorkerWorktree.status, "pass");
+  assert.equal(childInWorkerWorktree.worker_workspace_aligned, true);
+
+  const childWithoutKnownPrimary = evaluateGitWorktreeIsolation({
+    role: "child_worker",
+    branch: "task/ai-control-platform/role-gate",
+    porcelain: "",
+    current_worktree_path: "/repo/worker-workspaces/ai-control-platform/role-gate"
+  });
+  assert.equal(childWithoutKnownPrimary.status, "fail");
+  assert.ok(childWithoutKnownPrimary.issues.some((item) => item.code === "primary_worktree_unknown"));
+
+  const integrationInPrimaryWorktree = evaluateGitWorktreeIsolation({
+    role: "main_orchestrator",
+    branch: "work/integration-closeout",
+    porcelain: " M PROCESS.md\n",
+    current_worktree_path: primaryWorktree,
+    primary_worktree_path: primaryWorktree,
+    worker_workspaces_root: workerRoot
+  });
+  assert.equal(integrationInPrimaryWorktree.status, "pass");
+});

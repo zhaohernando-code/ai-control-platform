@@ -1,0 +1,54 @@
+{
+  "version": "workbench-live-route-evidence.v1",
+  "status": "pass",
+  "created_at": "2026-05-24T16:13:13.897Z",
+  "project": "ai-control-platform",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+  "http_status": 200,
+  "public_route_verified": true,
+  "mounted_workbench_route_verified": true,
+  "workbench_rendered": true,
+  "mounted_api_verified": true,
+  "auth_redirect_detected": false,
+  "local_loopback": false,
+  "verification_mode": "public_https",
+  "request_header_names": [
+    "Cookie"
+  ],
+  "route": {
+    "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+    "http_status": 200,
+    "redirect_count": 1,
+    "auth_redirect_detected": false,
+    "public_route_verified": true
+  },
+  "workbench": {
+    "shell_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+    "shell_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+    "shell_http_status": 200,
+    "mounted_route_verified": true,
+    "rendered": true,
+    "api_url": "https://hernando-zhao.cn/projects/ai-control-platform/api/workbench/projection",
+    "api_http_status": 200,
+    "mounted_api_verified": true
+  },
+  "redirects": [
+    {
+      "from_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "to_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+      "http_status": 302,
+      "auth_redirect_detected": false
+    }
+  ],
+  "issues": [],
+  "validation": {
+    "status": "pass",
+    "version": "workbench-live-route-evidence.v1",
+    "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html/",
+    "http_status": 200,
+    "issues": []
+  }
+}

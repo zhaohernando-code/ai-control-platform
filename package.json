@@ -15,6 +15,7 @@
     "probe:workbench:live-route": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs",
     "check:workbench:browser-events": "node tools/run-with-node18.mjs tools/check-workbench-browser-events.mjs",
     "check:workbench:frontend-acceptance": "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs",
+    "check:audit-skill-trial": "node tools/run-with-node18.mjs tools/check-audit-skill-trial-run.mjs",
     "check:scheduler-dispatch-writeback": "node tools/run-with-node18.mjs tools/check-scheduler-dispatch-writeback.mjs",
     "check:autonomous-closeout-loop-run": "node tools/run-with-node18.mjs tools/check-autonomous-closeout-loop-run.mjs",
     "check:closeout": "node tools/run-with-node18.mjs tools/check-closeout.mjs",

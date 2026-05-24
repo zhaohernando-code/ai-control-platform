@@ -7,6 +7,7 @@ import {
   createFrontendAcceptanceRepairWorkPackage,
   summarizeFrontendAcceptance
 } from "./frontend-acceptance.js";
+import { createSelfGovernanceReport } from "./self-governance.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -102,6 +103,7 @@ function nextWorkPackagesFrom(input) {
   const scopeSplitPackages = aggregate ? [] : reviewerScopeSplitWorkPackagesFrom(input);
   const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
   const frontendRepairPackages = frontendAcceptanceRepairWorkPackagesFrom(input);
+  const selfGovernancePackages = selfGovernanceWorkPackagesFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const directPackages = [
     ...asArray(input?.next_work_packages),
@@ -113,7 +115,8 @@ function nextWorkPackagesFrom(input) {
     ...providerPackages,
     ...scopeSplitPackages,
     ...lifecyclePoolPackages,
-    ...frontendRepairPackages
+    ...frontendRepairPackages,
+    ...selfGovernancePackages
   ];
   if (directPackages.length > 0) {
     return dedupeWorkPackages(directPackages);
@@ -328,6 +331,14 @@ function reviewerScopeSplitWorkPackagesFrom(input = {}) {
       }
     }))
     .filter((workPackage) => workPackage.id);
+}
+
+function selfGovernanceWorkPackagesFrom(input = {}) {
+  const report = createSelfGovernanceReport({
+    ...input,
+    workflow_state: workflowStateFrom(input) || input?.workflow_state
+  });
+  return report.status === "available" ? asArray(report.next_work_packages) : [];
 }
 
 function agentLifecyclePoolFrom(input = {}) {

@@ -85,7 +85,7 @@ test("claude deepseek shard executor converts timeouts into reviewer timeout fin
   assert.match(result.findings[0].message, /45s/);
 });
 
-test("claude deepseek shard executor treats unstructured success as pass evidence", async () => {
+test("claude deepseek shard executor treats unstructured success as evidence gap failure", async () => {
   const executor = createClaudeDeepSeekShardExecutor({
     commandRunner: () => ({
       status: 0,
@@ -96,7 +96,8 @@ test("claude deepseek shard executor treats unstructured success as pass evidenc
 
   const result = await executor({ shard: shard(), prompt: "review this shard" });
 
-  assert.equal(result.status, "pass");
-  assert.equal(result.findings[0].status, "pass");
-  assert.match(result.findings[0].message, /没有发现问题/);
+  assert.equal(result.status, "fail");
+  assert.equal(result.findings[0].status, "fail");
+  assert.equal(result.findings[0].category, "evidence_gap");
+  assert.match(result.findings[0].message, /structured findings are required/);
 });

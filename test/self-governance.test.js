@@ -171,3 +171,34 @@ test("self-governance validation rejects non-object findings", () => {
   assert.equal(validation.status, "fail");
   assert.equal(validation.issues[0].code, "invalid_governance_finding");
 });
+
+test("self-governance validation fails closed for missing or unknown category and dimension", () => {
+  const validation = validateSelfGovernanceInput({
+    findings: [
+      {
+        id: "fake-governance-finding",
+        category: "made_up_category",
+        dimension: "fake_dimension",
+        title: "Fake finding"
+      },
+      {
+        id: "missing-governance-fields",
+        title: "Missing category and dimension"
+      }
+    ]
+  });
+
+  assert.equal(validation.status, "fail");
+  assert.equal(validation.issues.filter((issue) => issue.code === "invalid_governance_category").length, 2);
+  assert.equal(validation.issues.filter((issue) => issue.code === "invalid_governance_dimension").length, 2);
+  assert.equal(createSelfGovernanceReport({
+    findings: [
+      {
+        id: "fake-governance-finding",
+        category: "made_up_category",
+        dimension: "fake_dimension",
+        title: "Fake finding"
+      }
+    ]
+  }).status, "invalid");
+});

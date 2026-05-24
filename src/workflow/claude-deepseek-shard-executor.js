@@ -131,14 +131,16 @@ export function createClaudeDeepSeekShardExecutor(options = {}) {
 
     if (exitCode === 0) {
       return {
-        status: "pass",
+        status: "fail",
         findings: [
           {
-            id: `${shard.id}-reviewer-text-pass`,
-            status: "pass",
-            severity: "info",
-            category: "reviewer",
-            message: stdout || "external shard reviewer returned no structured findings"
+            id: `${shard.id}-reviewer-unstructured-output`,
+            status: "fail",
+            severity: "medium",
+            category: "evidence_gap",
+            message: stdout
+              ? "DeepSeek shard reviewer returned unstructured text; structured findings are required before accepting the review."
+              : "DeepSeek shard reviewer returned no structured findings."
           }
         ],
         provenance,

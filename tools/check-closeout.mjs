@@ -8,10 +8,18 @@ const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
 const FRONTEND_ACCEPTANCE_RUN_VERSION = "frontend-acceptance-run.v1";
 const FRONTEND_ACCEPTANCE_RELEASE_TARGET = "latest_projection";
 const PROJECTED_NEXT_ACTION_STRATEGY_LABEL = "按推荐动作推进";
+const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
+const AUDIT_SKILL_TRIAL_RUN_ENV = "AUDIT_SKILL_TRIAL_RUN";
 
-function run(label, args) {
+function withoutLiveRouteEvidenceEnv(env = process.env) {
+  const nextEnv = { ...env };
+  delete nextEnv[LIVE_ROUTE_EVIDENCE_ENV];
+  return nextEnv;
+}
+
+function run(label, args, options = {}) {
   console.log(`\n[closeout] ${label}`);
-  const result = spawnSync(process.execPath, args, { stdio: "inherit" });
+  const result = spawnSync(process.execPath, args, { stdio: "inherit", env: options.env || process.env });
   if (result.error) {
     console.error(result.error.message);
     process.exit(1);
@@ -112,11 +120,14 @@ const testFiles = readdirSync("test")
   .sort()
   .map((file) => join("test", file));
 
-run("unit tests", ["--test", ...testFiles]);
+run("unit tests", ["--test", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
 run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
 run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
 run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
 run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
+if (process.env[AUDIT_SKILL_TRIAL_RUN_ENV]) {
+  run("audit skill trial", ["tools/check-audit-skill-trial-run.mjs", process.env[AUDIT_SKILL_TRIAL_RUN_ENV]]);
+}
 const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
 const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
 run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);

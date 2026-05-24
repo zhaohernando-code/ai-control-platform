@@ -753,6 +753,89 @@ test("project status next work packages are durable continuation inputs", () => 
   assert.deepEqual(decision.context_pack_seed.owned_files, ["src/workflow/scheduler-dispatch-continuation.js"]);
 });
 
+test("self-governance defects and evidence gaps become continuation work packages", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    workflow_state: {
+      manifest: {
+        events: [
+          {
+            id: "self-governance-defect",
+            type: "self_governance_finding",
+            metadata: {
+              id: "governance-defect",
+              category: "defect",
+              dimension: "quality_gate",
+              severity: "high",
+              title: "Self-governance defect must be repaired",
+              owned_files: ["src/workflow/self-governance.js"],
+              acceptance_gates: ["node --test test/self-governance.test.js"]
+            }
+          },
+          {
+            id: "self-governance-evidence-gap",
+            type: "self_governance_finding",
+            metadata: {
+              id: "governance-evidence-gap",
+              category: "evidence_gap",
+              dimension: "model_collaboration",
+              severity: "medium",
+              title: "Self-governance evidence must be collected",
+              owned_files: ["src/workflow/model-router.js"],
+              acceptance_gates: ["node --test test/model-router.test.js"]
+            }
+          },
+          {
+            id: "self-governance-iteration",
+            type: "self_governance_finding",
+            metadata: {
+              id: "governance-iteration",
+              category: "evolution_opportunity",
+              dimension: "iteration_evolution",
+              severity: "low",
+              title: "Optional governance improvement"
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  const packageIds = decision.next_work_packages.map((workPackage) => workPackage.id);
+  assert.equal(decision.action, CONTINUE);
+  assert.ok(packageIds.includes("self-governance-fix-governance-defect"));
+  assert.ok(packageIds.includes("self-governance-evidence-governance-evidence-gap"));
+  assert.ok(!packageIds.includes("self-governance-decision-governance-iteration"));
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.id === "self-governance-fix-governance-defect"));
+  assert.ok(decision.context_pack_seed.acceptance_gates.includes("node --test test/self-governance.test.js"));
+});
+
+test("invalid self-governance findings do not become continuation work packages", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    workflow_state: {
+      manifest: {
+        events: [
+          {
+            id: "invalid-self-governance-finding",
+            type: "self_governance_finding",
+            metadata: {
+              id: "invalid-governance",
+              category: "made_up",
+              dimension: "fake_dimension",
+              title: "Invalid governance finding"
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id.includes("invalid-governance")));
+});
+
 test("frontend repair continuation deduplicates package ids and preserves repair gates", () => {
   const repairPackageId = "frontend-acceptance-repair-frontend-acceptance-current-workbench";
   const repairOwnedFiles = ["apps/workbench", "test/workbench-shell.test.js"];
