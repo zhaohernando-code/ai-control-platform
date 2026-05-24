@@ -96,6 +96,27 @@ test("live route evidence rejects local loopback or auth redirect evidence", () 
   assert.ok(redirectValidation.issues.some((issue) => issue.code === "live_route_auth_redirect_detected"));
 });
 
+test("local loopback evidence is accepted only through explicit probe test mode", () => {
+  const evidence = liveEvidence({
+    route_url: "http://127.0.0.1:4180/projects/ai-control-platform/",
+    final_url: "http://127.0.0.1:4180/projects/ai-control-platform/",
+    local_loopback: true
+  });
+  const testValidation = validateWorkbenchLiveRouteEvidenceArtifact(evidence, {
+    projectId: "ai-control-platform",
+    expectedRouteUrls: ["https://hernando-zhao.cn/projects/ai-control-platform/"],
+    allowInsecureLocalTest: true
+  });
+  const realValidation = validateWorkbenchLiveRouteEvidenceArtifact(evidence, {
+    projectId: "ai-control-platform",
+    expectedRouteUrls: ["https://hernando-zhao.cn/projects/ai-control-platform/"]
+  });
+
+  assert.equal(testValidation.status, "pass");
+  assert.equal(realValidation.status, "fail");
+  assert.ok(realValidation.issues.some((issue) => issue.code === "local_live_route_evidence_not_allowed"));
+});
+
 test("live route acceptance passes only with matching public mounted workbench evidence", () => {
   const result = evaluateWorkbenchLiveRouteAcceptance({
     projectStatus: projectStatus(),

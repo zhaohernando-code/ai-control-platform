@@ -73,8 +73,18 @@ function isPublicHttpsRoute(value) {
   }
 }
 
-function isProjectRoute(value, projectId) {
-  if (!isPublicHttpsRoute(value)) return false;
+function isLocalLiveRouteUrl(value) {
+  const cleaned = cleanUrlToken(value);
+  if (!cleaned) return false;
+  try {
+    const url = new URL(cleaned);
+    return ["http:", "https:"].includes(url.protocol) && isLocalHostname(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isProjectMountPath(value, projectId) {
   if (!projectId) return true;
   try {
     const url = new URL(cleanUrlToken(value));
@@ -82,6 +92,11 @@ function isProjectRoute(value, projectId) {
   } catch {
     return false;
   }
+}
+
+function isProjectRoute(value, projectId) {
+  if (!isPublicHttpsRoute(value)) return false;
+  return isProjectMountPath(value, projectId);
 }
 
 function collectStrings(value, output = [], depth = 0) {
@@ -198,6 +213,7 @@ export function validateWorkbenchLiveRouteEvidenceArtifact(artifact = {}, option
   const issues = [];
   const expectedRouteUrls = normalizedExpectedUrls(options);
   const projectId = normalizeString(options.projectId);
+  const allowInsecureLocalTest = Boolean(options.allowInsecureLocalTest || options.allow_insecure_local_test);
 
   if (!isObject(artifact)) {
     return {
@@ -245,19 +261,34 @@ export function validateWorkbenchLiveRouteEvidenceArtifact(artifact = {}, option
   ]);
   const normalizedRouteUrl = normalizePublicRouteUrl(routeUrl);
   const normalizedFinalUrl = normalizePublicRouteUrl(finalUrl);
+  const routeIsLocalTest = isLocalLiveRouteUrl(routeUrl);
+  const finalIsLocalTest = isLocalLiveRouteUrl(finalUrl);
+  const localLoopback = firstBoolean([
+    artifact.local_loopback,
+    artifact.localLoopback,
+    route.local_loopback,
+    evidence.local_loopback,
+    evidence.localLoopback
+  ]);
 
   if (!routeUrl) {
     issues.push({ code: "missing_live_route_url", path: "route_url" });
-  } else if (!isPublicHttpsRoute(routeUrl)) {
+  } else if (!isPublicHttpsRoute(routeUrl) && !(allowInsecureLocalTest && routeIsLocalTest)) {
     issues.push({ code: "live_route_url_not_public_https", path: "route_url" });
   }
   if (!finalUrl) {
     issues.push({ code: "missing_live_route_final_url", path: "final_url" });
-  } else if (!isPublicHttpsRoute(finalUrl)) {
+  } else if (!isPublicHttpsRoute(finalUrl) && !(allowInsecureLocalTest && finalIsLocalTest)) {
     issues.push({ code: "live_route_final_url_not_public_https", path: "final_url" });
   }
 
-  if (expectedRouteUrls.length > 0 && !expectedRouteUrls.includes(normalizedRouteUrl) && !expectedRouteUrls.includes(normalizedFinalUrl)) {
+  const localTestRouteOverride = allowInsecureLocalTest && localLoopback === true && (routeIsLocalTest || finalIsLocalTest);
+  if (
+    expectedRouteUrls.length > 0 &&
+    !localTestRouteOverride &&
+    !expectedRouteUrls.includes(normalizedRouteUrl) &&
+    !expectedRouteUrls.includes(normalizedFinalUrl)
+  ) {
     issues.push({
       code: "live_route_url_mismatch",
       path: "route_url",
@@ -265,10 +296,10 @@ export function validateWorkbenchLiveRouteEvidenceArtifact(artifact = {}, option
     });
   }
 
-  if (projectId && routeUrl && !isProjectRoute(routeUrl, projectId)) {
+  if (projectId && routeUrl && !isProjectMountPath(routeUrl, projectId)) {
     issues.push({ code: "live_route_not_project_mount", path: "route_url" });
   }
-  if (projectId && finalUrl && !isProjectRoute(finalUrl, projectId)) {
+  if (projectId && finalUrl && !isProjectMountPath(finalUrl, projectId)) {
     issues.push({ code: "live_route_final_url_not_project_mount", path: "final_url" });
   }
 
@@ -297,14 +328,10 @@ export function validateWorkbenchLiveRouteEvidenceArtifact(artifact = {}, option
     issues.push({ code: "live_route_auth_redirect_detected", path: "final_url" });
   }
 
-  const localLoopback = firstBoolean([
-    artifact.local_loopback,
-    artifact.localLoopback,
-    route.local_loopback,
-    evidence.local_loopback,
-    evidence.localLoopback
-  ]);
-  if (localLoopback === true) {
+  if (allowInsecureLocalTest && (routeIsLocalTest || finalIsLocalTest) && localLoopback !== true) {
+    issues.push({ code: "local_live_route_evidence_missing_test_marker", path: "local_loopback" });
+  }
+  if (!allowInsecureLocalTest && localLoopback === true) {
     issues.push({ code: "local_live_route_evidence_not_allowed", path: "local_loopback" });
   }
 
