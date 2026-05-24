@@ -23,6 +23,7 @@
 - 使用 `npm run check:workbench:frontend-acceptance` 生成 `frontend-acceptance-run.v1` artifact。
 - 验收 desktop、desktop narrow、mobile 三个 viewport。
 - 检查导航可交互、首屏层级、文案可读性、危险操作分级、布局重叠、横向 overflow、移动端任务优先性。
+- Artifact 必须包含 `content_completion_results`：每个 viewport 从真实浏览器 DOM 可见文本提取 section/body 文本、占位符计数、遥测/诊断 token 计数、操作员行动标签和下一步上下文；截图只能作为辅助证据，不能替代 DOM 文本证据。
 - 验收发现 P0/P1 时，artifact 必须 `status=fail`，并写出结构化 finding。
 
 ## 4. 硬门禁
@@ -40,3 +41,7 @@
 - 危险、mock、real execution、loop/resume 操作不能作为普通按钮无分级暴露。
 - 移动端不能是后端 telemetry dump。
 - 项目挂载路由下的 SVG favicon 必须真实请求并以 `image/svg+xml` 返回；只检查 `<link rel="icon">` 存在或 HTTP 200 不算通过。
+- 默认桌面/窄桌面表面不能被诊断字段墙、projection/backend token 或 telemetry 主导；操作员应先看到目标、阻塞、风险、可执行下一步和验收证据。
+- 手机端不能把长状态、遥测、artifact/history id 或后端字段单列堆叠成状态 dump；必须优先呈现操作员任务、阻塞原因和下一步。
+- 可见 review/risk/model/section/tab 内容不能主要由 `--`、`未配置`、`未就绪`、`未知`、裸 `0` 等占位符构成；占位状态必须配有明确标签、原因、影响或下一步上下文。
+- `frontend-acceptance-run.v1` 中 `content_completion_results` 的 fail/pass、blocking finding codes 和顶层 P0/P1 findings 必须一致；缺失 viewport DOM 文本证据、false pass 或计数不一致都要 fail closed。

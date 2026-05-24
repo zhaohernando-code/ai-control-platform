@@ -77,6 +77,11 @@ function normalizeText(value) {
   return String(value || "").trim();
 }
 
+function countValue(value) {
+  const count = Number(value);
+  return Number.isFinite(count) ? count : 0;
+}
+
 function faviconLinksOf(result = {}) {
   return Array.isArray(result.faviconLinks)
     ? result.faviconLinks
@@ -430,6 +435,10 @@ const INTERNAL_VISIBLE_COPY_PATTERNS = [
   { label: "Platform repository bootstrap", pattern: /\bPlatform repository bootstrap\b/i }
 ];
 const LONG_ARTIFACT_IDENTIFIER_PATTERN = /\b(?:scheduler-dispatch-run-run|scheduler-dispatch-policy-run|context-work-packages-run-run|agent-lifecycle-[A-Za-z]+|project-status-continuation|context-pack-cycle|headless-live-context-cycle|frontend-acceptance|workbench-live-route-evidence|cycle-headless-live)[A-Za-z0-9._-]{16,}\b/g;
+const CONTENT_PLACEHOLDER_PATTERN = /--|未配置|未就绪|未知|(?:^|[\s:：,，;；([（])0(?=$|[\s,，;；)\]）])/g;
+const CONTENT_TELEMETRY_PATTERN = /\b(?:run_id|cycle_id|artifact_id|artifact|manifest|ledger|payload|metadata|projection|status|not_configured|no_next_action|frontend_acceptance|scheduler_dispatch|next_action_readout|work_package|context_pack|provider_health|resume_health|closeout|snapshot|diagnostics?|telemetry|null|undefined)\b|(?:状态码|遥测|诊断字段|原始状态|后端字段)/gi;
+const CONTENT_ACTIONABLE_PATTERN = /下一步|待处理|优先|处理|执行|派发|修复|恢复|审查|验收|收口|阻塞|风险|决策|建议|证据|任务|工作包|原因|影响|需要|可执行|继续|重试|发布|入口|选择|确认|失败原因|动作|模型|预算|健康|完成|通过|异常|人工|操作/g;
+const CONTENT_NEXT_STEP_PATTERN = /下一步|待处理|需要|建议|修复|处理|执行|派发|恢复|重试|继续|验收|收口|查看|确认|选择|阻塞原因|风险处理|可执行/g;
 
 function browserErrorsOf(result = {}) {
   return Array.isArray(result.browserErrors)
@@ -478,6 +487,159 @@ function internalVisibleCopyMatches(bodyText = "") {
     });
   }
   return matches;
+}
+
+function countContentMatches(text = "", pattern) {
+  return (normalizeText(text).match(pattern) || []).length;
+}
+
+function contentTextMetrics(text = "") {
+  const normalized = normalizeText(text);
+  return {
+    text_length: normalized.length,
+    placeholder_count: countContentMatches(normalized, CONTENT_PLACEHOLDER_PATTERN),
+    telemetry_token_count: countContentMatches(normalized, CONTENT_TELEMETRY_PATTERN),
+    actionable_label_count: countContentMatches(normalized, CONTENT_ACTIONABLE_PATTERN),
+    next_step_context_count: countContentMatches(normalized, CONTENT_NEXT_STEP_PATTERN)
+  };
+}
+
+function contentSectionsOf(result = {}) {
+  const sections = Array.isArray(result.contentSections)
+    ? result.contentSections
+    : Array.isArray(result.content_sections)
+      ? result.content_sections
+      : [];
+  if (sections.length > 0) return sections;
+  return [
+    {
+      index: 0,
+      section_key: "body",
+      heading: "body",
+      text: result.bodyText || "",
+      text_length: normalizeText(result.bodyText).length,
+      data_bind_count: countValue(result.diagnosticsCount ?? result.diagnostics_count),
+      visible: true,
+      source_type: "browser_dom_text"
+    }
+  ];
+}
+
+function contentCompletionResultForViewport(result = {}) {
+  const bodyMetrics = contentTextMetrics(result.bodyText);
+  const sections = contentSectionsOf(result).map((section, index) => {
+    const text = normalizeText(section.text || section.text_sample || "");
+    const metrics = contentTextMetrics(text);
+    const operatorContextCount = metrics.actionable_label_count + metrics.next_step_context_count;
+    const placeholderRatio = metrics.placeholder_count / Math.max(metrics.placeholder_count + operatorContextCount, 1);
+    return {
+      index: Number.isFinite(Number(section.index)) ? Number(section.index) : index,
+      section_key: normalizeText(section.section_key || section.section || section.id) || `section-${index + 1}`,
+      heading: normalizeText(section.heading || section.title).slice(0, 120),
+      text_sample: text.slice(0, 360),
+      text_length: Number(section.text_length ?? metrics.text_length),
+      data_bind_count: countValue(section.data_bind_count ?? section.dataBindCount),
+      placeholder_count: metrics.placeholder_count,
+      telemetry_token_count: metrics.telemetry_token_count,
+      actionable_label_count: metrics.actionable_label_count,
+      next_step_context_count: metrics.next_step_context_count,
+      placeholder_ratio: Number(placeholderRatio.toFixed(3)),
+      source_type: "browser_dom_text"
+    };
+  });
+  const diagnosticFieldCount = Math.max(
+    countValue(result.diagnosticsCount ?? result.diagnostics_count),
+    sections.reduce((total, section) => total + countValue(section.data_bind_count), 0)
+  );
+  const operatorContextCount = bodyMetrics.actionable_label_count + bodyMetrics.next_step_context_count;
+  const placeholderDominatedSections = sections.filter((section) => {
+    const sectionOperatorContext = section.actionable_label_count + section.next_step_context_count;
+    return (
+      section.text_length > 0 &&
+      section.placeholder_count >= 3 &&
+      sectionOperatorContext < 4 &&
+      section.placeholder_ratio >= 0.45
+    ) || (
+      section.placeholder_count >= 5 &&
+      sectionOperatorContext < 6
+    );
+  });
+  const diagnosticDominated = result.viewport !== "mobile" && (
+    (diagnosticFieldCount >= 18 && diagnosticFieldCount > Math.max(operatorContextCount * 2, 12)) ||
+    (bodyMetrics.telemetry_token_count >= 18 && bodyMetrics.telemetry_token_count > Math.max(operatorContextCount * 2, 12))
+  );
+  const mobileTelemetryDump = result.viewport === "mobile" && (
+    diagnosticFieldCount > 20 ||
+    (bodyMetrics.text_length > 1400 && bodyMetrics.telemetry_token_count > Math.max(bodyMetrics.next_step_context_count * 2, 10)) ||
+    (bodyMetrics.text_length > 2200 && operatorContextCount < 14)
+  );
+  const blockingFindingCodes = [
+    diagnosticDominated ? "frontend_content_diagnostic_wall" : null,
+    mobileTelemetryDump ? "frontend_content_mobile_telemetry_dump" : null,
+    placeholderDominatedSections.length > 0 ? "frontend_content_placeholder_section" : null
+  ].filter(Boolean);
+
+  return {
+    viewport: result.viewport,
+    source_type: "browser_dom_text",
+    status: blockingFindingCodes.length > 0 ? "fail" : "pass",
+    body_text_length: bodyMetrics.text_length,
+    body_text_sample: normalizeText(result.bodyText).slice(0, 360),
+    section_count: sections.length,
+    diagnostic_field_count: diagnosticFieldCount,
+    placeholder_count: bodyMetrics.placeholder_count,
+    telemetry_token_count: bodyMetrics.telemetry_token_count,
+    actionable_label_count: bodyMetrics.actionable_label_count,
+    next_step_context_count: bodyMetrics.next_step_context_count,
+    diagnostic_dominated: diagnosticDominated,
+    mobile_telemetry_dump: mobileTelemetryDump,
+    placeholder_dominated_sections: placeholderDominatedSections.map((section) => ({
+      section_key: section.section_key,
+      heading: section.heading,
+      text_sample: section.text_sample,
+      text_length: section.text_length,
+      placeholder_count: section.placeholder_count,
+      actionable_label_count: section.actionable_label_count,
+      next_step_context_count: section.next_step_context_count,
+      placeholder_ratio: section.placeholder_ratio
+    })),
+    blocking_finding_codes: blockingFindingCodes,
+    content_sections: sections
+  };
+}
+
+function findingsForContentCompletion(contentCompletionResults = []) {
+  const findings = [];
+  for (const result of contentCompletionResults) {
+    if (result.diagnostic_dominated) {
+      findings.push(finding("frontend_content_diagnostic_wall", "p1", `${result.viewport} default surface is dominated by diagnostic fields or telemetry instead of operator decisions`, {
+        viewport: result.viewport,
+        diagnostic_field_count: result.diagnostic_field_count,
+        telemetry_token_count: result.telemetry_token_count,
+        actionable_label_count: result.actionable_label_count,
+        next_step_context_count: result.next_step_context_count,
+        body_text_sample: result.body_text_sample
+      }));
+    }
+    if (result.mobile_telemetry_dump) {
+      findings.push(finding("frontend_content_mobile_telemetry_dump", "p1", "mobile workbench content is a long telemetry/status dump instead of prioritized operator tasks", {
+        viewport: result.viewport,
+        body_text_length: result.body_text_length,
+        diagnostic_field_count: result.diagnostic_field_count,
+        telemetry_token_count: result.telemetry_token_count,
+        actionable_label_count: result.actionable_label_count,
+        next_step_context_count: result.next_step_context_count,
+        body_text_sample: result.body_text_sample
+      }));
+    }
+    if (result.placeholder_dominated_sections.length > 0) {
+      findings.push(finding("frontend_content_placeholder_section", "p1", `${result.viewport} contains visible sections whose content is mostly placeholders without actionable context`, {
+        viewport: result.viewport,
+        sections: result.placeholder_dominated_sections.slice(0, 8)
+      }));
+    }
+  }
+  return findings;
 }
 
 async function auditViewport(page, viewport, browserErrors = [], options = {}) {
@@ -530,6 +692,20 @@ async function auditViewport(page, viewport, browserErrors = [], options = {}) {
     const heroRect = hero?.getBoundingClientRect();
     const heroStyle = hero ? getComputedStyle(hero) : null;
     const diagnostics = Array.from(document.querySelectorAll(".scheduler-grid [data-bind], .provider-grid [data-bind], .closeout-grid [data-bind], .resume-grid [data-bind]")).filter(visible);
+    const contentSectionNodes = Array.from(document.querySelectorAll(".content-grid [data-section], .mobile-hero, .mobile-metrics, .mobile-section")).filter(visible);
+    const contentSections = contentSectionNodes.map((node, index) => {
+      const headingNode = node.querySelector("h1, h2, h3, .section-title, .mobile-section-title, strong");
+      return {
+        index,
+        section_key: node.dataset.section || node.id || node.getAttribute("aria-label") || node.className || `section-${index + 1}`,
+        heading: textOf(headingNode || node).slice(0, 120),
+        text: textOf(node),
+        text_length: textOf(node).length,
+        data_bind_count: Array.from(node.querySelectorAll("[data-bind]")).filter(visible).length,
+        visible: true,
+        source_type: "browser_dom_text"
+      };
+    });
     const bodyText = textOf(document.body);
     const riskyTextPattern = /\b(rerun|not_configured|no_next_action|inspect_context_work_packages|prepare_project_status_continuation|run_context_work_packages|projected_next_action|approved_mock_non_dry_run|scheduler_dispatch|frontend_acceptance|headless_projected_action_progress)\b/g;
     const riskyTokens = Array.from(new Set(bodyText.match(riskyTextPattern) || []));
@@ -568,6 +744,7 @@ async function auditViewport(page, viewport, browserErrors = [], options = {}) {
       buttons,
       faviconLinks,
       bodyText: bodyText.slice(0, 12000),
+      contentSections,
       riskyTokens,
       diagnosticsCount: diagnostics.length,
       hero: hero ? {
@@ -842,6 +1019,7 @@ function findingsForBrowserErrors(viewportResults) {
 }
 
 export function buildArtifact({ viewportResults, navigationResults, screenshots, targetInfo = {} }) {
+  const contentCompletionResults = viewportResults.map(contentCompletionResultForViewport);
   const layoutResults = viewportResults.map((result) => ({
     viewport: result.viewport,
     dimensions: result.dimensions,
@@ -908,10 +1086,12 @@ export function buildArtifact({ viewportResults, navigationResults, screenshots,
     .map((result) => ({
       viewport: result.viewport,
       diagnostics_count: result.diagnosticsCount,
-      button_count: result.buttons.length
+      button_count: result.buttons.length,
+      content_status: contentCompletionResults.find((contentResult) => contentResult.viewport === result.viewport)?.status || "unknown"
     }));
   const findings = [
     ...viewportResults.flatMap(findingsForViewport),
+    ...findingsForContentCompletion(contentCompletionResults),
     ...findingsForNavigation(navigationResults),
     ...findingsForControls(viewportResults),
     ...findingsForResources(viewportResults),
@@ -945,6 +1125,7 @@ export function buildArtifact({ viewportResults, navigationResults, screenshots,
     navigation_results: navigationResults,
     layout_results: layoutResults,
     copy_results: copyResults,
+    content_completion_results: contentCompletionResults,
     resource_results: resourceResults,
     control_results: controlResults,
     browser_error_results: browserErrorResults,

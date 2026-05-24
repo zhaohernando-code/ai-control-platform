@@ -44,6 +44,107 @@ function baseArtifact(overrides = {}) {
     navigation_results: [],
     layout_results: [],
     copy_results: [],
+    content_completion_results: [
+      {
+        viewport: "desktop",
+        source_type: "browser_dom_text",
+        status: "pass",
+        body_text_length: 80,
+        body_text_sample: "当前目标 下一步处理 阻塞风险 证据验收",
+        section_count: 1,
+        diagnostic_field_count: 0,
+        placeholder_count: 0,
+        telemetry_token_count: 0,
+        actionable_label_count: 4,
+        next_step_context_count: 2,
+        diagnostic_dominated: false,
+        mobile_telemetry_dump: false,
+        placeholder_dominated_sections: [],
+        blocking_finding_codes: [],
+        content_sections: [
+          {
+            index: 0,
+            section_key: "overview",
+            heading: "当前目标",
+            text_sample: "当前目标 下一步处理 阻塞风险 证据验收",
+            text_length: 80,
+            data_bind_count: 0,
+            placeholder_count: 0,
+            telemetry_token_count: 0,
+            actionable_label_count: 4,
+            next_step_context_count: 2,
+            placeholder_ratio: 0,
+            source_type: "browser_dom_text"
+          }
+        ]
+      },
+      {
+        viewport: "desktop_narrow",
+        source_type: "browser_dom_text",
+        status: "pass",
+        body_text_length: 80,
+        body_text_sample: "当前目标 下一步处理 阻塞风险 证据验收",
+        section_count: 1,
+        diagnostic_field_count: 0,
+        placeholder_count: 0,
+        telemetry_token_count: 0,
+        actionable_label_count: 4,
+        next_step_context_count: 2,
+        diagnostic_dominated: false,
+        mobile_telemetry_dump: false,
+        placeholder_dominated_sections: [],
+        blocking_finding_codes: [],
+        content_sections: [
+          {
+            index: 0,
+            section_key: "overview",
+            heading: "当前目标",
+            text_sample: "当前目标 下一步处理 阻塞风险 证据验收",
+            text_length: 80,
+            data_bind_count: 0,
+            placeholder_count: 0,
+            telemetry_token_count: 0,
+            actionable_label_count: 4,
+            next_step_context_count: 2,
+            placeholder_ratio: 0,
+            source_type: "browser_dom_text"
+          }
+        ]
+      },
+      {
+        viewport: "mobile",
+        source_type: "browser_dom_text",
+        status: "pass",
+        body_text_length: 80,
+        body_text_sample: "当前目标 下一步处理 阻塞风险 证据验收",
+        section_count: 1,
+        diagnostic_field_count: 0,
+        placeholder_count: 0,
+        telemetry_token_count: 0,
+        actionable_label_count: 4,
+        next_step_context_count: 2,
+        diagnostic_dominated: false,
+        mobile_telemetry_dump: false,
+        placeholder_dominated_sections: [],
+        blocking_finding_codes: [],
+        content_sections: [
+          {
+            index: 0,
+            section_key: "overview",
+            heading: "当前目标",
+            text_sample: "当前目标 下一步处理 阻塞风险 证据验收",
+            text_length: 80,
+            data_bind_count: 0,
+            placeholder_count: 0,
+            telemetry_token_count: 0,
+            actionable_label_count: 4,
+            next_step_context_count: 2,
+            placeholder_ratio: 0,
+            source_type: "browser_dom_text"
+          }
+        ]
+      }
+    ],
     resource_results: [
       { viewport: "desktop", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
       { viewport: "desktop_narrow", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
@@ -86,6 +187,18 @@ function viewportAudit(overrides = {}) {
     browserErrors: [],
     riskyTokens: [],
     bodyText: "中台工作台 状态投影 任务包 证据 调度执行 收口验收 续跑健康 审查通道",
+    contentSections: [
+      {
+        index: 0,
+        section_key: viewport === "mobile" ? "mobile-priority" : "overview",
+        heading: viewport === "mobile" ? "优先任务" : "当前目标",
+        text: "当前目标 下一步处理 阻塞风险 证据验收 任务派发 审查恢复",
+        text_length: 42,
+        data_bind_count: 0,
+        visible: true,
+        source_type: "browser_dom_text"
+      }
+    ],
     diagnosticsCount: 0,
     hero: {
       text: "AI Control Platform",
@@ -418,7 +531,188 @@ test("frontend acceptance allows translated operator workbench copy", () => {
 
   assert.equal(artifact.status, "pass");
   assert.equal(artifact.copy_results[0].internal_copy_matches.length, 0);
+  assert.equal(artifact.content_completion_results.every((result) => result.status === "pass"), true);
   assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
+test("frontend acceptance blocks desktop diagnostic field wall content", () => {
+  const diagnosticText = Array.from({ length: 24 }, (_, index) => {
+    return `run_id cycle_id artifact_id projection status scheduler_dispatch telemetry diagnostic_${index}`;
+  }).join(" ");
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        bodyText: diagnosticText,
+        diagnosticsCount: 30,
+        contentSections: [
+          {
+            index: 0,
+            section_key: "overview",
+            heading: "状态",
+            text: diagnosticText,
+            text_length: diagnosticText.length,
+            data_bind_count: 30,
+            visible: true,
+            source_type: "browser_dom_text"
+          }
+        ]
+      }),
+      viewportAudit({ viewport: "desktop_narrow", dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 } }),
+      viewportAudit({ viewport: "mobile", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+  const contentResult = artifact.content_completion_results.find((result) => result.viewport === "desktop");
+
+  assert.equal(artifact.status, "fail");
+  assert.equal(contentResult.status, "fail");
+  assert.equal(contentResult.source_type, "browser_dom_text");
+  assert.ok(artifact.findings.some((finding) => finding.code === "frontend_content_diagnostic_wall"));
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
+test("frontend acceptance blocks mobile long telemetry/status dump content", () => {
+  const telemetryText = Array.from({ length: 80 }, (_, index) => {
+    return `status projection artifact_id manifest ledger telemetry_${index}`;
+  }).join(" ");
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({ viewport: "desktop" }),
+      viewportAudit({ viewport: "desktop_narrow", dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 } }),
+      viewportAudit({
+        viewport: "mobile",
+        dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 3200 },
+        bodyText: telemetryText,
+        diagnosticsCount: 6,
+        contentSections: [
+          {
+            index: 0,
+            section_key: "mobile-status",
+            heading: "状态",
+            text: telemetryText,
+            text_length: telemetryText.length,
+            data_bind_count: 6,
+            visible: true,
+            source_type: "browser_dom_text"
+          }
+        ]
+      })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+  const contentResult = artifact.content_completion_results.find((result) => result.viewport === "mobile");
+
+  assert.equal(artifact.status, "fail");
+  assert.equal(contentResult.status, "fail");
+  assert.equal(contentResult.mobile_telemetry_dump, true);
+  assert.ok(artifact.findings.some((finding) => finding.code === "frontend_content_mobile_telemetry_dump"));
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
+test("frontend acceptance blocks placeholder-dominated visible sections", () => {
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        bodyText: "模型 未配置 -- 0 未知 风险 未就绪 -- 0 审查 -- 未配置 0",
+        contentSections: [
+          {
+            index: 0,
+            section_key: "models",
+            heading: "模型",
+            text: "模型通道 -- 未配置 未知 0 --",
+            text_length: 22,
+            data_bind_count: 2,
+            visible: true,
+            source_type: "browser_dom_text"
+          },
+          {
+            index: 1,
+            section_key: "review",
+            heading: "审查",
+            text: "审查发现 -- 未就绪 未配置 0 --",
+            text_length: 23,
+            data_bind_count: 2,
+            visible: true,
+            source_type: "browser_dom_text"
+          },
+          {
+            index: 2,
+            section_key: "risks",
+            heading: "风险",
+            text: "风险 -- 未知 未配置 0 --",
+            text_length: 20,
+            data_bind_count: 2,
+            visible: true,
+            source_type: "browser_dom_text"
+          }
+        ]
+      }),
+      viewportAudit({ viewport: "desktop_narrow", dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 } }),
+      viewportAudit({ viewport: "mobile", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+  const finding = artifact.findings.find((item) => item.code === "frontend_content_placeholder_section");
+
+  assert.equal(artifact.status, "fail");
+  assert.ok(finding);
+  assert.equal(finding.evidence.sections.length, 3);
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
+test("frontend acceptance validation rejects missing or inconsistent content completion evidence", () => {
+  const missingEvidence = validateFrontendAcceptanceRunArtifact(baseArtifact({
+    content_completion_results: []
+  }));
+  const falsePass = validateFrontendAcceptanceRunArtifact(baseArtifact({
+    content_completion_results: [
+      {
+        viewport: "desktop",
+        source_type: "browser_dom_text",
+        status: "pass",
+        body_text_length: 200,
+        section_count: 1,
+        diagnostic_dominated: true,
+        blocking_finding_codes: ["frontend_content_diagnostic_wall"],
+        placeholder_dominated_sections: [],
+        content_sections: [
+          {
+            source_type: "browser_dom_text",
+            section_key: "overview",
+            text_sample: "run_id cycle_id artifact_id projection status"
+          }
+        ]
+      },
+      baseArtifact().content_completion_results[1],
+      baseArtifact().content_completion_results[2]
+    ]
+  }));
+
+  assert.equal(missingEvidence.status, "fail");
+  assert.ok(missingEvidence.issues.some((issue) => issue.code === "missing_frontend_content_completion_evidence"));
+  assert.equal(falsePass.status, "fail");
+  assert.ok(falsePass.issues.some((issue) => issue.code === "frontend_content_completion_false_pass"));
+  assert.ok(falsePass.issues.some((issue) => issue.code === "frontend_content_completion_finding_mismatch"));
 });
 
 test("frontend acceptance counts and blocks semantic command controls", () => {

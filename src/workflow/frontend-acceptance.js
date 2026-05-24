@@ -40,6 +40,19 @@ function contentTypeValue(value) {
   return normalizeString(value).toLowerCase().split(";")[0].trim();
 }
 
+function contentCompletionFindingCodes(result = {}) {
+  return asArray(result.blocking_finding_codes || result.blockingFindingCodes)
+    .map(normalizeString)
+    .filter(Boolean);
+}
+
+function contentCompletionHasBlocker(result = {}) {
+  if (contentCompletionFindingCodes(result).length > 0) return true;
+  if (result.diagnostic_dominated === true || result.diagnosticDominated === true) return true;
+  if (result.mobile_telemetry_dump === true || result.mobileTelemetryDump === true) return true;
+  return asArray(result.placeholder_dominated_sections || result.placeholderDominatedSections).length > 0;
+}
+
 function navigationLabel(result = {}) {
   return normalizeString(result.label || result.text || result.name);
 }
@@ -178,6 +191,7 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}) {
     "navigation_results",
     "layout_results",
     "copy_results",
+    "content_completion_results",
     "resource_results",
     "control_results",
     "mobile_results",
@@ -220,9 +234,11 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}) {
   }
   const viewportResultsByName = new Map(asArray(artifact.viewport_results).map((result) => [normalizeString(result.viewport), result]));
   const resourceResultsByName = new Map(asArray(artifact.resource_results).map((result) => [normalizeString(result.viewport), result]));
+  const contentCompletionResultsByName = new Map(asArray(artifact.content_completion_results).map((result) => [normalizeString(result.viewport), result]));
   for (const requiredViewport of ["desktop", "desktop_narrow", "mobile"]) {
     const viewportResult = viewportResultsByName.get(requiredViewport) || {};
     const resourceResult = resourceResultsByName.get(requiredViewport) || {};
+    const contentResult = contentCompletionResultsByName.get(requiredViewport) || null;
     if (viewportResult.mounted_workbench_route !== true && resourceResult.mounted_workbench_route !== true) {
       issues.push(issue("missing_mounted_workbench_route", `${requiredViewport} must exercise the project-mounted workbench route`, "viewport_results"));
     }
@@ -240,6 +256,46 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}) {
       contentTypeValue(resourceResult.mounted_svg_favicon_mime) !== "image/svg+xml"
     ) {
       issues.push(issue("mounted_svg_favicon_mime_drift", `${requiredViewport} mounted SVG favicon content-type drifted`, "resource_results"));
+    }
+    if (!contentResult) {
+      issues.push(issue("missing_frontend_content_completion_evidence", `${requiredViewport} must include DOM text content completion evidence`, "content_completion_results"));
+    } else {
+      if (normalizeString(contentResult.source_type || contentResult.sourceType) !== "browser_dom_text") {
+        issues.push(issue("frontend_content_completion_requires_dom_text", `${requiredViewport} content completion evidence must come from real browser DOM text`, "content_completion_results"));
+      }
+      if (countValue(contentResult.section_count ?? contentResult.sectionCount) <= 0) {
+        issues.push(issue("frontend_content_completion_missing_sections", `${requiredViewport} content completion evidence must include visible sections`, "content_completion_results"));
+      }
+      if (countValue(contentResult.body_text_length ?? contentResult.bodyTextLength) <= 0) {
+        issues.push(issue("frontend_content_completion_missing_text", `${requiredViewport} content completion evidence must include body text length`, "content_completion_results"));
+      }
+      const contentResultStatus = normalizeString(contentResult.status).toLowerCase();
+      const contentHasBlocker = contentCompletionHasBlocker(contentResult);
+      const contentBlockerCodes = contentCompletionFindingCodes(contentResult);
+      if (contentResultStatus === "pass" && contentHasBlocker) {
+        issues.push(issue("frontend_content_completion_false_pass", `${requiredViewport} content completion cannot pass with blocker flags`, "content_completion_results"));
+      }
+      if (contentResultStatus === "fail" && !contentHasBlocker) {
+        issues.push(issue("frontend_content_completion_fail_without_blocker", `${requiredViewport} content completion failure must include a blocker flag`, "content_completion_results"));
+      }
+      if (contentHasBlocker && contentBlockerCodes.length === 0) {
+        issues.push(issue("frontend_content_completion_missing_finding_codes", `${requiredViewport} content completion blockers must declare matching finding codes`, "content_completion_results"));
+      }
+      for (const [sectionIndex, section] of asArray(contentResult.content_sections || contentResult.contentSections).entries()) {
+        if (normalizeString(section.source_type || section.sourceType) !== "browser_dom_text") {
+          issues.push(issue("frontend_content_section_requires_dom_text", `${requiredViewport} section evidence must come from browser DOM text`, `content_completion_results.${requiredViewport}.content_sections.${sectionIndex}`));
+        }
+      }
+    }
+  }
+
+  const contentCompletionBlockerCodes = asArray(artifact.content_completion_results)
+    .filter(contentCompletionHasBlocker)
+    .flatMap(contentCompletionFindingCodes);
+  const findingCodes = new Set(findings.map(findingCode).filter(Boolean));
+  for (const code of contentCompletionBlockerCodes) {
+    if (!findingCodes.has(code)) {
+      issues.push(issue("frontend_content_completion_finding_mismatch", `content completion blocker ${code} must have a matching P0/P1 finding`, "findings"));
     }
   }
 
