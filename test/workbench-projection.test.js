@@ -121,6 +121,12 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.headless_child_provider.mock_child_worker, false);
   assert.equal(projection.projected_action_progress.status, "not_configured");
   assert.equal(projection.agent_lifecycle_pool.status, "not_configured");
+  assert.equal(projection.self_governance.status, "available");
+  assert.equal(projection.self_governance.finding_count, 0);
+  assert.equal(projection.self_governance.cadence, "weekly");
+  assert.equal(projection.self_governance.role_count, 4);
+  assert.equal(projection.self_governance.auto_repair_count, 0);
+  assert.equal(projection.one_screen.counters.self_governance_findings, 0);
   assert.equal(projection.operations_timeline.status, "not_configured");
   assert.equal(projection.next_action_readout.status, "not_configured");
   assert.equal(projection.next_action_readout.action, "wait_for_driver_event");
@@ -135,6 +141,54 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.global_goal_completion.status, "not_configured");
   assert.equal(projection.one_screen.counters.global_goals_pending, 0);
   assert.equal(projection.one_screen.counters.operation_events, 0);
+});
+
+test("workbench projection and mobile expose self-governance repair, evidence, and decision readout", () => {
+  const input = baseInput({
+    self_governance_findings: [
+      {
+        id: "fix-missing-live-verification",
+        category: "defect",
+        dimension: "quality_gate",
+        title: "缺少真实页面验收",
+        owned_files: ["tools/check-workbench-browser-events.mjs"]
+      },
+      {
+        id: "sample-reviewer-timeout",
+        category: "evidence_gap",
+        dimension: "model_collaboration",
+        title: "评审超时需要补样本"
+      },
+      {
+        id: "weekly-self-review",
+        category: "evolution_opportunity",
+        dimension: "iteration_evolution",
+        title: "周期性自我治理周报"
+      }
+    ]
+  });
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.self_governance.status, "available");
+  assert.equal(projection.self_governance.finding_count, 3);
+  assert.equal(projection.self_governance.cadence, "weekly");
+  assert.equal(projection.self_governance.role_count, 4);
+  assert.equal(projection.self_governance.auto_repair_count, 1);
+  assert.equal(projection.self_governance.evidence_building_count, 1);
+  assert.equal(projection.self_governance.user_decision_count, 1);
+  assert.equal(projection.self_governance.next_work_package_count, 2);
+  assert.equal(projection.self_governance.decision_packages[0].status, "waiting_for_user_decision");
+  assert.ok(projection.self_governance.decision_packages[0].facets.automation_authority.includes("可自动修复"));
+  assert.equal(projection.one_screen.counters.self_governance_findings, 3);
+  assert.equal(projection.one_screen.counters.self_governance_auto_repairs, 1);
+  assert.equal(projection.one_screen.counters.self_governance_evidence_tasks, 1);
+  assert.equal(projection.one_screen.counters.self_governance_user_decisions, 1);
+  assert.equal(mobile.self_governance.finding_count, 3);
+  assert.equal(mobile.self_governance.cadence, "weekly");
+  assert.equal(mobile.self_governance.role_count, 4);
+  assert.equal(mobile.self_governance.user_decision_count, 1);
 });
 
 test("workbench projection and mobile expose agent lifecycle pool cleanup readout", () => {

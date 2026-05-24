@@ -116,3 +116,18 @@ test("rejects projections missing terminal next-action evidence", () => {
   assert.equal(mobileValidation.status, "fail");
   assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_required_field" && issue.path === "next_action_terminal.terminal_reason"));
 });
+
+test("rejects projections missing self-governance readout", () => {
+  const projection = readJson("docs/examples/current-session-workbench-projection.json");
+  const mobileProjection = createMobileWorkbenchProjection(readJson("docs/examples/current-session-workbench-input.json"));
+  delete projection.self_governance;
+  delete mobileProjection.self_governance.user_decision_count;
+
+  const pcValidation = validateWorkbenchProjectionSchema(projection);
+  const mobileValidation = validateWorkbenchProjectionSchema(mobileProjection);
+
+  assert.equal(pcValidation.status, "fail");
+  assert.ok(pcValidation.issues.some((issue) => issue.code === "missing_object_field" && issue.path === "self_governance"));
+  assert.equal(mobileValidation.status, "fail");
+  assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_required_field" && issue.path === "self_governance.user_decision_count"));
+});

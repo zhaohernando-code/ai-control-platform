@@ -49,6 +49,10 @@
             <span>完成</span>
             <strong data-bind="counter_global_goals_completed">0</strong>
           </article>
+          <article>
+            <span>治理</span>
+            <strong data-bind="counter_self_governance_findings">0</strong>
+          </article>
         </section>
 
         <section class="mobile-section">
@@ -292,6 +296,47 @@
             <div>
               <span>Issues</span>
               <strong data-bind="resume_issue_count">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
+            <h2>平台自我治理</h2>
+            <span data-bind="self_governance_status">--</span>
+          </div>
+          <div class="mobile-review">
+            <div>
+              <span>发现</span>
+              <strong data-bind="self_governance_findings">0</strong>
+            </div>
+            <div>
+              <span>自动修复</span>
+              <strong data-bind="self_governance_auto_repairs">0</strong>
+            </div>
+            <div>
+              <span>补证据</span>
+              <strong data-bind="self_governance_evidence_tasks">0</strong>
+            </div>
+            <div>
+              <span>待决策</span>
+              <strong data-bind="self_governance_user_decisions">0</strong>
+            </div>
+            <div>
+              <span>频率</span>
+              <strong data-bind="self_governance_cadence">--</strong>
+            </div>
+            <div>
+              <span>角色</span>
+              <strong data-bind="self_governance_roles">0</strong>
+            </div>
+            <div>
+              <span>最新修复</span>
+              <strong data-bind="self_governance_latest_repair">--</strong>
+            </div>
+            <div>
+              <span>最新决策</span>
+              <strong data-bind="self_governance_latest_decision">--</strong>
             </div>
           </div>
         </section>

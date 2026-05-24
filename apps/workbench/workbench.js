@@ -224,6 +224,7 @@ function renderProjection(projection) {
   const schedulerContinuation = projection.scheduler_continuation || {};
   const schedulerLoop = projection.scheduler_loop || {};
   const lifecyclePool = projection.agent_lifecycle_pool || {};
+  const selfGovernance = projection.self_governance || {};
   const globalGoals = projection.global_goal_completion || {};
   const nextActionReadout = projection.next_action_readout || {};
   const nextActionTerminal = projection.next_action_terminal || {};
@@ -253,6 +254,7 @@ function renderProjection(projection) {
   setText("counter_global_goals_total", counters.global_goals_total ?? globalGoals.total ?? 0);
   setText("counter_global_goals_blocked", counters.global_goals_blocked ?? globalGoals.blocked ?? 0);
   setText("counter_operation_events", counters.operation_events ?? projection.operations_timeline?.count ?? 0);
+  setText("counter_self_governance_findings", counters.self_governance_findings ?? selfGovernance.finding_count ?? 0);
   setText("closeout_status", closeout.status);
   setText("closeout_publish_status", closeout.publish_status);
   setText("closeout_snapshot", closeout.snapshot_id);
@@ -318,6 +320,17 @@ function renderProjection(projection) {
   setText("agent_lifecycle_pool_latest_heartbeat", lifecyclePool.latest_heartbeat_at);
   setText("agent_lifecycle_pool_latest_timeout", lifecyclePool.latest_timeout_at);
   setText("agent_lifecycle_pool_next_action", lifecyclePool.next_action);
+  setText("self_governance_status", selfGovernance.status);
+  setText("self_governance_findings", selfGovernance.finding_count ?? 0);
+  setText("self_governance_auto_repairs", selfGovernance.auto_repair_count ?? 0);
+  setText("self_governance_evidence_tasks", selfGovernance.evidence_building_count ?? 0);
+  setText("self_governance_user_decisions", selfGovernance.user_decision_count ?? 0);
+  setText("self_governance_cadence", selfGovernance.cadence);
+  setText("self_governance_roles", selfGovernance.role_count ?? 0);
+  setText("self_governance_next_trigger", selfGovernance.next_trigger);
+  setText("self_governance_latest_repair", selfGovernance.latest_auto_repair_title);
+  setText("self_governance_latest_evidence", selfGovernance.latest_evidence_title);
+  setText("self_governance_latest_decision", selfGovernance.latest_decision_title);
   setText("global_goals_status", globalGoals.status);
   setText("global_goals_total", globalGoals.total ?? 0);
   setText("global_goals_pending", globalGoals.pending ?? 0);

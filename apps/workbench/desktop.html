@@ -99,6 +99,10 @@
               <span>Global Done</span>
               <strong data-bind="counter_global_goals_completed">0</strong>
             </article>
+            <article class="metric">
+              <span>自我治理</span>
+              <strong data-bind="counter_self_governance_findings">0</strong>
+            </article>
           </section>
 
           <section class="panel wide" data-section="overview runs">
@@ -165,6 +169,25 @@
           </section>
 
           <section class="panel run-panel" id="runs" data-section="runs" tabindex="-1">
+            <div class="section-title">
+              <h2>平台自我治理</h2>
+              <span data-bind="self_governance_status">--</span>
+            </div>
+            <div class="resume-grid">
+              <div><span>发现</span><strong data-bind="self_governance_findings">0</strong></div>
+              <div><span>自动修复</span><strong data-bind="self_governance_auto_repairs">0</strong></div>
+              <div><span>补证据</span><strong data-bind="self_governance_evidence_tasks">0</strong></div>
+              <div><span>待决策</span><strong data-bind="self_governance_user_decisions">0</strong></div>
+              <div><span>频率</span><strong data-bind="self_governance_cadence">--</strong></div>
+              <div><span>角色</span><strong data-bind="self_governance_roles">0</strong></div>
+              <div class="full"><span>最新修复</span><strong data-bind="self_governance_latest_repair">--</strong></div>
+              <div class="full"><span>最新补证据</span><strong data-bind="self_governance_latest_evidence">--</strong></div>
+              <div class="full"><span>最新决策</span><strong data-bind="self_governance_latest_decision">--</strong></div>
+              <div class="full"><span>下次触发</span><strong data-bind="self_governance_next_trigger">--</strong></div>
+            </div>
+          </section>
+
+          <section class="panel">
             <div class="section-title">
               <h2>Scheduler Dispatch</h2>
               <span data-bind="scheduler_dispatch_status">--</span>

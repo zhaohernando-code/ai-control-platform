@@ -15,6 +15,7 @@ import {
   FRONTEND_ACCEPTANCE_REPAIR_ACTION,
   summarizeFrontendAcceptance
 } from "./frontend-acceptance.js";
+import { createSelfGovernanceReport, summarizeSelfGovernance } from "./self-governance.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -1247,6 +1248,11 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
   const agentLifecyclePool = summarizeAgentLifecyclePool(manifest, artifactLedger);
+  const selfGovernanceReport = createSelfGovernanceReport({
+    ...input,
+    workflow_state: input.workflow_state || input.workflowState || { manifest, artifact_ledger: artifactLedger }
+  });
+  const selfGovernance = summarizeSelfGovernance(selfGovernanceReport);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
@@ -1300,6 +1306,13 @@ export function createWorkbenchProjection(input = {}) {
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
     agent_lifecycle_pool: agentLifecyclePool,
+    self_governance: {
+      ...selfGovernance,
+      report_status: selfGovernanceReport.status,
+      auto_repair_work_packages: selfGovernanceReport.auto_repair.work_packages.slice(0, 5),
+      evidence_work_packages: selfGovernanceReport.evidence_building.work_packages.slice(0, 5),
+      decision_packages: selfGovernanceReport.user_decisions.packages.slice(0, 5)
+    },
     global_goal_completion: globalGoalCompletion,
     operations_timeline: operationsTimeline,
     next_action_readout: nextActionReadout,
@@ -1358,6 +1371,10 @@ export function createWorkbenchProjection(input = {}) {
         agent_lifecycle_completed: agentLifecyclePool.completed || 0,
         agent_lifecycle_evaluated: agentLifecyclePool.evaluated || 0,
         agent_lifecycle_closed: agentLifecyclePool.closed || 0,
+        self_governance_findings: selfGovernance.finding_count || 0,
+        self_governance_auto_repairs: selfGovernance.auto_repair_count || 0,
+        self_governance_evidence_tasks: selfGovernance.evidence_building_count || 0,
+        self_governance_user_decisions: selfGovernance.user_decision_count || 0,
         global_goals_total: globalGoalCompletion.total || 0,
         global_goals_pending: globalGoalCompletion.pending || 0,
         global_goals_completed: globalGoalCompletion.completed || 0,
@@ -1519,6 +1536,23 @@ export function createMobileWorkbenchProjection(input = {}) {
       unclosed: projection.agent_lifecycle_pool.unclosed,
       next_action: projection.agent_lifecycle_pool.next_action,
       latest_issue: projection.agent_lifecycle_pool.latest_issue
+    },
+    self_governance: {
+      status: projection.self_governance.status,
+      finding_count: projection.self_governance.finding_count,
+      dimensions_checked: projection.self_governance.dimensions_checked,
+      cadence: projection.self_governance.cadence,
+      next_trigger: projection.self_governance.next_trigger,
+      role_count: projection.self_governance.role_count,
+      auto_repair_count: projection.self_governance.auto_repair_count,
+      evidence_building_count: projection.self_governance.evidence_building_count,
+      user_decision_count: projection.self_governance.user_decision_count,
+      completed_improvement_count: projection.self_governance.completed_improvement_count,
+      next_work_package_count: projection.self_governance.next_work_package_count,
+      top_dimension: projection.self_governance.top_dimension,
+      latest_decision_title: projection.self_governance.latest_decision_title,
+      latest_auto_repair_title: projection.self_governance.latest_auto_repair_title,
+      latest_evidence_title: projection.self_governance.latest_evidence_title
     },
     global_goal_completion: {
       status: projection.global_goal_completion.status,
