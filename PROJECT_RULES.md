@@ -13,4 +13,7 @@
 - 多模型协同必须经过 model routing plan、reviewer gate 和 durable findings/artifacts；禁止把某个模型或临时 skill 固定成绕过流程的默认实现者。
 - 前端相关任务默认同时覆盖 PC Web 与手机尺寸；手机端可以独立信息架构，不得默认压缩 PC 页面。
 - 用户可见功能完成前必须有真实渲染或服务验收；只通过源码或静态文档不算完成。
+- Ops Workbench、任务 DAG、调度锁、事件源状态、Recovery Engine、LLM reviewer、CI/CD 门禁、周期体检和快速定位 skill 都是平台基座能力；开发前必须先明确领域模型、状态真值、契约、失败恢复、测试边界和操作员可观测面。
+- 当前 watchdog 只能作为历史样本和临时观察输入，不能作为 Recovery Engine 底座。遇到自愈、恢复、错误卡死处理相关任务时，按独立 Recovery Engine 重新建模。
+- 平台 UI 的目标形态是成熟 Ops Workbench，不是任务卡片集合。新增页面或字段前必须确认它服务于总览、任务流、agent 池、风险、人工决策、发布/验收证据中的哪一类。
 - 重要决策写入 `DECISIONS.md`，可复用流程经验写入 `PROCESS.md`，当前状态写入 `PROJECT_STATUS.json`。
