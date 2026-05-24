@@ -116,6 +116,7 @@ run("unit tests", ["--test", ...testFiles]);
 run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
 run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
 run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
+run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
 const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
 const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
 run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);

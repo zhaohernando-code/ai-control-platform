@@ -862,6 +862,13 @@
       "category": "quality_gate_gap",
       "severity": "p1",
       "message": "Frontend acceptance must not pass navigation when non-overview tabs only change active class while visible content, scroll position, and view focus remain unchanged."
+    },
+    {
+      "id": "closeout-public-live-route-false-pass",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Release closeout must not pass while PROJECT_STATUS contains unresolved public or canonical workbench live-route blockers unless a valid verified public-route evidence artifact is present."
     }
   ],
   "hardening_items": [
@@ -2087,6 +2094,14 @@
       "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/frontend-acceptance.test.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md; docs/examples/process-hardening-current.json",
       "regression_test": "frontend acceptance rejects active-class-only navigation and allows navigation with distinct visible content",
       "verification": "node --test test/frontend-acceptance.test.js test/workbench-shell.test.js; npm run check:workbench:frontend-acceptance; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-public-live-route-false-pass",
+      "invariant": "Closeout must evaluate repository PROJECT_STATUS for unresolved public/canonical workbench live-route blockers and fail closed unless verified public HTTPS mounted workbench evidence passes validation.",
+      "enforcement_target": "src/workflow/live-route-acceptance.js; tools/check-workbench-live-route.mjs; tools/check-closeout.mjs; test/live-route-acceptance.test.js; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "live route acceptance fails closed when blocker has no verified public evidence; live route CLI blocks current project status without evidence and accepts explicit evidence; closeout and package scripts wire public workbench live-route acceptance as a hard gate",
+      "verification": "node --test test/frontend-acceptance.test.js test/live-route-acceptance.test.js; npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
   ]

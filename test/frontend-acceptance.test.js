@@ -622,3 +622,18 @@ test("closeout and package scripts wire frontend acceptance as a hard gate", () 
   assert.match(closeout, /frontend acceptance artifact did not pass/);
   assert.match(closeout, /release default latest projection/);
 });
+
+test("closeout and package scripts wire public workbench live-route acceptance as a hard gate", () => {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+  const closeout = readFileSync("tools/check-closeout.mjs", "utf8");
+  const liveRouteGate = readFileSync("tools/check-workbench-live-route.mjs", "utf8");
+  const projectStatus = JSON.parse(readFileSync("PROJECT_STATUS.json", "utf8"));
+
+  assert.equal(
+    pkg.scripts["check:workbench:live-route"],
+    "node tools/run-with-node18.mjs tools/check-workbench-live-route.mjs"
+  );
+  assert.match(closeout, /check-workbench-live-route\.mjs/);
+  assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
+  assert.ok(projectStatus.blockers.some((blocker) => blocker.id === "public-project-route-auth-gate"));
+});
