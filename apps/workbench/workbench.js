@@ -3,6 +3,7 @@ import { createProjectionSource } from "./projection-source.js";
 const source = createProjectionSource();
 let currentProjection = null;
 let currentProjectionId = null;
+const EMPTY_READOUT_COPY = "等待状态上报；下一步查看推荐任务。";
 const RAW_TOKEN_COPY = new Map([
   ["Headless live context cycle after scheduler package", "最近自动运行"],
   ["Headless live context cycle after workbench package", "工作台修复后自动运行"],
@@ -21,19 +22,19 @@ const RAW_TOKEN_COPY = new Map([
   ["fail", "未通过"],
   ["failed", "失败"],
   ["ready", "就绪"],
-  ["not ready", "未就绪"],
+  ["not ready", "需要前置证据后才能继续"],
   ["available", "可用"],
   ["complete", "已完成"],
   ["completed", "已完成"],
   ["blocked", "受阻"],
-  ["idle", "空闲"],
+  ["idle", "空闲，等待可派发任务"],
   ["validation", "校验"],
   ["dry_run", "预检"],
-  ["unknown", "未知"],
+  ["unknown", "等待状态上报；查看下一步。"],
   ["human_intervention", "需要人工介入"],
   ["projection_load_failed", "状态加载失败"],
-  ["not_configured", "未配置"],
-  ["no_next_action", "暂无下一步"],
+  ["not_configured", "该通道未启用；无阻塞时继续主任务。"],
+  ["no_next_action", "暂无可执行动作；先完成当前验收。"],
   ["inspect_context_work_packages", "检查任务包"],
   ["prepare_project_status_continuation", "准备续跑状态"],
   ["run_context_work_packages", "运行任务包"],
@@ -60,10 +61,22 @@ const RAW_TOKEN_COPY = new Map([
   ["step(s)", "步"]
 ]);
 const LONG_RAW_IDENTIFIER_PATTERN = /\b[a-z0-9]+(?:-[a-z0-9]+){3,}\b/gi;
+const LONG_ENGLISH_STATUS_PATTERN = /[A-Za-z][A-Za-z0-9_-]*(?:[\s/]+[A-Za-z][A-Za-z0-9_-]*){7,}/;
 
 function text(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
+}
+
+function isPlaceholderValue(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "" ||
+    normalized === "--" ||
+    normalized === "未知" ||
+    normalized === "未配置" ||
+    normalized === "未就绪" ||
+    normalized === "null" ||
+    normalized === "undefined";
 }
 
 function redactRawIdentifiers(value) {
@@ -88,7 +101,8 @@ function humanizeToken(token) {
     .trim();
 }
 
-function displayText(value, fallback = "--") {
+function displayText(value, fallback = EMPTY_READOUT_COPY) {
+  if (isPlaceholderValue(value)) return fallback;
   const raw = text(value, fallback);
   if (raw === fallback) return fallback;
   let result = redactRawIdentifiers(raw);
@@ -96,21 +110,54 @@ function displayText(value, fallback = "--") {
   for (const [token, label] of pairs) {
     result = replaceTokenCopy(result, token, label);
   }
+  if (LONG_ENGLISH_STATUS_PATTERN.test(result)) {
+    return "状态详情已归档；下一步查看推荐任务。";
+  }
+  if (isPlaceholderValue(result) || ["未知", "未配置", "未就绪"].includes(result)) return fallback;
   return result;
 }
 
-function statusText(value) {
+function statusText(value, fallback = EMPTY_READOUT_COPY) {
+  if (isPlaceholderValue(value)) return fallback;
   const raw = text(value);
-  return RAW_TOKEN_COPY.get(raw) || displayText(raw);
+  return RAW_TOKEN_COPY.get(raw) || displayText(raw, fallback);
 }
 
-function compactCopy(value, limit = 140, fallback = "--") {
+function compactCopy(value, limit = 140, fallback = EMPTY_READOUT_COPY) {
   const normalized = displayText(value, fallback)
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized || normalized === fallback) return fallback;
   if (normalized.length <= limit) return normalized;
   return `${normalized.slice(0, Math.max(0, limit - 1)).trim()}…`;
+}
+
+function meaningfulCopy(value, fallback = "") {
+  const rendered = compactCopy(value, 120, "");
+  return rendered || fallback;
+}
+
+function operatorGoalCopy(value) {
+  const rendered = meaningfulCopy(value, "");
+  if (!rendered) return "当前目标等待状态上报";
+  if (LONG_ENGLISH_STATUS_PATTERN.test(rendered)) {
+    return "当前目标来自最新续跑状态，按推荐任务推进";
+  }
+  return rendered;
+}
+
+function countValue(value) {
+  const count = Number(value);
+  return Number.isFinite(count) ? count : 0;
+}
+
+function hasPositiveStatus(value) {
+  const normalized = String(value ?? "").toLowerCase();
+  return normalized === "pass" ||
+    normalized === "ready" ||
+    normalized === "available" ||
+    normalized === "complete" ||
+    normalized === "completed";
 }
 
 function actionLabel(projection) {
@@ -127,8 +174,8 @@ function headlineText(projection) {
   const status = statusText(projection.status);
   const decision = statusText(projection.decision);
   const action = statusText(actionLabel(projection));
-  if (status !== "--" && action !== "--") return compactCopy(`${status} · ${action}`, 80);
-  if (decision !== "--") return compactCopy(decision, 80);
+  if (!isPlaceholderValue(status) && !isPlaceholderValue(action)) return compactCopy(`${status} · ${action}`, 80);
+  if (!isPlaceholderValue(decision)) return compactCopy(decision, 80);
   return compactCopy(headline || projection.goal, 80, "等待状态投影");
 }
 
@@ -173,9 +220,136 @@ function firstReason(projection) {
   const nextAction = statusText(actionLabel(projection));
   const decision = statusText(projection.decision);
   const reason = projection.one_screen?.summary || projection.summary || projection.reasons?.[0];
-  if (reason) return compactCopy(reason, 150);
-  if (nextAction !== "--") return `下一步：${compactCopy(nextAction, 90)}。`;
-  return `${decision}，来自已校验投影`;
+  if (reason) {
+    const rendered = compactCopy(reason, 150);
+    return LONG_ENGLISH_STATUS_PATTERN.test(rendered)
+      ? "最新状态已归档，操作员先处理推荐任务。"
+      : rendered;
+  }
+  if (nextAction) return `下一步：${compactCopy(nextAction, 90)}。`;
+  return `${decision}，来自已校验状态输入。`;
+}
+
+function operatorNextAction(projection) {
+  const action = meaningfulCopy(actionLabel(projection), "等待推荐任务");
+  return compactCopy(action, 96, "等待推荐任务");
+}
+
+function operatorGoalSummary(projection) {
+  const goal = operatorGoalCopy(projection.one_screen?.headline || projection.headline || projection.goal);
+  const reason = firstReason(projection);
+  return compactCopy(`目标：${goal}。上下文：${reason}`, 170);
+}
+
+function operatorBlockerSummary(projection, parts) {
+  const { reviewer, schedulerDispatch, resumeHealth, globalGoals, lifecyclePool } = parts;
+  const blockers = [];
+  const blockedGoals = countValue(globalGoals.blocked);
+  const failedSteps = countValue(schedulerDispatch.failed_step_count);
+  const reviewerFailures = countValue(reviewer.counts?.failed) + countValue(reviewer.counts?.rollback);
+  const resumeIssues = countValue(resumeHealth.issue_count);
+  const timeouts = countValue(lifecyclePool.timed_out);
+
+  if (blockedGoals > 0) blockers.push(`${blockedGoals} 个目标受阻`);
+  if (failedSteps > 0) blockers.push(`${failedSteps} 个调度步骤失败`);
+  if (reviewerFailures > 0) blockers.push(`${reviewerFailures} 条审查失败或回退`);
+  if (resumeIssues > 0) blockers.push(`${resumeIssues} 个续跑问题`);
+  if (timeouts > 0) blockers.push(`${timeouts} 个子进程超时`);
+
+  const next = operatorNextAction(projection);
+  if (blockers.length === 0) {
+    return `阻塞：当前没有人工阻塞。影响：可以继续推进可派发任务。下一步：${next}。`;
+  }
+  return compactCopy(`阻塞：${blockers.join("；")}。影响：先处理风险后再续跑。下一步：${next}。`, 180);
+}
+
+function operatorRiskSummary(parts) {
+  const { schedulerDispatch, providerHealth, scopeSplit, shardReview } = parts;
+  const risks = [];
+  const policyIssues = countValue(schedulerDispatch.policy_issue_count);
+  const pendingShards = countValue(scopeSplit.pending_shards);
+  const failedFindings = countValue(shardReview.failed_finding_count);
+  const providerStatus = providerHealth.status || providerHealth.provider_health;
+
+  if (policyIssues > 0) risks.push(`${policyIssues} 个调度策略问题`);
+  if (pendingShards > 0) risks.push(`${pendingShards} 个审查分片待处理`);
+  if (failedFindings > 0) risks.push(`${failedFindings} 条分片发现需要复核`);
+  if (providerStatus && !hasPositiveStatus(providerStatus)) {
+    risks.push(`审查通道${statusText(providerStatus, "等待通道证据")}`);
+  }
+
+  if (risks.length === 0) {
+    return "风险：门禁没有报告阻塞风险。影响：继续保留审查证据并推进下一步。";
+  }
+  return compactCopy(`风险：${risks.join("；")}。影响：可能延迟续跑或发布验收。下一步：优先处理最高风险项。`, 180);
+}
+
+function operatorEvidenceSummary(counters, closeout, browserEvents) {
+  const closeoutStatus = statusText(closeout.status, "等待收口验收");
+  const uiStatus = statusText(browserEvents.status, "等待界面验收");
+  const scenarios = countValue(browserEvents.scenario_count);
+  const artifacts = countValue(counters.artifacts);
+  const coverage = scenarios > 0
+    ? `界面验收覆盖 ${scenarios} 个场景`
+    : "界面验收需要补充浏览器证据";
+  const artifactCopy = artifacts > 0
+    ? `已有 ${artifacts} 条证据可追溯`
+    : "证据入口已保留，等待新证据写入";
+  return compactCopy(`证据：收口${closeoutStatus}，${coverage}，${artifactCopy}。下一步：失败时先补证据再发布。`, 180);
+}
+
+function operatorRecoverySummary(projection, resumeHealth, schedulerContinuation, schedulerLoop) {
+  const issueCount = countValue(resumeHealth.issue_count);
+  const next = meaningfulCopy(
+    schedulerLoop.recovery_action ||
+      schedulerContinuation.enqueue_status ||
+      projection.next_action_readout?.action,
+    operatorNextAction(projection)
+  );
+  if (issueCount > 0) {
+    const latestIssue = meaningfulCopy(resumeHealth.latest_issue, "最新续跑问题等待定位");
+    return compactCopy(`恢复健康：发现 ${issueCount} 个续跑问题，${latestIssue}。影响：需要先修复恢复入口。下一步：${next}。`, 180);
+  }
+  const replay = statusText(resumeHealth.replay_status || resumeHealth.status, "回放等待证据");
+  return compactCopy(`恢复健康：${replay}；当前没有恢复阻塞。下一步：${next}。`, 150);
+}
+
+function operatorReviewSummary(projection, reviewer, model, providerHealth, shardReview) {
+  const selectedModel = meaningfulCopy(model.selected_model || model.preferred_model, "模型待选择");
+  const reviewerStatus = statusText(reviewer.status, "审查门禁等待输入");
+  const provider = statusText(providerHealth.status || providerHealth.provider_health, "通道等待连通证据");
+  const failed = countValue(shardReview.failed_finding_count);
+  const shardCopy = failed > 0
+    ? `${failed} 条分片发现需要复核`
+    : "分片审查没有报告阻塞发现";
+  return compactCopy(`审查准备：${selectedModel} 负责当前判断，门禁${reviewerStatus}，通道${provider}。${shardCopy}。下一步：${operatorNextAction(projection)}。`, 190);
+}
+
+function operatorDispatchSummary(projection, schedulerDispatch, schedulerContinuation, schedulerLoop) {
+  const status = statusText(schedulerDispatch.status || schedulerLoop.status, "调度等待输入");
+  const phase = meaningfulCopy(schedulerDispatch.phase || schedulerLoop.phase, "阶段等待确认");
+  const steps = countValue(schedulerDispatch.step_count);
+  const packages = countValue(schedulerDispatch.next_work_package_count);
+  const continuation = schedulerContinuation.ready === true
+    ? "续跑输入已准备"
+    : "续跑输入需要调度生成";
+  const stepCopy = steps > 0 ? `已记录 ${steps} 个调度步骤` : "调度步骤等待执行";
+  const packageCopy = packages > 0 ? `下一轮有 ${packages} 个任务包` : "下一轮任务包等待生成";
+  return compactCopy(`调度：${status}，${phase}，${stepCopy}；${packageCopy}。${continuation}。下一步：${operatorNextAction(projection)}。`, 190);
+}
+
+function operatorGovernanceSummary(selfGovernance, globalGoals) {
+  const governanceStatus = statusText(selfGovernance.status, "治理检查等待输入");
+  const findingCount = countValue(selfGovernance.finding_count);
+  const pendingGoals = countValue(globalGoals.pending);
+  const nextGoal = meaningfulCopy(globalGoals.next_goal?.title || globalGoals.next_goal?.id, "没有新的目标需要人工选择");
+  const findingCopy = findingCount > 0
+    ? `${findingCount} 条治理发现需要处理`
+    : "治理检查没有新增阻塞发现";
+  const goalCopy = pendingGoals > 0
+    ? `${pendingGoals} 个总目标待推进`
+    : "总目标已进入收口检查";
+  return compactCopy(`治理：${governanceStatus}，${findingCopy}，${goalCopy}。下一步：${nextGoal}。`, 180);
 }
 
 function bindTabs() {
@@ -254,7 +428,7 @@ function renderModelRoles(projection) {
   const roles = projection.model_routing?.by_model
     ? Object.entries(projection.model_routing.by_model).map(([model, count]) => ({ model, count }))
     : [];
-  const rows = roles.length > 0 ? roles : [{ model: projection.model_routing?.selected_model || "--", count: 1 }];
+  const rows = roles.length > 0 ? roles : [{ model: projection.model_routing?.selected_model || "等待模型选择", count: 1 }];
 
   list.replaceChildren(
     ...rows.map((role) => {
@@ -284,6 +458,22 @@ function renderProjection(projection) {
   const globalGoals = projection.global_goal_completion || {};
   const nextActionReadout = projection.next_action_readout || {};
   const nextActionTerminal = projection.next_action_terminal || {};
+  const summaryParts = {
+    reviewer,
+    model,
+    closeout,
+    browserEvents,
+    resumeHealth,
+    providerHealth,
+    scopeSplit,
+    shardReview,
+    schedulerDispatch,
+    schedulerContinuation,
+    schedulerLoop,
+    lifecyclePool,
+    selfGovernance,
+    globalGoals
+  };
 
   setText("run_id", workflowIdentityLabel(projection.run_id, "当前运行"));
   setText("cycle_id", workflowIdentityLabel(projection.cycle_id, "当前周期"));
@@ -292,6 +482,15 @@ function renderProjection(projection) {
   setText("decision", statusText(projection.decision));
   setText("headline", headlineText(projection));
   setText("reason", firstReason(projection));
+  setText("operator_goal_summary", operatorGoalSummary(projection));
+  setText("operator_blocker_summary", operatorBlockerSummary(projection, summaryParts));
+  setText("operator_risk_summary", operatorRiskSummary(summaryParts));
+  setText("operator_next_action", operatorNextAction(projection));
+  setText("operator_evidence_summary", operatorEvidenceSummary(counters, closeout, browserEvents));
+  setText("operator_recovery_summary", operatorRecoverySummary(projection, resumeHealth, schedulerContinuation, schedulerLoop));
+  setText("operator_review_summary", operatorReviewSummary(projection, reviewer, model, providerHealth, shardReview));
+  setText("operator_dispatch_summary", operatorDispatchSummary(projection, schedulerDispatch, schedulerContinuation, schedulerLoop));
+  setText("operator_governance_summary", operatorGovernanceSummary(selfGovernance, globalGoals));
   setText("selected_model", model.selected_model);
   setText("model_summary", `${displayText(model.preferred_model)} -> ${displayText(model.selected_model)}`);
   setText("reviewer_status", reviewer.status);
@@ -317,7 +516,7 @@ function renderProjection(projection) {
   setText("closeout_artifact", closeout.artifact_id || closeout.path || closeout.uri);
   setText("ui_verification_status", browserEvents.status);
   setText("ui_verification_scenarios", browserEvents.scenario_count ?? 0);
-  setText("ui_verification_partial", browserEvents.partial_shard_ready === true ? "ready" : "not ready");
+  setText("ui_verification_partial", browserEvents.partial_shard_ready === true ? "ready" : "需要前置证据后才能继续");
   setText("ui_verification_artifact", browserEvents.artifact_id);
   setText("resume_health_status", resumeHealth.status);
   setText("resume_replay_status", resumeHealth.replay_status);
@@ -353,7 +552,7 @@ function renderProjection(projection) {
   setText("scheduler_next_packages", schedulerDispatch.next_work_package_count ?? 0);
   setText("scheduler_next_action", schedulerDispatch.next_continuation_action);
   setText("scheduler_continuation_status", schedulerContinuation.continuation_status || schedulerContinuation.status);
-  setText("scheduler_continuation_ready", schedulerContinuation.ready === true ? "就绪" : "未就绪");
+  setText("scheduler_continuation_ready", schedulerContinuation.ready === true ? "就绪" : "等待续跑输入");
   setText("scheduler_continuation_enqueue", schedulerContinuation.enqueue_status);
   setText("scheduler_continuation_path", schedulerContinuation.continuation_input_path);
   setText("scheduler_loop_status", schedulerLoop.status);

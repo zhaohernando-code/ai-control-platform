@@ -29,6 +29,16 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-history-select/);
   assert.match(desktop, /data-bind="closeout_status"/);
   assert.match(mobile, /data-bind="closeout_status"/);
+  assert.match(desktop, /data-bind="operator_goal_summary"/);
+  assert.match(desktop, /data-bind="operator_blocker_summary"/);
+  assert.match(desktop, /data-bind="operator_risk_summary"/);
+  assert.match(desktop, /data-bind="operator_evidence_summary"/);
+  assert.match(desktop, /data-bind="operator_recovery_summary"/);
+  assert.match(desktop, /data-bind="operator_review_summary"/);
+  assert.match(mobile, /data-bind="operator_blocker_summary"/);
+  assert.match(mobile, /data-bind="operator_dispatch_summary"/);
+  assert.match(mobile, /data-bind="operator_recovery_summary"/);
+  assert.match(mobile, /data-bind="operator_review_summary"/);
   assert.match(desktop, /data-bind="ui_verification_status"/);
   assert.match(mobile, /data-bind="ui_verification_status"/);
   assert.match(desktop, /data-bind="ui_verification_scenarios"/);
@@ -110,6 +120,11 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-provider-health="timeout"/);
   assert.doesNotMatch(desktop, /Work Packages|Context Pack\s*(?:-&gt;|->)\s*Run\s*(?:-&gt;|->)\s*Review\s*(?:-&gt;|->)\s*Continuation|Provider Health|Smoke OK|Smoke Timeout|role\(s\)|Projection|Closeout|Resume Health|Snapshot|Evidence|Scheduler Dispatch|Projected Mock Loop|Projected Real Loop|Projected Loop 已记录|Loop 已记录|Resume 已记录|Smoke 已记录/);
   assert.doesNotMatch(mobile, /Provider smoke|Smoke OK|Smoke Timeout|Projection|Closeout|Snapshot|Projected Mock Loop|Projected Real Loop|Replay|Issues|Dry run|Projected Loop 已记录|Loop 已记录|Resume 已记录|Smoke 已记录/);
+  assert.match(desktop, /通道诊断详情/);
+  assert.match(mobile, /诊断与高级调度/);
+  assert.equal((mobile.match(/<details class="control-drawer">/g) || []).length >= 4, true);
+  assert.match(mobile, /<summary>验收详情<\/summary>[\s\S]*data-bind="closeout_status"/);
+  assert.match(mobile, /<summary>诊断与高级调度<\/summary>[\s\S]*data-bind="agent_lifecycle_pool_latest_timeout"/);
   assert.notEqual(desktop, mobile);
   assert.match(desktop, /desktop-app/);
   assert.match(mobile, /phone-app/);
@@ -162,6 +177,11 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(script, /projectionMode/);
   assert.match(script, /interactive-fixture/);
   assert.match(script, /release-readout/);
+  assert.match(script, /LONG_ENGLISH_STATUS_PATTERN/);
+  assert.match(script, /当前目标来自最新续跑状态/);
+  assert.match(read("apps/workbench/styles.css"), /padding:\s*18px 16px calc\(18px \+ 64px \+ env\(safe-area-inset-bottom, 0px\)\)/);
+  assert.match(read("apps/workbench/styles.css"), /scroll-padding-bottom:\s*calc\(64px \+ env\(safe-area-inset-bottom, 0px\)\)/);
+  assert.match(read("apps/workbench/styles.css"), /\.mobile-tabbar\s*{[\s\S]*min-height:\s*64px;/);
   assert.match(read("apps/workbench/styles.css"), /data-projection-mode="release-readout"[\s\S]*data-scheduler-dispatch/);
   assert.match(source, /enqueueSchedulerNextCycle/);
   assert.match(source, /runAutonomousSchedulerLoop/);
@@ -187,6 +207,26 @@ test("scheduler dispatch writeback accepts translated rendered pass without weak
   assert.match(checker, /projection\.scheduler_dispatch\.status === "pass"/);
   assert.match(checker, /projection\.scheduler_dispatch\.step_count === 3/);
   assert.doesNotMatch(checker, /projection\.scheduler_dispatch\.status[\s\S]*isRenderedSchedulerDispatchPassStatus/);
+});
+
+test("browser events gate accepts only semantic cleared scheduler loop recovery readouts", () => {
+  const checker = read("tools/check-workbench-browser-events.mjs");
+
+  assert.match(checker, /CLEARED_SCHEDULER_LOOP_RECOVERY_COPY = "等待状态上报；下一步查看推荐任务。"/);
+  assert.match(checker, /IDLE_SCHEDULER_LOOP_RECOVERY_COPY = "空闲，等待可派发任务"/);
+  assert.match(checker, /NO_SOURCE_RESUME_ATTEMPT_COPY = "该通道未启用；无阻塞时继续主任务。"/);
+  assert.match(checker, /RAW_SCHEDULER_LOOP_RECOVERY_TOKENS = new Set/);
+  assert.match(checker, /RAW_RESUME_ATTEMPT_CLAIM_TOKENS = new Set/);
+  assert.match(checker, /"no_dispatchable_scheduler_actions"/);
+  assert.match(checker, /"scheduler_loop_resume_attempt"/);
+  assert.match(checker, /function isClearedSchedulerLoopRecoveryReadout/);
+  assert.match(checker, /function isNoSourceResumeAttemptReadout/);
+  assert.match(checker, /RAW_SCHEDULER_LOOP_RECOVERY_TOKENS\.has\(normalized\)[\s\S]*return false/);
+  assert.match(checker, /RAW_RESUME_ATTEMPT_CLAIM_TOKENS\.has\(normalized\)[\s\S]*return false/);
+  assert.match(checker, /assert\(isClearedSchedulerLoopRecoveryReadout\(resumedLoopRecovery\)/);
+  assert.match(checker, /assert\(isNoSourceResumeAttemptReadout\(resumedLoopAttempt\)/);
+  assert.doesNotMatch(checker, /resumedLoopRecovery === "空闲"/);
+  assert.doesNotMatch(checker, /resumedLoopAttempt === "未配置"/);
 });
 
 test("desktop shell is fixed viewport without horizontal overflow by design", () => {

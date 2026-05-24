@@ -10,6 +10,32 @@ import { createWorkbenchServer } from "./workbench-server.mjs";
 
 const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
 const scenarioResults = [];
+const CLEARED_LIFECYCLE_NEXT_ACTION_COPY = "等待状态上报；下一步查看推荐任务。";
+const CLEARED_SCHEDULER_LOOP_RECOVERY_COPY = "等待状态上报；下一步查看推荐任务。";
+const IDLE_SCHEDULER_LOOP_RECOVERY_COPY = "空闲，等待可派发任务";
+const NO_SOURCE_RESUME_ATTEMPT_COPY = "该通道未启用；无阻塞时继续主任务。";
+const RAW_SCHEDULER_LOOP_RECOVERY_TOKENS = new Set([
+  "idle",
+  "ready",
+  "not_configured",
+  "no_next_action",
+  "wait_for_new_work",
+  "resume_from_latest_projection",
+  "start_bounded_loop",
+  "inspect_latest_loop_run",
+  "inspect_scheduler_loop",
+  "resume_autonomous_scheduler_loop",
+  "no_dispatchable_scheduler_actions"
+]);
+const RAW_RESUME_ATTEMPT_CLAIM_TOKENS = new Set([
+  "not_configured",
+  "pass",
+  "fail",
+  "blocked",
+  "ready",
+  "scheduler_loop_resume_attempt",
+  "resume_autonomous_scheduler_loop"
+]);
 
 function assert(condition, message) {
   if (!condition) {
@@ -29,6 +55,19 @@ function hasFlag(flag, args = process.argv.slice(2)) {
 function recordScenario(result) {
   scenarioResults.push(result);
   console.log(JSON.stringify(result, null, 2));
+}
+
+function isClearedSchedulerLoopRecoveryReadout(value) {
+  const normalized = String(value || "").trim();
+  if (RAW_SCHEDULER_LOOP_RECOVERY_TOKENS.has(normalized)) return false;
+  return normalized === CLEARED_SCHEDULER_LOOP_RECOVERY_COPY ||
+    normalized === IDLE_SCHEDULER_LOOP_RECOVERY_COPY;
+}
+
+function isNoSourceResumeAttemptReadout(value) {
+  const normalized = String(value || "").trim();
+  if (RAW_RESUME_ATTEMPT_CLAIM_TOKENS.has(normalized)) return false;
+  return normalized === NO_SOURCE_RESUME_ATTEMPT_COPY;
 }
 
 function pendingReviewerShardWorkflowState(workflowState) {
@@ -685,7 +724,8 @@ async function verifyAgentLifecyclePoolCleanupClick(browser) {
     assert(cleanupAfterOpen === "0", "guarded lifecycle cleanup must leave no open workers");
     assert(cleanupAfterUnevaluated === "0", "guarded lifecycle cleanup must leave no unevaluated workers");
     assert(cleanupAfterUnclosed === "0", "guarded lifecycle cleanup must leave no unclosed workers");
-    assert(cleanupAfterNextAction === "--", "guarded lifecycle cleanup must clear lifecycle next action");
+    assert(cleanupAfterNextAction === CLEARED_LIFECYCLE_NEXT_ACTION_COPY, "guarded lifecycle cleanup must render cleared lifecycle next action");
+    assert(cleanupAfterNextAction !== "cleanup_agent_lifecycle_pool", "guarded lifecycle cleanup must not keep the raw cleanup action in lifecycle readout");
     assert(nextActionReadout !== "cleanup_agent_lifecycle_pool", "guarded lifecycle cleanup must advance next-action readout");
     assert(dimensions.scrollWidth <= dimensions.width, "lifecycle cleanup click must not create horizontal overflow");
 
@@ -974,8 +1014,8 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(schedulerLoopIterations === "1", "autonomous scheduler loop click must render one loop iteration");
     assert(schedulerLoopRecovery === "就绪", "autonomous scheduler loop click must render recovery readiness");
     assert(resumedLoopStatus === "通过", "autonomous scheduler loop resume must render loop pass");
-    assert(resumedLoopRecovery === "空闲", "autonomous scheduler loop resume must render idle recovery when no actions remain");
-    assert(resumedLoopAttempt === "未配置", "resume target projection should not claim the source resume attempt");
+    assert(isClearedSchedulerLoopRecoveryReadout(resumedLoopRecovery), "autonomous scheduler loop resume must render cleared idle recovery when no actions remain");
+    assert(isNoSourceResumeAttemptReadout(resumedLoopAttempt), "resume target projection should not claim the source resume attempt");
     assert(Number(operationEventCount) >= 1, "autonomous scheduler loop resume must render operation event count");
     assert(operationRows >= 1, "autonomous scheduler loop resume must render operation timeline rows");
     assert(nextActionReadout, "autonomous scheduler loop resume must render next-action readout");

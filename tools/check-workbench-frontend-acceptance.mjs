@@ -680,9 +680,39 @@ function findingsForContentCompletion(contentCompletionResults = []) {
 
 async function auditViewport(page, viewport, browserErrors = [], options = {}) {
   const data = await page.evaluate(({ commandControlSelector, commandActionAttributes }) => {
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const clippedRectOf = (node) => {
+      const rect = node.getBoundingClientRect();
+      let left = Math.max(rect.left, 0);
+      let top = Math.max(rect.top, 0);
+      let right = Math.min(rect.right, viewportWidth);
+      let bottom = Math.min(rect.bottom, viewportHeight);
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent);
+        if (!/(auto|scroll|hidden|clip)/.test(`${style.overflow}${style.overflowX}${style.overflowY}`)) {
+          continue;
+        }
+        const parentRect = parent.getBoundingClientRect();
+        left = Math.max(left, parentRect.left);
+        top = Math.max(top, parentRect.top);
+        right = Math.min(right, parentRect.right);
+        bottom = Math.min(bottom, parentRect.bottom);
+      }
+      return {
+        x: left,
+        y: top,
+        left,
+        top,
+        right,
+        bottom,
+        width: Math.max(0, right - left),
+        height: Math.max(0, bottom - top)
+      };
+    };
     const visible = (node) => {
       const style = getComputedStyle(node);
-      const rect = node.getBoundingClientRect();
+      const rect = clippedRectOf(node);
       return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
     };
     const textOf = (node) => String(node.textContent || "").replace(/\s+/g, " ").trim();
@@ -709,14 +739,14 @@ async function auditViewport(page, viewport, browserErrors = [], options = {}) {
           : role === "button"
             ? "role_button"
             : "data_command",
-        rect: node.getBoundingClientRect().toJSON()
+        rect: clippedRectOf(node)
       };
     });
     const nav = Array.from(document.querySelectorAll(".nav-list a")).filter(visible).map((node) => ({
       text: textOf(node),
       href: node.getAttribute("href"),
       active: node.classList.contains("active"),
-      rect: node.getBoundingClientRect().toJSON()
+      rect: clippedRectOf(node)
     }));
     const faviconLinks = Array.from(document.querySelectorAll('link[rel~="icon"]')).map((node) => ({
       rel: node.getAttribute("rel") || "",
@@ -750,7 +780,7 @@ async function auditViewport(page, viewport, browserErrors = [], options = {}) {
       .map((node) => ({
         node,
         text: textOf(node).slice(0, 40),
-        rect: node.getBoundingClientRect().toJSON()
+        rect: clippedRectOf(node)
       }))
       .filter((item) => item.rect.width > 16 && item.rect.height > 16)
       .slice(0, 180);

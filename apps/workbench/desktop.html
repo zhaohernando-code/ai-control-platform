@@ -37,19 +37,19 @@
         <header class="topbar">
           <div class="top-item">
             <span>运行状态</span>
-            <strong data-bind="status">--</strong>
+            <strong data-bind="status">等待状态上报</strong>
           </div>
           <div class="top-item">
             <span>调度决策</span>
-            <strong data-bind="decision">--</strong>
+            <strong data-bind="decision">等待调度决策</strong>
           </div>
           <div class="top-item">
             <span>主模型</span>
-            <strong data-bind="selected_model">--</strong>
+            <strong data-bind="selected_model">等待模型选择</strong>
           </div>
           <div class="top-item">
             <span>审查状态</span>
-            <strong data-bind="reviewer_status">--</strong>
+            <strong data-bind="reviewer_status">等待审查状态</strong>
           </div>
           <div class="top-actions">
             <select aria-label="状态投影历史" data-history-select></select>
@@ -66,7 +66,7 @@
               <p data-bind="reason">等待 projection 数据</p>
             </div>
             <div class="status-orbit" aria-hidden="true">
-              <span data-bind="status_short">--</span>
+              <span data-bind="status_short">待上报</span>
             </div>
           </section>
 
@@ -105,6 +105,28 @@
             </article>
           </section>
 
+          <section class="panel operator-summary wide" data-section="overview">
+            <div class="section-title">
+              <h2>目标与阻塞</h2>
+              <span>操作员摘要</span>
+            </div>
+            <div class="summary-list">
+              <p data-bind="operator_goal_summary">目标：等待状态上报。下一步：查看推荐任务。</p>
+              <p data-bind="operator_blocker_summary">阻塞：等待状态上报。影响：先确认可派发任务。下一步：查看推荐任务。</p>
+            </div>
+          </section>
+
+          <section class="panel operator-summary wide" data-section="overview">
+            <div class="section-title">
+              <h2>风险与证据</h2>
+              <span>收口判断</span>
+            </div>
+            <div class="summary-list">
+              <p data-bind="operator_risk_summary">风险：等待门禁状态上报。下一步：先处理最高风险项。</p>
+              <p data-bind="operator_evidence_summary">证据：等待验收证据写入。下一步：失败时先补证据再发布。</p>
+            </div>
+          </section>
+
           <section class="panel wide" data-section="overview runs">
             <div class="section-title">
               <h2>任务流</h2>
@@ -124,8 +146,9 @@
           <section class="panel wide overview-dispatch" data-section="overview">
             <div class="section-title">
               <h2>安全调度</h2>
-              <span data-bind="scheduler_dispatch_status">--</span>
+              <span>受控入口</span>
             </div>
+            <p class="panel-copy" data-bind="operator_next_action">下一步：查看推荐任务。</p>
             <div class="primary-actions">
               <button type="button" data-scheduler-dispatch="dry-run">调度预检</button>
               <button type="button" data-workbench-next-action="guarded">执行推荐动作</button>
@@ -142,74 +165,78 @@
           <section class="panel" data-section="review">
             <div class="section-title">
               <h2>收口验收</h2>
-              <span data-bind="closeout_publish_status">--</span>
+              <span>证据摘要</span>
             </div>
+            <p class="panel-copy" data-bind="operator_evidence_summary">证据：等待验收证据写入。下一步：失败时先补证据再发布。</p>
             <div class="closeout-grid">
-              <div><span>状态</span><strong data-bind="closeout_status">--</strong></div>
-              <div><span>状态快照</span><strong data-bind="closeout_snapshot">--</strong></div>
-              <div><span>界面验收</span><strong data-bind="ui_verification_status">--</strong></div>
+              <div><span>状态</span><strong data-bind="closeout_status">等待收口验收</strong></div>
+              <div><span>状态快照</span><strong data-bind="closeout_snapshot">等待快照证据</strong></div>
+              <div><span>界面验收</span><strong data-bind="ui_verification_status">等待界面验收</strong></div>
               <div><span>验收场景</span><strong data-bind="ui_verification_scenarios">0</strong></div>
-              <div class="full"><span>分片准备</span><strong data-bind="ui_verification_partial">--</strong></div>
-              <div class="full"><span>验收证据</span><strong data-bind="closeout_artifact">--</strong></div>
-              <div class="full"><span>界面证据</span><strong data-bind="ui_verification_artifact">--</strong></div>
+              <div class="full"><span>分片准备</span><strong data-bind="ui_verification_partial">等待分片证据</strong></div>
+              <div class="full"><span>验收证据</span><strong data-bind="closeout_artifact">等待验收证据</strong></div>
+              <div class="full"><span>界面证据</span><strong data-bind="ui_verification_artifact">等待界面证据</strong></div>
             </div>
           </section>
 
           <section class="panel" data-section="review">
             <div class="section-title">
               <h2>续跑健康</h2>
-              <span data-bind="resume_health_status">--</span>
+              <span data-bind="resume_health_status">等待恢复状态</span>
             </div>
+            <p class="panel-copy" data-bind="operator_recovery_summary">恢复健康：等待恢复状态上报。下一步：查看推荐任务。</p>
             <div class="resume-grid">
-              <div><span>回放</span><strong data-bind="resume_replay_status">--</strong></div>
+              <div><span>回放</span><strong data-bind="resume_replay_status">等待回放证据</strong></div>
               <div><span>问题数</span><strong data-bind="resume_issue_count">0</strong></div>
-              <div class="full"><span>最新问题</span><strong data-bind="resume_latest_issue">--</strong></div>
-              <div class="full"><span>续跑证据</span><strong data-bind="resume_artifact">--</strong></div>
+              <div class="full"><span>最新问题</span><strong data-bind="resume_latest_issue">没有恢复问题时继续推荐任务</strong></div>
+              <div class="full"><span>续跑证据</span><strong data-bind="resume_artifact">等待续跑证据</strong></div>
             </div>
           </section>
 
           <section class="panel run-panel" id="runs" data-section="runs" tabindex="-1">
             <div class="section-title">
               <h2>平台自我治理</h2>
-              <span data-bind="self_governance_status">--</span>
+              <span>流程健康</span>
             </div>
+            <p class="panel-copy" data-bind="operator_governance_summary">治理：等待检查状态上报。下一步：查看推荐任务。</p>
             <div class="resume-grid">
               <div><span>发现</span><strong data-bind="self_governance_findings">0</strong></div>
               <div><span>自动修复</span><strong data-bind="self_governance_auto_repairs">0</strong></div>
               <div><span>补证据</span><strong data-bind="self_governance_evidence_tasks">0</strong></div>
               <div><span>待决策</span><strong data-bind="self_governance_user_decisions">0</strong></div>
-              <div><span>频率</span><strong data-bind="self_governance_cadence">--</strong></div>
+              <div><span>频率</span><strong data-bind="self_governance_cadence">等待治理频率</strong></div>
               <div><span>角色</span><strong data-bind="self_governance_roles">0</strong></div>
-              <div class="full"><span>最新修复</span><strong data-bind="self_governance_latest_repair">--</strong></div>
-              <div class="full"><span>最新补证据</span><strong data-bind="self_governance_latest_evidence">--</strong></div>
-              <div class="full"><span>最新决策</span><strong data-bind="self_governance_latest_decision">--</strong></div>
-              <div class="full"><span>下次触发</span><strong data-bind="self_governance_next_trigger">--</strong></div>
+              <div class="full"><span>最新修复</span><strong data-bind="self_governance_latest_repair">没有修复任务时继续推荐动作</strong></div>
+              <div class="full"><span>最新补证据</span><strong data-bind="self_governance_latest_evidence">没有补证据任务时继续推荐动作</strong></div>
+              <div class="full"><span>最新决策</span><strong data-bind="self_governance_latest_decision">没有待决策项时继续推荐动作</strong></div>
+              <div class="full"><span>下次触发</span><strong data-bind="self_governance_next_trigger">等待治理触发证据</strong></div>
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel run-panel" data-section="runs">
             <div class="section-title">
               <h2>调度执行</h2>
-              <span data-bind="scheduler_dispatch_status">--</span>
+              <span data-bind="scheduler_dispatch_status">等待调度状态</span>
             </div>
+            <p class="panel-copy" data-bind="operator_dispatch_summary">调度：等待状态输入。下一步：查看推荐任务。</p>
             <div class="scheduler-grid">
-              <div><span>阶段</span><strong data-bind="scheduler_dispatch_phase">--</strong></div>
+              <div><span>阶段</span><strong data-bind="scheduler_dispatch_phase">等待阶段状态</strong></div>
               <div><span>步数</span><strong data-bind="scheduler_dispatch_steps">0</strong></div>
               <div><span>失败数</span><strong data-bind="scheduler_dispatch_failed">0</strong></div>
               <div><span>仅预检</span><strong data-bind="scheduler_dispatch_dry_run">否</strong></div>
-              <div><span>策略</span><strong data-bind="scheduler_policy_status">--</strong></div>
-              <div><span>模式</span><strong data-bind="scheduler_policy_mode">--</strong></div>
+              <div><span>策略</span><strong data-bind="scheduler_policy_status">等待策略状态</strong></div>
+              <div><span>模式</span><strong data-bind="scheduler_policy_mode">等待执行模式</strong></div>
               <div><span>策略问题</span><strong data-bind="scheduler_policy_issues">0</strong></div>
-              <div><span>下一轮</span><strong data-bind="scheduler_next_status">--</strong></div>
+              <div><span>下一轮</span><strong data-bind="scheduler_next_status">等待下一轮状态</strong></div>
               <div><span>下轮任务包</span><strong data-bind="scheduler_next_packages">0</strong></div>
-              <div><span>续跑就绪</span><strong data-bind="scheduler_continuation_ready">--</strong></div>
-              <div><span>入队</span><strong data-bind="scheduler_continuation_enqueue">--</strong></div>
-              <div><span>调度轮次</span><strong data-bind="scheduler_loop_status">--</strong></div>
+              <div><span>续跑就绪</span><strong data-bind="scheduler_continuation_ready">等待续跑输入</strong></div>
+              <div><span>入队</span><strong data-bind="scheduler_continuation_enqueue">等待入队结果</strong></div>
+              <div><span>调度轮次</span><strong data-bind="scheduler_loop_status">等待轮次状态</strong></div>
               <div><span>轮次数</span><strong data-bind="scheduler_loop_iterations">0</strong></div>
-              <div><span>轮次策略</span><strong data-bind="scheduler_loop_strategy">--</strong></div>
-              <div><span>恢复</span><strong data-bind="scheduler_loop_recovery">--</strong></div>
-              <div><span>续跑</span><strong data-bind="scheduler_loop_resume_status">--</strong></div>
-              <div><span>子进程</span><strong data-bind="agent_lifecycle_pool_status">--</strong></div>
+              <div><span>轮次策略</span><strong data-bind="scheduler_loop_strategy">等待执行配置</strong></div>
+              <div><span>恢复</span><strong data-bind="scheduler_loop_recovery">等待恢复状态</strong></div>
+              <div><span>续跑</span><strong data-bind="scheduler_loop_resume_status">等待续跑结果</strong></div>
+              <div><span>子进程</span><strong data-bind="agent_lifecycle_pool_status">等待子进程状态</strong></div>
               <div><span>运行中子进程</span><strong data-bind="agent_lifecycle_pool_open">0</strong></div>
               <div><span>已完成</span><strong data-bind="agent_lifecycle_pool_completed">0</strong></div>
               <div><span>已评估</span><strong data-bind="agent_lifecycle_pool_evaluated">0</strong></div>
@@ -218,26 +245,26 @@
               <div><span>未关闭</span><strong data-bind="agent_lifecycle_pool_unclosed">0</strong></div>
               <div><span>超时</span><strong data-bind="agent_lifecycle_pool_timed_out">0</strong></div>
               <div><span>心跳</span><strong data-bind="agent_lifecycle_pool_heartbeats">0</strong></div>
-              <div><span>目标</span><strong data-bind="global_goals_status">--</strong></div>
+              <div><span>目标</span><strong data-bind="global_goals_status">等待目标状态</strong></div>
               <div><span>目标总数</span><strong data-bind="global_goals_total">0</strong></div>
               <div><span>目标完成</span><strong data-bind="global_goals_completed">0</strong></div>
               <div><span>目标待办</span><strong data-bind="global_goals_pending">0</strong></div>
               <div><span>目标阻塞</span><strong data-bind="global_goals_blocked">0</strong></div>
-              <div><span>动作</span><strong data-bind="next_action_readout_action">--</strong></div>
-              <div><span>动作状态</span><strong data-bind="next_action_readout_status">--</strong></div>
-              <div><span>停止状态</span><strong data-bind="next_action_terminal_status">--</strong></div>
-              <div class="full"><span>最新心跳</span><strong data-bind="agent_lifecycle_pool_latest_heartbeat">--</strong></div>
-              <div class="full"><span>最新超时</span><strong data-bind="agent_lifecycle_pool_latest_timeout">--</strong></div>
-              <div class="full"><span>子进程下一步</span><strong data-bind="agent_lifecycle_pool_next_action">--</strong></div>
-              <div class="full"><span>下个目标</span><strong data-bind="global_goals_next">--</strong></div>
-              <div class="full"><span>调度证据</span><strong data-bind="scheduler_dispatch_artifact">--</strong></div>
-              <div class="full"><span>下一步动作</span><strong data-bind="scheduler_next_action">--</strong></div>
-              <div class="full"><span>续跑输入</span><strong data-bind="scheduler_continuation_path">--</strong></div>
-              <div class="full"><span>最新轮次</span><strong data-bind="scheduler_loop_latest">--</strong></div>
-              <div class="full"><span>轮次动作</span><strong data-bind="scheduler_loop_action">--</strong></div>
-              <div class="full"><span>停止动作</span><strong data-bind="next_action_terminal_action">--</strong></div>
-              <div class="full"><span>停止原因</span><strong data-bind="next_action_terminal_reason">--</strong></div>
-              <div class="full"><span>策略原因</span><strong data-bind="scheduler_policy_reason">--</strong></div>
+              <div><span>动作</span><strong data-bind="next_action_readout_action">等待推荐动作</strong></div>
+              <div><span>动作状态</span><strong data-bind="next_action_readout_status">等待动作状态</strong></div>
+              <div><span>停止状态</span><strong data-bind="next_action_terminal_status">等待停止判断</strong></div>
+              <div class="full"><span>最新心跳</span><strong data-bind="agent_lifecycle_pool_latest_heartbeat">等待心跳证据</strong></div>
+              <div class="full"><span>最新超时</span><strong data-bind="agent_lifecycle_pool_latest_timeout">无超时证据时继续推荐任务</strong></div>
+              <div class="full"><span>子进程下一步</span><strong data-bind="agent_lifecycle_pool_next_action">没有清理任务时继续推荐任务</strong></div>
+              <div class="full"><span>下个目标</span><strong data-bind="global_goals_next">没有目标阻塞时继续当前任务</strong></div>
+              <div class="full"><span>调度证据</span><strong data-bind="scheduler_dispatch_artifact">等待调度证据</strong></div>
+              <div class="full"><span>下一步动作</span><strong data-bind="scheduler_next_action">等待下一步动作</strong></div>
+              <div class="full"><span>续跑输入</span><strong data-bind="scheduler_continuation_path">等待续跑输入</strong></div>
+              <div class="full"><span>最新轮次</span><strong data-bind="scheduler_loop_latest">等待轮次证据</strong></div>
+              <div class="full"><span>轮次动作</span><strong data-bind="scheduler_loop_action">等待轮次动作</strong></div>
+              <div class="full"><span>停止动作</span><strong data-bind="next_action_terminal_action">没有停止动作时继续推荐任务</strong></div>
+              <div class="full"><span>停止原因</span><strong data-bind="next_action_terminal_reason">没有停止原因时继续推荐任务</strong></div>
+              <div class="full"><span>策略原因</span><strong data-bind="scheduler_policy_reason">没有策略问题时可继续推荐动作</strong></div>
             </div>
             <div class="primary-actions">
               <button type="button" data-scheduler-dispatch="dry-run">调度预检</button>
@@ -258,48 +285,54 @@
           <section class="panel" id="models" data-section="models" tabindex="-1">
             <div class="section-title">
               <h2>模型路由</h2>
-              <span data-bind="model_summary">--</span>
+              <span data-bind="model_summary">等待模型路线</span>
             </div>
+            <p class="panel-copy" data-bind="operator_review_summary">审查准备：模型和通道等待状态上报。下一步：查看推荐任务。</p>
             <div class="stack" data-list="model_roles"></div>
           </section>
 
           <section class="panel" id="review" data-section="review" tabindex="-1">
             <div class="section-title">
               <h2>审查门禁</h2>
-              <span data-bind="reviewer_signal">--</span>
+              <span data-bind="reviewer_signal">等待审查信号</span>
             </div>
+            <p class="panel-copy" data-bind="operator_review_summary">审查准备：模型和通道等待状态上报。下一步：查看推荐任务。</p>
             <div class="review-grid">
-              <div><span>最高级别</span><strong data-bind="reviewer_severity">--</strong></div>
+              <div><span>最高级别</span><strong data-bind="reviewer_severity">等待审查级别</strong></div>
               <div><span>失败数</span><strong data-bind="reviewer_failed">0</strong></div>
               <div><span>回退</span><strong data-bind="reviewer_rollback">0</strong></div>
               <div><span>人工</span><strong data-bind="reviewer_human">0</strong></div>
             </div>
           </section>
 
-          <section class="panel" id="risks" data-section="overview models risks" tabindex="-1">
+          <section class="panel" id="risks" data-section="overview risks" tabindex="-1">
             <div class="section-title">
               <h2>审查通道</h2>
-              <span data-bind="provider_health_status">--</span>
+              <span>模型准备</span>
             </div>
-            <div class="provider-grid">
-              <div><span>健康</span><strong data-bind="provider_health_value">--</strong></div>
-              <div><span>下一步</span><strong data-bind="provider_next_action">--</strong></div>
-              <div class="full"><span>重试策略</span><strong data-bind="provider_retry_strategy">--</strong></div>
-              <div><span>分片</span><strong data-bind="scope_split_shards">0</strong></div>
-              <div><span>待处理</span><strong data-bind="scope_split_pending">0</strong></div>
-              <div class="full"><span>下个分片</span><strong data-bind="scope_split_next">--</strong></div>
-              <div><span>审查</span><strong data-bind="shard_review_status">--</strong></div>
-              <div><span>完成</span><strong data-bind="shard_review_completed">0</strong></div>
-              <div><span>下个分片</span><strong data-bind="shard_review_next">--</strong></div>
-              <div><span>执行器</span><strong data-bind="shard_review_executor">--</strong></div>
-              <div><span>预算使用</span><strong data-bind="shard_review_budget">0</strong></div>
-              <div class="full"><span>执行配置</span><strong data-bind="shard_review_profile">--</strong></div>
-              <div class="full"><span>分片发现</span><strong data-bind="shard_review_failed">0</strong></div>
-            </div>
+            <p class="panel-copy" data-bind="operator_review_summary">审查准备：模型和通道等待状态上报。下一步：查看推荐任务。</p>
             <div class="provider-actions">
               <button type="button" data-provider-health="pass">连通正常</button>
               <button type="button" data-provider-health="timeout">连通超时</button>
             </div>
+            <details class="diagnostic-drawer">
+              <summary>通道诊断详情</summary>
+              <div class="provider-grid">
+                <div><span>健康</span><strong data-bind="provider_health_value">等待通道证据</strong></div>
+                <div><span>下一步</span><strong data-bind="provider_next_action">没有通道阻塞时继续推荐任务</strong></div>
+                <div class="full"><span>重试策略</span><strong data-bind="provider_retry_strategy">没有重试策略时保持当前路线</strong></div>
+                <div><span>分片</span><strong data-bind="scope_split_shards">0</strong></div>
+                <div><span>待处理</span><strong data-bind="scope_split_pending">0</strong></div>
+                <div class="full"><span>下个分片</span><strong data-bind="scope_split_next">没有待处理分片时继续推荐任务</strong></div>
+                <div><span>审查</span><strong data-bind="shard_review_status">等待审查状态</strong></div>
+                <div><span>完成</span><strong data-bind="shard_review_completed">0</strong></div>
+                <div><span>下个分片</span><strong data-bind="shard_review_next">没有下个分片时继续推荐任务</strong></div>
+                <div><span>执行器</span><strong data-bind="shard_review_executor">等待执行器证据</strong></div>
+                <div><span>预算使用</span><strong data-bind="shard_review_budget">0</strong></div>
+                <div class="full"><span>执行配置</span><strong data-bind="shard_review_profile">等待执行配置证据</strong></div>
+                <div class="full"><span>分片发现</span><strong data-bind="shard_review_failed">0</strong></div>
+              </div>
+            </details>
           </section>
         </section>
       </main>
