@@ -5,6 +5,7 @@ import { createArtifactLedger } from "../src/workflow/artifact-ledger.js";
 import { createReviewerGateRequest, createReviewerTimeoutFinding } from "../src/workflow/llm-reviewer-gate.js";
 import { buildModelCollaborationPlan } from "../src/workflow/model-router.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
+import { FRONTEND_ACCEPTANCE_RUN_VERSION } from "../src/workflow/frontend-acceptance.js";
 import {
   createMobileWorkbenchProjection,
   createWorkbenchProjection,
@@ -1125,6 +1126,85 @@ test("workbench projection exposes browser event artifact evidence", () => {
   assert.equal(projection.one_screen.counters.browser_event_scenarios, 2);
   assert.equal(mobile.workbench_browser_events.partial_shard_ready, true);
   assert.equal(mobile.workbench_browser_events.scenario_count, 2);
+});
+
+test("workbench projection exposes failed frontend acceptance repair as next action", () => {
+  const input = baseInput();
+  const artifact = {
+    id: "frontend-acceptance-current-workbench",
+    type: "evaluation",
+    status: "fail",
+    uri: "codex://frontend-acceptance/run-projection/cycle-20260521/frontend-acceptance-current-workbench",
+    producer: "frontend-acceptance-child-worker",
+    created_at: "2026-05-24T00:00:00.000Z",
+    metadata: {
+      version: FRONTEND_ACCEPTANCE_RUN_VERSION,
+      status: "fail",
+      created_at: "2026-05-24T00:00:00.000Z",
+      viewport_results: [
+        { viewport: "desktop" },
+        { viewport: "desktop_narrow" },
+        { viewport: "mobile" }
+      ],
+      navigation_results: [],
+      layout_results: [],
+      copy_results: [],
+      control_results: [],
+      mobile_results: [],
+      findings: [
+        {
+          code: "frontend_dead_navigation",
+          severity: "p1",
+          status: "fail",
+          message: "Navigation tabs do not change active state"
+        }
+      ],
+      blocking_count: 1,
+      blocking_findings: [
+        {
+          code: "frontend_dead_navigation",
+          severity: "p1",
+          status: "fail",
+          message: "Navigation tabs do not change active state"
+        }
+      ]
+    }
+  };
+  input.manifest = {
+    ...input.manifest,
+    events: [
+      ...input.manifest.events,
+      {
+        id: "event-frontend-acceptance-current-workbench",
+        type: "frontend_acceptance_run",
+        status: "fail",
+        artifact_id: artifact.id,
+        created_at: artifact.created_at,
+        metadata: artifact.metadata
+      }
+    ],
+    artifacts: [...input.manifest.artifacts, artifact]
+  };
+  input.artifact_ledger = {
+    ...input.artifact_ledger,
+    artifacts: [...input.artifact_ledger.artifacts, artifact]
+  };
+
+  const projection = createWorkbenchProjection(input);
+  const mobile = createMobileWorkbenchProjection(input);
+
+  assert.equal(projection.frontend_acceptance.status, "fail");
+  assert.equal(projection.frontend_acceptance.repair_required, true);
+  assert.equal(projection.frontend_acceptance.repair_work_package.action, "repair_frontend_acceptance");
+  assert.equal(projection.operations_timeline.latest_driver.type, "frontend_acceptance_run");
+  assert.equal(projection.next_action_readout.status, "ready");
+  assert.equal(projection.next_action_readout.action, "repair_frontend_acceptance");
+  assert.equal(projection.next_action_readout.source_type, "frontend_acceptance_run");
+  assert.equal(projection.one_screen.next_actions[0].id, "frontend-acceptance-repair-frontend-acceptance-current-workbench");
+  assert.equal(projection.one_screen.counters.frontend_acceptance_blockers, 1);
+  assert.equal(mobile.frontend_acceptance.repair_required, true);
+  assert.equal(mobile.frontend_acceptance.repair_work_package_id, "frontend-acceptance-repair-frontend-acceptance-current-workbench");
+  assert.equal(mobile.next_action_readout.action, "repair_frontend_acceptance");
 });
 
 test("workbench projection exposes replay validation blockers as resume health", () => {

@@ -3,10 +3,84 @@ import { createProjectionSource } from "./projection-source.js";
 const source = createProjectionSource();
 let currentProjection = null;
 let currentProjectionId = null;
+const RAW_TOKEN_COPY = new Map([
+  ["rerun", "需重跑"],
+  ["not_configured", "未配置"],
+  ["no_next_action", "暂无下一步"],
+  ["inspect_context_work_packages", "检查任务包"],
+  ["prepare_project_status_continuation", "准备续跑状态"],
+  ["run_context_work_packages", "运行任务包"],
+  ["projected_next_action", "按推荐动作推进"],
+  ["approved_mock_non_dry_run", "已批准模拟执行"],
+  ["approved_bounded_real_reviewer", "受控真实审查"],
+  ["scheduler_dispatch", "调度执行"],
+  ["frontend_acceptance", "前端验收"],
+  ["headless_projected_action_progress", "后台推进进度"],
+  ["operator_observable", "操作员可见"],
+  ["automation_driver", "自动化执行"],
+  ["context_pack_cycle_materialized", "任务上下文已生成"],
+  ["project_status_continuation", "项目状态续跑"],
+  ["reviewer_shard_aggregate", "审查分片汇总"],
+  ["scheduler_dispatch_chain", "调度链路"],
+  ["current-session", "当前会话"],
+  ["current_session", "当前会话"]
+]);
 
 function text(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
+}
+
+function humanizeToken(token) {
+  const value = text(token);
+  return RAW_TOKEN_COPY.get(value) || value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function displayText(value, fallback = "--") {
+  const raw = text(value, fallback);
+  if (raw === fallback) return fallback;
+  let result = raw;
+  const pairs = [...RAW_TOKEN_COPY.entries()].sort((a, b) => b[0].length - a[0].length);
+  for (const [token, label] of pairs) {
+    result = result.replaceAll(token, label);
+  }
+  return result;
+}
+
+function statusText(value) {
+  const raw = text(value);
+  return RAW_TOKEN_COPY.get(raw) || displayText(raw);
+}
+
+function compactCopy(value, limit = 140, fallback = "--") {
+  const normalized = displayText(value, fallback)
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized || normalized === fallback) return fallback;
+  if (normalized.length <= limit) return normalized;
+  return `${normalized.slice(0, Math.max(0, limit - 1)).trim()}…`;
+}
+
+function actionLabel(projection) {
+  return projection.next_action_readout?.action
+    || projection.one_screen?.recommended_action
+    || projection.decision
+    || projection.status;
+}
+
+function headlineText(projection) {
+  const headline = projection.one_screen?.headline || projection.headline;
+  if (headline && headline.length <= 80) return compactCopy(headline, 80);
+
+  const status = statusText(projection.status);
+  const decision = statusText(projection.decision);
+  const action = statusText(actionLabel(projection));
+  if (status !== "--" && action !== "--") return compactCopy(`${status} · ${action}`, 80);
+  if (decision !== "--") return compactCopy(decision, 80);
+  return compactCopy(headline || projection.goal, 80, "等待 Projection");
 }
 
 function qs(selector) {
@@ -17,14 +91,68 @@ function qsa(selector) {
   return Array.from(document.querySelectorAll(selector));
 }
 
-function setText(name, value) {
-  qsa(`[data-bind="${name}"]`).forEach((node) => {
-    node.textContent = text(value);
+function bindCommandActivation(node, handler) {
+  node.addEventListener("click", handler);
+  if (node.tagName === "BUTTON") return;
+  node.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handler();
   });
 }
 
+function setText(name, value) {
+  qsa(`[data-bind="${name}"]`).forEach((node) => {
+    node.textContent = displayText(value);
+  });
+}
+
+function setProjectionMode(projectionId = currentProjectionId) {
+  document.body.dataset.projectionMode = projectionId === "current-session"
+    ? "interactive-fixture"
+    : "release-readout";
+}
+
 function firstReason(projection) {
-  return projection.reasons?.[0] || `${projection.decision} via validated projection`;
+  const nextAction = statusText(actionLabel(projection));
+  const decision = statusText(projection.decision);
+  const reason = projection.one_screen?.summary || projection.summary || projection.reasons?.[0];
+  if (reason) return compactCopy(reason, 150);
+  if (nextAction !== "--") return `下一步：${compactCopy(nextAction, 90)}。`;
+  return `${decision}，来自已校验投影`;
+}
+
+function bindTabs() {
+  const tabs = qsa("[data-workbench-tab]");
+  const grid = qs(".content-grid");
+  if (tabs.length === 0 || !grid) return;
+
+  const showSection = (section) => {
+    grid.scrollTop = 0;
+    grid.dataset.activeSection = section;
+    for (const tab of tabs) {
+      const active = tab.dataset.workbenchTab === section;
+      tab.classList.toggle("active", active);
+      if (active) {
+        tab.setAttribute("aria-current", "page");
+      } else {
+        tab.removeAttribute("aria-current");
+      }
+    }
+    qsa("[data-section]").forEach((panel) => {
+      const sections = text(panel.dataset.section, "").split(/\s+/).filter(Boolean);
+      panel.classList.toggle("section-visible", sections.includes(section));
+    });
+    qsa(`[data-section~="${section}"]`)[0]?.focus?.({ preventScroll: true });
+  };
+
+  for (const tab of tabs) {
+    tab.addEventListener("click", (event) => {
+      event.preventDefault();
+      showSection(tab.dataset.workbenchTab || "overview");
+    });
+  }
+  showSection("overview");
 }
 
 function renderNextActions(projection) {
@@ -37,7 +165,7 @@ function renderNextActions(projection) {
       ...rows.map((action, index) => {
         const item = document.createElement("article");
         item.className = list.classList.contains("mobile-list") ? "mobile-action" : "timeline-item";
-        item.innerHTML = `<strong>${index + 1}. ${text(action.title || action.id)}</strong><span>${text(action.action)}</span>`;
+        item.innerHTML = `<strong>${index + 1}. ${displayText(action.title || action.id)}</strong><span>${statusText(action.action)}</span>`;
         return item;
       })
     );
@@ -56,7 +184,7 @@ function renderOperationsTimeline(projection) {
       ...rows.map((item) => {
         const row = document.createElement("article");
         row.className = list.classList.contains("mobile-list") ? "mobile-action" : "timeline-item";
-        row.innerHTML = `<strong>${text(item.group)} · ${text(item.next_action_role)}</strong><span>${text(item.type)} / ${text(item.summary)}</span>`;
+        row.innerHTML = `<strong>${displayText(item.group)} · ${displayText(item.next_action_role)}</strong><span>${displayText(item.type)} / ${displayText(item.summary)}</span>`;
         return row;
       })
     );
@@ -76,7 +204,7 @@ function renderModelRoles(projection) {
     ...rows.map((role) => {
       const item = document.createElement("article");
       item.className = "role-item";
-      item.innerHTML = `<strong>${text(role.model)}</strong><span>${role.count} role(s)</span>`;
+      item.innerHTML = `<strong>${displayText(role.model)}</strong><span>${role.count} role(s)</span>`;
       return item;
     })
   );
@@ -102,13 +230,13 @@ function renderProjection(projection) {
 
   setText("run_id", projection.run_id);
   setText("cycle_id", projection.cycle_id);
-  setText("status", projection.status);
-  setText("status_short", String(projection.status || "--").slice(0, 8));
-  setText("decision", projection.decision);
-  setText("headline", projection.one_screen?.headline || projection.headline || projection.goal);
+  setText("status", statusText(projection.status));
+  setText("status_short", statusText(projection.status));
+  setText("decision", statusText(projection.decision));
+  setText("headline", headlineText(projection));
   setText("reason", firstReason(projection));
   setText("selected_model", model.selected_model);
-  setText("model_summary", `${text(model.preferred_model)} -> ${text(model.selected_model)}`);
+  setText("model_summary", `${displayText(model.preferred_model)} -> ${displayText(model.selected_model)}`);
   setText("reviewer_status", reviewer.status);
   setText("reviewer_signal", reviewer.recommended_decision_signal);
   setText("reviewer_severity", reviewer.max_severity);
@@ -157,7 +285,7 @@ function renderProjection(projection) {
   setText("scheduler_dispatch_phase", schedulerDispatch.phase);
   setText("scheduler_dispatch_steps", schedulerDispatch.step_count ?? 0);
   setText("scheduler_dispatch_failed", schedulerDispatch.failed_step_count ?? 0);
-  setText("scheduler_dispatch_dry_run", schedulerDispatch.dry_run === true ? "yes" : "no");
+  setText("scheduler_dispatch_dry_run", schedulerDispatch.dry_run === true ? "是" : "否");
   setText("scheduler_dispatch_artifact", schedulerDispatch.artifact_id);
   setText("scheduler_policy_status", schedulerDispatch.policy_status);
   setText("scheduler_policy_mode", schedulerDispatch.policy_execution_mode);
@@ -167,7 +295,7 @@ function renderProjection(projection) {
   setText("scheduler_next_packages", schedulerDispatch.next_work_package_count ?? 0);
   setText("scheduler_next_action", schedulerDispatch.next_continuation_action);
   setText("scheduler_continuation_status", schedulerContinuation.continuation_status || schedulerContinuation.status);
-  setText("scheduler_continuation_ready", schedulerContinuation.ready === true ? "ready" : "not ready");
+  setText("scheduler_continuation_ready", schedulerContinuation.ready === true ? "就绪" : "未就绪");
   setText("scheduler_continuation_enqueue", schedulerContinuation.enqueue_status);
   setText("scheduler_continuation_path", schedulerContinuation.continuation_input_path);
   setText("scheduler_loop_status", schedulerLoop.status);
@@ -224,19 +352,21 @@ async function renderHistorySelect() {
   try {
     const history = await source.loadHistory();
     currentProjectionId = currentProjectionId || history.latest || null;
+    setProjectionMode();
     for (const select of selects) {
       select.replaceChildren(
         ...history.items.map((item) => {
           const option = document.createElement("option");
           option.value = projectionUrlForHistoryItem(item);
           option.dataset.projectionId = item.id || "";
-          option.textContent = `${item.label} · ${item.status}`;
+          option.textContent = `${displayText(item.label)} · ${statusText(item.status)}`;
           option.selected = item.id === history.latest;
           return option;
         })
       );
       select.addEventListener("change", async () => {
         currentProjectionId = select.selectedOptions[0]?.dataset.projectionId || null;
+        setProjectionMode();
         await main(select.value, currentProjectionId);
       });
     }
@@ -252,8 +382,10 @@ async function main(url = null, projectionId = null) {
     const projection = url ? await createProjectionSource({ url }).load() : await source.load();
     currentProjection = projection;
     if (projectionId) currentProjectionId = projectionId;
+    setProjectionMode();
     renderProjection(projection);
   } catch (error) {
+    setProjectionMode();
     renderProjection({
       status: "human_intervention",
       decision: "projection_load_failed",
@@ -332,7 +464,7 @@ qsa("[data-provider-health]").forEach((button) => {
 });
 
 qsa("[data-scheduler-dispatch]").forEach((button) => {
-  button.addEventListener("click", async () => {
+  bindCommandActivation(button, async () => {
     const dispatchMode = button.dataset.schedulerDispatch;
     button.dataset.eventState = "pending";
     button.textContent = "调度中";
@@ -367,7 +499,7 @@ qsa("[data-scheduler-dispatch]").forEach((button) => {
 });
 
 qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
-  button.addEventListener("click", async () => {
+  bindCommandActivation(button, async () => {
     const loopMode = button.dataset.autonomousSchedulerLoop;
     const projectedMock = loopMode === "projected-mock";
     const projectedReal = loopMode === "projected-real";
@@ -406,7 +538,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
 });
 
 qsa("[data-workbench-next-action]").forEach((button) => {
-  button.addEventListener("click", async () => {
+  bindCommandActivation(button, async () => {
     const action = currentProjection?.next_action_readout?.action || currentProjection?.one_screen?.recommended_action;
     button.dataset.eventState = "pending";
     button.textContent = "推荐动作执行中";
@@ -440,7 +572,7 @@ qsa("[data-workbench-next-action]").forEach((button) => {
 });
 
 qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
-  button.addEventListener("click", async () => {
+  bindCommandActivation(button, async () => {
     button.dataset.eventState = "pending";
     button.textContent = "Resume 运行中";
 
@@ -470,5 +602,5 @@ qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
   });
 });
 
-renderHistorySelect();
-main();
+bindTabs();
+renderHistorySelect().then(() => main());

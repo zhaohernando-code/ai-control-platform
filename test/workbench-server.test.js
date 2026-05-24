@@ -2854,6 +2854,31 @@ test("workbench server redirects project mount roots to the desktop shell", asyn
       response.headers.location,
       "/projects/ai-control-platform/apps/workbench/desktop.html?projection=/api/workbench/projection"
     );
+
+    const shell = await request(new URL(response.headers.location, baseUrl));
+    assert.equal(shell.status, 200);
+    assert.match(shell.text, /data-view="desktop"/);
+    assert.match(shell.headers["content-type"], /text\/html/);
+
+    const rootAsset = await request(`${baseUrl}/apps/workbench/workbench.js`);
+    const mountedAsset = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/workbench.js`);
+    assert.equal(mountedAsset.status, 200);
+    assert.equal(mountedAsset.text, rootAsset.text);
+
+    const mountedFavicon = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/favicon.svg`);
+    assert.equal(mountedFavicon.status, 200);
+    assert.equal(mountedFavicon.headers["content-type"], "image/svg+xml");
+  });
+});
+
+test("workbench server exposes mounted workbench APIs", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/projects/ai-control-platform/api/workbench/projection?id=current-session`);
+    const projection = response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(projection.projection_version, "workbench.v1");
+    assert.equal(projection.run_id, "run-20260521-platform-self-trial");
   });
 });
 

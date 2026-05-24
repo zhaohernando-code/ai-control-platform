@@ -409,6 +409,13 @@
       "message": "Main process direct implementation of platform work bypasses host-boundary, owned-files, child self-evaluation, process-hardening, durable state, and workbench continuation gates."
     },
     {
+      "id": "dirty-main-worktree-implementation-drift",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "Bounded child-worker implementation diffs must not accumulate on a dirty main branch; main must remain a clean integration target and implementation work must run on an isolated branch or worktree."
+    },
+    {
       "id": "agent-lifecycle-pool-cleanup-gap",
       "status": "fail",
       "category": "continuation_gap",
@@ -484,6 +491,13 @@
       "category": "process_gap",
       "severity": "p1",
       "message": "Timed-out or unstructured headless child command output must become structured acceptance failure and process-hardening evidence, not stdout-only state or a silently completed work package."
+    },
+    {
+      "id": "codex-proxy-child-output-path-protocol-gap",
+      "status": "fail",
+      "category": "process_gap",
+      "severity": "p1",
+      "message": "Configured codex_proxy child workers need an explicit output_path protocol so timed-out or stdout-silent runs still produce parseable structured JSON or fail as durable acceptance evidence."
     },
     {
       "id": "headless-snapshot-id-length-drift",
@@ -750,6 +764,104 @@
       "category": "continuation_gap",
       "severity": "p1",
       "message": "Workbench projection must not expose stale inspect_context_work_packages as a remaining next action after global goals and context work are complete."
+    },
+    {
+      "id": "frontend-acceptance-missing",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend changes must not pass closeout without an independent frontend_acceptance_child_worker artifact."
+    },
+    {
+      "id": "frontend-live-latest-fixture-only-acceptance",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend acceptance and closeout must not accept current-session fixture evidence as release evidence when the served workbench default renders projection-history latest."
+    },
+    {
+      "id": "frontend-raw-projection-copy",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Workbench UI must not expose raw backend/projection state tokens as default user-facing copy."
+    },
+    {
+      "id": "frontend-dead-navigation",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Workbench navigation tabs must reveal distinct visible content, view focus, or scroll position; active-state-only changes must block frontend acceptance."
+    },
+    {
+      "id": "frontend-danger-controls-unscoped",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Dangerous, mock, real execution, loop, and resume controls must be risk-scoped instead of exposed as ordinary buttons."
+    },
+    {
+      "id": "frontend-mobile-telemetry-dump",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Mobile workbench must be task-oriented and must not be a compressed backend telemetry dump."
+    },
+    {
+      "id": "frontend-continuation-duplicate-repair-package",
+      "status": "fail",
+      "category": "continuation_gap",
+      "severity": "p1",
+      "message": "Autonomous continuation must not generate duplicate frontend repair package ids from both PROJECT_STATUS.next_work_packages and frontend_acceptance_run evidence, and selected repair package gates must propagate into the Context Pack seed."
+    },
+    {
+      "id": "closeout-browser-event-strategy-copy-drift",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Closeout browser-event validation must not compare frontend-translated strategy copy to raw internal execution strategy tokens, while lifecycle cleanup and scheduler progress semantics must remain machine-checked."
+    },
+    {
+      "id": "frontend-semantic-command-controls-uncounted",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend acceptance must count visible role=button and data-action command controls, not only native button elements, so scheduler/provider/next-action chip pileups cannot pass closeout."
+    },
+    {
+      "id": "frontend-browser-console-errors-unblocked",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend acceptance must record browser console, page, and HTTP response errors per viewport and block non-allowed errors before release closeout."
+    },
+    {
+      "id": "frontend-mounted-favicon-fallback",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Live mounted workbench pages must declare a mounted-safe favicon and frontend acceptance must exercise the project-mounted route so fallback /favicon.ico 404s cannot pass."
+    },
+    {
+      "id": "frontend-mounted-svg-favicon-mime-drift",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Mounted SVG favicon responses must be served as image/svg+xml; HTTP 200 with application/octet-stream is not release-ready frontend evidence."
+    },
+    {
+      "id": "browser-events-scenario-project-status-contamination",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Browser-event scenarios that verify isolated frontend behavior must not inherit repository PROJECT_STATUS blockers such as public auth gates; scenario fixtures need explicit project status inputs so canonical-route blockers do not create false UI failures."
+    },
+    {
+      "id": "frontend-nav-active-only-false-success",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend acceptance must not pass navigation when non-overview tabs only change active class while visible content, scroll position, and view focus remain unchanged."
     }
   ],
   "hardening_items": [
@@ -1394,6 +1506,14 @@
       "status": "completed"
     },
     {
+      "finding_id": "dirty-main-worktree-implementation-drift",
+      "invariant": "The main branch must stay clean while bounded implementation work is in progress; closeout must fail on dirty main and allow dirty work only on an isolated branch or worktree.",
+      "enforcement_target": "PROCESS.md; src/workflow/git-worktree-isolation.js; tools/check-git-worktree-isolation.mjs; tools/check-closeout.mjs; package.json; test/fixed-development-mode.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "git worktree isolation blocks dirty main but allows isolated branch work",
+      "verification": "node --test test/fixed-development-mode.test.js; npm run check:git-worktree-isolation; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
       "finding_id": "agent-lifecycle-pool-cleanup-gap",
       "invariant": "Every spawned child process must have durable WorkerSpawned, WorkerHeartbeat, WorkerTimeout, WorkerCompleted, WorkerEvaluation, WorkerClosed, and PoolIterationClosed facts; silent worker timeout must be represented as a durable pool fact, timed-out pools must schedule a smaller retry_agent_worker slice referencing timed_out_workers before whole-pool cleanup, retry_agent_worker must have an executable context work package route that records retry WorkerSpawned/WorkerHeartbeat facts without contaminating ordinary work packages, heartbeat/timeout readouts must be visible in PC/mobile workbench evidence, and open, unevaluated, or unclosed pools must still schedule cleanup_agent_lifecycle_pool instead of letting the main process advance silently.",
       "enforcement_target": "src/workflow/agent-lifecycle-pool.js; src/workflow/autonomous-continuation.js; src/workflow/context-pack.js; src/workflow/context-work-package-runner.js; src/workflow/workbench-projection.js; src/workflow/workbench-projection-schema.js; apps/workbench/workbench.js; apps/workbench/desktop.html; apps/workbench/mobile.html; tools/check-workbench-browser-events.mjs; tools/check-closeout.mjs; docs/examples/process-hardening-current.json",
@@ -1487,6 +1607,14 @@
       "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "headless CLI orchestrator hardens timed-out child command output before retry; headless child worker output parser accepts fenced json and rejects prose",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
+      "status": "completed"
+    },
+    {
+      "finding_id": "codex-proxy-child-output-path-protocol-gap",
+      "invariant": "When child_worker_output_path is configured, headless child-worker prompts must explicitly require the final structured JSON to be written to that path and mirrored to stdout; command templates must substitute {output_path}; and file output must be parsed before stdout so proxy timeout/no structured stdout gaps cannot pass silently.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless CLI orchestrator passes configured output path into child prompt and parses file output",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
       "status": "completed"
     },
     {
@@ -1831,6 +1959,134 @@
       "enforcement_target": "src/workflow/workbench-projection.js; test/workbench-projection.test.js; tools/check-workbench-browser-events.mjs; docs/examples/process-hardening-current.json",
       "regression_test": "workbench projection reports complete when goals and context work are exhausted",
       "verification": "node --test test/workbench-projection.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-acceptance-missing",
+      "invariant": "Every frontend closeout must require frontend-acceptance-run.v1 from an independent frontend_acceptance_child_worker before release or completion can pass.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; tools/check-closeout.mjs; src/workflow/frontend-acceptance.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
+      "regression_test": "frontend acceptance artifact recording and closeout wiring tests",
+      "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail; npm run check:process-hardening",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-live-latest-fixture-only-acceptance",
+      "invariant": "The default release frontend acceptance path and closeout must validate projection-history latest evidence, while fixture/current-session mode is explicit and cannot satisfy release closeout.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; tools/check-closeout.mjs; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance CLI defaults to release latest projection mode; frontend acceptance artifact identifies latest projection evidence; closeout rejects fixture-only frontend acceptance artifacts",
+      "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-raw-projection-copy",
+      "invariant": "Default workbench UI must translate backend/projection state into operator language; raw protocol tokens are allowed only inside explicit diagnostics surfaces.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
+      "regression_test": "frontend acceptance detects raw projection copy",
+      "verification": "npm run check:workbench:frontend-acceptance -- --allow-fail; node --test test/frontend-acceptance.test.js",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-dead-navigation",
+      "invariant": "Workbench navigation tabs must be real interactions that reveal distinct visible content, view focus, or scroll position; click audit failure blocks frontend acceptance.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
+      "regression_test": "frontend acceptance detects dead navigation tabs",
+      "verification": "npm run check:workbench:frontend-acceptance -- --allow-fail; node --test test/frontend-acceptance.test.js",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-danger-controls-unscoped",
+      "invariant": "Dangerous scheduler/mock/real loop controls must have explicit risk scoping; ordinary button exposure blocks frontend acceptance.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
+      "regression_test": "frontend acceptance detects unscoped dangerous controls",
+      "verification": "npm run check:workbench:frontend-acceptance -- --allow-fail; node --test test/frontend-acceptance.test.js",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-mobile-telemetry-dump",
+      "invariant": "Mobile workbench must prioritize operator tasks and block telemetry-dump layouts.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
+      "regression_test": "frontend acceptance detects mobile telemetry dump",
+      "verification": "npm run check:workbench:frontend-acceptance -- --allow-fail; node --test test/frontend-acceptance.test.js",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-continuation-duplicate-repair-package",
+      "invariant": "Autonomous continuation must merge duplicate work package ids across PROJECT_STATUS, run evaluation, workflow frontend acceptance facts, and global-goal fallback before Context Pack seed generation, while preserving repair-specific acceptance gates from selected packages.",
+      "enforcement_target": "src/workflow/autonomous-continuation.js; test/autonomous-continuation.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend repair continuation deduplicates package ids and preserves repair gates",
+      "verification": "node --test test/autonomous-continuation.test.js test/frontend-acceptance.test.js; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-browser-events-copy-alignment",
+      "invariant": "Browser event gates must assert the same user-facing copy rendered by the workbench frontend when frontend acceptance prohibits raw projection/backend tokens; protocol/status semantics may remain checked separately.",
+      "enforcement_target": "tools/check-workbench-browser-events.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "scheduler dispatch browser scenarios assert translated non-dry-run and continuation readiness copy while retaining status and policy checks",
+      "verification": "npm run check:workbench:frontend-acceptance; npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-browser-event-strategy-copy-drift",
+      "invariant": "Closeout must validate browser-event scheduler strategy against the frontend-translated operator label, and separately assert projected action, scheduler pass status, zero open/unevaluated/unclosed lifecycle workers, and advanced next_action_readout.",
+      "enforcement_target": "tools/check-closeout.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "check-closeout validates agent_lifecycle_pool_cleanup_loop_click with translated scheduler_loop_strategy while retaining lifecycle cleanup and projected action semantics",
+      "verification": "npm run check:workbench:browser-events; npm run check:closeout; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-semantic-command-controls-uncounted",
+      "invariant": "Frontend acceptance must treat visible native buttons, role=button elements, and visible scheduler/provider/next-action data-attribute elements as command controls for count and danger-control checks.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance counts and blocks semantic command controls",
+      "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-browser-console-errors-unblocked",
+      "invariant": "Frontend acceptance must collect console errors, page errors, and HTTP response errors per viewport, include them in frontend-acceptance-run.v1 artifacts, and fail on every non-allowed browser error.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance records and blocks browser console or page errors",
+      "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-mounted-favicon-fallback",
+      "invariant": "Frontend acceptance must load the project-mounted workbench route and require an explicit mounted-safe workbench favicon link so browsers never fall back to root /favicon.ico unnoticed.",
+      "enforcement_target": "apps/workbench/desktop.html; apps/workbench/mobile.html; apps/workbench/favicon.svg; tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/frontend-acceptance.test.js; test/workbench-shell.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance requires mounted route and explicit workbench favicon readiness; frontend acceptance blocks root favicon fallback links; workbench shell has separate desktop and mobile entries",
+      "verification": "node --test test/frontend-acceptance.test.js test/workbench-shell.test.js; npm run check:workbench:frontend-acceptance; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-mounted-svg-favicon-mime-drift",
+      "invariant": "Mounted workbench SVG favicon resources must be served and accepted only with image/svg+xml MIME; HTTP 200 with octet-stream is a frontend release blocker.",
+      "enforcement_target": "tools/workbench-server.mjs; tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/workbench-server.test.js; test/frontend-acceptance.test.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server redirects project mount roots to the desktop shell; frontend acceptance requires mounted SVG favicon MIME evidence",
+      "verification": "node --test test/frontend-acceptance.test.js test/workbench-server.test.js; npm run check:workbench:frontend-acceptance; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "browser-events-scenario-project-status-contamination",
+      "invariant": "Browser-event scenarios that exercise isolated lifecycle cleanup or frontend behavior must provide scenario-local PROJECT_STATUS fixtures; repository-level blockers such as public canonical auth gates must remain durable but cannot contaminate unrelated local UI behavior gates.",
+      "enforcement_target": "tools/check-workbench-browser-events.mjs; docs/examples/process-hardening-current.json",
+      "regression_test": "agent_lifecycle_pool_cleanup_loop_click browser scenario passes while PROJECT_STATUS records public-project-route-auth-gate",
+      "verification": "npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "workbench-live-mount-redirect-target-unserved",
+      "invariant": "Workbench live project mounts must serve the redirected desktop shell, mounted static assets, and mounted /api/workbench/* routes from the same platform repo files/APIs as root /apps/workbench/* and /api/workbench/* before publish can be treated as real.",
+      "enforcement_target": "tools/workbench-server.mjs; test/workbench-server.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "workbench server redirects project mount roots to the desktop shell; workbench server exposes mounted workbench APIs",
+      "verification": "node --test test/workbench-server.test.js; npm run check:workbench:frontend-acceptance; npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-nav-active-only-false-success",
+      "invariant": "Frontend acceptance must require non-overview navigation tabs to reveal distinct visible content, scroll position, or view focus; active-class-only changes are false success.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/frontend-acceptance.test.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance rejects active-class-only navigation and allows navigation with distinct visible content",
+      "verification": "node --test test/frontend-acceptance.test.js test/workbench-shell.test.js; npm run check:workbench:frontend-acceptance; npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
   ]

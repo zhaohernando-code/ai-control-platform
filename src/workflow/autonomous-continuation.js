@@ -3,6 +3,10 @@ import { createWorkbenchProjection } from "./workbench-projection.js";
 import { evaluateRunResult } from "./autonomous-run.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 import { summarizeAgentLifecyclePool } from "./agent-lifecycle-pool.js";
+import {
+  createFrontendAcceptanceRepairWorkPackage,
+  summarizeFrontendAcceptance
+} from "./frontend-acceptance.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -34,6 +38,10 @@ function normalizeToken(value) {
 
 function compactStrings(value) {
   return asArray(value).map(normalizeString).filter(Boolean);
+}
+
+function uniqueStrings(value) {
+  return [...new Set(compactStrings(value))];
 }
 
 function issue(code, message, path) {
@@ -93,6 +101,7 @@ function nextWorkPackagesFrom(input) {
   const providerPackages = aggregate ? [] : reviewerProviderWorkPackagesFrom(input);
   const scopeSplitPackages = aggregate ? [] : reviewerScopeSplitWorkPackagesFrom(input);
   const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
+  const frontendRepairPackages = frontendAcceptanceRepairWorkPackagesFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const directPackages = [
     ...asArray(input?.next_work_packages),
@@ -103,12 +112,74 @@ function nextWorkPackagesFrom(input) {
     ...asArray(runEvaluation?.projection?.next_work_packages),
     ...providerPackages,
     ...scopeSplitPackages,
-    ...lifecyclePoolPackages
+    ...lifecyclePoolPackages,
+    ...frontendRepairPackages
   ];
   if (directPackages.length > 0) {
-    return directPackages;
+    return dedupeWorkPackages(directPackages);
   }
-  return asArray(globalGoalCompletion.next_work_packages);
+  return dedupeWorkPackages(globalGoalCompletion.next_work_packages);
+}
+
+function workPackageId(workPackage = {}, fallback = "") {
+  return normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId || fallback);
+}
+
+function acceptanceGatesFromWorkPackage(workPackage = {}) {
+  return uniqueStrings([
+    ...compactStrings(workPackage.acceptance_gates || workPackage.acceptanceGates),
+    ...compactStrings(workPackage.source?.acceptance_gates || workPackage.source?.acceptanceGates)
+  ]);
+}
+
+function mergeWorkPackages(current = {}, incoming = {}) {
+  const merged = { ...current, ...incoming };
+  const ownedFiles = uniqueStrings([
+    ...compactStrings(current.owned_files || current.ownedFiles),
+    ...compactStrings(incoming.owned_files || incoming.ownedFiles)
+  ]);
+  const acceptanceGates = uniqueStrings([
+    ...acceptanceGatesFromWorkPackage(current),
+    ...acceptanceGatesFromWorkPackage(incoming)
+  ]);
+  const dependsOn = uniqueStrings([
+    ...compactStrings(current.depends_on || current.dependencies),
+    ...compactStrings(incoming.depends_on || incoming.dependencies)
+  ]);
+
+  for (const field of ["id", "work_package_id", "title", "action", "global_goal_id", "globalGoalId", "reason"]) {
+    if (!normalizeString(merged[field]) && normalizeString(current[field])) {
+      merged[field] = current[field];
+    }
+  }
+  if (!merged.frontend_acceptance && !merged.frontendAcceptance) {
+    merged.frontend_acceptance = current.frontend_acceptance || current.frontendAcceptance;
+  }
+  if (current.source || incoming.source) {
+    merged.source = { ...(current.source || {}), ...(incoming.source || {}) };
+  }
+  if (ownedFiles.length > 0) merged.owned_files = ownedFiles;
+  if (acceptanceGates.length > 0) merged.acceptance_gates = acceptanceGates;
+  if (dependsOn.length > 0) merged.depends_on = dependsOn;
+
+  return merged;
+}
+
+function dedupeWorkPackages(workPackages = []) {
+  const orderedKeys = [];
+  const byKey = new Map();
+
+  asArray(workPackages).filter(Boolean).forEach((workPackage, index) => {
+    const key = workPackageId(workPackage, `continuation-${index + 1}`);
+    if (!byKey.has(key)) {
+      orderedKeys.push(key);
+      byKey.set(key, workPackage);
+      return;
+    }
+    byKey.set(key, mergeWorkPackages(byKey.get(key), workPackage));
+  });
+
+  return orderedKeys.map((key) => byKey.get(key));
 }
 
 function explicitRunEvaluation(input = {}) {
@@ -349,6 +420,18 @@ function agentLifecyclePoolWorkPackagesFrom(input = {}) {
   ];
 }
 
+function frontendAcceptanceRepairWorkPackagesFrom(input = {}) {
+  const explicit = input?.frontend_acceptance || input?.frontendAcceptance || input?.workflow_state?.frontend_acceptance;
+  const workflowState = workflowStateFrom(input);
+  const summary = explicit || summarizeFrontendAcceptance(
+    workflowState?.manifest,
+    workflowState?.artifact_ledger || workflowState?.artifactLedger
+  );
+  const workPackage = summary?.repair_work_package || summary?.repairWorkPackage || createFrontendAcceptanceRepairWorkPackage(summary);
+
+  return workPackage ? [workPackage] : [];
+}
+
 function projectStatus(input) {
   return input?.project_status || input?.projectStatus || {};
 }
@@ -379,6 +462,9 @@ function createContextPackSeed(input, action) {
   const nextWorkPackages = nextWorkPackagesWithNextStepFallback(input);
   const explicitOwnedFiles = compactStrings(input?.owned_files || input?.ownedFiles);
   const workPackageOwnedFiles = compactStrings(nextWorkPackages.flatMap((workPackage) => workPackage.owned_files || workPackage.ownedFiles));
+  const explicitAcceptanceGates = compactStrings(input?.acceptance_gates || input?.acceptanceGates);
+  const workPackageAcceptanceGates = uniqueStrings(nextWorkPackages.flatMap(acceptanceGatesFromWorkPackage));
+  const acceptanceGates = uniqueStrings([...explicitAcceptanceGates, ...workPackageAcceptanceGates]);
 
   return {
     requirement_summary: nextStep || nextWorkPackages[0]?.title || "Continue autonomous platform development from the latest project status.",
@@ -395,7 +481,7 @@ function createContextPackSeed(input, action) {
       "Do not skip main-process evaluation gates."
     ],
     owned_files: [...new Set([...explicitOwnedFiles, ...workPackageOwnedFiles])],
-    acceptance_gates: compactStrings(input?.acceptance_gates || input?.acceptanceGates || ["npm test", "npm run check:onboarding"]),
+    acceptance_gates: acceptanceGates.length > 0 ? acceptanceGates : ["npm test", "npm run check:onboarding"],
     rollback_conditions: compactStrings(input?.rollback_conditions || input?.rollbackConditions || [
       "host boundary violation",
       "goal alignment violation",
@@ -415,6 +501,8 @@ function createContextPackSeed(input, action) {
         retry_worker: workPackage.retry_worker || workPackage.retryWorker || null,
         retry_workers: asArray(workPackage.retry_workers || workPackage.retryWorkers),
         timed_out_workers: asArray(workPackage.timed_out_workers || workPackage.timedOutWorkers),
+        frontend_acceptance: workPackage.frontend_acceptance || workPackage.frontendAcceptance || null,
+        acceptance_gates: acceptanceGatesFromWorkPackage(workPackage),
         reason: normalizeString(workPackage.reason)
       }
     })),

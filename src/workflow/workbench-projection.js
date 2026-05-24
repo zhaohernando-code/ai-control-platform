@@ -11,6 +11,10 @@ import {
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 import { summarizeAgentLifecyclePool } from "./agent-lifecycle-pool.js";
+import {
+  FRONTEND_ACCEPTANCE_REPAIR_ACTION,
+  summarizeFrontendAcceptance
+} from "./frontend-acceptance.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -725,6 +729,7 @@ const OPERATION_EVENT_TYPES = new Set([
   "reviewer_shard_result",
   "reviewer_shard_aggregate",
   "workbench_browser_events_run",
+  "frontend_acceptance_run",
   "headless_projected_action_progress",
   ...AGENT_LIFECYCLE_EVENT_TYPES
 ]);
@@ -772,6 +777,9 @@ function operationSummary(type, metadata = {}) {
   if (type === "workbench_browser_events_run") {
     return `${metadata.status || "unknown"} / ${metadata.scenario_count || 0} scenario(s)`;
   }
+  if (type === "frontend_acceptance_run") {
+    return `${metadata.status || "unknown"} / ${metadata.blocking_count || 0} blocker(s)`;
+  }
   if (type === "headless_projected_action_progress") {
     return `${metadata.status || "unknown"} / ${metadata.action || "projected_action"}`;
   }
@@ -801,6 +809,9 @@ function operationNextActionRole(type, metadata = {}) {
   }
   if (type === "project_status_continuation") return "operator_observable";
   if (type === "context_pack_cycle_materialized" || type === "context_pack_cycle_created" || type === "context_work_packages_run") return "operator_observable";
+  if (type === "frontend_acceptance_run") {
+    return Number(metadata.blocking_count || 0) > 0 && metadata.status === "fail" ? "automation_driver" : "operator_observable";
+  }
   if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
     return "automation_driver";
   }
@@ -857,6 +868,7 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const projectStatus = summaries.projectStatus || {};
   const globalGoals = summaries.globalGoalCompletion || {};
   const taskDag = summaries.taskDag || {};
+  const frontendAcceptance = summaries.frontendAcceptance || {};
   if (lifecyclePool.next_action === "cleanup_agent_lifecycle_pool") {
     return {
       status: lifecyclePool.status === "blocked" ? "blocked" : "ready",
@@ -1006,6 +1018,17 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
       source_type: driver.type,
       target_projection_id: null,
       reason: driver.summary,
+      requires_operator: false
+    };
+  }
+  if (driver.type === "frontend_acceptance_run" && frontendAcceptance.repair_required) {
+    return {
+      status: "ready",
+      action: FRONTEND_ACCEPTANCE_REPAIR_ACTION,
+      source_event_id: driver.event_id || frontendAcceptance.event_id || null,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: frontendAcceptance.repair_work_package?.reason || driver.summary,
       requires_operator: false
     };
   }
@@ -1213,6 +1236,7 @@ export function createWorkbenchProjection(input = {}) {
   const artifactSummary = summarizeArtifactLedger(artifactLedger);
   const closeoutSummary = summarizeCloseoutEvidence(manifest, artifactLedger);
   const browserEventsSummary = summarizeWorkbenchBrowserEvents(manifest, artifactLedger);
+  const frontendAcceptance = summarizeFrontendAcceptance(manifest, artifactLedger);
   const resumeHealth = summarizeResumeHealth(manifest, artifactLedger);
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
@@ -1233,6 +1257,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewerProviderHealth,
     reviewerShardReview,
     agentLifecyclePool,
+    frontendAcceptance,
     globalGoalCompletion,
     taskDag: dagSummary,
     projectStatus: input.project_status || input.projectStatus || {}
@@ -1264,6 +1289,7 @@ export function createWorkbenchProjection(input = {}) {
     artifacts: artifactSummary,
     closeout: closeoutSummary,
     workbench_browser_events: browserEventsSummary,
+    frontend_acceptance: frontendAcceptance,
     resume_health: resumeHealth,
     reviewer_provider_health: reviewerProviderHealth,
     reviewer_scope_split: reviewerScopeSplit,
@@ -1290,6 +1316,11 @@ export function createWorkbenchProjection(input = {}) {
       headline: manifest?.goal || normalizeString(input.goal) || "Autonomous run",
       primary_status: status,
       next_actions: [
+        ...asArray(frontendAcceptance.repair_work_package ? [frontendAcceptance.repair_work_package] : []).map((workPackage) => ({
+          id: workPackage.id,
+          action: workPackage.action,
+          title: workPackage.title
+        })),
         ...asArray(runEvaluation.next_work_packages).map((workPackage) => ({
           id: workPackage.id,
           action: workPackage.action || runEvaluation.decision,
@@ -1308,6 +1339,7 @@ export function createWorkbenchProjection(input = {}) {
         dispatchable_tasks: dagSummary.dispatchable.length,
         closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1,
         browser_event_scenarios: browserEventsSummary.scenario_count || 0,
+        frontend_acceptance_blockers: frontendAcceptance.blocking_count || 0,
         resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,
@@ -1362,6 +1394,17 @@ export function createMobileWorkbenchProjection(input = {}) {
       scenario_count: projection.workbench_browser_events.scenario_count,
       partial_shard_ready: projection.workbench_browser_events.partial_shard_ready,
       overflow_count: projection.workbench_browser_events.overflow_count
+    },
+    frontend_acceptance: {
+      status: projection.frontend_acceptance.status,
+      artifact_id: projection.frontend_acceptance.artifact_id,
+      blocking_count: projection.frontend_acceptance.blocking_count,
+      finding_count: projection.frontend_acceptance.finding_count,
+      latest_finding: projection.frontend_acceptance.latest_finding,
+      desktop_viewports: projection.frontend_acceptance.desktop_viewports,
+      mobile_viewports: projection.frontend_acceptance.mobile_viewports,
+      repair_required: projection.frontend_acceptance.repair_required,
+      repair_work_package_id: projection.frontend_acceptance.repair_work_package?.id || null
     },
     resume_health: {
       status: projection.resume_health.status,
@@ -1522,6 +1565,7 @@ export function createMobileWorkbenchProjection(input = {}) {
 export {
   summarizeCloseoutEvidence,
   summarizeWorkbenchBrowserEvents,
+  summarizeFrontendAcceptance,
   summarizeResumeHealth,
   summarizeReviewerProviderHealth,
   summarizeReviewerScopeSplit,

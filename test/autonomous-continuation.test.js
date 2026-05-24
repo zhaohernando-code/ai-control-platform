@@ -753,6 +753,126 @@ test("project status next work packages are durable continuation inputs", () => 
   assert.deepEqual(decision.context_pack_seed.owned_files, ["src/workflow/scheduler-dispatch-continuation.js"]);
 });
 
+test("frontend repair continuation deduplicates package ids and preserves repair gates", () => {
+  const repairPackageId = "frontend-acceptance-repair-frontend-acceptance-current-workbench";
+  const repairOwnedFiles = ["apps/workbench", "test/workbench-shell.test.js"];
+  const repairGates = [
+    "npm run check:workbench:frontend-acceptance",
+    "npm run check:workbench:browser-events",
+    "npm run check:closeout"
+  ];
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "",
+      next_work_packages: [
+        {
+          id: repairPackageId,
+          title: "Repair PC/mobile workbench frontend acceptance blockers",
+          action: "repair_frontend_acceptance",
+          owned_files: repairOwnedFiles,
+          acceptance_gates: repairGates
+        }
+      ],
+      global_goals: [
+        {
+          id: "pc-mobile-autonomous-workbench",
+          title: "PC/mobile autonomous workbench",
+          status: "in_progress",
+          next_step: "Repair frontend acceptance blockers.",
+          owned_files: repairOwnedFiles
+        }
+      ]
+    }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    workflow_state: {
+      manifest: {
+        run_id: "run-frontend-continuation-dedupe",
+        cycle_id: "cycle-frontend-continuation-dedupe",
+        events: [
+          {
+            id: "event-frontend-acceptance-current-workbench",
+            type: "frontend_acceptance_run",
+            status: "fail",
+            artifact_id: "frontend-acceptance-current-workbench",
+            metadata: {
+              status: "fail",
+              blocking_count: 1,
+              blocking_findings: [
+                {
+                  code: "desktop-dead-tabs",
+                  status: "fail",
+                  severity: "p1",
+                  message: "Desktop navigation tabs do not change content."
+                }
+              ],
+              findings: [
+                {
+                  code: "desktop-dead-tabs",
+                  status: "fail",
+                  severity: "p1",
+                  message: "Desktop navigation tabs do not change content."
+                }
+              ],
+              viewport_results: [
+                { viewport: "desktop" },
+                { viewport: "desktop_narrow" },
+                { viewport: "mobile" }
+              ]
+            }
+          }
+        ],
+        artifacts: []
+      },
+      artifact_ledger: {
+        artifacts: [
+          {
+            id: "frontend-acceptance-current-workbench",
+            status: "fail",
+            metadata: {
+              status: "fail",
+              blocking_count: 1,
+              blocking_findings: [
+                {
+                  code: "desktop-dead-tabs",
+                  status: "fail",
+                  severity: "p1",
+                  message: "Desktop navigation tabs do not change content."
+                }
+              ],
+              findings: [
+                {
+                  code: "desktop-dead-tabs",
+                  status: "fail",
+                  severity: "p1",
+                  message: "Desktop navigation tabs do not change content."
+                }
+              ],
+              viewport_results: [
+                { viewport: "desktop" },
+                { viewport: "desktop_narrow" },
+                { viewport: "mobile" }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  });
+
+  const repairPackages = decision.next_work_packages.filter((workPackage) => {
+    return workPackage.id === repairPackageId;
+  });
+  const subtaskIds = decision.context_pack_seed.subtasks.map((subtask) => subtask.id);
+
+  assert.equal(repairPackages.length, 1);
+  assert.equal(subtaskIds.filter((id) => id === repairPackageId).length, 1);
+  assert.equal(new Set(subtaskIds).size, subtaskIds.length);
+  assert.ok(decision.context_pack_seed.acceptance_gates.includes("npm run check:workbench:frontend-acceptance"));
+  assert.ok(decision.context_pack_seed.acceptance_gates.includes("npm run check:workbench:browser-events"));
+  assert.ok(decision.context_pack_seed.acceptance_gates.includes("npm run check:closeout"));
+  assert.deepEqual(decision.context_pack_seed.subtasks[0].source.acceptance_gates, repairGates);
+});
+
 test("marks continuation complete only when all configured global goals are done", () => {
   const decision = decideContinuation({
     project_status: projectStatus({

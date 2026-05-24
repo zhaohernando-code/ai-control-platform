@@ -50,3 +50,4 @@
 - **子进程无 diff 是流程失败**：外部子进程如果在限定时间内只分析不落地、超出读取范围、没有最终自评或没有测试结果，主进程必须把它归类为 process gap，先新增 gate/文档/测试约束，再重新派发或收敛为最小修复。
 - **最终总执行器必须是 CLI**：Codex App 只能是观察、调试和人工干预入口，不能是中台创建项目、调度任务、验收结果或继续运行的必需条件。目标形态下，Codex CLI/`codex_proxy` 必须作为 headless main orchestrator 从 durable state 启动并执行完整主进程职责。
 - **CLI orchestrator 与 CLI worker 要分层**：同一个 Codex CLI 能力可以承担 main orchestrator 或 child worker，但运行模式必须显式声明。main orchestrator 可以拆任务、派发、验收和修流程；child worker 只能执行 Context Pack 授权的 owned-files 实现。
+- **主线必须保持干净**：`main` 只能承载已验收、可提交的结果，不允许在脏 `main` 工作树里直接累积 child-worker 实现。主进程发现当前分支是 `main` 且存在未提交修改时，必须先切到隔离分支或独立 worktree，再继续派发/验收；`npm run check:closeout` 必须用 git worktree isolation gate 拦截脏 `main`。

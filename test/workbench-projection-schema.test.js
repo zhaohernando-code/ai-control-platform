@@ -87,6 +87,21 @@ test("rejects projections missing headless orchestrator evidence sections", () =
   assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_object_field" && issue.path === "projected_action_progress"));
 });
 
+test("rejects projections missing frontend acceptance evidence", () => {
+  const projection = readJson("docs/examples/current-session-workbench-projection.json");
+  const mobileProjection = createMobileWorkbenchProjection(readJson("docs/examples/current-session-workbench-input.json"));
+  delete projection.frontend_acceptance;
+  delete mobileProjection.frontend_acceptance;
+
+  const pcValidation = validateWorkbenchProjectionSchema(projection);
+  const mobileValidation = validateWorkbenchProjectionSchema(mobileProjection);
+
+  assert.equal(pcValidation.status, "fail");
+  assert.ok(pcValidation.issues.some((issue) => issue.code === "missing_object_field" && issue.path === "frontend_acceptance"));
+  assert.equal(mobileValidation.status, "fail");
+  assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_object_field" && issue.path === "frontend_acceptance"));
+});
+
 test("rejects projections missing terminal next-action evidence", () => {
   const projection = readJson("docs/examples/current-session-workbench-projection.json");
   const mobileProjection = createMobileWorkbenchProjection(readJson("docs/examples/current-session-workbench-input.json"));

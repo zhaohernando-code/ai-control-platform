@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { decideContinuation } from "./autonomous-continuation.js";
@@ -390,6 +390,21 @@ export function parseHeadlessChildWorkerOutput(raw = {}) {
 
 function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
   const contextPack = workflowState?.manifest?.context_pack || {};
+  const outputPath = normalizeString(options.child_worker_output_path_resolved || options.childWorkerOutputPathResolved) ||
+    childWorkerCommandOutputPath(workPackage, {
+      ...options,
+      run_id: workflowState?.manifest?.run_id,
+      cycle_id: workflowState?.manifest?.cycle_id
+    });
+  const outputPathInstructions = outputPath
+    ? [
+        "",
+        "Final response protocol:",
+        `- Write exactly one JSON object to child_worker_output_path: ${outputPath}`,
+        "- Also print exactly the same JSON object as the final stdout content.",
+        "- The JSON object must match the Required JSON shape above."
+      ]
+    : [];
   return [
     "# AI Control Platform Headless Child Worker",
     "",
@@ -436,7 +451,8 @@ function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options
     JSON.stringify(workPackage, null, 2),
     "",
     "Acceptance gates:",
-    JSON.stringify(compactStrings(options.acceptance_gates || contextPack.acceptance_gates), null, 2)
+    JSON.stringify(compactStrings(options.acceptance_gates || contextPack.acceptance_gates), null, 2),
+    ...outputPathInstructions
   ].join("\n");
 }
 
@@ -497,9 +513,17 @@ function childWorkerRunnerFrom(options = {}) {
   if (typeof options.childWorkerRunner === "function") return options.childWorkerRunner;
   const template = commandTemplateFrom(options);
   if (!template) return null;
-  return ({ prompt_file: promptFile, work_package: workPackage, workflow_state: workflowState, timeout_ms: timeoutMs }) => {
+  return ({ prompt_file: promptFile, work_package: workPackage, workflow_state: workflowState, timeout_ms: timeoutMs, output_path: outputPath }) => {
+    const resolvedOutputPath = normalizeString(outputPath) ||
+      childWorkerCommandOutputPath(workPackage, {
+        ...options,
+        run_id: workflowState?.manifest?.run_id,
+        cycle_id: workflowState?.manifest?.cycle_id
+      }) ||
+      "";
     const args = template.args.map((arg) => arg
       .replaceAll("{prompt_file}", promptFile)
+      .replaceAll("{output_path}", resolvedOutputPath)
       .replaceAll("{work_package_id}", normalizeString(workPackage.id))
       .replaceAll("{run_id}", normalizeString(workflowState?.manifest?.run_id))
       .replaceAll("{cycle_id}", normalizeString(workflowState?.manifest?.cycle_id)));
@@ -587,7 +611,11 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
     run_id: workflowState?.manifest?.run_id,
     cycle_id: workflowState?.manifest?.cycle_id
   });
-  writeFileSync(promptFile, headlessChildWorkerPrompt(workflowState, workPackage, options));
+  if (outputPath) mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(promptFile, headlessChildWorkerPrompt(workflowState, workPackage, {
+    ...options,
+    child_worker_output_path_resolved: outputPath
+  }));
 
   const timeoutMs = childWorkerTimeoutMs(options);
   const attempts = [];

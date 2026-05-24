@@ -34,7 +34,8 @@ body {
   overflow: hidden;
 }
 
-button {
+button,
+summary {
   height: 32px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -43,6 +44,17 @@ button {
   padding: 0 12px;
   font: inherit;
   font-size: 13px;
+}
+
+summary {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
 }
 
 select {
@@ -208,6 +220,62 @@ select {
   margin-top: 10px;
 }
 
+.primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.command-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.command-action {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--blue-soft);
+  color: #153e75;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.command-action:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.control-drawer {
+  margin-top: 10px;
+}
+
+.control-drawer .provider-actions {
+  padding-top: 8px;
+}
+
+.control-drawer:not([open]) > .provider-actions {
+  display: none;
+}
+
+body[data-projection-mode="release-readout"] [data-scheduler-dispatch],
+body[data-projection-mode="release-readout"] [data-autonomous-scheduler-loop],
+body[data-projection-mode="release-readout"] [data-autonomous-scheduler-loop-resume],
+body[data-projection-mode="release-readout"] [data-workbench-next-action],
+body[data-projection-mode="release-readout"] [data-provider-health] {
+  display: none;
+  visibility: hidden;
+}
+
+body[data-projection-mode="release-readout"] .control-drawer {
+  display: none;
+}
+
 .content-grid {
   min-height: 0;
   overflow-y: auto;
@@ -215,7 +283,25 @@ select {
   padding: 14px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-items: start;
   gap: 12px;
+}
+
+.content-grid [data-section] {
+  display: none;
+}
+
+.content-grid [data-section].section-visible {
+  display: block;
+}
+
+.content-grid .metrics.section-visible {
+  display: grid;
+}
+
+.content-grid .hero-panel.section-visible {
+  display: flex;
 }
 
 .hero-panel {
@@ -283,13 +369,18 @@ select {
 
 .panel {
   min-width: 0;
-  min-height: 248px;
+  min-height: max-content;
   border-radius: 12px;
   padding: 14px;
+  grid-column: span 2;
 }
 
 .panel.wide {
   grid-column: span 2;
+}
+
+.run-panel {
+  grid-column: span 4;
 }
 
 .section-title,
@@ -326,6 +417,7 @@ h2 {
 .mobile-action strong {
   display: block;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .timeline-item span,
@@ -333,6 +425,7 @@ h2 {
 .mobile-action span {
   color: var(--muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .review-grid,
@@ -371,7 +464,8 @@ h2 {
 .mobile-review strong {
   display: block;
   margin-top: 5px;
-  font-size: 18px;
+  font-size: 15px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 

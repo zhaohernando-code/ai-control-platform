@@ -360,6 +360,53 @@ test("headless CLI orchestrator can execute a real child command runner and pars
   assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
 });
 
+test("headless CLI orchestrator passes configured output path into child prompt and parses file output", () => {
+  const dir = mkdtempSync(join(tmpdir(), "headless-child-output-path-"));
+  const outputPattern = join(dir, "child-{work_package_id}-{run_id}-{cycle_id}.json");
+  const calls = [];
+  const result = runHeadlessCliMainOrchestrator({
+    role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+    project_status: projectStatus(),
+    workflow_state: sourceWorkflowState()
+  }, {
+    cycle_id: "cycle-headless-output-path",
+    created_at: "2026-05-23T00:01:35.000Z",
+    max_package_count: 1,
+    command_runner_kind: "codex_proxy_child_process",
+    child_worker_output_path: outputPattern,
+    child_worker_runner: ({ prompt_file, output_path }) => {
+      calls.push({ prompt_file, output_path });
+      writeFileSync(output_path, JSON.stringify({
+        status: "pass",
+        role: CHILD_WORKER_ROLE,
+        host: "platform_core",
+        changed_files: ["src/workflow/headless-cli-orchestrator.js"],
+        test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
+        durable_state_updated: true,
+        process_hardening: { required: false, status: "not_required" },
+        continuation_readiness: { ready: true },
+        self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+      }));
+      return {
+        status: 0,
+        stdout: "",
+        stderr: ""
+      };
+    }
+  });
+  const prompt = readFileSync(calls[0].prompt_file, "utf8");
+  const childOutput = result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output;
+
+  assert.equal(result.status, "pass");
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].output_path, /child-headless-cli-orchestrator-adapter-run-headless-cli-cycle-headless-output-path\.json$/);
+  assert.match(prompt, /Final response protocol:/);
+  assert.match(prompt, /Write exactly one JSON object to child_worker_output_path:/);
+  assert.match(prompt, /Also print exactly the same JSON object as the final stdout content/);
+  assert.equal(childOutput.command_evidence.output_path, calls[0].output_path);
+  assert.equal(childOutput.command_evidence.stdout_present, false);
+});
+
 test("headless CLI orchestrator can use default child provider config with retry and split policy", () => {
   const calls = [];
   const result = runHeadlessCliMainOrchestrator({

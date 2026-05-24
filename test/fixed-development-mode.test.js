@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { evaluateFixedDevelopmentModeGate } from "../src/workflow/fixed-development-mode-gate.js";
+import { evaluateGitWorktreeIsolation } from "../src/workflow/git-worktree-isolation.js";
 
 function read(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -156,4 +157,24 @@ test("fixed development mode runtime gate checks all declared owned file sources
   assert.ok(result.issues.some((item) => item.code === "fixed_mode_context_managed_project_owned_file"));
   assert.ok(result.issues.some((item) => item.code === "fixed_mode_subtask_managed_project_owned_file"));
   assert.ok(!result.issues.some((item) => item.code === "fixed_mode_managed_project_owned_file"));
+});
+
+test("git worktree isolation blocks dirty main but allows isolated branch work", () => {
+  const dirtyMain = evaluateGitWorktreeIsolation({
+    branch: "main",
+    porcelain: " M src/workflow/example.js\n?? test/example.test.js\n"
+  });
+  assert.equal(dirtyMain.status, "fail");
+  assert.equal(dirtyMain.dirty_count, 2);
+  assert.ok(dirtyMain.issues.some((item) => item.code === "dirty_main_worktree_not_allowed"));
+
+  const dirtyWorkBranch = evaluateGitWorktreeIsolation({
+    branch: "work/frontend-gate",
+    porcelain: " M src/workflow/example.js\n"
+  });
+  assert.equal(dirtyWorkBranch.status, "pass");
+  assert.equal(dirtyWorkBranch.dirty_count, 1);
+
+  const cleanMain = evaluateGitWorktreeIsolation({ branch: "main", porcelain: "" });
+  assert.equal(cleanMain.status, "pass");
 });

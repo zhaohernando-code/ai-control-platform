@@ -63,7 +63,8 @@ const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8"
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml"
 };
 
 function jsonResponse(res, status, body) {
@@ -815,7 +816,17 @@ function safeStaticPath(pathname) {
 }
 
 function isProjectMountRoot(pathname) {
-  return /^\/projects\/[^/]+\/?$/.test(String(pathname || ""));
+  return /^\/projects\/ai-control-platform\/?$/.test(String(pathname || ""));
+}
+
+function projectMountRoutePathname(pathname) {
+  const mountPrefix = "/projects/ai-control-platform";
+  const routePathname = String(pathname || "");
+  if (routePathname === mountPrefix) return "/";
+  if (routePathname.startsWith(`${mountPrefix}/`)) {
+    return routePathname.slice(mountPrefix.length) || "/";
+  }
+  return routePathname;
 }
 
 export function createWorkbenchServer(options = {}) {
@@ -840,6 +851,18 @@ export function createWorkbenchServer(options = {}) {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
+      if (isProjectMountRoot(url.pathname)) {
+        const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
+        res.writeHead(302, {
+          location: `${basePath}apps/workbench/desktop.html${url.search}`,
+          "cache-control": "no-store"
+        });
+        res.end();
+        return;
+      }
+
+      url.pathname = projectMountRoutePathname(url.pathname);
+
       if (url.pathname === "/api/workbench/projection") {
         const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath), allowedHistoryRoots, projectStatusPath);
         jsonResponse(res, 200, projection);
@@ -1938,16 +1961,6 @@ export function createWorkbenchServer(options = {}) {
         const event = normalizeEvent(input, url.searchParams.get("projection_id"));
         const ledger = appendEvent(eventsPath, event);
         jsonResponse(res, 201, { status: "created", event, count: ledger.events.length });
-        return;
-      }
-
-      if (isProjectMountRoot(url.pathname)) {
-        const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
-        res.writeHead(302, {
-          location: `${basePath}apps/workbench/desktop.html${url.search}`,
-          "cache-control": "no-store"
-        });
-        res.end();
         return;
       }
 

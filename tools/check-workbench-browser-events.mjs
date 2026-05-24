@@ -79,6 +79,27 @@ function writePendingReviewerProjectStatus(dir) {
   return path;
 }
 
+function writeLifecycleCleanupProjectStatus(dir) {
+  const projectStatus = {
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "Run isolated lifecycle cleanup browser-event scenario.",
+    global_goals: [
+      {
+        id: "lifecycle-cleanup-browser-fixture",
+        title: "Lifecycle cleanup browser fixture",
+        status: "in_progress",
+        next_step: "Exercise cleanup_agent_lifecycle_pool through projected scheduler controls.",
+        owned_files: ["src/workflow/agent-lifecycle-pool.js"]
+      }
+    ]
+  };
+  const path = join(dir, "PROJECT_STATUS.lifecycle-cleanup.json");
+  writeFileSync(path, `${JSON.stringify(projectStatus, null, 2)}\n`);
+  return path;
+}
+
 function createRunArtifact() {
   return {
     version: WORKBENCH_BROWSER_EVENTS_RUN_VERSION,
@@ -382,12 +403,12 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
     await page.close();
 
     assert(schedulerDispatchStatus === "pass", "approved mock dispatch must render scheduler pass");
-    assert(schedulerDispatchDryRun === "no", "approved mock dispatch must render non-dry-run");
+    assert(schedulerDispatchDryRun === "否", "approved mock dispatch must render translated non-dry-run copy");
     assert(schedulerPolicyStatus === "pass", "approved mock dispatch must render policy pass");
     assert(schedulerPolicyMode === "execute", "approved mock dispatch must render execute policy mode");
     assert(schedulerNextStatus === "pass", "approved mock dispatch must render next continuation status");
     assert(schedulerNextPackages === "1", "approved mock dispatch must render next work package count");
-    assert(schedulerContinuationReady === "ready", "approved mock dispatch must render scheduler continuation readiness");
+    assert(schedulerContinuationReady === "就绪", "approved mock dispatch must render translated scheduler continuation readiness");
     assert(dimensions.scrollWidth <= dimensions.width, "approved mock dispatch must not create horizontal overflow");
 
     recordScenario({
@@ -684,7 +705,10 @@ async function verifyAgentLifecyclePoolCleanupClick(browser) {
       next_action_readout: nextActionReadout,
       dimensions
     });
-  }, { workflowStateMutator: injectLifecycleCleanupState });
+  }, {
+    workflowStateMutator: injectLifecycleCleanupState,
+    projectStatusFactory: writeLifecycleCleanupProjectStatus
+  });
 }
 
 async function verifyAgentLifecyclePoolCleanupLoopClick(browser) {
@@ -716,7 +740,7 @@ async function verifyAgentLifecyclePoolCleanupLoopClick(browser) {
     assert(cleanupBeforeStatus === "unevaluated", "lifecycle loop cleanup scenario must start with unevaluated pool");
     assert(projectedAction === "cleanup_agent_lifecycle_pool", "projected loop must start from lifecycle cleanup action");
     assert(schedulerLoopStatus === "pass", "projected lifecycle cleanup loop must render loop pass");
-    assert(schedulerLoopStrategy === "projected_next_action", "projected lifecycle cleanup loop must render projected strategy");
+    assert(schedulerLoopStrategy === "按推荐动作推进", "projected lifecycle cleanup loop must render translated projected strategy");
     assert(cleanupAfterStatus === "pass", "projected lifecycle cleanup loop must render lifecycle pass");
     assert(cleanupAfterOpen === "0", "projected lifecycle cleanup loop must leave no open workers");
     assert(cleanupAfterUnevaluated === "0", "projected lifecycle cleanup loop must leave no unevaluated workers");
@@ -737,7 +761,10 @@ async function verifyAgentLifecyclePoolCleanupLoopClick(browser) {
       next_action_readout: nextActionReadout,
       dimensions
     });
-  }, { workflowStateMutator: injectLifecycleCleanupState });
+  }, {
+    workflowStateMutator: injectLifecycleCleanupState,
+    projectStatusFactory: writeLifecycleCleanupProjectStatus
+  });
 }
 
 async function verifyProjectedMockLoopClick(browser) {
@@ -766,7 +793,7 @@ async function verifyProjectedMockLoopClick(browser) {
 
     assert(schedulerLoopStatus === "pass", "projected mock loop must render loop pass");
     assert(schedulerLoopIterations === "2", "projected mock loop must run two reviewer shard iterations");
-    assert(schedulerLoopStrategy === "projected_next_action", "projected mock loop must render projected strategy");
+    assert(schedulerLoopStrategy === "按推荐动作推进", "projected mock loop must render translated projected strategy");
     assert(shardReviewCompleted === "2", "projected mock loop must render completed reviewer shards");
     assert(shardReviewStatus === "pass", "projected mock loop must aggregate reviewer shard status");
     assert(shardReviewExecutor === "mock", "projected mock loop must render mock reviewer executor");
@@ -820,7 +847,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
     assert(calls.length === 1 && calls[0] === "reviewer-scope-shard-001", "projected real partial run must execute only the first shard");
     assert(schedulerLoopStatus === "pass", "projected real partial loop must render loop pass");
     assert(schedulerLoopIterations === "1", "projected real partial loop must stay within one iteration");
-    assert(schedulerLoopStrategy === "projected_next_action", "projected real partial loop must render projected strategy");
+    assert(schedulerLoopStrategy === "按推荐动作推进", "projected real partial loop must render translated projected strategy");
     assert(shardReviewCompleted === "1", "projected real partial loop must render one completed shard");
     assert(shardReviewNext === "reviewer-scope-shard-002", "projected real partial loop must render next pending shard");
     assert(shardReviewExecutor === "browser_test_real_reviewer", "projected real partial loop must render injected real executor");
@@ -948,7 +975,7 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     assert(schedulerLoopRecovery === "ready", "autonomous scheduler loop click must render recovery readiness");
     assert(resumedLoopStatus === "pass", "autonomous scheduler loop resume must render loop pass");
     assert(resumedLoopRecovery === "idle", "autonomous scheduler loop resume must render idle recovery when no actions remain");
-    assert(resumedLoopAttempt === "not_configured", "resume target projection should not claim the source resume attempt");
+    assert(resumedLoopAttempt === "未配置", "resume target projection should not claim the source resume attempt");
     assert(Number(operationEventCount) >= 1, "autonomous scheduler loop resume must render operation event count");
     assert(operationRows >= 1, "autonomous scheduler loop resume must render operation timeline rows");
     assert(nextActionReadout, "autonomous scheduler loop resume must render next-action readout");

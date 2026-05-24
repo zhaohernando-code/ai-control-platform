@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Control Platform Mobile</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body class="mobile-shell" data-view="mobile">
@@ -20,7 +21,7 @@
         <section class="mobile-hero">
           <span class="caption">当前状态</span>
           <h1 data-bind="status">--</h1>
-          <p data-bind="headline">加载中</p>
+          <p data-bind="reason">加载中</p>
         </section>
 
         <section class="mobile-metrics" aria-label="移动端核心计数">
@@ -262,15 +263,20 @@
               <strong data-bind="global_goals_next">--</strong>
             </div>
           </div>
-          <div class="provider-actions">
-            <button type="button" data-scheduler-dispatch="dry-run">调度 Dry Run</button>
-            <button type="button" data-scheduler-dispatch="approved-mock">批准 Mock 执行</button>
+          <div class="primary-actions">
+            <button type="button" data-scheduler-dispatch="dry-run">调度预检</button>
             <button type="button" data-workbench-next-action="guarded">执行推荐动作</button>
-            <button type="button" data-autonomous-scheduler-loop="bounded">运行 Loop</button>
-            <button type="button" data-autonomous-scheduler-loop="projected-mock">Projected Mock Loop</button>
-            <button type="button" data-autonomous-scheduler-loop="projected-real">Projected Real Loop</button>
-            <button type="button" data-autonomous-scheduler-loop-resume="bounded">恢复 Loop</button>
           </div>
+          <details class="control-drawer">
+            <summary>高级调度控制</summary>
+            <div class="provider-actions">
+              <button type="button" data-scheduler-dispatch="approved-mock">批准 Mock 执行</button>
+              <button type="button" data-autonomous-scheduler-loop="bounded">运行 Loop</button>
+              <button type="button" data-autonomous-scheduler-loop="projected-mock">Projected Mock Loop</button>
+              <button type="button" data-autonomous-scheduler-loop="projected-real">Projected Real Loop</button>
+              <button type="button" data-autonomous-scheduler-loop-resume="bounded">恢复 Loop</button>
+            </div>
+          </details>
         </section>
 
         <section class="mobile-section">
@@ -341,10 +347,13 @@
               <strong data-bind="shard_review_budget">0</strong>
             </div>
           </div>
-          <div class="provider-actions">
-            <button type="button" data-provider-health="pass">Smoke OK</button>
-            <button type="button" data-provider-health="timeout">Smoke Timeout</button>
-          </div>
+          <details class="control-drawer">
+            <summary>Provider smoke</summary>
+            <div class="provider-actions">
+              <button type="button" data-provider-health="pass">Smoke OK</button>
+              <button type="button" data-provider-health="timeout">Smoke Timeout</button>
+            </div>
+          </details>
         </section>
       </section>
 

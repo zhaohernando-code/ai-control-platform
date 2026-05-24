@@ -5,6 +5,7 @@ import test from "node:test";
 const FILES = [
   "apps/workbench/desktop.html",
   "apps/workbench/mobile.html",
+  "apps/workbench/favicon.svg",
   "apps/workbench/styles.css",
   "apps/workbench/workbench.js"
 ];
@@ -19,6 +20,9 @@ test("workbench shell has separate desktop and mobile entries", () => {
 
   assert.match(desktop, /data-view="desktop"/);
   assert.match(mobile, /data-view="mobile"/);
+  assert.match(desktop, /<link rel="icon" type="image\/svg\+xml" href="\.\/favicon\.svg" \/>/);
+  assert.match(mobile, /<link rel="icon" type="image\/svg\+xml" href="\.\/favicon\.svg" \/>/);
+  assert.match(read("apps/workbench/favicon.svg"), /<svg[\s\S]*AI Control Platform/);
   assert.match(desktop, /data-history-select/);
   assert.match(mobile, /data-history-select/);
   assert.match(desktop, /data-bind="closeout_status"/);
@@ -151,6 +155,10 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(script, /approved_mock_non_dry_run/);
   assert.match(script, /runAutonomousSchedulerLoop/);
   assert.match(script, /resumeAutonomousSchedulerLoop/);
+  assert.match(script, /projectionMode/);
+  assert.match(script, /interactive-fixture/);
+  assert.match(script, /release-readout/);
+  assert.match(read("apps/workbench/styles.css"), /data-projection-mode="release-readout"[\s\S]*data-scheduler-dispatch/);
   assert.match(source, /enqueueSchedulerNextCycle/);
   assert.match(source, /runAutonomousSchedulerLoop/);
   assert.match(script, /调度失败/);

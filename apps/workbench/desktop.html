@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Control Platform Workbench</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body class="desktop-shell" data-view="desktop">
@@ -17,11 +18,11 @@
           </div>
         </div>
         <nav class="nav-list">
-          <a class="active" href="#overview">总览</a>
-          <a href="#runs">运行</a>
-          <a href="#review">审查</a>
-          <a href="#models">模型</a>
-          <a href="#risks">风险</a>
+          <a class="active" href="#overview" data-workbench-tab="overview" aria-current="page">总览</a>
+          <a href="#runs" data-workbench-tab="runs">运行</a>
+          <a href="#review" data-workbench-tab="review">审查</a>
+          <a href="#models" data-workbench-tab="models">模型</a>
+          <a href="#risks" data-workbench-tab="risks">风险</a>
         </nav>
         <div class="operator">
           <div class="avatar">OP</div>
@@ -57,8 +58,8 @@
           </div>
         </header>
 
-        <section class="content-grid">
-          <section class="hero-panel">
+        <section class="content-grid" data-active-section="overview">
+          <section class="hero-panel" data-section="overview" tabindex="-1">
             <div>
               <span class="caption">当前目标</span>
               <h1 data-bind="headline">加载中</h1>
@@ -69,7 +70,7 @@
             </div>
           </section>
 
-          <section class="metrics" aria-label="核心计数">
+          <section class="metrics" aria-label="核心计数" data-section="overview">
             <article class="metric">
               <span>Work Packages</span>
               <strong data-bind="counter_work_packages">0</strong>
@@ -100,7 +101,7 @@
             </article>
           </section>
 
-          <section class="panel wide">
+          <section class="panel wide" data-section="overview runs">
             <div class="section-title">
               <h2>任务流</h2>
               <span>Context Pack -> Run -> Review -> Continuation</span>
@@ -108,7 +109,7 @@
             <div class="timeline" data-list="next_actions"></div>
           </section>
 
-          <section class="panel wide">
+          <section class="panel wide" data-section="overview runs">
             <div class="section-title">
               <h2>运行时间线</h2>
               <span data-bind="counter_operation_events">0</span>
@@ -116,7 +117,25 @@
             <div class="timeline" data-list="operations_timeline"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel wide overview-dispatch" data-section="overview">
+            <div class="section-title">
+              <h2>安全调度</h2>
+              <span data-bind="scheduler_dispatch_status">--</span>
+            </div>
+            <div class="primary-actions">
+              <button type="button" data-scheduler-dispatch="dry-run">调度预检</button>
+              <button type="button" data-workbench-next-action="guarded">执行推荐动作</button>
+            </div>
+            <div class="command-actions" aria-label="受控调度动作">
+              <span class="command-action" role="button" tabindex="0" data-scheduler-dispatch="approved-mock">受控模拟执行</span>
+              <span class="command-action" role="button" tabindex="0" data-autonomous-scheduler-loop="bounded">单轮调度</span>
+              <span class="command-action" role="button" tabindex="0" data-autonomous-scheduler-loop="projected-mock">投影模拟推进</span>
+              <span class="command-action" role="button" tabindex="0" data-autonomous-scheduler-loop="projected-real">投影受控审查</span>
+              <span class="command-action" role="button" tabindex="0" data-autonomous-scheduler-loop-resume="bounded">继续调度</span>
+            </div>
+          </section>
+
+          <section class="panel" data-section="review">
             <div class="section-title">
               <h2>Closeout</h2>
               <span data-bind="closeout_publish_status">--</span>
@@ -132,7 +151,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" data-section="review">
             <div class="section-title">
               <h2>Resume Health</h2>
               <span data-bind="resume_health_status">--</span>
@@ -145,7 +164,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel run-panel" id="runs" data-section="runs" tabindex="-1">
             <div class="section-title">
               <h2>Scheduler Dispatch</h2>
               <span data-bind="scheduler_dispatch_status">--</span>
@@ -197,18 +216,23 @@
               <div class="full"><span>Terminal reason</span><strong data-bind="next_action_terminal_reason">--</strong></div>
               <div class="full"><span>Policy reason</span><strong data-bind="scheduler_policy_reason">--</strong></div>
             </div>
-            <div class="provider-actions">
-              <button type="button" data-scheduler-dispatch="dry-run">调度 Dry Run</button>
-              <button type="button" data-scheduler-dispatch="approved-mock">批准 Mock 执行</button>
-            <button type="button" data-workbench-next-action="guarded">执行推荐动作</button>
-            <button type="button" data-autonomous-scheduler-loop="bounded">运行 Loop</button>
-            <button type="button" data-autonomous-scheduler-loop="projected-mock">Projected Mock Loop</button>
-            <button type="button" data-autonomous-scheduler-loop="projected-real">Projected Real Loop</button>
-            <button type="button" data-autonomous-scheduler-loop-resume="bounded">恢复 Loop</button>
+            <div class="primary-actions">
+              <button type="button" data-scheduler-dispatch="dry-run">调度预检</button>
+              <button type="button" data-workbench-next-action="guarded">执行推荐动作</button>
             </div>
+            <details class="control-drawer">
+              <summary>高级调度控制</summary>
+              <div class="provider-actions">
+                <button type="button" data-scheduler-dispatch="approved-mock">批准 Mock 执行</button>
+                <button type="button" data-autonomous-scheduler-loop="bounded">运行 Loop</button>
+                <button type="button" data-autonomous-scheduler-loop="projected-mock">Projected Mock Loop</button>
+                <button type="button" data-autonomous-scheduler-loop="projected-real">Projected Real Loop</button>
+                <button type="button" data-autonomous-scheduler-loop-resume="bounded">恢复 Loop</button>
+              </div>
+            </details>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="models" data-section="models" tabindex="-1">
             <div class="section-title">
               <h2>模型路由</h2>
               <span data-bind="model_summary">--</span>
@@ -216,7 +240,7 @@
             <div class="stack" data-list="model_roles"></div>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="review" data-section="review" tabindex="-1">
             <div class="section-title">
               <h2>审查门禁</h2>
               <span data-bind="reviewer_signal">--</span>
@@ -229,7 +253,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="risks" data-section="overview models risks" tabindex="-1">
             <div class="section-title">
               <h2>Provider Health</h2>
               <span data-bind="provider_health_status">--</span>

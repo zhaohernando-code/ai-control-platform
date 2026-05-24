@@ -72,6 +72,7 @@ function validatePcProjection(projection, issues) {
     "manifest",
     "artifacts",
     "closeout",
+    "frontend_acceptance",
     "resume_health",
     "reviewer_provider_health",
     "reviewer_scope_split",
@@ -113,7 +114,7 @@ function validateMobileProjection(projection, issues) {
     requireString(projection, field, issues);
   }
 
-  for (const field of ["counters", "closeout", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
+  for (const field of ["counters", "closeout", "frontend_acceptance", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
     requireObject(projection, field, issues);
   }
 
