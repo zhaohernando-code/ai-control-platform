@@ -903,7 +903,7 @@
       "status": "fail",
       "category": "quality_gate_gap",
       "severity": "p1",
-      "message": "Frontend acceptance must not pass desktop diagnostic walls, mobile telemetry/status dumps, or placeholder-dominated review/risk/model sections when mechanical browser checks pass."
+      "message": "Frontend acceptance must not pass desktop diagnostic walls, high-volume data-bind/placeholder sections, mobile telemetry/status dumps, or placeholder-dominated review/risk/model sections when mechanical browser checks pass."
     },
     {
       "id": "closeout-public-live-route-false-pass",
@@ -2243,9 +2243,9 @@
     },
     {
       "finding_id": "frontend-content-completion-false-pass",
-      "invariant": "Frontend acceptance artifacts must include per-viewport DOM text content-completion evidence and must fail closed when default desktop content is diagnostic/telemetry dominated, mobile content is a long status dump, or visible sections are placeholder-dominated without actionable labels or next-step context.",
+      "invariant": "Frontend acceptance artifacts must include per-viewport DOM text content-completion evidence and must fail closed when default desktop/narrow desktop content is diagnostic/telemetry dominated, contains high-volume data-bind/placeholder sections even with many action labels, mobile content is a long status dump, or visible sections are placeholder-dominated without actionable labels or next-step context.",
       "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/frontend-acceptance.test.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md; docs/examples/process-hardening-current.json",
-      "regression_test": "frontend acceptance blocks desktop diagnostic field wall content; frontend acceptance blocks mobile long telemetry/status dump content; frontend acceptance blocks placeholder-dominated visible sections; frontend acceptance validation rejects missing or inconsistent content completion evidence",
+      "regression_test": "frontend acceptance blocks desktop diagnostic field wall content; frontend acceptance blocks realistic desktop diagnostic field walls with high actionable labels; frontend acceptance validation blocks legacy desktop diagnostic false pass artifacts; frontend acceptance allows labeled operator status counts with next-action context; frontend acceptance blocks mobile long telemetry/status dump content; frontend acceptance blocks placeholder-dominated visible sections; frontend acceptance validation rejects missing or inconsistent content completion evidence",
       "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail --output tmp/frontend-content-completion-gate.json; npm run check:process-hardening; git diff --check",
       "status": "completed"
     },

@@ -535,6 +535,67 @@ test("frontend acceptance allows translated operator workbench copy", () => {
   assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
 });
 
+test("frontend acceptance allows labeled operator status counts with next-action context", () => {
+  const statusCountText = [
+    "目标 Agent 池恢复验证",
+    "完成 8 待处理 2 失败 0",
+    "原因 最近一轮审查需要补充成本证据",
+    "影响 不影响已通过验收的工作台发布",
+    "下一步 派发成本采集任务并在收口验收前确认证据"
+  ].join(" ");
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        bodyText: statusCountText,
+        diagnosticsCount: 12,
+        contentSections: [
+          {
+            index: 0,
+            section_key: "operator-status",
+            heading: "当前状态",
+            text: statusCountText,
+            text_length: statusCountText.length,
+            data_bind_count: 12,
+            visible: true,
+            source_type: "browser_dom_text"
+          }
+        ]
+      }),
+      viewportAudit({
+        viewport: "desktop_narrow",
+        dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 },
+        bodyText: statusCountText,
+        diagnosticsCount: 12,
+        contentSections: [
+          {
+            index: 0,
+            section_key: "operator-status",
+            heading: "当前状态",
+            text: statusCountText,
+            text_length: statusCountText.length,
+            data_bind_count: 12,
+            visible: true,
+            source_type: "browser_dom_text"
+          }
+        ]
+      }),
+      viewportAudit({ viewport: "mobile", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+
+  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.content_completion_results.every((result) => result.status === "pass"), true);
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
 test("frontend acceptance blocks desktop diagnostic field wall content", () => {
   const diagnosticText = Array.from({ length: 24 }, (_, index) => {
     return `run_id cycle_id artifact_id projection status scheduler_dispatch telemetry diagnostic_${index}`;
@@ -575,6 +636,68 @@ test("frontend acceptance blocks desktop diagnostic field wall content", () => {
   assert.equal(contentResult.status, "fail");
   assert.equal(contentResult.source_type, "browser_dom_text");
   assert.ok(artifact.findings.some((finding) => finding.code === "frontend_content_diagnostic_wall"));
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
+test("frontend acceptance blocks realistic desktop diagnostic field walls with high actionable labels", () => {
+  const diagnosticSectionText = [
+    "审查通道 未配置 健康未知 下一步-- 重试策略--",
+    "分片0 待处理0 下个分片-- 审查未配置 完成0",
+    "下个分片-- 执行器-- 预算使用0 执行配置--",
+    "分片发现0 连通正常 连通超时"
+  ].join(" ");
+  const bodyText = Array.from({ length: 5 }, () => diagnosticSectionText).join(" ");
+  const diagnosticSection = {
+    index: 0,
+    section_key: "review-diagnostics",
+    heading: "审查通道",
+    text: diagnosticSectionText,
+    text_length: diagnosticSectionText.length,
+    data_bind_count: 14,
+    visible: true,
+    source_type: "browser_dom_text"
+  };
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        bodyText,
+        diagnosticsCount: 58,
+        contentSections: [diagnosticSection]
+      }),
+      viewportAudit({
+        viewport: "desktop_narrow",
+        dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 },
+        bodyText,
+        diagnosticsCount: 58,
+        contentSections: [diagnosticSection]
+      }),
+      viewportAudit({ viewport: "mobile", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+  const desktopContent = artifact.content_completion_results.find((result) => result.viewport === "desktop");
+  const narrowContent = artifact.content_completion_results.find((result) => result.viewport === "desktop_narrow");
+  const diagnosticFindings = artifact.findings.filter((finding) => finding.code === "frontend_content_diagnostic_wall");
+
+  assert.equal(artifact.status, "fail");
+  assert.equal(desktopContent.status, "fail");
+  assert.equal(narrowContent.status, "fail");
+  assert.equal(desktopContent.diagnostic_field_count, 58);
+  assert.equal(narrowContent.diagnostic_field_count, 58);
+  assert.equal(desktopContent.diagnostic_dominated, true);
+  assert.equal(narrowContent.diagnostic_dominated, true);
+  assert.equal(desktopContent.content_sections[0].data_bind_count, 14);
+  assert.ok(desktopContent.actionable_label_count >= 14);
+  assert.ok(desktopContent.placeholder_count >= 40);
+  assert.ok(desktopContent.diagnostic_wall_sections.length > 0);
+  assert.equal(diagnosticFindings.length, 2);
   assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
 });
 
@@ -713,6 +836,60 @@ test("frontend acceptance validation rejects missing or inconsistent content com
   assert.equal(falsePass.status, "fail");
   assert.ok(falsePass.issues.some((issue) => issue.code === "frontend_content_completion_false_pass"));
   assert.ok(falsePass.issues.some((issue) => issue.code === "frontend_content_completion_finding_mismatch"));
+});
+
+test("frontend acceptance validation blocks legacy desktop diagnostic false pass artifacts", () => {
+  const diagnosticSectionText = [
+    "审查通道 未配置 健康未知 下一步-- 重试策略--",
+    "分片0 待处理0 下个分片-- 审查未配置 完成0",
+    "下个分片-- 执行器-- 预算使用0 执行配置--",
+    "分片发现0 连通正常 连通超时"
+  ].join(" ");
+  const legacyPassResult = (viewport) => ({
+    viewport,
+    source_type: "browser_dom_text",
+    status: "pass",
+    body_text_length: 1900,
+    body_text_sample: diagnosticSectionText,
+    section_count: 1,
+    diagnostic_field_count: 58,
+    placeholder_count: 45,
+    telemetry_token_count: 0,
+    actionable_label_count: 40,
+    next_step_context_count: 18,
+    diagnostic_dominated: false,
+    mobile_telemetry_dump: false,
+    placeholder_dominated_sections: [],
+    blocking_finding_codes: [],
+    content_sections: [
+      {
+        index: 0,
+        section_key: "review-diagnostics",
+        heading: "审查通道",
+        text_sample: diagnosticSectionText,
+        text_length: diagnosticSectionText.length,
+        data_bind_count: 14,
+        placeholder_count: 9,
+        unresolved_placeholder_count: 9,
+        telemetry_token_count: 0,
+        actionable_label_count: 12,
+        next_step_context_count: 5,
+        placeholder_ratio: 0.346,
+        source_type: "browser_dom_text"
+      }
+    ]
+  });
+  const validation = validateFrontendAcceptanceRunArtifact(baseArtifact({
+    content_completion_results: [
+      legacyPassResult("desktop"),
+      legacyPassResult("desktop_narrow"),
+      baseArtifact().content_completion_results[2]
+    ]
+  }));
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((issue) => issue.code === "frontend_content_completion_false_pass"));
+  assert.ok(validation.issues.some((issue) => issue.code === "frontend_content_completion_missing_finding_codes"));
 });
 
 test("frontend acceptance counts and blocks semantic command controls", () => {

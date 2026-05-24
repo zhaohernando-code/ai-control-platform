@@ -44,4 +44,6 @@
 - 默认桌面/窄桌面表面不能被诊断字段墙、projection/backend token 或 telemetry 主导；操作员应先看到目标、阻塞、风险、可执行下一步和验收证据。
 - 手机端不能把长状态、遥测、artifact/history id 或后端字段单列堆叠成状态 dump；必须优先呈现操作员任务、阻塞原因和下一步。
 - 可见 review/risk/model/section/tab 内容不能主要由 `--`、`未配置`、`未就绪`、`未知`、裸 `0` 等占位符构成；占位状态必须配有明确标签、原因、影响或下一步上下文。
+- 默认桌面/窄桌面即使包含较多“下一步/执行/审查/完成”等行动词，也不能用行动词数量抵消高密度诊断字段墙；当 DOM 可见内容出现约 50 个 data-bind/诊断字段、正文约 40 个未配置/未知/`--` 占位符，或单个 section 同时有 10+ data-bind 和 6+ 未配置/未知/`--` 占位 token 时，`content_completion_results` 必须 fail closed。
+- 合法操作员 dashboard 可以显示多个数字状态计数，但数字必须带有目标、原因、影响和下一步上下文；不能仅因少量带标签计数失败。
 - `frontend-acceptance-run.v1` 中 `content_completion_results` 的 fail/pass、blocking finding codes 和顶层 P0/P1 findings 必须一致；缺失 viewport DOM 文本证据、false pass 或计数不一致都要 fail closed。

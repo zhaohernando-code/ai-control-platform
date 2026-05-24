@@ -14,6 +14,11 @@ export const FRONTEND_ACCEPTANCE_REPAIR_ACCEPTANCE_GATES = [
 ];
 
 const BLOCKING_SEVERITIES = new Set(["p0", "p1", "critical", "blocker", "fatal"]);
+const DESKTOP_DIAGNOSTIC_FIELD_WALL_THRESHOLD = 48;
+const DESKTOP_DIAGNOSTIC_PLACEHOLDER_FIELD_THRESHOLD = 18;
+const DESKTOP_BODY_PLACEHOLDER_WALL_THRESHOLD = 36;
+const DESKTOP_SECTION_DATA_BIND_WALL_THRESHOLD = 10;
+const DESKTOP_SECTION_PLACEHOLDER_WALL_THRESHOLD = 6;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -31,9 +36,9 @@ function issue(code, message, path) {
   return { code, message, path };
 }
 
-function countValue(value) {
+function countValue(value, fallback = 0) {
   const count = Number(value);
-  return Number.isFinite(count) ? count : 0;
+  return Number.isFinite(count) ? count : fallback;
 }
 
 function contentTypeValue(value) {
@@ -46,9 +51,46 @@ function contentCompletionFindingCodes(result = {}) {
     .filter(Boolean);
 }
 
+function isDesktopContentViewport(viewport = "") {
+  const normalized = normalizeString(viewport);
+  return normalized === "desktop" || normalized === "desktop_narrow";
+}
+
+function contentCompletionHasDiagnosticWall(result = {}) {
+  if (result.diagnostic_dominated === true || result.diagnosticDominated === true) return true;
+  if (!isDesktopContentViewport(result.viewport)) return false;
+
+  const diagnosticFieldCount = countValue(result.diagnostic_field_count ?? result.diagnosticFieldCount);
+  const placeholderCount = countValue(result.placeholder_count ?? result.placeholderCount);
+  const unresolvedPlaceholderCount = countValue(
+    result.unresolved_placeholder_count ?? result.unresolvedPlaceholderCount,
+    placeholderCount
+  );
+  if (diagnosticFieldCount >= DESKTOP_DIAGNOSTIC_FIELD_WALL_THRESHOLD) return true;
+  if (
+    diagnosticFieldCount >= DESKTOP_DIAGNOSTIC_PLACEHOLDER_FIELD_THRESHOLD &&
+    unresolvedPlaceholderCount >= DESKTOP_BODY_PLACEHOLDER_WALL_THRESHOLD
+  ) {
+    return true;
+  }
+
+  const diagnosticWallSections = asArray(result.diagnostic_wall_sections || result.diagnosticWallSections);
+  if (diagnosticWallSections.length > 0) return true;
+
+  return asArray(result.content_sections || result.contentSections).some((section) => {
+    const sectionPlaceholderCount = countValue(section.placeholder_count ?? section.placeholderCount);
+    const sectionUnresolvedPlaceholderCount = countValue(
+      section.unresolved_placeholder_count ?? section.unresolvedPlaceholderCount,
+      sectionPlaceholderCount
+    );
+    return countValue(section.data_bind_count ?? section.dataBindCount) >= DESKTOP_SECTION_DATA_BIND_WALL_THRESHOLD &&
+      sectionUnresolvedPlaceholderCount >= DESKTOP_SECTION_PLACEHOLDER_WALL_THRESHOLD;
+  });
+}
+
 function contentCompletionHasBlocker(result = {}) {
   if (contentCompletionFindingCodes(result).length > 0) return true;
-  if (result.diagnostic_dominated === true || result.diagnosticDominated === true) return true;
+  if (contentCompletionHasDiagnosticWall(result)) return true;
   if (result.mobile_telemetry_dump === true || result.mobileTelemetryDump === true) return true;
   return asArray(result.placeholder_dominated_sections || result.placeholderDominatedSections).length > 0;
 }

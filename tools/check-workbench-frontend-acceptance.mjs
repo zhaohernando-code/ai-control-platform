@@ -436,9 +436,15 @@ const INTERNAL_VISIBLE_COPY_PATTERNS = [
 ];
 const LONG_ARTIFACT_IDENTIFIER_PATTERN = /\b(?:scheduler-dispatch-run-run|scheduler-dispatch-policy-run|context-work-packages-run-run|agent-lifecycle-[A-Za-z]+|project-status-continuation|context-pack-cycle|headless-live-context-cycle|frontend-acceptance|workbench-live-route-evidence|cycle-headless-live)[A-Za-z0-9._-]{16,}\b/g;
 const CONTENT_PLACEHOLDER_PATTERN = /--|未配置|未就绪|未知|(?:^|[\s:：,，;；([（])0(?=$|[\s,，;；)\]）])/g;
+const CONTENT_UNRESOLVED_PLACEHOLDER_PATTERN = /--|未配置|未就绪|未知/g;
 const CONTENT_TELEMETRY_PATTERN = /\b(?:run_id|cycle_id|artifact_id|artifact|manifest|ledger|payload|metadata|projection|status|not_configured|no_next_action|frontend_acceptance|scheduler_dispatch|next_action_readout|work_package|context_pack|provider_health|resume_health|closeout|snapshot|diagnostics?|telemetry|null|undefined)\b|(?:状态码|遥测|诊断字段|原始状态|后端字段)/gi;
 const CONTENT_ACTIONABLE_PATTERN = /下一步|待处理|优先|处理|执行|派发|修复|恢复|审查|验收|收口|阻塞|风险|决策|建议|证据|任务|工作包|原因|影响|需要|可执行|继续|重试|发布|入口|选择|确认|失败原因|动作|模型|预算|健康|完成|通过|异常|人工|操作/g;
 const CONTENT_NEXT_STEP_PATTERN = /下一步|待处理|需要|建议|修复|处理|执行|派发|恢复|重试|继续|验收|收口|查看|确认|选择|阻塞原因|风险处理|可执行/g;
+const DESKTOP_DIAGNOSTIC_FIELD_WALL_THRESHOLD = 48;
+const DESKTOP_DIAGNOSTIC_PLACEHOLDER_FIELD_THRESHOLD = 18;
+const DESKTOP_BODY_PLACEHOLDER_WALL_THRESHOLD = 36;
+const DESKTOP_SECTION_DATA_BIND_WALL_THRESHOLD = 10;
+const DESKTOP_SECTION_PLACEHOLDER_WALL_THRESHOLD = 6;
 
 function browserErrorsOf(result = {}) {
   return Array.isArray(result.browserErrors)
@@ -498,10 +504,15 @@ function contentTextMetrics(text = "") {
   return {
     text_length: normalized.length,
     placeholder_count: countContentMatches(normalized, CONTENT_PLACEHOLDER_PATTERN),
+    unresolved_placeholder_count: countContentMatches(normalized, CONTENT_UNRESOLVED_PLACEHOLDER_PATTERN),
     telemetry_token_count: countContentMatches(normalized, CONTENT_TELEMETRY_PATTERN),
     actionable_label_count: countContentMatches(normalized, CONTENT_ACTIONABLE_PATTERN),
     next_step_context_count: countContentMatches(normalized, CONTENT_NEXT_STEP_PATTERN)
   };
+}
+
+function isDesktopContentViewport(viewport = "") {
+  return viewport === "desktop" || viewport === "desktop_narrow";
 }
 
 function contentSectionsOf(result = {}) {
@@ -540,6 +551,7 @@ function contentCompletionResultForViewport(result = {}) {
       text_length: Number(section.text_length ?? metrics.text_length),
       data_bind_count: countValue(section.data_bind_count ?? section.dataBindCount),
       placeholder_count: metrics.placeholder_count,
+      unresolved_placeholder_count: metrics.unresolved_placeholder_count,
       telemetry_token_count: metrics.telemetry_token_count,
       actionable_label_count: metrics.actionable_label_count,
       next_step_context_count: metrics.next_step_context_count,
@@ -564,7 +576,18 @@ function contentCompletionResultForViewport(result = {}) {
       sectionOperatorContext < 6
     );
   });
-  const diagnosticDominated = result.viewport !== "mobile" && (
+  const diagnosticWallSections = sections.filter((section) => {
+    return isDesktopContentViewport(result.viewport) &&
+      section.data_bind_count >= DESKTOP_SECTION_DATA_BIND_WALL_THRESHOLD &&
+      section.unresolved_placeholder_count >= DESKTOP_SECTION_PLACEHOLDER_WALL_THRESHOLD;
+  });
+  const diagnosticDominated = isDesktopContentViewport(result.viewport) && (
+    diagnosticFieldCount >= DESKTOP_DIAGNOSTIC_FIELD_WALL_THRESHOLD ||
+    (
+      diagnosticFieldCount >= DESKTOP_DIAGNOSTIC_PLACEHOLDER_FIELD_THRESHOLD &&
+      bodyMetrics.unresolved_placeholder_count >= DESKTOP_BODY_PLACEHOLDER_WALL_THRESHOLD
+    ) ||
+    diagnosticWallSections.length > 0 ||
     (diagnosticFieldCount >= 18 && diagnosticFieldCount > Math.max(operatorContextCount * 2, 12)) ||
     (bodyMetrics.telemetry_token_count >= 18 && bodyMetrics.telemetry_token_count > Math.max(operatorContextCount * 2, 12))
   );
@@ -588,11 +611,23 @@ function contentCompletionResultForViewport(result = {}) {
     section_count: sections.length,
     diagnostic_field_count: diagnosticFieldCount,
     placeholder_count: bodyMetrics.placeholder_count,
+    unresolved_placeholder_count: bodyMetrics.unresolved_placeholder_count,
     telemetry_token_count: bodyMetrics.telemetry_token_count,
     actionable_label_count: bodyMetrics.actionable_label_count,
     next_step_context_count: bodyMetrics.next_step_context_count,
     diagnostic_dominated: diagnosticDominated,
     mobile_telemetry_dump: mobileTelemetryDump,
+    diagnostic_wall_sections: diagnosticWallSections.map((section) => ({
+      section_key: section.section_key,
+      heading: section.heading,
+      text_sample: section.text_sample,
+      text_length: section.text_length,
+      data_bind_count: section.data_bind_count,
+      placeholder_count: section.placeholder_count,
+      unresolved_placeholder_count: section.unresolved_placeholder_count,
+      actionable_label_count: section.actionable_label_count,
+      next_step_context_count: section.next_step_context_count
+    })),
     placeholder_dominated_sections: placeholderDominatedSections.map((section) => ({
       section_key: section.section_key,
       heading: section.heading,
@@ -618,6 +653,7 @@ function findingsForContentCompletion(contentCompletionResults = []) {
         telemetry_token_count: result.telemetry_token_count,
         actionable_label_count: result.actionable_label_count,
         next_step_context_count: result.next_step_context_count,
+        diagnostic_wall_sections: result.diagnostic_wall_sections,
         body_text_sample: result.body_text_sample
       }));
     }
