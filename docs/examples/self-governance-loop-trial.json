@@ -1,0 +1,215 @@
+{
+  "version": "self-governance-loop-trial.v1",
+  "created_at": "2026-05-24T00:00:00.000Z",
+  "purpose": "Use existing ai-control-platform development workflow capabilities as the dispatcher/guardrail for implementing the self-governance loop.",
+  "context_pack": {
+    "requirement_summary": "落地平台自我治理闭环：周期性发现问题，明确缺陷自动进入中台开发流程，疑似风险先补证据，演进机会生成结构化用户决策包，并在工作台呈现。",
+    "host": "platform_core",
+    "target_project_id": "ai-control-platform",
+    "non_goals": [
+      "不修改被纳管业务项目",
+      "不把自检结果停留为纯告警",
+      "不把用户决策简化为同意或拒绝"
+    ],
+    "forbidden_actions": [
+      "不得绕过现有 Context Pack / Work Package / projection 闭环",
+      "不得生成无法调度落地的自动修复项",
+      "不得把规划文档当成实现证据"
+    ],
+    "owned_files": [
+      "src/workflow/self-governance.js",
+      "src/workflow/workbench-projection.js",
+      "src/workflow/workbench-projection-schema.js",
+      "test/self-governance.test.js",
+      "test/workbench-projection.test.js",
+      "test/workbench-projection-schema.test.js",
+      "tools/build-self-governance-report.mjs",
+      "docs/examples/self-governance-loop-trial.json"
+    ],
+    "acceptance_gates": [
+      "node --test test/self-governance.test.js",
+      "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js"
+    ],
+    "rollback_conditions": [
+      "工作台 projection schema 失效",
+      "自我治理报告不能生成可调度修复/证据任务",
+      "用户决策包缺少细化维度"
+    ],
+    "subtasks": [
+      {
+        "id": "self-governance-domain-model",
+        "title": "实现平台自我治理领域模型",
+        "owned_files": [
+          "src/workflow/self-governance.js",
+          "test/self-governance.test.js"
+        ]
+      },
+      {
+        "id": "self-governance-workbench-projection",
+        "title": "将自我治理摘要接入工作台投影和 schema",
+        "owned_files": [
+          "src/workflow/workbench-projection.js",
+          "src/workflow/workbench-projection-schema.js",
+          "test/workbench-projection.test.js",
+          "test/workbench-projection-schema.test.js"
+        ],
+        "depends_on": [
+          "self-governance-domain-model"
+        ]
+      },
+      {
+        "id": "self-governance-cli-evidence",
+        "title": "提供治理报告生成工具和本次中台流程试运行证据",
+        "owned_files": [
+          "tools/build-self-governance-report.mjs",
+          "docs/examples/self-governance-loop-trial.json"
+        ],
+        "depends_on": [
+          "self-governance-domain-model"
+        ]
+      }
+    ]
+  },
+  "context_pack_validation": {
+    "status": "pass",
+    "issues": [],
+    "host_boundary": {
+      "classification": "platform_core",
+      "requestedDomain": "platform_core",
+      "targetProjectId": "ai-control-platform",
+      "allowed": true,
+      "reasons": [
+        "host boundary accepted"
+      ]
+    }
+  },
+  "work_packages": [
+    {
+      "id": "self-governance-domain-model",
+      "title": "实现平台自我治理领域模型",
+      "action": "",
+      "global_goal_id": null,
+      "owned_files": [
+        "src/workflow/self-governance.js",
+        "test/self-governance.test.js"
+      ],
+      "depends_on": [],
+      "source": null,
+      "dispatch_allowed": true,
+      "blocked_reasons": []
+    },
+    {
+      "id": "self-governance-workbench-projection",
+      "title": "将自我治理摘要接入工作台投影和 schema",
+      "action": "",
+      "global_goal_id": null,
+      "owned_files": [
+        "src/workflow/workbench-projection.js",
+        "src/workflow/workbench-projection-schema.js",
+        "test/workbench-projection.test.js",
+        "test/workbench-projection-schema.test.js"
+      ],
+      "depends_on": [
+        "self-governance-domain-model"
+      ],
+      "source": null,
+      "dispatch_allowed": true,
+      "blocked_reasons": []
+    },
+    {
+      "id": "self-governance-cli-evidence",
+      "title": "提供治理报告生成工具和本次中台流程试运行证据",
+      "action": "",
+      "global_goal_id": null,
+      "owned_files": [
+        "tools/build-self-governance-report.mjs",
+        "docs/examples/self-governance-loop-trial.json"
+      ],
+      "depends_on": [
+        "self-governance-domain-model"
+      ],
+      "source": null,
+      "dispatch_allowed": true,
+      "blocked_reasons": []
+    }
+  ],
+  "dispatch_summary": {
+    "status": "ready",
+    "package_count": 3,
+    "dispatchable_count": 3
+  },
+  "verification": {
+    "status": "pass",
+    "commands": [
+      "node --test test/self-governance.test.js",
+      "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js",
+      "node tools/build-self-governance-report.mjs tmp/self-governance/sample-input.json tmp/self-governance/sample-report.json",
+      "node tools/workbench-server.mjs 4181 + Playwright desktop/mobile checks",
+      "npm run check:closeout"
+    ],
+    "results": [
+      {
+        "command": "node --test test/self-governance.test.js",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Self-governance domain model routes defects to auto-repair work packages, evidence gaps to evidence-building work packages, and evolution opportunities to structured user decision packages."
+      },
+      {
+        "command": "node --test test/workbench-projection.test.js test/workbench-projection-schema.test.js",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Workbench projection and schema expose self-governance summary in PC/mobile projections and one-screen counters."
+      },
+      {
+        "command": "node tools/build-self-governance-report.mjs tmp/self-governance/sample-input.json tmp/self-governance/sample-report.json",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "CLI generated a self-governance report with one auto-repair package, one evidence-building package, and one structured user decision package."
+      },
+      {
+        "command": "node --test test/workbench-shell.test.js test/workbench-projection.test.js test/workbench-projection-schema.test.js",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Workbench shell, projection, and schema tests pass after adding visible self-governance readout."
+      },
+      {
+        "command": "node tools/workbench-server.mjs 4181 + HTTP checks",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Local workbench service returned self_governance status=available with 12 dimensions; desktop and mobile HTML both include 平台自我治理."
+      },
+      {
+        "command": "npm test",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Full node --test suite passed: 42 test files, 42 pass, 0 fail."
+      },
+      {
+        "command": "npm run check:workbench:browser-events",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Browser event gate passed with 15 scenarios and no desktop/mobile horizontal overflow."
+      },
+      {
+        "command": "npm run check:closeout",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Final closeout passed after projection/schema/UI changes: 468 unit tests, project onboarding, process hardening, 15 browser-event scenarios, and scheduler dispatch writeback."
+      },
+      {
+        "command": "node --test test/self-governance.test.js test/workbench-projection.test.js test/workbench-projection-schema.test.js",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Focused regression passed after tightening PC/mobile self-governance projection fields for cadence and role count."
+      },
+      {
+        "command": "node tools/workbench-server.mjs 4181 + Playwright desktop/mobile checks",
+        "status": "pass",
+        "recorded_at": "2026-05-24T00:00:00.000Z",
+        "summary": "Real served desktop and mobile workbench pages render 平台自我治理 with status=available, cadence=weekly, role_count=4, and next trigger on desktop; only favicon.ico returns 404."
+      }
+    ]
+  },
+  "current_phase": "closed",
+  "closed_at": "2026-05-24T00:00:00.000Z"
+}
