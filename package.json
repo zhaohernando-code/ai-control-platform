@@ -16,6 +16,8 @@
     "check:scheduler-dispatch-writeback": "node tools/run-with-node18.mjs tools/check-scheduler-dispatch-writeback.mjs",
     "check:autonomous-closeout-loop-run": "node tools/run-with-node18.mjs tools/check-autonomous-closeout-loop-run.mjs",
     "check:closeout": "node tools/run-with-node18.mjs tools/check-closeout.mjs",
+    "run:self-governance-scan": "node tools/run-with-node18.mjs tools/run-self-governance-scan.mjs",
+    "run:self-governance-dispatch": "node tools/run-with-node18.mjs tools/dispatch-self-governance-auto-repairs.mjs",
     "run:closeout-plan": "node tools/run-with-node18.mjs tools/run-closeout-plan.mjs",
     "run:autonomous-closeout-loop": "node tools/run-with-node18.mjs tools/run-autonomous-closeout-loop.mjs",
     "run:reviewer-shard": "node tools/run-with-node18.mjs tools/run-reviewer-shard.mjs",

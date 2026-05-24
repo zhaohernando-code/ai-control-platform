@@ -1,3 +1,5 @@
+import { generateSelfGovernanceFindings } from "./self-governance-scanner.js";
+
 const GOVERNANCE_DIMENSIONS = [
   "code_quality",
   "system_robustness",
@@ -299,11 +301,27 @@ function normalizeFinding(finding = {}, index = 0) {
 }
 
 function explicitFindings(input = {}) {
-  return [
+  const manualFindings = [
     ...asArray(input.findings),
     ...asArray(input.self_governance_findings),
     ...asArray(input.workflow_state?.self_governance_findings),
     ...asArray(input.workflow_state?.self_governance?.findings)
+  ];
+  const scanInput = manualFindings.length > 0
+    ? {
+      ...input,
+      governance_sources: {
+        ...(input.governance_sources || input.governanceSources || {}),
+        require_scanner_findings: false
+      }
+    }
+    : input;
+  const scanFindings = input.generate_findings === true || input.generateFindings === true
+    ? generateSelfGovernanceFindings(scanInput).findings
+    : [];
+  return [
+    ...manualFindings,
+    ...scanFindings
   ];
 }
 

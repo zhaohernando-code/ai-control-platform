@@ -245,20 +245,38 @@
     "cadence": "weekly",
     "next_trigger": "下一次周度治理窗口",
     "role_count": 4,
-    "finding_count": 0,
+    "finding_count": 1,
     "dimensions_checked": 12,
     "auto_repair_count": 0,
-    "evidence_building_count": 0,
+    "evidence_building_count": 1,
     "user_decision_count": 0,
     "completed_improvement_count": 0,
-    "next_work_package_count": 0,
-    "top_dimension": null,
+    "next_work_package_count": 1,
+    "top_dimension": "iteration_evolution",
     "latest_decision_title": null,
     "latest_auto_repair_title": null,
-    "latest_evidence_title": null,
+    "latest_evidence_title": "证据补强：项目状态仍有下一步但治理未形成闭环证据",
     "report_status": "available",
     "auto_repair_work_packages": [],
-    "evidence_work_packages": [],
+    "evidence_work_packages": [
+      {
+        "id": "self-governance-evidence-project-status-next-step-open",
+        "title": "证据补强：项目状态仍有下一步但治理未形成闭环证据",
+        "action": "run_context_work_packages",
+        "governance_action": "collect_evidence_before_remediation",
+        "source_finding_id": "project-status-next-step-open",
+        "dimension": "iteration_evolution",
+        "severity": "medium",
+        "owned_files": [
+          "PROJECT_STATUS.json",
+          "src/workflow/project-status-continuation.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:closeout"
+        ],
+        "reason": "确认该 next_step 是否已经被 Context Pack、Work Package 或调度器接管，并记录可追踪证据。"
+      }
+    ],
     "decision_packages": []
   },
   "global_goal_completion": {
@@ -608,9 +626,9 @@
       "agent_lifecycle_completed": 0,
       "agent_lifecycle_evaluated": 0,
       "agent_lifecycle_closed": 0,
-      "self_governance_findings": 0,
+      "self_governance_findings": 1,
       "self_governance_auto_repairs": 0,
-      "self_governance_evidence_tasks": 0,
+      "self_governance_evidence_tasks": 1,
       "self_governance_user_decisions": 0,
       "global_goals_total": 3,
       "global_goals_pending": 3,

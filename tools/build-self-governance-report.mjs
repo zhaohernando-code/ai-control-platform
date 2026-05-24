@@ -3,10 +3,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createSelfGovernanceReport } from "../src/workflow/self-governance.js";
 
 function usage() {
-  console.error("Usage: node tools/build-self-governance-report.mjs <input.json> <output.json>");
+  console.error("Usage: node tools/build-self-governance-report.mjs [--scan] <input.json> <output.json>");
 }
 
-const [, , inputPath, outputPath] = process.argv;
+const args = process.argv.slice(2);
+const scan = args.includes("--scan");
+const positional = args.filter((arg) => arg !== "--scan");
+const [inputPath, outputPath] = positional;
 
 if (!inputPath || !outputPath) {
   usage();
@@ -15,7 +18,7 @@ if (!inputPath || !outputPath) {
 
 try {
   const input = JSON.parse(readFileSync(inputPath, "utf8"));
-  const report = createSelfGovernanceReport(input);
+  const report = createSelfGovernanceReport(scan ? { ...input, generate_findings: true } : input);
   writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify({
     status: report.status,
