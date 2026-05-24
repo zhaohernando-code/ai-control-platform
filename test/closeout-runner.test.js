@@ -13,6 +13,10 @@ import {
 } from "../src/workflow/closeout-runner.js";
 import { validateArtifactLedger } from "../src/workflow/artifact-ledger.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
+import {
+  isRenderedPassStatus,
+  validateWorkbenchBrowserEventsArtifact
+} from "../tools/check-closeout.mjs";
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -38,11 +42,87 @@ function platformTempDir(prefix) {
   return mkdtempSync(join(process.cwd(), `tmp/${prefix}`));
 }
 
+function browserEventsArtifact({
+  cleanupStatus = "通过",
+  loopCleanupStatus = "通过",
+  schedulerLoopStatus = "通过"
+} = {}) {
+  return {
+    version: "workbench-browser-events-run.v1",
+    status: "pass",
+    scenarios: [
+      {
+        scenario: "projected_real_partial_shard_readout",
+        shard_review_next: "reviewer-scope-shard-002",
+        next_action_readout: "run_reviewer_scope_shard",
+        dimensions: { width: 1200, scrollWidth: 1200 }
+      },
+      {
+        scenario: "agent_lifecycle_pool_timeout_readout",
+        desktop_timed_out: "1",
+        mobile_timed_out: "1",
+        desktop_heartbeats: "1",
+        mobile_heartbeats: "1",
+        dimensions: { width: 1200, scrollWidth: 1200 }
+      },
+      {
+        scenario: "agent_lifecycle_pool_cleanup_click",
+        cleanup_after_status: cleanupStatus,
+        dimensions: { width: 1200, scrollWidth: 1200 }
+      },
+      {
+        scenario: "agent_lifecycle_pool_cleanup_loop_click",
+        cleanup_after_status: loopCleanupStatus,
+        cleanup_after_open: "0",
+        cleanup_after_unevaluated: "0",
+        cleanup_after_unclosed: "0",
+        projected_action: "cleanup_agent_lifecycle_pool",
+        scheduler_loop_status: schedulerLoopStatus,
+        scheduler_loop_strategy: "按推荐动作推进",
+        next_action_readout: "inspect_scheduler_loop",
+        dimensions: { width: 1200, scrollWidth: 1200 }
+      }
+    ]
+  };
+}
+
+function writeTempJson(prefix, value) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  const path = join(dir, "artifact.json");
+  writeFileSync(path, JSON.stringify(value));
+  return path;
+}
+
 test("extractSnapshotPublishPlan accepts raw plan or continuation decision", () => {
   const plan = snapshotPlan();
 
   assert.equal(extractSnapshotPublishPlan(plan), plan);
   assert.equal(extractSnapshotPublishPlan({ snapshot_publish_plan: plan }), plan);
+});
+
+test("closeout browser events validator accepts translated lifecycle cleanup status", () => {
+  assert.equal(isRenderedPassStatus("pass"), true);
+  assert.equal(isRenderedPassStatus("通过"), true);
+  assert.equal(isRenderedPassStatus("失败"), false);
+
+  const path = writeTempJson("ai-control-platform-browser-events-", browserEventsArtifact());
+
+  assert.doesNotThrow(() => validateWorkbenchBrowserEventsArtifact(path));
+});
+
+test("closeout browser events validator rejects non-pass cleanup statuses", () => {
+  for (const artifact of [
+    browserEventsArtifact({ cleanupStatus: "失败" }),
+    browserEventsArtifact({ loopCleanupStatus: "失败" }),
+    browserEventsArtifact({ schedulerLoopStatus: "失败" })
+  ]) {
+    const path = writeTempJson("ai-control-platform-browser-events-invalid-", artifact);
+
+    assert.throws(
+      () => validateWorkbenchBrowserEventsArtifact(path),
+      /workbench browser events artifact is missing/
+    );
+  }
 });
 
 test("snapshotPlanIssues rejects wrong action and unsafe snapshot input", () => {

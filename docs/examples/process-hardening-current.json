@@ -794,6 +794,13 @@
       "message": "Workbench UI must not expose raw backend/projection state tokens as default user-facing copy."
     },
     {
+      "id": "workbench-internal-copy-visible",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Visible workbench and closeout copy must not expose internal implementation words, English engineering labels, or raw long artifact identifiers while frontend acceptance still passes."
+    },
+    {
       "id": "frontend-dead-navigation",
       "status": "fail",
       "category": "quality_gate_gap",
@@ -827,6 +834,27 @@
       "category": "quality_gate_gap",
       "severity": "p1",
       "message": "Closeout browser-event validation must not compare frontend-translated strategy copy to raw internal execution strategy tokens, while lifecycle cleanup and scheduler progress semantics must remain machine-checked."
+    },
+    {
+      "id": "closeout-artifact-rendered-status-coupling",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Closeout artifact validation must not reject accepted operator-facing translated pass statuses such as lifecycle cleanup and scheduler loop status, while still failing non-pass cleanup states and preserving projected action, strategy, next-action, lifecycle count, and overflow assertions."
+    },
+    {
+      "id": "browser-events-stale-copy-coupling",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Workbench browser-event verification must not wait on stale pre-translation button labels after frontend acceptance changes operator-facing copy; it must track accepted copy while preserving state and projection assertions."
+    },
+    {
+      "id": "scheduler-writeback-rendered-status-coupling",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Scheduler dispatch writeback browser validation must not reject accepted operator-facing translated pass labels for scheduler_dispatch_status, while raw projection and CLI scheduler status semantics stay strictly pass with exactly three steps."
     },
     {
       "id": "frontend-semantic-command-controls-uncounted",
@@ -925,6 +953,20 @@
       "category": "quality_gate_gap",
       "severity": "p1",
       "message": "Audit skill trial evidence must cover every required dimension from real ai-control-platform code/runtime state, include current closeout evidence, and reject dimension or finding evidence that relies only on summary status docs."
+    },
+    {
+      "id": "isolated-worker-browser-dependency-preflight",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Isolated child worker worktrees must fail closed before browser or Playwright-backed validation when required local runtime packages are unavailable."
+    },
+    {
+      "id": "child-worker-touched-files-not-accepted",
+      "status": "fail",
+      "category": "process_drift",
+      "severity": "p1",
+      "message": "Main orchestrator child-worker acceptance must treat touched_files as changed-file evidence so new files cannot be dropped during bounded diff integration."
     }
   ],
   "hardening_items": [
@@ -2057,6 +2099,14 @@
       "status": "completed"
     },
     {
+      "finding_id": "workbench-internal-copy-visible",
+      "invariant": "PC/mobile workbench surfaces must use Chinese operator copy and must not expose internal backend labels, English engineering process terms, raw history labels, or raw long artifact identifiers in visible body text.",
+      "enforcement_target": "apps/workbench/desktop.html; apps/workbench/mobile.html; apps/workbench/workbench.js; tools/check-workbench-frontend-acceptance.mjs; test/frontend-acceptance.test.js; test/workbench-shell.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance blocks visible internal workbench copy and raw artifact ids; frontend acceptance allows translated operator workbench copy; workbench shell has separate desktop and mobile entries",
+      "verification": "node --test test/frontend-acceptance.test.js test/workbench-shell.test.js; npm run check:workbench:frontend-acceptance; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
       "finding_id": "frontend-dead-navigation",
       "invariant": "Workbench navigation tabs must be real interactions that reveal distinct visible content, view focus, or scroll position; click audit failure blocks frontend acceptance.",
       "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
@@ -2102,6 +2152,30 @@
       "enforcement_target": "tools/check-closeout.mjs; docs/examples/process-hardening-current.json",
       "regression_test": "check-closeout validates agent_lifecycle_pool_cleanup_loop_click with translated scheduler_loop_strategy while retaining lifecycle cleanup and projected action semantics",
       "verification": "npm run check:workbench:browser-events; npm run check:closeout; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "closeout-artifact-rendered-status-coupling",
+      "invariant": "Closeout browser-event artifact validation must centralize rendered pass status normalization, accept raw pass and accepted operator-facing translated pass labels, reject non-pass cleanup statuses, and preserve cleanup lifecycle counts, projected_action, scheduler strategy, next_action_readout, and overflow assertions.",
+      "enforcement_target": "tools/check-closeout.mjs; test/closeout-runner.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "closeout browser events validator accepts translated lifecycle cleanup and scheduler loop pass statuses and rejects non-pass cleanup statuses",
+      "verification": "node --test test/closeout-runner.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; npm run check:closeout; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "browser-events-stale-copy-coupling",
+      "invariant": "Browser-event closeout waits must use the current accepted operator-facing control copy for provider health, projected loop, bounded loop, and resume actions, and must keep separate assertions for persisted events, projection status, scheduler progress, lifecycle cleanup, and layout overflow.",
+      "enforcement_target": "tools/check-workbench-browser-events.mjs; test/workbench-shell.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "check-workbench-browser-events waits for translated provider health, projected loop, bounded loop, and resume button copy; workbench shell rejects stale browser-event labels",
+      "verification": "node --test test/workbench-shell.test.js; npm run check:workbench:browser-events; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "scheduler-writeback-rendered-status-coupling",
+      "invariant": "Scheduler dispatch writeback browser validation may accept only raw pass and the current translated operator pass label for rendered scheduler_dispatch_status, while projection.scheduler_dispatch.status, CLI record_status, CLI projection_scheduler_status, and step count assertions remain strict raw pass/3 checks.",
+      "enforcement_target": "tools/check-scheduler-dispatch-writeback.mjs; test/workbench-shell.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "scheduler dispatch writeback accepts translated rendered pass without weakening raw semantics",
+      "verification": "node --test test/workbench-shell.test.js; npm run check:scheduler-dispatch-writeback; npm run check:process-hardening; npm run check:closeout; git diff --check",
       "status": "completed"
     },
     {
@@ -2222,6 +2296,22 @@
       "enforcement_target": "src/workflow/audit-skill-trial-run.js; tools/check-audit-skill-trial-run.mjs; tools/check-closeout.mjs; test/audit-skill-trial-run.test.js; docs/examples/audit-skill-trial-current.json; docs/examples/process-hardening-current.json",
       "regression_test": "audit skill trial run requires current closeout evidence; audit skill trial run rejects summary-only evidence; closeout runs audit skill trial when AUDIT_SKILL_TRIAL_RUN is set",
       "verification": "node --test test/audit-skill-trial-run.test.js; node tools/check-audit-skill-trial-run.mjs docs/examples/audit-skill-trial-current.json; AUDIT_SKILL_TRIAL_RUN=docs/examples/audit-skill-trial-current.json npm run check:closeout; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "isolated-worker-browser-dependency-preflight",
+      "invariant": "Worker runtime readiness must identify browser and Playwright-backed validation commands before execution and fail closed with structured JSON when playwright is not locally available.",
+      "enforcement_target": "src/workflow/worker-runtime-readiness.js; tools/check-worker-runtime-readiness.mjs; test/worker-runtime-readiness.test.js; package.json; docs/examples/process-hardening-current.json",
+      "regression_test": "worker runtime readiness fails browser scripts when playwright is absent, passes when present, and does not require playwright for non-browser scripts",
+      "verification": "node --test test/worker-runtime-readiness.test.js; npm run check:worker-runtime-readiness -- --script check:closeout; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "child-worker-touched-files-not-accepted",
+      "invariant": "Headless main orchestrator acceptance must merge changed_files and touched_files before no-diff and owned-files validation, so new files reported by a child worker remain part of the accepted integration surface.",
+      "enforcement_target": "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "headless child worker acceptance includes touched files when checking owned scope; headless child worker acceptance rejects touched files outside owned scope",
+      "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
       "status": "completed"
     }
   ]

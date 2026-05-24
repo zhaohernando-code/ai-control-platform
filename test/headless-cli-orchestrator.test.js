@@ -304,6 +304,63 @@ test("headless child worker acceptance allows changed files under owned director
   assert.equal(evaluation.issues.length, 0);
 });
 
+test("headless child worker acceptance includes touched files when checking owned scope", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    id: "worker-runtime-readiness-gate",
+    owned_files: [
+      "src/workflow/worker-runtime-readiness.js",
+      "tools/check-worker-runtime-readiness.mjs",
+      "test/worker-runtime-readiness.test.js",
+      "package.json",
+      "docs/examples/process-hardening-current.json"
+    ]
+  }, {
+    host: "platform_core",
+    touched_files: [
+      "src/workflow/worker-runtime-readiness.js",
+      "tools/check-worker-runtime-readiness.mjs",
+      "test/worker-runtime-readiness.test.js",
+      "package.json",
+      "docs/examples/process-hardening-current.json"
+    ],
+    test_results: [{ command: "node --test test/worker-runtime-readiness.test.js", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: true, status: "completed" },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false }
+  });
+
+  assert.equal(evaluation.status, "pass");
+  assert.deepEqual(evaluation.checked.owned_files, [
+    "src/workflow/worker-runtime-readiness.js",
+    "tools/check-worker-runtime-readiness.mjs",
+    "test/worker-runtime-readiness.test.js",
+    "package.json",
+    "docs/examples/process-hardening-current.json"
+  ]);
+});
+
+test("headless child worker acceptance rejects touched files outside owned scope", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    id: "worker-runtime-readiness-gate",
+    owned_files: ["tools/check-worker-runtime-readiness.mjs"]
+  }, {
+    host: "platform_core",
+    touched_files: [
+      "tools/check-worker-runtime-readiness.mjs",
+      "src/workflow/worker-runtime-readiness.js"
+    ],
+    test_results: [{ command: "node --test test/worker-runtime-readiness.test.js", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: true, status: "completed" },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false }
+  });
+
+  assert.equal(evaluation.status, "fail");
+  assert.ok(evaluation.issues.some((item) => item.code === "child_worker_owned_file_violation"));
+});
+
 test("headless child worker acceptance rejects sibling paths outside owned directories", () => {
   const evaluation = evaluateHeadlessChildWorkerOutput({
     id: "global-goal-platform-boundary-and-state-foundation",

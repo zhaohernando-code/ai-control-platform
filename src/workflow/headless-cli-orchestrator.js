@@ -242,7 +242,10 @@ function changedFileAllowedByOwnedFiles(changedFile = "", ownedFiles = []) {
 export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {}) {
   const issues = [];
   const ownedFiles = compactStrings(workPackage.owned_files);
-  const changedFiles = compactStrings(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles);
+  const changedFiles = compactStrings([
+    ...asArray(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles),
+    ...asArray(output.touched_files || output.touchedFiles)
+  ]);
   const testResults = asArray(output.test_results || output.testResults);
   const selfEvaluation = output.self_evaluation || output.selfEvaluation || {};
   const processHardening = output.process_hardening || output.processHardening || {};

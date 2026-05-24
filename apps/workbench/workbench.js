@@ -4,7 +4,34 @@ const source = createProjectionSource();
 let currentProjection = null;
 let currentProjectionId = null;
 const RAW_TOKEN_COPY = new Map([
+  ["Headless live context cycle after scheduler package", "最近自动运行"],
+  ["Headless live context cycle after workbench package", "工作台修复后自动运行"],
+  ["Headless live context cycle after platform boundary package", "边界修复后自动运行"],
+  ["Headless live context cycle", "自动运行周期"],
+  ["Context pack cycle next step", "任务上下文续跑"],
+  ["Context pack cycle from", "来自当前会话的上下文周期"],
+  ["Current autonomous platform self-trial", "当前平台自运行试验"],
+  ["Platform repository bootstrap", "平台仓库初始化"],
+  ["Current session fixture", "当前会话样本"],
+  ["Current session", "当前会话"],
+  ["Rerun failed checks with recovery context", "带恢复上下文重跑检查"],
   ["rerun", "需重跑"],
+  ["Rerun", "需重跑"],
+  ["pass", "通过"],
+  ["fail", "未通过"],
+  ["failed", "失败"],
+  ["ready", "就绪"],
+  ["not ready", "未就绪"],
+  ["available", "可用"],
+  ["complete", "已完成"],
+  ["completed", "已完成"],
+  ["blocked", "受阻"],
+  ["idle", "空闲"],
+  ["validation", "校验"],
+  ["dry_run", "预检"],
+  ["unknown", "未知"],
+  ["human_intervention", "需要人工介入"],
+  ["projection_load_failed", "状态加载失败"],
   ["not_configured", "未配置"],
   ["no_next_action", "暂无下一步"],
   ["inspect_context_work_packages", "检查任务包"],
@@ -15,25 +42,47 @@ const RAW_TOKEN_COPY = new Map([
   ["approved_bounded_real_reviewer", "受控真实审查"],
   ["scheduler_dispatch", "调度执行"],
   ["frontend_acceptance", "前端验收"],
+  ["frontend_acceptance_run", "前端验收"],
   ["headless_projected_action_progress", "后台推进进度"],
   ["operator_observable", "操作员可见"],
   ["automation_driver", "自动化执行"],
+  ["scheduler", "调度"],
+  ["reviewer", "审查"],
+  ["scheduler_dispatch_policy", "调度策略"],
+  ["scheduler_dispatch_run", "调度执行"],
   ["context_pack_cycle_materialized", "任务上下文已生成"],
   ["project_status_continuation", "项目状态续跑"],
   ["reviewer_shard_aggregate", "审查分片汇总"],
   ["scheduler_dispatch_chain", "调度链路"],
   ["current-session", "当前会话"],
-  ["current_session", "当前会话"]
+  ["current_session", "当前会话"],
+  ["blocker(s)", "阻塞项"],
+  ["step(s)", "步"]
 ]);
+const LONG_RAW_IDENTIFIER_PATTERN = /\b[a-z0-9]+(?:-[a-z0-9]+){3,}\b/gi;
 
 function text(value, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
 }
 
+function redactRawIdentifiers(value) {
+  return String(value || "").replace(LONG_RAW_IDENTIFIER_PATTERN, (match) => {
+    return match.length >= 28 ? "证据已记录" : match;
+  });
+}
+
+function replaceTokenCopy(value, token, label) {
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (/^[a-z0-9_-]+$/i.test(token)) {
+    return value.replace(new RegExp(`(^|[^a-zA-Z0-9_-])${escaped}(?=$|[^a-zA-Z0-9_-])`, "g"), `$1${label}`);
+  }
+  return value.replaceAll(token, label);
+}
+
 function humanizeToken(token) {
   const value = text(token);
-  return RAW_TOKEN_COPY.get(value) || value
+  return RAW_TOKEN_COPY.get(value) || redactRawIdentifiers(value)
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -42,10 +91,10 @@ function humanizeToken(token) {
 function displayText(value, fallback = "--") {
   const raw = text(value, fallback);
   if (raw === fallback) return fallback;
-  let result = raw;
+  let result = redactRawIdentifiers(raw);
   const pairs = [...RAW_TOKEN_COPY.entries()].sort((a, b) => b[0].length - a[0].length);
   for (const [token, label] of pairs) {
-    result = result.replaceAll(token, label);
+    result = replaceTokenCopy(result, token, label);
   }
   return result;
 }
@@ -80,7 +129,7 @@ function headlineText(projection) {
   const action = statusText(actionLabel(projection));
   if (status !== "--" && action !== "--") return compactCopy(`${status} · ${action}`, 80);
   if (decision !== "--") return compactCopy(decision, 80);
-  return compactCopy(headline || projection.goal, 80, "等待 Projection");
+  return compactCopy(headline || projection.goal, 80, "等待状态投影");
 }
 
 function qs(selector) {
@@ -105,6 +154,13 @@ function setText(name, value) {
   qsa(`[data-bind="${name}"]`).forEach((node) => {
     node.textContent = displayText(value);
   });
+}
+
+function workflowIdentityLabel(value, fallback) {
+  const raw = text(value, "");
+  if (!raw) return fallback;
+  if (/^(run|cycle)-/i.test(raw) || raw.length > 24) return fallback;
+  return displayText(raw);
 }
 
 function setProjectionMode(projectionId = currentProjectionId) {
@@ -204,7 +260,7 @@ function renderModelRoles(projection) {
     ...rows.map((role) => {
       const item = document.createElement("article");
       item.className = "role-item";
-      item.innerHTML = `<strong>${displayText(role.model)}</strong><span>${role.count} role(s)</span>`;
+      item.innerHTML = `<strong>${displayText(role.model)}</strong><span>${role.count} 个职责</span>`;
       return item;
     })
   );
@@ -229,8 +285,8 @@ function renderProjection(projection) {
   const nextActionReadout = projection.next_action_readout || {};
   const nextActionTerminal = projection.next_action_terminal || {};
 
-  setText("run_id", projection.run_id);
-  setText("cycle_id", projection.cycle_id);
+  setText("run_id", workflowIdentityLabel(projection.run_id, "当前运行"));
+  setText("cycle_id", workflowIdentityLabel(projection.cycle_id, "当前周期"));
   setText("status", statusText(projection.status));
   setText("status_short", statusText(projection.status));
   setText("decision", statusText(projection.decision));
@@ -385,7 +441,7 @@ async function renderHistorySelect() {
     }
   } catch {
     for (const select of selects) {
-      select.replaceChildren(new Option("Projection history unavailable", source.url));
+      select.replaceChildren(new Option("状态历史不可用", source.url));
     }
   }
 }
@@ -402,7 +458,7 @@ async function main(url = null, projectionId = null) {
     renderProjection({
       status: "human_intervention",
       decision: "projection_load_failed",
-      goal: "Projection 加载失败",
+      goal: "状态投影加载失败",
       reasons: [error.message],
       one_screen: {
         counters: {}
@@ -443,7 +499,7 @@ qsa("[data-action]").forEach((button) => {
     }
 
     if (button.dataset.action === "validate") {
-      button.textContent = "Projection 已校验";
+      button.textContent = "当前状态已校验";
       main();
       return;
     }
@@ -464,14 +520,14 @@ qsa("[data-provider-health]").forEach((button) => {
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      button.textContent = "Smoke 已记录";
+      button.textContent = "连通已记录";
       if (result.projection) {
         currentProjection = result.projection;
         renderProjection(result.projection);
       }
     } catch {
       button.dataset.eventState = "failed";
-      button.textContent = "Smoke 写入失败";
+      button.textContent = "连通写入失败";
     }
   });
 });
@@ -517,7 +573,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
     const projectedMock = loopMode === "projected-mock";
     const projectedReal = loopMode === "projected-real";
     button.dataset.eventState = "pending";
-    button.textContent = projectedMock || projectedReal ? "Projected Loop 运行中" : "Loop 运行中";
+    button.textContent = projectedMock || projectedReal ? "按投影推进中" : "调度轮次运行中";
 
     try {
       const result = await source.runAutonomousSchedulerLoop({
@@ -534,7 +590,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      button.textContent = projectedMock || projectedReal ? "Projected Loop 已记录" : "Loop 已记录";
+      button.textContent = projectedMock || projectedReal ? "投影推进已记录" : "调度轮次已记录";
       if (result.projection) {
         currentProjection = result.projection;
         renderProjection(result.projection);
@@ -545,7 +601,7 @@ qsa("[data-autonomous-scheduler-loop]").forEach((button) => {
         renderProjection(error.projection);
       }
       button.dataset.eventState = "failed";
-      button.textContent = projectedReal ? "Real Loop 被拦截" : "Loop 失败";
+      button.textContent = projectedReal ? "受控审查被拦截" : "调度轮次失败";
     }
   });
 });
@@ -587,7 +643,7 @@ qsa("[data-workbench-next-action]").forEach((button) => {
 qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
   bindCommandActivation(button, async () => {
     button.dataset.eventState = "pending";
-    button.textContent = "Resume 运行中";
+    button.textContent = "续跑调度中";
 
     try {
       const result = await source.resumeAutonomousSchedulerLoop({
@@ -598,7 +654,7 @@ qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      button.textContent = "Resume 已记录";
+      button.textContent = "续跑已记录";
       currentProjectionId = result.item?.id || currentProjectionId;
       if (result.projection) {
         currentProjection = result.projection;
@@ -610,7 +666,7 @@ qsa("[data-autonomous-scheduler-loop-resume]").forEach((button) => {
         renderProjection(error.projection);
       }
       button.dataset.eventState = "failed";
-      button.textContent = "Resume 失败";
+      button.textContent = "续跑失败";
     }
   });
 });

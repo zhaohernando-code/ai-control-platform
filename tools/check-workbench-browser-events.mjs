@@ -319,7 +319,7 @@ async function verifyProviderHealthClick(browser) {
       { waitUntil: "networkidle" }
     );
     await page.click('[data-provider-health="timeout"]');
-    await page.waitForFunction(() => document.querySelector('[data-provider-health="timeout"]')?.textContent.includes("Smoke 已记录"));
+    await page.waitForFunction(() => document.querySelector('[data-provider-health="timeout"]')?.textContent.includes("连通已记录"));
 
     const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
     const nextAction = await page.textContent('[data-bind="provider_next_action"]');
@@ -362,10 +362,10 @@ async function verifySchedulerDispatchClick(browser) {
     }));
     await page.close();
 
-    assert(schedulerDispatchStatus === "pass", "scheduler dispatch click must update rendered scheduler status");
+    assert(schedulerDispatchStatus === "通过", "scheduler dispatch click must update rendered scheduler status");
     assert(schedulerDispatchSteps === "3", "scheduler dispatch click must render scheduler step count");
-    assert(schedulerPolicyStatus === "pass", "scheduler dispatch click must render policy pass");
-    assert(schedulerPolicyMode === "dry_run", "scheduler dispatch click must render policy execution mode");
+    assert(schedulerPolicyStatus === "通过", "scheduler dispatch click must render policy pass");
+    assert(schedulerPolicyMode === "预检", "scheduler dispatch click must render policy execution mode");
     assert(dimensions.scrollWidth <= dimensions.width, "scheduler dispatch click must not create horizontal overflow");
 
     recordScenario({
@@ -402,11 +402,11 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
     }));
     await page.close();
 
-    assert(schedulerDispatchStatus === "pass", "approved mock dispatch must render scheduler pass");
+    assert(schedulerDispatchStatus === "通过", "approved mock dispatch must render scheduler pass");
     assert(schedulerDispatchDryRun === "否", "approved mock dispatch must render translated non-dry-run copy");
-    assert(schedulerPolicyStatus === "pass", "approved mock dispatch must render policy pass");
+    assert(schedulerPolicyStatus === "通过", "approved mock dispatch must render policy pass");
     assert(schedulerPolicyMode === "execute", "approved mock dispatch must render execute policy mode");
-    assert(schedulerNextStatus === "pass", "approved mock dispatch must render next continuation status");
+    assert(schedulerNextStatus === "通过", "approved mock dispatch must render next continuation status");
     assert(schedulerNextPackages === "1", "approved mock dispatch must render next work package count");
     assert(schedulerContinuationReady === "就绪", "approved mock dispatch must render translated scheduler continuation readiness");
     assert(dimensions.scrollWidth <= dimensions.width, "approved mock dispatch must not create horizontal overflow");
@@ -612,13 +612,13 @@ async function verifyAgentLifecyclePoolTimeoutReadout(browser) {
     await desktop.close();
     await mobile.close();
 
-    assert(desktopStatus === "blocked", "desktop timeout lifecycle pool must render blocked status");
+    assert(desktopStatus === "受阻", "desktop timeout lifecycle pool must render blocked status");
     assert(desktopTimedOut === "1", "desktop lifecycle pool must render one timeout");
     assert(desktopHeartbeats === "1", "desktop lifecycle pool must render one heartbeat");
     assert(desktopLatestHeartbeat.includes("2026-05-22T08:16:00.000Z"), "desktop lifecycle pool must render latest heartbeat");
     assert(desktopLatestTimeout.includes("2026-05-22T08:20:00.000Z"), "desktop lifecycle pool must render latest timeout");
-    assert(desktopNextActionStatus === "blocked", "timeout lifecycle next action must render blocked status");
-    assert(mobileStatus === "blocked", "mobile timeout lifecycle pool must render blocked status");
+    assert(desktopNextActionStatus === "受阻", "timeout lifecycle next action must render blocked status");
+    assert(mobileStatus === "受阻", "mobile timeout lifecycle pool must render blocked status");
     assert(mobileTimedOut === "1", "mobile lifecycle pool must render one timeout");
     assert(mobileHeartbeats === "1", "mobile lifecycle pool must render one heartbeat");
     assert(mobileLatestHeartbeat.includes("2026-05-22T08:16:00.000Z"), "mobile lifecycle pool must render latest heartbeat");
@@ -681,7 +681,7 @@ async function verifyAgentLifecyclePoolCleanupClick(browser) {
     assert(cleanupBeforeUnclosed === "1", "lifecycle cleanup scenario must start with one unclosed worker");
     assert(cleanupBeforeNextAction === "cleanup_agent_lifecycle_pool", "lifecycle pool must render cleanup next action before guarded click");
     assert(projectedAction === "cleanup_agent_lifecycle_pool", "guarded next action must execute lifecycle cleanup projection");
-    assert(cleanupAfterStatus === "pass", "guarded lifecycle cleanup must render pass after execution");
+    assert(cleanupAfterStatus === "通过", "guarded lifecycle cleanup must render pass after execution");
     assert(cleanupAfterOpen === "0", "guarded lifecycle cleanup must leave no open workers");
     assert(cleanupAfterUnevaluated === "0", "guarded lifecycle cleanup must leave no unevaluated workers");
     assert(cleanupAfterUnclosed === "0", "guarded lifecycle cleanup must leave no unclosed workers");
@@ -722,7 +722,7 @@ async function verifyAgentLifecyclePoolCleanupLoopClick(browser) {
     const cleanupBeforeStatus = await page.textContent('[data-bind="agent_lifecycle_pool_status"]');
     const projectedAction = await page.textContent('[data-bind="next_action_readout_action"]');
     await page.click('[data-autonomous-scheduler-loop="projected-mock"]');
-    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-mock"]')?.textContent.includes("Projected Loop 已记录"));
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-mock"]')?.textContent.includes("投影推进已记录"));
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopStrategy = await page.textContent('[data-bind="scheduler_loop_strategy"]');
@@ -739,9 +739,9 @@ async function verifyAgentLifecyclePoolCleanupLoopClick(browser) {
 
     assert(cleanupBeforeStatus === "unevaluated", "lifecycle loop cleanup scenario must start with unevaluated pool");
     assert(projectedAction === "cleanup_agent_lifecycle_pool", "projected loop must start from lifecycle cleanup action");
-    assert(schedulerLoopStatus === "pass", "projected lifecycle cleanup loop must render loop pass");
+    assert(schedulerLoopStatus === "通过", "projected lifecycle cleanup loop must render loop pass");
     assert(schedulerLoopStrategy === "按推荐动作推进", "projected lifecycle cleanup loop must render translated projected strategy");
-    assert(cleanupAfterStatus === "pass", "projected lifecycle cleanup loop must render lifecycle pass");
+    assert(cleanupAfterStatus === "通过", "projected lifecycle cleanup loop must render lifecycle pass");
     assert(cleanupAfterOpen === "0", "projected lifecycle cleanup loop must leave no open workers");
     assert(cleanupAfterUnevaluated === "0", "projected lifecycle cleanup loop must leave no unevaluated workers");
     assert(cleanupAfterUnclosed === "0", "projected lifecycle cleanup loop must leave no unclosed workers");
@@ -775,7 +775,7 @@ async function verifyProjectedMockLoopClick(browser) {
       { waitUntil: "networkidle" }
     );
     await page.click('[data-autonomous-scheduler-loop="projected-mock"]');
-    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-mock"]')?.textContent.includes("Projected Loop 已记录"));
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-mock"]')?.textContent.includes("投影推进已记录"));
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
@@ -791,11 +791,11 @@ async function verifyProjectedMockLoopClick(browser) {
     }));
     await page.close();
 
-    assert(schedulerLoopStatus === "pass", "projected mock loop must render loop pass");
+    assert(schedulerLoopStatus === "通过", "projected mock loop must render loop pass");
     assert(schedulerLoopIterations === "2", "projected mock loop must run two reviewer shard iterations");
     assert(schedulerLoopStrategy === "按推荐动作推进", "projected mock loop must render translated projected strategy");
     assert(shardReviewCompleted === "2", "projected mock loop must render completed reviewer shards");
-    assert(shardReviewStatus === "pass", "projected mock loop must aggregate reviewer shard status");
+    assert(shardReviewStatus === "通过", "projected mock loop must aggregate reviewer shard status");
     assert(shardReviewExecutor === "mock", "projected mock loop must render mock reviewer executor");
     assert(shardReviewBudget === "0", "projected mock loop must render zero external reviewer budget");
     assert(nextActionReadout, "projected mock loop must render a follow-up next-action readout");
@@ -828,7 +828,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
       { waitUntil: "networkidle" }
     );
     await page.click('[data-autonomous-scheduler-loop="projected-real"]');
-    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-real"]')?.textContent.includes("Projected Loop 已记录"));
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="projected-real"]')?.textContent.includes("投影推进已记录"));
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
@@ -845,7 +845,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
     await page.close();
 
     assert(calls.length === 1 && calls[0] === "reviewer-scope-shard-001", "projected real partial run must execute only the first shard");
-    assert(schedulerLoopStatus === "pass", "projected real partial loop must render loop pass");
+    assert(schedulerLoopStatus === "通过", "projected real partial loop must render loop pass");
     assert(schedulerLoopIterations === "1", "projected real partial loop must stay within one iteration");
     assert(schedulerLoopStrategy === "按推荐动作推进", "projected real partial loop must render translated projected strategy");
     assert(shardReviewCompleted === "1", "projected real partial loop must render one completed shard");
@@ -951,13 +951,13 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     );
     await page.waitForFunction(() => document.querySelector("[data-history-select]")?.options.length > 0);
     await page.click('[data-autonomous-scheduler-loop="bounded"]');
-    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="bounded"]')?.textContent.includes("Loop 已记录"));
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop="bounded"]')?.textContent.includes("调度轮次已记录"));
 
     const schedulerLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const schedulerLoopIterations = await page.textContent('[data-bind="scheduler_loop_iterations"]');
     const schedulerLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     await page.click('[data-autonomous-scheduler-loop-resume="bounded"]');
-    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop-resume="bounded"]')?.textContent.includes("Resume 已记录"));
+    await page.waitForFunction(() => document.querySelector('[data-autonomous-scheduler-loop-resume="bounded"]')?.textContent.includes("续跑已记录"));
     const resumedLoopStatus = await page.textContent('[data-bind="scheduler_loop_status"]');
     const resumedLoopRecovery = await page.textContent('[data-bind="scheduler_loop_recovery"]');
     const resumedLoopAttempt = await page.textContent('[data-bind="scheduler_loop_resume_status"]');
@@ -970,11 +970,11 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
     }));
     await page.close();
 
-    assert(schedulerLoopStatus === "pass", "autonomous scheduler loop click must render loop pass");
+    assert(schedulerLoopStatus === "通过", "autonomous scheduler loop click must render loop pass");
     assert(schedulerLoopIterations === "1", "autonomous scheduler loop click must render one loop iteration");
-    assert(schedulerLoopRecovery === "ready", "autonomous scheduler loop click must render recovery readiness");
-    assert(resumedLoopStatus === "pass", "autonomous scheduler loop resume must render loop pass");
-    assert(resumedLoopRecovery === "idle", "autonomous scheduler loop resume must render idle recovery when no actions remain");
+    assert(schedulerLoopRecovery === "就绪", "autonomous scheduler loop click must render recovery readiness");
+    assert(resumedLoopStatus === "通过", "autonomous scheduler loop resume must render loop pass");
+    assert(resumedLoopRecovery === "空闲", "autonomous scheduler loop resume must render idle recovery when no actions remain");
     assert(resumedLoopAttempt === "未配置", "resume target projection should not claim the source resume attempt");
     assert(Number(operationEventCount) >= 1, "autonomous scheduler loop resume must render operation event count");
     assert(operationRows >= 1, "autonomous scheduler loop resume must render operation timeline rows");
@@ -1082,7 +1082,7 @@ async function verifyMobileProjectionLoad(browser) {
       `http://127.0.0.1:${port}/apps/workbench/mobile.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
       { waitUntil: "networkidle" }
     );
-    await page.waitForFunction(() => document.querySelector('[data-bind="cycle_id"]')?.textContent.includes("cycle-"));
+    await page.waitForFunction(() => document.querySelector('[data-bind="cycle_id"]')?.textContent.trim() === "当前周期");
 
     const dimensions = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,

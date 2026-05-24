@@ -13,7 +13,7 @@
         <div class="brand">
           <div class="brand-mark">AI</div>
           <div>
-            <strong>Control Platform</strong>
+            <strong>控制中台</strong>
             <span>自主开发中台</span>
           </div>
         </div>
@@ -27,8 +27,8 @@
         <div class="operator">
           <div class="avatar">OP</div>
           <div>
-            <strong>Operator</strong>
-            <span data-bind="cycle_id">cycle</span>
+            <strong>值班员</strong>
+            <span data-bind="cycle_id">当前周期</span>
           </div>
         </div>
       </aside>
@@ -48,12 +48,12 @@
             <strong data-bind="selected_model">--</strong>
           </div>
           <div class="top-item">
-            <span>Reviewer</span>
+            <span>审查状态</span>
             <strong data-bind="reviewer_status">--</strong>
           </div>
           <div class="top-actions">
-            <select aria-label="Projection history" data-history-select></select>
-            <button type="button" data-action="validate">校验 Projection</button>
+            <select aria-label="状态投影历史" data-history-select></select>
+            <button type="button" data-action="validate">校验状态</button>
             <button class="primary" type="button" data-action="next">下一步</button>
           </div>
         </header>
@@ -72,31 +72,31 @@
 
           <section class="metrics" aria-label="核心计数" data-section="overview">
             <article class="metric">
-              <span>Work Packages</span>
+              <span>任务包</span>
               <strong data-bind="counter_work_packages">0</strong>
             </article>
             <article class="metric">
-              <span>Artifacts</span>
+              <span>证据</span>
               <strong data-bind="counter_artifacts">0</strong>
             </article>
             <article class="metric">
-              <span>Reviewer Findings</span>
+              <span>审查发现</span>
               <strong data-bind="counter_reviewer_findings">0</strong>
             </article>
             <article class="metric">
-              <span>Dispatchable</span>
+              <span>可派发</span>
               <strong data-bind="counter_dispatchable_tasks">0</strong>
             </article>
             <article class="metric">
-              <span>Scheduler Steps</span>
+              <span>调度步数</span>
               <strong data-bind="counter_scheduler_dispatch_steps">0</strong>
             </article>
             <article class="metric">
-              <span>Global Pending</span>
+              <span>总目标待办</span>
               <strong data-bind="counter_global_goals_pending">0</strong>
             </article>
             <article class="metric">
-              <span>Global Done</span>
+              <span>总目标完成</span>
               <strong data-bind="counter_global_goals_completed">0</strong>
             </article>
             <article class="metric">
@@ -108,7 +108,7 @@
           <section class="panel wide" data-section="overview runs">
             <div class="section-title">
               <h2>任务流</h2>
-              <span>Context Pack -> Run -> Review -> Continuation</span>
+              <span>准备上下文 -> 执行 -> 审查 -> 续跑</span>
             </div>
             <div class="timeline" data-list="next_actions"></div>
           </section>
@@ -141,30 +141,30 @@
 
           <section class="panel" data-section="review">
             <div class="section-title">
-              <h2>Closeout</h2>
+              <h2>收口验收</h2>
               <span data-bind="closeout_publish_status">--</span>
             </div>
             <div class="closeout-grid">
               <div><span>状态</span><strong data-bind="closeout_status">--</strong></div>
-              <div><span>Snapshot</span><strong data-bind="closeout_snapshot">--</strong></div>
-              <div><span>UI verify</span><strong data-bind="ui_verification_status">--</strong></div>
-              <div><span>UI scenarios</span><strong data-bind="ui_verification_scenarios">0</strong></div>
-              <div class="full"><span>Partial shard</span><strong data-bind="ui_verification_partial">--</strong></div>
-              <div class="full"><span>Evidence</span><strong data-bind="closeout_artifact">--</strong></div>
-              <div class="full"><span>UI evidence</span><strong data-bind="ui_verification_artifact">--</strong></div>
+              <div><span>状态快照</span><strong data-bind="closeout_snapshot">--</strong></div>
+              <div><span>界面验收</span><strong data-bind="ui_verification_status">--</strong></div>
+              <div><span>验收场景</span><strong data-bind="ui_verification_scenarios">0</strong></div>
+              <div class="full"><span>分片准备</span><strong data-bind="ui_verification_partial">--</strong></div>
+              <div class="full"><span>验收证据</span><strong data-bind="closeout_artifact">--</strong></div>
+              <div class="full"><span>界面证据</span><strong data-bind="ui_verification_artifact">--</strong></div>
             </div>
           </section>
 
           <section class="panel" data-section="review">
             <div class="section-title">
-              <h2>Resume Health</h2>
+              <h2>续跑健康</h2>
               <span data-bind="resume_health_status">--</span>
             </div>
             <div class="resume-grid">
-              <div><span>Replay</span><strong data-bind="resume_replay_status">--</strong></div>
-              <div><span>Issues</span><strong data-bind="resume_issue_count">0</strong></div>
-              <div class="full"><span>Latest</span><strong data-bind="resume_latest_issue">--</strong></div>
-              <div class="full"><span>Evidence</span><strong data-bind="resume_artifact">--</strong></div>
+              <div><span>回放</span><strong data-bind="resume_replay_status">--</strong></div>
+              <div><span>问题数</span><strong data-bind="resume_issue_count">0</strong></div>
+              <div class="full"><span>最新问题</span><strong data-bind="resume_latest_issue">--</strong></div>
+              <div class="full"><span>续跑证据</span><strong data-bind="resume_artifact">--</strong></div>
             </div>
           </section>
 
@@ -189,55 +189,55 @@
 
           <section class="panel">
             <div class="section-title">
-              <h2>Scheduler Dispatch</h2>
+              <h2>调度执行</h2>
               <span data-bind="scheduler_dispatch_status">--</span>
             </div>
             <div class="scheduler-grid">
-              <div><span>Phase</span><strong data-bind="scheduler_dispatch_phase">--</strong></div>
-              <div><span>Steps</span><strong data-bind="scheduler_dispatch_steps">0</strong></div>
-              <div><span>Failed</span><strong data-bind="scheduler_dispatch_failed">0</strong></div>
-              <div><span>Dry run</span><strong data-bind="scheduler_dispatch_dry_run">no</strong></div>
-              <div><span>Policy</span><strong data-bind="scheduler_policy_status">--</strong></div>
-              <div><span>Mode</span><strong data-bind="scheduler_policy_mode">--</strong></div>
-              <div><span>Policy issues</span><strong data-bind="scheduler_policy_issues">0</strong></div>
-              <div><span>Next</span><strong data-bind="scheduler_next_status">--</strong></div>
-              <div><span>Next packages</span><strong data-bind="scheduler_next_packages">0</strong></div>
-              <div><span>Ready</span><strong data-bind="scheduler_continuation_ready">--</strong></div>
-              <div><span>Enqueue</span><strong data-bind="scheduler_continuation_enqueue">--</strong></div>
-              <div><span>Loop</span><strong data-bind="scheduler_loop_status">--</strong></div>
-              <div><span>Loops</span><strong data-bind="scheduler_loop_iterations">0</strong></div>
-              <div><span>Loop profile</span><strong data-bind="scheduler_loop_strategy">--</strong></div>
-              <div><span>Recovery</span><strong data-bind="scheduler_loop_recovery">--</strong></div>
-              <div><span>Resume</span><strong data-bind="scheduler_loop_resume_status">--</strong></div>
-              <div><span>Lifecycle</span><strong data-bind="agent_lifecycle_pool_status">--</strong></div>
-              <div><span>Open workers</span><strong data-bind="agent_lifecycle_pool_open">0</strong></div>
-              <div><span>Completed</span><strong data-bind="agent_lifecycle_pool_completed">0</strong></div>
-              <div><span>Evaluated</span><strong data-bind="agent_lifecycle_pool_evaluated">0</strong></div>
-              <div><span>Closed</span><strong data-bind="agent_lifecycle_pool_closed">0</strong></div>
-              <div><span>Unevaluated</span><strong data-bind="agent_lifecycle_pool_unevaluated">0</strong></div>
-              <div><span>Unclosed</span><strong data-bind="agent_lifecycle_pool_unclosed">0</strong></div>
-              <div><span>Timed out</span><strong data-bind="agent_lifecycle_pool_timed_out">0</strong></div>
-              <div><span>Heartbeats</span><strong data-bind="agent_lifecycle_pool_heartbeats">0</strong></div>
-              <div><span>Goals</span><strong data-bind="global_goals_status">--</strong></div>
-              <div><span>Goal total</span><strong data-bind="global_goals_total">0</strong></div>
-              <div><span>Goal done</span><strong data-bind="global_goals_completed">0</strong></div>
-              <div><span>Goal pending</span><strong data-bind="global_goals_pending">0</strong></div>
-              <div><span>Goal blocked</span><strong data-bind="global_goals_blocked">0</strong></div>
-              <div><span>Action</span><strong data-bind="next_action_readout_action">--</strong></div>
-              <div><span>Action status</span><strong data-bind="next_action_readout_status">--</strong></div>
-              <div><span>Terminal</span><strong data-bind="next_action_terminal_status">--</strong></div>
-              <div class="full"><span>Latest heartbeat</span><strong data-bind="agent_lifecycle_pool_latest_heartbeat">--</strong></div>
-              <div class="full"><span>Latest timeout</span><strong data-bind="agent_lifecycle_pool_latest_timeout">--</strong></div>
-              <div class="full"><span>Lifecycle next</span><strong data-bind="agent_lifecycle_pool_next_action">--</strong></div>
-              <div class="full"><span>Next goal</span><strong data-bind="global_goals_next">--</strong></div>
-              <div class="full"><span>Evidence</span><strong data-bind="scheduler_dispatch_artifact">--</strong></div>
-              <div class="full"><span>Next action</span><strong data-bind="scheduler_next_action">--</strong></div>
-              <div class="full"><span>Continuation</span><strong data-bind="scheduler_continuation_path">--</strong></div>
-              <div class="full"><span>Loop latest</span><strong data-bind="scheduler_loop_latest">--</strong></div>
-              <div class="full"><span>Loop action</span><strong data-bind="scheduler_loop_action">--</strong></div>
-              <div class="full"><span>Terminal action</span><strong data-bind="next_action_terminal_action">--</strong></div>
-              <div class="full"><span>Terminal reason</span><strong data-bind="next_action_terminal_reason">--</strong></div>
-              <div class="full"><span>Policy reason</span><strong data-bind="scheduler_policy_reason">--</strong></div>
+              <div><span>阶段</span><strong data-bind="scheduler_dispatch_phase">--</strong></div>
+              <div><span>步数</span><strong data-bind="scheduler_dispatch_steps">0</strong></div>
+              <div><span>失败数</span><strong data-bind="scheduler_dispatch_failed">0</strong></div>
+              <div><span>仅预检</span><strong data-bind="scheduler_dispatch_dry_run">否</strong></div>
+              <div><span>策略</span><strong data-bind="scheduler_policy_status">--</strong></div>
+              <div><span>模式</span><strong data-bind="scheduler_policy_mode">--</strong></div>
+              <div><span>策略问题</span><strong data-bind="scheduler_policy_issues">0</strong></div>
+              <div><span>下一轮</span><strong data-bind="scheduler_next_status">--</strong></div>
+              <div><span>下轮任务包</span><strong data-bind="scheduler_next_packages">0</strong></div>
+              <div><span>续跑就绪</span><strong data-bind="scheduler_continuation_ready">--</strong></div>
+              <div><span>入队</span><strong data-bind="scheduler_continuation_enqueue">--</strong></div>
+              <div><span>调度轮次</span><strong data-bind="scheduler_loop_status">--</strong></div>
+              <div><span>轮次数</span><strong data-bind="scheduler_loop_iterations">0</strong></div>
+              <div><span>轮次策略</span><strong data-bind="scheduler_loop_strategy">--</strong></div>
+              <div><span>恢复</span><strong data-bind="scheduler_loop_recovery">--</strong></div>
+              <div><span>续跑</span><strong data-bind="scheduler_loop_resume_status">--</strong></div>
+              <div><span>子进程</span><strong data-bind="agent_lifecycle_pool_status">--</strong></div>
+              <div><span>运行中子进程</span><strong data-bind="agent_lifecycle_pool_open">0</strong></div>
+              <div><span>已完成</span><strong data-bind="agent_lifecycle_pool_completed">0</strong></div>
+              <div><span>已评估</span><strong data-bind="agent_lifecycle_pool_evaluated">0</strong></div>
+              <div><span>已关闭</span><strong data-bind="agent_lifecycle_pool_closed">0</strong></div>
+              <div><span>未评估</span><strong data-bind="agent_lifecycle_pool_unevaluated">0</strong></div>
+              <div><span>未关闭</span><strong data-bind="agent_lifecycle_pool_unclosed">0</strong></div>
+              <div><span>超时</span><strong data-bind="agent_lifecycle_pool_timed_out">0</strong></div>
+              <div><span>心跳</span><strong data-bind="agent_lifecycle_pool_heartbeats">0</strong></div>
+              <div><span>目标</span><strong data-bind="global_goals_status">--</strong></div>
+              <div><span>目标总数</span><strong data-bind="global_goals_total">0</strong></div>
+              <div><span>目标完成</span><strong data-bind="global_goals_completed">0</strong></div>
+              <div><span>目标待办</span><strong data-bind="global_goals_pending">0</strong></div>
+              <div><span>目标阻塞</span><strong data-bind="global_goals_blocked">0</strong></div>
+              <div><span>动作</span><strong data-bind="next_action_readout_action">--</strong></div>
+              <div><span>动作状态</span><strong data-bind="next_action_readout_status">--</strong></div>
+              <div><span>停止状态</span><strong data-bind="next_action_terminal_status">--</strong></div>
+              <div class="full"><span>最新心跳</span><strong data-bind="agent_lifecycle_pool_latest_heartbeat">--</strong></div>
+              <div class="full"><span>最新超时</span><strong data-bind="agent_lifecycle_pool_latest_timeout">--</strong></div>
+              <div class="full"><span>子进程下一步</span><strong data-bind="agent_lifecycle_pool_next_action">--</strong></div>
+              <div class="full"><span>下个目标</span><strong data-bind="global_goals_next">--</strong></div>
+              <div class="full"><span>调度证据</span><strong data-bind="scheduler_dispatch_artifact">--</strong></div>
+              <div class="full"><span>下一步动作</span><strong data-bind="scheduler_next_action">--</strong></div>
+              <div class="full"><span>续跑输入</span><strong data-bind="scheduler_continuation_path">--</strong></div>
+              <div class="full"><span>最新轮次</span><strong data-bind="scheduler_loop_latest">--</strong></div>
+              <div class="full"><span>轮次动作</span><strong data-bind="scheduler_loop_action">--</strong></div>
+              <div class="full"><span>停止动作</span><strong data-bind="next_action_terminal_action">--</strong></div>
+              <div class="full"><span>停止原因</span><strong data-bind="next_action_terminal_reason">--</strong></div>
+              <div class="full"><span>策略原因</span><strong data-bind="scheduler_policy_reason">--</strong></div>
             </div>
             <div class="primary-actions">
               <button type="button" data-scheduler-dispatch="dry-run">调度预检</button>
@@ -246,11 +246,11 @@
             <details class="control-drawer">
               <summary>高级调度控制</summary>
               <div class="provider-actions">
-                <button type="button" data-scheduler-dispatch="approved-mock">批准 Mock 执行</button>
-                <button type="button" data-autonomous-scheduler-loop="bounded">运行 Loop</button>
-                <button type="button" data-autonomous-scheduler-loop="projected-mock">Projected Mock Loop</button>
-                <button type="button" data-autonomous-scheduler-loop="projected-real">Projected Real Loop</button>
-                <button type="button" data-autonomous-scheduler-loop-resume="bounded">恢复 Loop</button>
+                <button type="button" data-scheduler-dispatch="approved-mock">批准模拟执行</button>
+                <button type="button" data-autonomous-scheduler-loop="bounded">运行调度轮次</button>
+                <button type="button" data-autonomous-scheduler-loop="projected-mock">按投影模拟推进</button>
+                <button type="button" data-autonomous-scheduler-loop="projected-real">按投影受控审查</button>
+                <button type="button" data-autonomous-scheduler-loop-resume="bounded">续跑调度轮次</button>
               </div>
             </details>
           </section>
@@ -278,27 +278,27 @@
 
           <section class="panel" id="risks" data-section="overview models risks" tabindex="-1">
             <div class="section-title">
-              <h2>Provider Health</h2>
+              <h2>审查通道</h2>
               <span data-bind="provider_health_status">--</span>
             </div>
             <div class="provider-grid">
-              <div><span>Health</span><strong data-bind="provider_health_value">--</strong></div>
-              <div><span>Next</span><strong data-bind="provider_next_action">--</strong></div>
-              <div class="full"><span>Retry</span><strong data-bind="provider_retry_strategy">--</strong></div>
-              <div><span>Shards</span><strong data-bind="scope_split_shards">0</strong></div>
-              <div><span>Pending</span><strong data-bind="scope_split_pending">0</strong></div>
-              <div class="full"><span>Next shard</span><strong data-bind="scope_split_next">--</strong></div>
-              <div><span>Review</span><strong data-bind="shard_review_status">--</strong></div>
-              <div><span>Done</span><strong data-bind="shard_review_completed">0</strong></div>
-              <div><span>Next shard</span><strong data-bind="shard_review_next">--</strong></div>
-              <div><span>Executor</span><strong data-bind="shard_review_executor">--</strong></div>
-              <div><span>Budget used</span><strong data-bind="shard_review_budget">0</strong></div>
-              <div class="full"><span>Profile</span><strong data-bind="shard_review_profile">--</strong></div>
-              <div class="full"><span>Shard findings</span><strong data-bind="shard_review_failed">0</strong></div>
+              <div><span>健康</span><strong data-bind="provider_health_value">--</strong></div>
+              <div><span>下一步</span><strong data-bind="provider_next_action">--</strong></div>
+              <div class="full"><span>重试策略</span><strong data-bind="provider_retry_strategy">--</strong></div>
+              <div><span>分片</span><strong data-bind="scope_split_shards">0</strong></div>
+              <div><span>待处理</span><strong data-bind="scope_split_pending">0</strong></div>
+              <div class="full"><span>下个分片</span><strong data-bind="scope_split_next">--</strong></div>
+              <div><span>审查</span><strong data-bind="shard_review_status">--</strong></div>
+              <div><span>完成</span><strong data-bind="shard_review_completed">0</strong></div>
+              <div><span>下个分片</span><strong data-bind="shard_review_next">--</strong></div>
+              <div><span>执行器</span><strong data-bind="shard_review_executor">--</strong></div>
+              <div><span>预算使用</span><strong data-bind="shard_review_budget">0</strong></div>
+              <div class="full"><span>执行配置</span><strong data-bind="shard_review_profile">--</strong></div>
+              <div class="full"><span>分片发现</span><strong data-bind="shard_review_failed">0</strong></div>
             </div>
             <div class="provider-actions">
-              <button type="button" data-provider-health="pass">Smoke OK</button>
-              <button type="button" data-provider-health="timeout">Smoke Timeout</button>
+              <button type="button" data-provider-health="pass">连通正常</button>
+              <button type="button" data-provider-health="timeout">连通超时</button>
             </div>
           </section>
         </section>

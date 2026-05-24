@@ -85,6 +85,7 @@ function viewportAudit(overrides = {}) {
     ],
     browserErrors: [],
     riskyTokens: [],
+    bodyText: "中台工作台 状态投影 任务包 证据 调度执行 收口验收 续跑健康 审查通道",
     diagnosticsCount: 0,
     hero: {
       text: "AI Control Platform",
@@ -343,6 +344,81 @@ test("frontend acceptance catches live latest unbounded copy and control pileup"
   assert.ok(codes.includes("frontend_unbounded_dynamic_headline"));
   assert.ok(codes.includes("frontend_raw_projection_copy"));
   assert.ok(codes.includes("frontend_button_pileup"));
+});
+
+test("frontend acceptance blocks visible internal workbench copy and raw artifact ids", () => {
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        bodyText: [
+          "Work Packages",
+          "Context Pack -> Run -> Review -> Continuation",
+          "Provider Health",
+          "Smoke OK",
+          "Smoke Timeout",
+          "role(s)",
+          "Projection",
+          "Closeout",
+          "Resume Health",
+          "Snapshot",
+          "Evidence",
+          "Headless live context cycle",
+          "Context pack cycle",
+          "scheduler-dispatch-run-run-20260521-platform-self-trial-cycle-headless-live-1779566400000-context-pack-1779561756582-001"
+        ].join(" ")
+      }),
+      viewportAudit({ viewport: "desktop_narrow", dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 } }),
+      viewportAudit({ viewport: "mobile", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+  const finding = artifact.findings.find((item) => item.code === "frontend_internal_workbench_copy_visible");
+  const copyResult = artifact.copy_results.find((result) => result.viewport === "desktop");
+
+  assert.equal(artifact.status, "fail");
+  assert.ok(finding);
+  assert.ok(finding.evidence.matches.some((match) => match.label === "Work Packages"));
+  assert.ok(copyResult.internal_copy_matches.some((match) => match.label === "raw_artifact_identifier"));
+  assert.ok(copyResult.internal_copy_matches.length >= 3);
+});
+
+test("frontend acceptance allows translated operator workbench copy", () => {
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        bodyText: "任务包 证据 审查发现 可派发 调度步数 准备上下文 执行 审查 续跑 收口验收 状态快照 续跑健康 审查通道 连通正常"
+      }),
+      viewportAudit({
+        viewport: "desktop_narrow",
+        dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 },
+        bodyText: "任务包 证据 调度执行 状态投影"
+      }),
+      viewportAudit({
+        viewport: "mobile",
+        dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 },
+        bodyText: "中台工作台 状态投影 收口验收 自动调度 续跑健康 模型与审查 通道连通"
+      })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+
+  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.copy_results[0].internal_copy_matches.length, 0);
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
 });
 
 test("frontend acceptance counts and blocks semantic command controls", () => {

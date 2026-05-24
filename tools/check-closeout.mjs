@@ -2,6 +2,7 @@
 import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
@@ -10,6 +11,7 @@ const FRONTEND_ACCEPTANCE_RELEASE_TARGET = "latest_projection";
 const PROJECTED_NEXT_ACTION_STRATEGY_LABEL = "按推荐动作推进";
 const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
 const AUDIT_SKILL_TRIAL_RUN_ENV = "AUDIT_SKILL_TRIAL_RUN";
+const RENDERED_PASS_STATUSES = new Set(["pass", "passed", "ok", "success", "succeeded", "通过"]);
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -29,7 +31,17 @@ function run(label, args, options = {}) {
   }
 }
 
-function validateWorkbenchBrowserEventsArtifact(path) {
+export function isRenderedPassStatus(value) {
+  return RENDERED_PASS_STATUSES.has(String(value || "").trim().toLowerCase());
+}
+
+function assertRenderedPassStatus(value, message) {
+  if (!isRenderedPassStatus(value)) {
+    throw new Error(message);
+  }
+}
+
+export function validateWorkbenchBrowserEventsArtifact(path) {
   const artifact = JSON.parse(readFileSync(path, "utf8"));
   const scenarios = Array.isArray(artifact.scenarios) ? artifact.scenarios : [];
   const byScenario = new Map(scenarios.map((scenario) => [scenario.scenario, scenario]));
@@ -57,21 +69,28 @@ function validateWorkbenchBrowserEventsArtifact(path) {
   ) {
     throw new Error("workbench browser events artifact is missing lifecycle heartbeat/timeout readout evidence");
   }
-  if (lifecycleCleanup.cleanup_after_status !== "pass") {
-    throw new Error("workbench browser events artifact is missing lifecycle cleanup pass evidence");
-  }
+  assertRenderedPassStatus(
+    lifecycleCleanup.cleanup_after_status,
+    "workbench browser events artifact is missing lifecycle cleanup pass evidence"
+  );
   if (
-    lifecycleCleanupLoop.cleanup_after_status !== "pass" ||
     lifecycleCleanupLoop.cleanup_after_open !== "0" ||
     lifecycleCleanupLoop.cleanup_after_unevaluated !== "0" ||
     lifecycleCleanupLoop.cleanup_after_unclosed !== "0" ||
     lifecycleCleanupLoop.projected_action !== "cleanup_agent_lifecycle_pool" ||
-    lifecycleCleanupLoop.scheduler_loop_status !== "pass" ||
     lifecycleCleanupLoop.scheduler_loop_strategy !== PROJECTED_NEXT_ACTION_STRATEGY_LABEL ||
     lifecycleCleanupLoop.next_action_readout !== "inspect_scheduler_loop"
   ) {
     throw new Error("workbench browser events artifact is missing autonomous lifecycle cleanup loop evidence");
   }
+  assertRenderedPassStatus(
+    lifecycleCleanupLoop.cleanup_after_status,
+    "workbench browser events artifact is missing autonomous lifecycle cleanup loop evidence"
+  );
+  assertRenderedPassStatus(
+    lifecycleCleanupLoop.scheduler_loop_status,
+    "workbench browser events artifact is missing autonomous lifecycle cleanup loop evidence"
+  );
   if (scenarios.some((scenario) => scenario.dimensions && scenario.dimensions.scrollWidth > scenario.dimensions.width)) {
     throw new Error("workbench browser events artifact contains horizontal overflow");
   }
@@ -115,26 +134,32 @@ function validateFrontendAcceptanceArtifact(path) {
   }
 }
 
-const testFiles = readdirSync("test")
-  .filter((file) => file.endsWith(".test.js"))
-  .sort()
-  .map((file) => join("test", file));
+export function runCloseoutChecks() {
+  const testFiles = readdirSync("test")
+    .filter((file) => file.endsWith(".test.js"))
+    .sort()
+    .map((file) => join("test", file));
 
-run("unit tests", ["--test", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
-run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
-run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
-run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
-run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
-if (process.env[AUDIT_SKILL_TRIAL_RUN_ENV]) {
-  run("audit skill trial", ["tools/check-audit-skill-trial-run.mjs", process.env[AUDIT_SKILL_TRIAL_RUN_ENV]]);
+  run("unit tests", ["--test", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
+  run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
+  run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
+  run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
+  run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
+  if (process.env[AUDIT_SKILL_TRIAL_RUN_ENV]) {
+    run("audit skill trial", ["tools/check-audit-skill-trial-run.mjs", process.env[AUDIT_SKILL_TRIAL_RUN_ENV]]);
+  }
+  const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
+  const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
+  run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);
+  validateWorkbenchBrowserEventsArtifact(browserEventsArtifactPath);
+  const frontendAcceptanceArtifactPath = join(closeoutTmp, "frontend-acceptance-run.json");
+  run("workbench frontend acceptance", ["tools/check-workbench-frontend-acceptance.mjs", "--output", frontendAcceptanceArtifactPath]);
+  validateFrontendAcceptanceArtifact(frontendAcceptanceArtifactPath);
+  run("scheduler dispatch writeback", ["tools/check-scheduler-dispatch-writeback.mjs"]);
+
+  console.log("\n[closeout] pass");
 }
-const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
-const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
-run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);
-validateWorkbenchBrowserEventsArtifact(browserEventsArtifactPath);
-const frontendAcceptanceArtifactPath = join(closeoutTmp, "frontend-acceptance-run.json");
-run("workbench frontend acceptance", ["tools/check-workbench-frontend-acceptance.mjs", "--output", frontendAcceptanceArtifactPath]);
-validateFrontendAcceptanceArtifact(frontendAcceptanceArtifactPath);
-run("scheduler dispatch writeback", ["tools/check-scheduler-dispatch-writeback.mjs"]);
 
-console.log("\n[closeout] pass");
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runCloseoutChecks();
+}

@@ -401,6 +401,35 @@ const COMMAND_CONTROL_SELECTOR = [
 ].join(",");
 const RISKY_COMMAND_PATTERN = /\b(mock|real|loop|resume|rerun|approve|approved|run_context_work_packages|prepare_project_status_continuation|headless_projected_action_progress|projected_next_action)\b|scheduler[-_ ]?dispatch|恢复|批准/i;
 const ALLOWED_BROWSER_ERROR_PATTERNS = [];
+const INTERNAL_VISIBLE_COPY_PATTERNS = [
+  { label: "Work Packages", pattern: /\bWork Packages\b/i },
+  { label: "Context Pack -> Run -> Review -> Continuation", pattern: /\bContext Pack\s*(?:->|→)\s*Run\s*(?:->|→)\s*Review\s*(?:->|→)\s*Continuation\b/i },
+  { label: "Provider Health", pattern: /\bProvider Health\b/i },
+  { label: "Smoke OK", pattern: /\bSmoke OK\b/i },
+  { label: "Smoke Timeout", pattern: /\bSmoke Timeout\b/i },
+  { label: "role(s)", pattern: /\brole\(s\)\b/i },
+  { label: "Projection", pattern: /\bProjection\b/i },
+  { label: "Closeout", pattern: /\bCloseout\b/i },
+  { label: "Resume Health", pattern: /\bResume Health\b/i },
+  { label: "Snapshot", pattern: /\bSnapshot\b/i },
+  { label: "Evidence", pattern: /\bEvidence\b/i },
+  { label: "Artifacts", pattern: /\bArtifacts\b/i },
+  { label: "Reviewer Findings", pattern: /\bReviewer Findings\b/i },
+  { label: "Dispatchable", pattern: /\bDispatchable\b/i },
+  { label: "Scheduler Steps", pattern: /\bScheduler Steps\b/i },
+  { label: "Global Pending", pattern: /\bGlobal Pending\b/i },
+  { label: "Global Done", pattern: /\bGlobal Done\b/i },
+  { label: "Scheduler Dispatch", pattern: /\bScheduler Dispatch\b/i },
+  { label: "Dry run", pattern: /\bDry run\b/i },
+  { label: "Projected Mock Loop", pattern: /\bProjected Mock Loop\b/i },
+  { label: "Projected Real Loop", pattern: /\bProjected Real Loop\b/i },
+  { label: "Provider smoke", pattern: /\bProvider smoke\b/i },
+  { label: "Headless live context cycle", pattern: /\bHeadless live context cycle\b/i },
+  { label: "Context pack cycle", pattern: /\bContext pack cycle\b/i },
+  { label: "Current autonomous platform self-trial", pattern: /\bCurrent autonomous platform self-trial\b/i },
+  { label: "Platform repository bootstrap", pattern: /\bPlatform repository bootstrap\b/i }
+];
+const LONG_ARTIFACT_IDENTIFIER_PATTERN = /\b(?:scheduler-dispatch-run-run|scheduler-dispatch-policy-run|context-work-packages-run-run|agent-lifecycle-[A-Za-z]+|project-status-continuation|context-pack-cycle|headless-live-context-cycle|frontend-acceptance|workbench-live-route-evidence|cycle-headless-live)[A-Za-z0-9._-]{16,}\b/g;
 
 function browserErrorsOf(result = {}) {
   return Array.isArray(result.browserErrors)
@@ -432,6 +461,23 @@ function compactBrowserError(error = {}) {
     location: error.location || null,
     allowed: isAllowedBrowserError(error)
   };
+}
+
+function internalVisibleCopyMatches(bodyText = "") {
+  const text = normalizeText(bodyText);
+  const matches = [];
+  for (const item of INTERNAL_VISIBLE_COPY_PATTERNS) {
+    if (item.pattern.test(text)) {
+      matches.push({ label: item.label });
+    }
+  }
+  for (const match of text.match(LONG_ARTIFACT_IDENTIFIER_PATTERN) || []) {
+    matches.push({
+      label: "raw_artifact_identifier",
+      text: match.slice(0, 160)
+    });
+  }
+  return matches;
 }
 
 async function auditViewport(page, viewport, browserErrors = [], options = {}) {
@@ -521,6 +567,7 @@ async function auditViewport(page, viewport, browserErrors = [], options = {}) {
       nav,
       buttons,
       faviconLinks,
+      bodyText: bodyText.slice(0, 12000),
       riskyTokens,
       diagnosticsCount: diagnostics.length,
       hero: hero ? {
@@ -651,6 +698,13 @@ function findingsForViewport(result) {
   if (result.riskyTokens.length > 0) {
     findings.push(finding("frontend_raw_projection_copy", "p1", `${result.viewport} exposes raw backend/projection tokens in the default surface`, {
       tokens: result.riskyTokens
+    }));
+  }
+  const internalCopyMatches = internalVisibleCopyMatches(result.bodyText);
+  if (internalCopyMatches.length > 0) {
+    findings.push(finding("frontend_internal_workbench_copy_visible", "p1", `${result.viewport} exposes internal workbench/backend copy to users`, {
+      viewport: result.viewport,
+      matches: internalCopyMatches.slice(0, 12)
     }));
   }
   if (result.overlapPairs.length > 0) {
@@ -796,6 +850,8 @@ export function buildArtifact({ viewportResults, navigationResults, screenshots,
   const copyResults = viewportResults.map((result) => ({
     viewport: result.viewport,
     risky_tokens: result.riskyTokens,
+    internal_copy_matches: internalVisibleCopyMatches(result.bodyText),
+    body_text_sample: normalizeText(result.bodyText).slice(0, 800),
     hero_text_length: result.hero?.text.length || 0
   }));
   const resourceResults = viewportResults.map((result) => {

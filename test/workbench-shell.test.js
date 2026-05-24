@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { isRenderedSchedulerDispatchPassStatus } from "../tools/check-scheduler-dispatch-writeback.mjs";
+
 const FILES = [
   "apps/workbench/desktop.html",
   "apps/workbench/mobile.html",
@@ -106,6 +108,8 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-autonomous-scheduler-loop-resume="bounded"/);
   assert.match(desktop, /data-provider-health="pass"/);
   assert.match(mobile, /data-provider-health="timeout"/);
+  assert.doesNotMatch(desktop, /Work Packages|Context Pack\s*(?:-&gt;|->)\s*Run\s*(?:-&gt;|->)\s*Review\s*(?:-&gt;|->)\s*Continuation|Provider Health|Smoke OK|Smoke Timeout|role\(s\)|Projection|Closeout|Resume Health|Snapshot|Evidence|Scheduler Dispatch|Projected Mock Loop|Projected Real Loop|Projected Loop 已记录|Loop 已记录|Resume 已记录|Smoke 已记录/);
+  assert.doesNotMatch(mobile, /Provider smoke|Smoke OK|Smoke Timeout|Projection|Closeout|Snapshot|Projected Mock Loop|Projected Real Loop|Replay|Issues|Dry run|Projected Loop 已记录|Loop 已记录|Resume 已记录|Smoke 已记录/);
   assert.notEqual(desktop, mobile);
   assert.match(desktop, /desktop-app/);
   assert.match(mobile, /phone-app/);
@@ -164,9 +168,25 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(script, /调度失败/);
   assert.match(script, /调度已拦截/);
   assert.match(script, /recordProviderHealth/);
-  assert.match(script, /Smoke 写入失败/);
+  assert.match(script, /连通写入失败/);
   assert.match(source, /current-session-workbench-projection\.json/);
   assert.doesNotMatch(script, /console\.log|PROCESS\.md|PROJECT_STATUS\.json/);
+});
+
+test("scheduler dispatch writeback accepts translated rendered pass without weakening raw semantics", () => {
+  const checker = read("tools/check-scheduler-dispatch-writeback.mjs");
+
+  assert.equal(isRenderedSchedulerDispatchPassStatus("pass"), true);
+  assert.equal(isRenderedSchedulerDispatchPassStatus("通过"), true);
+  assert.equal(isRenderedSchedulerDispatchPassStatus("未通过"), false);
+  assert.equal(isRenderedSchedulerDispatchPassStatus("失败"), false);
+  assert.equal(isRenderedSchedulerDispatchPassStatus("blocked"), false);
+  assert.match(checker, /summary\.record_status === "pass"/);
+  assert.match(checker, /summary\.projection_scheduler_status === "pass"/);
+  assert.match(checker, /summary\.projection_scheduler_steps === 3/);
+  assert.match(checker, /projection\.scheduler_dispatch\.status === "pass"/);
+  assert.match(checker, /projection\.scheduler_dispatch\.step_count === 3/);
+  assert.doesNotMatch(checker, /projection\.scheduler_dispatch\.status[\s\S]*isRenderedSchedulerDispatchPassStatus/);
 });
 
 test("desktop shell is fixed viewport without horizontal overflow by design", () => {

@@ -10,6 +10,7 @@
     "test": "node --test test/*.test.js",
     "check:onboarding": "node tools/check-project-onboarding-sync.mjs project-manifest.json /Users/hernando_zhao/codex/WORKSPACE_INDEX.json",
     "check:git-worktree-isolation": "node tools/check-git-worktree-isolation.mjs",
+    "check:worker-runtime-readiness": "node tools/check-worker-runtime-readiness.mjs",
     "check:process-hardening": "node tools/check-process-hardening.mjs docs/examples/process-hardening-current.json",
     "check:workbench:live-route": "node tools/run-with-node18.mjs tools/check-workbench-live-route.mjs",
     "probe:workbench:live-route": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs",
