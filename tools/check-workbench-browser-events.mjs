@@ -357,6 +357,7 @@ async function verifyProviderHealthClick(browser) {
       `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
       { waitUntil: "networkidle" }
     );
+    await page.click('[data-workbench-tab="risks"]');
     await page.click('[data-provider-health="timeout"]');
     await page.waitForFunction(() => document.querySelector('[data-provider-health="timeout"]')?.textContent.includes("连通已记录"));
 
@@ -1129,7 +1130,11 @@ async function verifyMobileProjectionLoad(browser) {
       scrollWidth: document.documentElement.scrollWidth
     }));
     const cycleId = await page.textContent('[data-bind="cycle_id"]');
-    const status = await page.textContent('[data-bind="status"]');
+    const projectOverview = await page.textContent('[data-bind="project_overview_headline"]');
+    const projectsTotal = await page.textContent('[data-bind="counter_projects_total"]');
+    const activeProjects = await page.textContent('[data-bind="counter_active_projects"]');
+    const projectRows = await page.locator('[data-list="project_rows"] .project-row').count();
+    const projectFlowText = await page.textContent('[data-list="project_task_flow"]');
     const closeoutStatus = await page.textContent('[data-bind="closeout_status"]');
     const resumeHealthStatus = await page.textContent('[data-bind="resume_health_status"]');
     const providerHealth = await page.textContent('[data-bind="provider_health_value"]');
@@ -1157,6 +1162,13 @@ async function verifyMobileProjectionLoad(browser) {
     await page.close();
 
     assert(dimensions.scrollWidth <= dimensions.width, "mobile workbench must not overflow horizontally");
+    assert(projectOverview?.includes("AI Control Platform"), "mobile workbench must render project overview");
+    assert(projectsTotal !== null, "mobile workbench must render project total count");
+    assert(activeProjects !== null, "mobile workbench must render active project count");
+    assert(projectRows >= 1, "mobile workbench must render project rows");
+    for (const label of ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"]) {
+      assert(projectFlowText?.includes(label), `mobile workbench must render project flow ${label}`);
+    }
     assert(closeoutStatus, "mobile workbench must render closeout status");
     assert(resumeHealthStatus, "mobile workbench must render resume health status");
     assert(providerHealth, "mobile workbench must render provider health status");
@@ -1185,7 +1197,10 @@ async function verifyMobileProjectionLoad(browser) {
     recordScenario({
       scenario: "mobile_projection",
       cycle_id: cycleId,
-      status,
+      project_overview: projectOverview,
+      projects_total: projectsTotal,
+      active_projects: activeProjects,
+      project_rows: projectRows,
       closeout_status: closeoutStatus,
       resume_health_status: resumeHealthStatus,
       provider_health: providerHealth,
