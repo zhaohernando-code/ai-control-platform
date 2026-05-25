@@ -18,15 +18,16 @@
 
 ## Context Pack 与子进程
 
+- **固定开发模式持久化，标准职责不可反转**：主进程负责目标判断、Context Pack、验收和继续调度；子进程只做受限 owned files 实现。恢复必须从 durable 状态开始，并用 `PROJECT_STATUS.json`、manifest、artifact 和 workbench continuation 重新建立当前阶段，避免上下文压缩后职责漂移。
 - **主进程不能跳过调度闭环**：平台能力开发要先固化 Context Pack、owned files、目标/非目标、证据要求和重跑条件，再派发子进程。任务小或文档多都不是绕过调度的理由。
-- **子进程必须有 owned files 和自评**：每个 worker 只能写授权文件集合，结束时自评是否跑偏、证据是否足够、是否需要重跑。主进程用自评做验收输入，而不是把它当总结。
+- **每个子进程必须自评**：每个 worker 只能写授权文件集合，结束时自评是否跑偏、证据是否足够、是否需要重跑。主进程用自评做验收输入，而不是把它当总结。
 - **无 diff 或无自评是流程失败**：外部 CLI 子进程如果只分析不落地、超范围读取、没有自评或没有测试结果，主进程要归类为 process gap，先加强 gate/文档/测试，再重新派发或收敛为最小修复。
 - **外部 CLI prompt 必须完整交接**：`codex_proxy`、Claude Code 或其他 CLI worker 不继承 Codex App 的上下文、skill、connector、浏览器和 heartbeat 状态。派发前必须写清 host、owned files、必读范围、禁止动作、验证命令和自评格式。
 
 ## Gate 与持续执行
 
-- **阻塞发现先变成 gate**：发现 P0/P1、假成功、状态未持久化、宿主越界、owned files 越界或 continuation 断裂时，先新增或更新 invariant、gate、schema、测试、fixture 或 projection，再重跑实现。
-- **完成定义包含继续能力**：单个子任务测试通过不代表平台完成。只要存在 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next action，就必须生成 continuation seed 或明确阻塞原因。
+- **不合格先改流程/gate**：发现 P0/P1、假成功、状态未持久化、宿主越界、owned files 越界或 continuation 断裂时，先新增或更新 invariant、gate、schema、测试、fixture 或 projection，再重跑实现。
+- **完成定义包含继续能力和全局不跑偏**：单个子任务测试通过不代表平台完成。只要存在 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next action，就必须生成 continuation seed 或明确阻塞原因，并复核当前工作仍服务 ai-control-platform 的全局目标。
 - **Process hardening 是合入前条件**：阻塞级 reviewer finding 必须有 invariant、enforcement target、regression test、verification 和 completed 状态；缺任一项不能合入实现。
 - **固定开发模式要 runtime gate 支撑**：AGENTS/PROCESS/合同用于恢复上下文；真正调度前必须由 runtime gate 校验宿主、Context Pack root owned files、subtasks owned files、selected package owned files 和 managed project 路径。
 
@@ -34,7 +35,7 @@
 
 - **模型选择先路由再调用**：GPT、DeepSeek V4 Pro/Flash、Claude Code 或其他模型不是固定替代关系。每次使用前根据 stage、risk、budget、host 和 tags 生成 model routing plan。
 - **外部 reviewer 是 gate，不是临时 skill**：高风险平台任务的外部审查结果必须进入 reviewer gate request、findings、run manifest 和 workbench projection；只读审查默认无写入权限。
-- **模型协同必须可审计**：模型输出要沉淀为 durable findings、artifacts、continuation facts 或可重跑 gate。不能只用“多个模型都同意”替代证据。
+- **多模型协同必须可审计**：模型输出要沉淀为 durable findings、artifacts、continuation facts 或可重跑 gate。不能只用“多个模型都同意”替代证据。
 
 ## Workbench 与公开挂载
 
