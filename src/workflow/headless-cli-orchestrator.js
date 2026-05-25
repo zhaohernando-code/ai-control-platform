@@ -431,6 +431,8 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     "- First produce the minimum runnable diff, then explain design.",
     "- If no patch is possible within the time box, return status=fail with no_diff=true, blocker, read_files, and next_minimal_patch_position.",
     "- Do not modify managed projects, legacy directories, or files outside owned_files.",
+    "- Do not create, switch to, or delegate into another worktree; the current working directory is the only execution root for this bounded child task.",
+    "- Do not create .claude/worktrees or run claude --worktree; return status=fail if the current execution root is unsuitable.",
     "",
     "Required JSON shape:",
     JSON.stringify({

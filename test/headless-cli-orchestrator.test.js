@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
@@ -303,6 +303,42 @@ test("headless child worker commands receive sanitized workbench child-worker en
   }
 });
 
+test("Claude child worker runs in bare mode without workflow hook inheritance", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-worker-"));
+  const promptFile = join(tempDir, "prompt.md");
+  const captureFile = join(tempDir, "args.txt");
+  const fakeProxy = join(tempDir, "claude-proxy.sh");
+  writeFileSync(promptFile, "Return JSON.");
+  writeFileSync(fakeProxy, [
+    "#!/usr/bin/env bash",
+    "printf '%s\\n' \"$@\" > \"$CAPTURE_ARGS\"",
+    "printf '{\"status\":\"pass\"}\\n'"
+  ].join("\n"));
+  chmodSync(fakeProxy, 0o755);
+
+  const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
+      AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
+      CAPTURE_ARGS: captureFile
+    }
+  });
+
+  assert.equal(result.status, 0);
+  const args = readFileSync(captureFile, "utf8").trim().split("\n");
+  assert.deepEqual(args.slice(0, 2), ["-m", "claude-haiku-4-5-20251001"]);
+  assert.ok(args.includes("--bare"));
+  assert.ok(args.includes("--permission-mode"));
+  assert.ok(args.includes("bypassPermissions"));
+  assert.ok(args.includes("--no-session-persistence"));
+  assert.ok(args.includes("--tools"));
+  assert.ok(args.includes("default"));
+  assert.ok(args.includes("--add-dir"));
+});
+
 test("headless CLI orchestrator blocks implicit mock child worker completion", () => {
   const result = runHeadlessCliMainOrchestrator({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
@@ -500,6 +536,8 @@ test("headless child prompt minimizes high-risk routing keywords for external CL
   });
 
   assert.match(prompt, /internal project-management and quality-operations platform/);
+  assert.match(prompt, /Do not create, switch to, or delegate into another worktree/);
+  assert.match(prompt, /Do not create \.claude\/worktrees or run claude --worktree/);
   assert.match(prompt, /src\/workflow\/self-governance-scanner\.js/);
   assert.doesNotMatch(prompt, /Self-governance scanner autonomous-continuation dispatch/);
   assert.doesNotMatch(prompt, /run_self_governance_scanner_dispatch/);

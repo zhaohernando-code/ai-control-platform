@@ -24,7 +24,9 @@ done
 
 exec "$CLAUDE_PROXY" \
   -m "$CLAUDE_MODEL" \
+  --bare \
   --permission-mode bypassPermissions \
   --no-session-persistence \
+  --tools default \
   --add-dir "$REPO_ROOT" \
   -p "$(cat "$PROMPT_FILE")"
