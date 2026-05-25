@@ -8,6 +8,7 @@ import {
   summarizeFrontendAcceptance
 } from "./frontend-acceptance.js";
 import { createSelfGovernanceReport } from "./self-governance.js";
+import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -104,6 +105,7 @@ function nextWorkPackagesFrom(input) {
   const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
   const frontendRepairPackages = frontendAcceptanceRepairWorkPackagesFrom(input);
   const selfGovernancePackages = selfGovernanceWorkPackagesFrom(input);
+  const codeReviewCoveragePackages = codeReviewCoverageWorkPackagesFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const directPackages = [
     ...asArray(input?.next_work_packages),
@@ -116,7 +118,8 @@ function nextWorkPackagesFrom(input) {
     ...scopeSplitPackages,
     ...lifecyclePoolPackages,
     ...frontendRepairPackages,
-    ...selfGovernancePackages
+    ...selfGovernancePackages,
+    ...codeReviewCoveragePackages
   ];
   if (directPackages.length > 0) {
     return dedupeWorkPackages(directPackages);
@@ -341,6 +344,14 @@ function selfGovernanceWorkPackagesFrom(input = {}) {
   return report.status === "available" ? asArray(report.next_work_packages) : [];
 }
 
+function codeReviewCoverageWorkPackagesFrom(input = {}) {
+  const dispatch = createCodeReviewCoverageDispatch({
+    ...input,
+    workflow_state: workflowStateFrom(input) || input?.workflow_state
+  });
+  return dispatch.status === "needs_dispatch" ? asArray(dispatch.supplemental_work_packages) : [];
+}
+
 function agentLifecyclePoolFrom(input = {}) {
   const explicit = input?.agent_lifecycle_pool || input?.agentLifecyclePool || input?.workflow_state?.agent_lifecycle_pool;
   if (explicit) return explicit;
@@ -513,6 +524,7 @@ function createContextPackSeed(input, action) {
         retry_workers: asArray(workPackage.retry_workers || workPackage.retryWorkers),
         timed_out_workers: asArray(workPackage.timed_out_workers || workPackage.timedOutWorkers),
         frontend_acceptance: workPackage.frontend_acceptance || workPackage.frontendAcceptance || null,
+        code_review_coverage: workPackage.code_review_coverage || workPackage.codeReviewCoverage || null,
         acceptance_gates: acceptanceGatesFromWorkPackage(workPackage),
         reason: normalizeString(workPackage.reason)
       }

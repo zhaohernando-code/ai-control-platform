@@ -1,3 +1,5 @@
+import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -330,6 +332,36 @@ function modelCollaborationFindings(input = {}) {
   return findings;
 }
 
+function codeReviewCoverageFindings(input = {}) {
+  const dispatch = createCodeReviewCoverageDispatch(input);
+  if (!["needs_dispatch", "fail"].includes(statusOf(dispatch.status))) return [];
+
+  const packageIds = asArray(dispatch.package_ids);
+  const excludedFiles = asArray(dispatch.excluded_files)
+    .map((record) => `${record.path}:${record.reason}`)
+    .filter(Boolean);
+  const issueCodes = asArray(dispatch.issues).map((item) => item.code || item.message);
+
+  return [finding({
+    id: "code-review-coverage-gap-dispatch",
+    category: "evidence_gap",
+    dimension: "code_quality",
+    severity: "high",
+    title: "代码质量审查覆盖率缺口未完成调度",
+    message: "代码质量审查覆盖率 artifact 存在缺失、失败或需重跑分片，调度器必须补跑/重跑，不能只记录缺口。",
+    evidence_needed: "执行 code-review-coverage dispatch 生成的补跑/重跑 work package，并写回通过的 code-review-coverage.v1 artifact。",
+    evidence: [
+      dispatch.coverage_artifact_id,
+      dispatch.status,
+      ...issueCodes,
+      ...excludedFiles,
+      ...packageIds
+    ],
+    owned_files: ["src/workflow/code-review-coverage-dispatch.js", "src/workflow/autonomous-continuation.js", "tools/check-code-review-coverage.mjs", "test/code-review-coverage-dispatch.test.js"],
+    acceptance_gates: ["npm run check:code-review-coverage", "npm run check:closeout"]
+  })];
+}
+
 function governanceProcessFindings(input = {}, generatedFindings = []) {
   if (generatedFindings.length > 0) return [];
   if (input.require_scanner_findings !== true && input.requireScannerFindings !== true) return [];
@@ -357,7 +389,8 @@ export function generateSelfGovernanceFindings(input = {}) {
     ...frontendAcceptanceFindings(sources.frontend_acceptance || sources.frontendAcceptance || {}),
     ...browserEventFindings(sources.workbench_browser_events || sources.workbenchBrowserEvents || {}),
     ...schedulerFindings(sources),
-    ...modelCollaborationFindings(sources)
+    ...modelCollaborationFindings(sources),
+    ...codeReviewCoverageFindings(sources)
   ];
   const fallback = governanceProcessFindings(sources, generated);
 

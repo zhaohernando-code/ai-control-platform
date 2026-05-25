@@ -275,6 +275,44 @@ test("reviewer scope split continuation skips shards with recorded results", () 
   assert.ok(decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-002"));
 });
 
+test("code review coverage gap schedules supplement shard work and seeds context source", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    code_review_coverage: {
+      version: "code-review-coverage.v1",
+      id: "coverage-gap",
+      shards: [
+        {
+          id: "workflow-coverage",
+          status: "needs_rerun",
+          files: [
+            "src/workflow/autonomous-continuation.js",
+            "node_modules/pkg/index.js",
+            "tmp/review.json"
+          ]
+        }
+      ]
+    }
+  });
+
+  const workPackage = decision.next_work_packages.find((candidate) => {
+    return candidate.action === "run_code_quality_review_shard";
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.should_continue, true);
+  assert.ok(workPackage);
+  assert.equal(workPackage.governance_action, "supplement_code_review_coverage");
+  assert.deepEqual(workPackage.owned_files, ["src/workflow/autonomous-continuation.js"]);
+
+  const subtask = decision.context_pack_seed.subtasks.find((candidate) => candidate.id === workPackage.id);
+  assert.ok(subtask);
+  assert.equal(subtask.source.code_review_coverage.shard_id, "workflow-coverage");
+  assert.equal(subtask.source.code_review_coverage.shard_status, "needs_rerun");
+  assert.equal(subtask.source.code_review_coverage.excluded_files.length, 2);
+});
+
 test("reviewer shard aggregate failure overrides stale pass evaluation", () => {
   const decision = decideContinuation({
     project_status: projectStatus({ next_step: "" }),

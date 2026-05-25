@@ -261,6 +261,60 @@ test("self-governance scanner turns unrunnable evidence commands into evidence g
   assert.equal(report.findings[0].category, "evidence_gap");
 });
 
+test("self-governance scanner turns code review coverage gaps into code quality evidence findings", () => {
+  const scan = generateSelfGovernanceFindings({
+    code_review_coverage: {
+      version: "code-review-coverage.v1",
+      id: "coverage-gap",
+      shards: [
+        {
+          id: "workflow-quality",
+          status: "missing",
+          files: [
+            "src/workflow/self-governance-scanner.js",
+            "node_modules/pkg/index.js",
+            "tmp/review.json"
+          ]
+        }
+      ]
+    }
+  });
+
+  const finding = scan.findings.find((candidate) => candidate.id === "code-review-coverage-gap-dispatch");
+  assert.ok(finding);
+  assert.equal(finding.category, "evidence_gap");
+  assert.equal(finding.dimension, "code_quality");
+  assert.equal(finding.severity, "high");
+  assert.ok(finding.evidence.includes("code-review-coverage-workflow-quality"));
+  assert.ok(finding.evidence.some((item) => item.includes("node_modules/pkg/index.js:third_party_dependency")));
+  assert.ok(finding.acceptance_gates.includes("npm run check:code-review-coverage"));
+});
+
+test("self-governance report creates evidence work package for code review coverage dispatch gaps", () => {
+  const report = createSelfGovernanceReport({
+    generate_findings: true,
+    governance_sources: {
+      code_review_coverage: {
+        version: "code-review-coverage.v1",
+        id: "coverage-gap",
+        shards: [
+          {
+            id: "workflow-quality",
+            status: "needs_rerun",
+            files: ["src/workflow/self-governance-scanner.js", "dist/app.js"]
+          }
+        ]
+      }
+    }
+  });
+
+  assert.equal(report.status, "available");
+  assert.equal(report.evidence_building.count, 1);
+  assert.equal(report.evidence_building.work_packages[0].source_finding_id, "code-review-coverage-gap-dispatch");
+  assert.equal(report.evidence_building.work_packages[0].dimension, "code_quality");
+  assert.ok(report.evidence_building.work_packages[0].acceptance_gates.includes("npm run check:code-review-coverage"));
+});
+
 test("self-governance auto-repair dispatch starts context workflow execution", () => {
   const report = createSelfGovernanceReport({
     findings: [

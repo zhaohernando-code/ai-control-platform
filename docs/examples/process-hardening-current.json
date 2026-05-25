@@ -2336,6 +2336,14 @@
       "regression_test": "headless child worker acceptance includes touched files when checking owned scope; headless child worker acceptance rejects touched files outside owned scope",
       "verification": "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; git diff --check",
       "status": "completed"
+    },
+    {
+      "finding_id": "code-review-coverage-gap-dispatch",
+      "invariant": "Code quality review coverage artifacts must exclude third-party dependencies, VCS metadata, temporary files, build outputs, coverage outputs, caches, logs, generated files, and local environments from the coverage denominator; missing, failed, pending, or needs-rerun first-party shards must generate supplement/rerun work packages consumed by autonomous continuation.",
+      "enforcement_target": "src/workflow/code-review-coverage-dispatch.js; src/workflow/autonomous-continuation.js; src/workflow/self-governance-scanner.js; tools/check-code-review-coverage.mjs; test/code-review-coverage-dispatch.test.js; test/autonomous-continuation.test.js; test/self-governance.test.js; docs/examples/code-review-coverage-current.json; docs/examples/process-hardening-current.json",
+      "regression_test": "code review coverage dispatch excludes third-party/generated/build/cache paths, creates run_code_quality_review_shard packages for missing or rerun shards, feeds autonomous continuation context seed metadata, and self-governance creates code_quality evidence work packages.",
+      "verification": "node --test test/code-review-coverage-dispatch.test.js test/autonomous-continuation.test.js test/self-governance.test.js; npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json; npm run check:process-hardening; npm run check:closeout; git diff --check",
+      "status": "completed"
     }
   ]
 }

@@ -1,0 +1,56 @@
+{
+  "version": "code-review-coverage.v1",
+  "id": "code-review-coverage-current",
+  "status": "pass",
+  "summary": {
+    "first_party_shards": 3,
+    "missing_shard_count": 0,
+    "denominator_files": [
+      "src/workflow/autonomous-continuation.js",
+      "src/workflow/self-governance-scanner.js",
+      "src/workflow/code-review-coverage-dispatch.js",
+      "test/code-review-coverage-dispatch.test.js",
+      "node_modules/some-package/index.js",
+      "tmp/generated-review.json",
+      "dist/app.bundle.js",
+      ".git/config"
+    ]
+  },
+  "shards": [
+    {
+      "id": "workflow-continuation",
+      "status": "audited",
+      "files": [
+        "src/workflow/autonomous-continuation.js",
+        "node_modules/some-package/index.js"
+      ],
+      "evidence": [
+        "test/autonomous-continuation.test.js"
+      ]
+    },
+    {
+      "id": "self-governance-scanner",
+      "status": "covered",
+      "files": [
+        "src/workflow/self-governance-scanner.js",
+        "tmp/generated-review.json"
+      ],
+      "evidence": [
+        "test/self-governance.test.js"
+      ]
+    },
+    {
+      "id": "coverage-dispatch",
+      "status": "passed",
+      "files": [
+        "src/workflow/code-review-coverage-dispatch.js",
+        "test/code-review-coverage-dispatch.test.js",
+        "dist/app.bundle.js",
+        ".git/config"
+      ],
+      "evidence": [
+        "test/code-review-coverage-dispatch.test.js"
+      ]
+    }
+  ]
+}
