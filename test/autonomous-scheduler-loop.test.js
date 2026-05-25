@@ -219,6 +219,53 @@ test("scheduler loop keeps projected next-action snapshot ids publishable", asyn
   assert.match(snapshotId, /-01$/);
 });
 
+test("scheduler loop keeps scheduler profiles out of context work package execution", async () => {
+  const calls = [];
+  const client = {
+    async loadHistory() {
+      calls.push(["loadHistory"]);
+      return { latest: "context-cycle" };
+    },
+    async loadProjection(id) {
+      calls.push(["projection", id]);
+      return {
+        next_action_readout: {
+          status: "ready",
+          action: "run_context_work_packages"
+        }
+      };
+    },
+    async runNextAction(id, body) {
+      calls.push(["nextAction", id, body]);
+      return {
+        status: "executed",
+        action: body.expected_action,
+        projection: {
+          next_action_readout: {
+            status: "ready",
+            action: "prepare_project_status_continuation",
+            source_event_id: "event-context-work-packages-run"
+          }
+        }
+      };
+    }
+  };
+  const result = await runSchedulerLoopDriver({
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    execution_profile: "approved_mock_non_dry_run",
+    snapshot_prefix: "context-loop"
+  }, { client });
+  const body = calls[2][2];
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "iteration_limit_reached");
+  assert.equal(body.expected_action, "run_context_work_packages");
+  assert.equal(body.execution_profile, undefined);
+  assert.equal(body.context_work_package_execution_profile, undefined);
+  assert.equal(body.snapshot_id, "context-loop-context-cycle-01");
+});
+
 test("scheduler loop executes projected lifecycle cleanup through next action in place", async () => {
   const calls = [];
   let cleaned = false;

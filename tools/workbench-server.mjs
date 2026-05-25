@@ -156,7 +156,7 @@ function requirementAutoAdvanceEnabled(input = {}) {
 function requirementAutoAdvanceInput(selectedId, input = {}) {
   return {
     start_projection_id: selectedId,
-    max_iterations: Math.min(Math.max(Number(input.auto_advance_max_iterations || input.autoAdvanceMaxIterations || 2), 1), 2),
+    max_iterations: Math.min(Math.max(Number(input.auto_advance_max_iterations || input.autoAdvanceMaxIterations || 3), 1), 5),
     execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
     execution_strategy: "projected_next_action",
     snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "requirement-intake-auto",

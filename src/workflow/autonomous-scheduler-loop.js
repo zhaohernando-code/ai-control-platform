@@ -165,6 +165,43 @@ function isTerminalProjectedAction(action = "") {
     action === "inspect_latest_driver";
 }
 
+function projectedNextActionInput(action, input = {}, normalized = {}, currentProjectionId, index) {
+  const body = {
+    expected_action: action,
+    max_iterations: 1,
+    reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
+    reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
+    max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
+    provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
+    budget_tier: input.budget_tier || input.budgetTier,
+    risk: input.risk || input.risk_level || input.riskLevel,
+    timeout_seconds: input.timeout_seconds || input.timeoutSeconds,
+    record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
+    snapshot_id: loopSnapshotId(normalized.snapshot_prefix, currentProjectionId, index),
+    snapshot_prefix: normalized.snapshot_prefix,
+    created_at: input.created_at || input.createdAt
+  };
+
+  if (action !== "run_context_work_packages") {
+    return {
+      ...body,
+      execution_profile: normalized.execution_profile
+    };
+  }
+
+  return {
+    ...body,
+    max_package_count: input.max_package_count ?? input.maxPackageCount,
+    execution_mode: input.context_work_package_execution_mode || input.contextWorkPackageExecutionMode,
+    context_work_package_execution_profile: input.context_work_package_execution_profile || input.contextWorkPackageExecutionProfile,
+    executor_profile: input.executor_profile || input.executorProfile,
+    executor_kind: input.executor_kind || input.executorKind,
+    adapter_profile: input.adapter_profile || input.adapterProfile,
+    tags: Array.isArray(input.tags) ? input.tags : undefined,
+    stage: input.stage
+  };
+}
+
 export async function runSchedulerLoopDriver(input = {}, options = {}) {
   const normalized = schedulerLoopInput(input);
   const clientIssues = requireClient(options.client, normalized.execution_strategy);
@@ -228,22 +265,10 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
           };
         }
 
-        const actionResult = await options.client.runNextAction(currentProjectionId, {
-          expected_action: readout.action,
-          max_iterations: 1,
-          execution_profile: normalized.execution_profile,
-          reviewer_mock_status: input.reviewer_mock_status || input.reviewerMockStatus,
-          reviewer_mock_findings_json: input.reviewer_mock_findings_json || input.reviewerMockFindingsJson,
-          max_external_reviewer_calls: input.max_external_reviewer_calls ?? input.maxExternalReviewerCalls,
-          provider_cost_mode: input.provider_cost_mode || input.providerCostMode,
-          budget_tier: input.budget_tier || input.budgetTier,
-          risk: input.risk || input.risk_level || input.riskLevel,
-          timeout_seconds: input.timeout_seconds || input.timeoutSeconds,
-          record_provider_health_on_timeout: input.record_provider_health_on_timeout ?? input.recordProviderHealthOnTimeout,
-          snapshot_id: loopSnapshotId(normalized.snapshot_prefix, currentProjectionId, index),
-          snapshot_prefix: normalized.snapshot_prefix,
-          created_at: input.created_at || input.createdAt
-        });
+        const actionResult = await options.client.runNextAction(
+          currentProjectionId,
+          projectedNextActionInput(readout.action, input, normalized, currentProjectionId, index)
+        );
         iteration.status = actionResult.status || "executed";
         iteration.next_projection_id = projectedNextProjectionId(actionResult);
         const resultProjection = projectedActionResultProjection(actionResult);

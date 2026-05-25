@@ -689,6 +689,9 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     const payload = response.json();
     const savedProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
     const savedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+    const savedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
+    const latestHistoryItem = savedHistory.items.find((entry) => entry.id === savedHistory.latest);
+    const latestWorkflowState = JSON.parse(readFileSync(join(process.cwd(), latestHistoryItem.input_path), "utf8"));
 
     assert.equal(response.status, 201);
     assert.equal(payload.status, "created");
@@ -700,13 +703,14 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     assert.equal(payload.auto_advance.result.phase, "iteration_limit_reached");
     assert.deepEqual(
       payload.auto_advance.result.iterations.map((iteration) => iteration.projected_action),
-      ["prepare_project_status_continuation", "create_context_pack_from_seed"]
+      ["prepare_project_status_continuation", "create_context_pack_from_seed", "run_context_work_packages"]
     );
-    assert.equal(payload.projection.next_action_readout.action, "run_context_work_packages");
+    assert.equal(payload.projection.next_action_readout.action, "prepare_project_status_continuation");
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-from-workbench");
     assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
     assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("apps/workbench"));
     assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
+    assert.ok(latestWorkflowState.manifest.events.some((event) => event.type === "context_work_packages_run"));
     assert.equal(savedWorkflowState.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
