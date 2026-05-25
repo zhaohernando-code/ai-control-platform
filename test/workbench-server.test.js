@@ -701,7 +701,7 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     assert.equal(payload.auto_advance.status, "failed");
     assert.equal(payload.auto_advance.result.status, "fail");
     assert.equal(payload.auto_advance.result.phase, "projected_action_blocked");
-    assert.ok(payload.auto_advance.result.issues.some((issue) => issue.code === "local_bounded_requirement_intake_requires_child_authority"));
+    assert.ok(payload.auto_advance.result.issues.some((issue) => issue.code === "missing_provider_executor"));
     assert.deepEqual(
       payload.auto_advance.result.iterations.map((iteration) => iteration.projected_action),
       ["prepare_project_status_continuation", "create_context_pack_from_seed", "run_context_work_packages"]
@@ -756,7 +756,6 @@ test("workbench server completes requirement intake only with verified provider 
         problem_statement: "需求提交后的实现包必须由具备完成权限的执行器完成。",
         acceptance_criteria: "配置 verified provider executor 时，auto advance 可以完成 context work package。",
         constraints: "不能让 local bounded runner 写 completed。",
-        context_work_package_execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
         created_at: "2026-05-25T09:30:00.000Z",
         requirement_id: "requirement-provider-authorized"
       })
@@ -812,6 +811,89 @@ test("workbench server completes requirement intake only with verified provider 
         deterministic: false
       }
     })
+  });
+});
+
+test("workbench server can complete requirement intake through configured headless child command", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-child-command-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "requirement-child-command-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const childScriptPath = join(snapshotsRoot, "child-worker.js");
+  const workflowState = currentSessionWorkflowState();
+  workflowState.manifest.events = [];
+  writeFileSync(childScriptPath, `
+console.log(JSON.stringify({
+  status: "pass",
+  role: "child_worker",
+  host: "platform_core",
+  changed_files: ["apps/workbench/workbench.js"],
+  test_results: [{ command: "node --test test/workbench-server.test.js", status: "pass" }],
+  durable_state_updated: true,
+  process_hardening: { required: false, status: "not_required" },
+  continuation_readiness: { ready: true },
+  self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+}));
+`);
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "requirement-child-command",
+    items: [
+      {
+        id: "requirement-child-command",
+        label: "Requirement child command",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-child-command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "需求链路使用 headless child command",
+        surface_area: "workbench_frontend",
+        problem_statement: "需求提交后的实现包必须由受控子进程完成。",
+        acceptance_criteria: "配置 child command 时，auto advance 可以完成 context work package。",
+        constraints: "不能让 local bounded runner 写 completed。",
+        created_at: "2026-05-25T09:45:00.000Z",
+        requirement_id: "requirement-child-command-authorized"
+      })
+    });
+    const payload = response.json();
+    const savedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
+    const latestHistoryItem = savedHistory.items.find((entry) => entry.id === savedHistory.latest);
+    const latestWorkflowState = JSON.parse(readFileSync(join(process.cwd(), latestHistoryItem.input_path), "utf8"));
+    const contextRunArtifact = latestWorkflowState.artifact_ledger.artifacts
+      .find((artifact) => artifact.metadata?.type === "context_work_packages_run");
+
+    assert.equal(response.status, 201);
+    assert.equal(payload.auto_advance.status, "created");
+    assert.equal(payload.auto_advance.result.status, "pass");
+    assert.equal(latestWorkflowState.manifest.work_packages[0].status, "completed");
+    assert.equal(contextRunArtifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
+    assert.equal(contextRunArtifact.metadata.executor_provenance.command_runner_kind, "codex_proxy_child_process");
+    assert.equal(
+      contextRunArtifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code,
+      0
+    );
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath,
+    childWorkerCommand: process.execPath,
+    childWorkerArgs: [childScriptPath],
+    childWorkerTimeoutMs: 5000
   });
 });
 

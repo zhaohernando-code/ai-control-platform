@@ -51,6 +51,8 @@ import {
 } from "../src/workflow/project-status-continuation.js";
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
+import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
+import { createHeadlessProviderExecutor } from "../src/workflow/headless-cli-orchestrator.js";
 import {
   recordRequirementIntakeSubmitted,
   submitRequirementToProjectStatus
@@ -159,7 +161,9 @@ function requirementAutoAdvanceInput(selectedId, input = {}) {
     max_iterations: Math.min(Math.max(Number(input.auto_advance_max_iterations || input.autoAdvanceMaxIterations || 3), 1), 5),
     execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
     execution_strategy: "projected_next_action",
-    context_work_package_execution_profile: input.context_work_package_execution_profile || input.contextWorkPackageExecutionProfile,
+    context_work_package_execution_profile: input.context_work_package_execution_profile ||
+      input.contextWorkPackageExecutionProfile ||
+      VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
     snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "requirement-intake-auto",
     created_at: input.created_at || input.createdAt
   };
@@ -512,6 +516,65 @@ function contextWorkPackageRunOptions(input = {}) {
     tags: Array.isArray(input.tags) ? input.tags : undefined,
     stage: input.stage
   };
+}
+
+function jsonArrayOption(value) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function envFlagEnabled(name) {
+  const value = normalizeString(process.env[name]).toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
+function configuredHeadlessChildProviderExecutor(options = {}) {
+  if (typeof options.contextWorkPackageProviderExecutor === "function" ||
+    typeof options.context_work_package_provider_executor === "function") {
+    return null;
+  }
+  const command = normalizeString(
+    options.childWorkerCommand ||
+      options.child_worker_command ||
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND
+  );
+  if (!command) return null;
+  const args = Array.isArray(options.childWorkerArgs)
+    ? options.childWorkerArgs
+    : Array.isArray(options.child_worker_args)
+      ? options.child_worker_args
+      : jsonArrayOption(process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_ARGS_JSON);
+  return createHeadlessProviderExecutor({
+    child_worker_command: command,
+    child_worker_args: args,
+    child_worker_timeout_ms: options.childWorkerTimeoutMs ||
+      options.child_worker_timeout_ms ||
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_TIMEOUT_MS,
+    child_worker_output_path: options.childWorkerOutputPath ||
+      options.child_worker_output_path ||
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH ||
+      "tmp/workbench-child-workers/{run_id}-{cycle_id}-{work_package_id}.json",
+    child_worker_max_attempts: options.childWorkerMaxAttempts ||
+      options.child_worker_max_attempts ||
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_MAX_ATTEMPTS,
+    child_worker_split_retry: options.childWorkerSplitRetry === true ||
+      options.child_worker_split_retry === true ||
+      envFlagEnabled("AI_CONTROL_WORKBENCH_CHILD_WORKER_SPLIT_RETRY"),
+    child_worker_cwd: options.childWorkerCwd ||
+      options.child_worker_cwd ||
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_CWD ||
+      root,
+    command_runner_kind: "codex_proxy_child_process",
+    default_child_provider: {
+      provider: "codex_proxy",
+      model: "codex-cli"
+    }
+  });
 }
 
 function readBody(req) {
@@ -926,7 +989,7 @@ export function createWorkbenchServer(options = {}) {
     ? options.contextWorkPackageProviderExecutor
     : typeof options.context_work_package_provider_executor === "function"
       ? options.context_work_package_provider_executor
-      : null;
+      : configuredHeadlessChildProviderExecutor(options);
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath)
   );

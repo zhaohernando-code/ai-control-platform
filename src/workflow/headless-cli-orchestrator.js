@@ -672,13 +672,14 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
   };
 }
 
-function createHeadlessProviderExecutor(options = {}) {
+export function createHeadlessProviderExecutor(options = {}) {
   const outputsById = childOutputsByPackage(options);
-  return ({ selected_work_packages: selectedWorkPackages, execution_plan: executionPlan }) => {
+  return ({ workflow_state: invocationWorkflowState, selected_work_packages: selectedWorkPackages, execution_plan: executionPlan }) => {
     const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
+    const workflowState = options.workflow_state || options.workflowState || invocationWorkflowState || {};
     const packageResults = asArray(selectedWorkPackages).map((workPackage) => {
       const explicitOutput = outputsById.get(normalizeString(workPackage.id));
-      const realOutput = explicitOutput ? null : executeRealChildWorker(options.workflow_state || {}, workPackage, {
+      const realOutput = explicitOutput ? null : executeRealChildWorker(workflowState, workPackage, {
           ...options,
           acceptance_gates: executionPlan?.package_plans?.find((plan) => plan.work_package_id === workPackage.id)
             ?.routing_request?.context_pack?.acceptance_gates
