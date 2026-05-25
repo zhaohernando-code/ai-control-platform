@@ -81,7 +81,7 @@ export function validateWorkbenchBrowserEventsArtifact(path) {
     lifecycleCleanupLoop.cleanup_after_unclosed !== "0" ||
     lifecycleCleanupLoop.projected_action !== "cleanup_agent_lifecycle_pool" ||
     lifecycleCleanupLoop.scheduler_loop_strategy !== PROJECTED_NEXT_ACTION_STRATEGY_LABEL ||
-    lifecycleCleanupLoop.next_action_readout !== "inspect_scheduler_loop"
+    lifecycleCleanupLoop.next_action_readout !== "resume_autonomous_scheduler_loop"
   ) {
     throw new Error("workbench browser events artifact is missing autonomous lifecycle cleanup loop evidence");
   }

@@ -79,7 +79,7 @@ function browserEventsArtifact({
         projected_action: "cleanup_agent_lifecycle_pool",
         scheduler_loop_status: schedulerLoopStatus,
         scheduler_loop_strategy: "按推荐动作推进",
-        next_action_readout: "inspect_scheduler_loop",
+        next_action_readout: "resume_autonomous_scheduler_loop",
         dimensions: { width: 1200, scrollWidth: 1200 }
       }
     ]
