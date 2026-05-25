@@ -84,6 +84,23 @@ test("reviewer shard runner lists pending shards and builds read-only prompts", 
   assert.match(prompt, /Return JSON findings only/);
 });
 
+test("reviewer shard prompt sanitizes scope text while preserving file paths", () => {
+  const prompt = createReviewerShardPrompt({
+    id: "self-governance-scanner-autonomous-continuation-dispatch",
+    provider: "deepseek",
+    model: "deepseek-v4-pro",
+    profile: "quick",
+    allowed_tools: [],
+    files: ["src/workflow/self-governance-scanner.js"],
+    questions: ["self-governance scanner 是否会触发 autonomous-continuation dispatch？"],
+    scope: "self-governance scanner autonomous-continuation dispatch code-review-coverage"
+  });
+
+  assert.match(prompt, /src\/workflow\/self-governance-scanner\.js/);
+  assert.doesNotMatch(prompt, /self-governance scanner autonomous-continuation dispatch code-review-coverage/i);
+  assert.doesNotMatch(prompt, /self-governance scanner 是否会触发 autonomous-continuation dispatch/i);
+});
+
 test("reviewer shard runner records one shard and leaves remaining shard pending", async () => {
   const result = await runReviewerShard(workflowState(), {
     shard_id: "reviewer-scope-shard-001",

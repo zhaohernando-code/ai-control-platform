@@ -7,6 +7,12 @@ import {
   PROVIDER_MODEL_ROUTED_MODE,
   VERIFIED_PROVIDER_MULTI_AGENT_PROFILE
 } from "./context-work-package-execution-adapter.js";
+import {
+  promptSafeContextPack,
+  promptSafeWorkflowIdentity,
+  promptSafeWorkPackages,
+  promptSafetyPreamble
+} from "./external-prompt-safety.js";
 
 export const CONTEXT_WORK_PACKAGE_PROVIDER_EXECUTOR_VERSION = "context-work-package-provider-executor.v1";
 export const DEFAULT_DEEPSEEK_REVIEW_SCRIPT = "/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py";
@@ -157,6 +163,20 @@ function fallbackModelFrom(options = {}, primaryModel) {
   return fallback && fallback !== primaryModel ? fallback : "";
 }
 
+function promptSafeExecutionPlan(executionPlan = {}) {
+  const packagePlans = asArray(executionPlan.package_plans || executionPlan.packagePlans);
+  return {
+    status: normalizeString(executionPlan.status) || null,
+    executor_kind: normalizeString(executionPlan.executor_kind || executionPlan.executorKind) || null,
+    selected_model: normalizeString(executionPlan.selected_model || executionPlan.selectedModel) || null,
+    package_plan_count: packagePlans.length,
+    acceptance_gates: [
+      ...new Set(packagePlans.flatMap((plan) => asArray(plan?.routing_request?.context_pack?.acceptance_gates)))
+    ].map(normalizeString).filter(Boolean),
+    notes: "Detailed routing metadata is omitted from this provider prompt to keep the request compact."
+  };
+}
+
 function providerAttemptEvidence({ command, result, status, issueCode, workflowOutputWritten = false }) {
   const stdout = normalizeString(result?.stdout);
   const stderr = normalizeString(result?.stderr);
@@ -189,7 +209,7 @@ function withAttempts(result = {}, attempts = []) {
   };
 }
 
-function promptForProviderExecution(input = {}) {
+export function promptForProviderExecution(input = {}) {
   const workflowState = input.workflow_state || {};
   const selectedWorkPackages = asArray(input.selected_work_packages);
   const executionPlan = input.execution_plan || {};
@@ -197,11 +217,13 @@ function promptForProviderExecution(input = {}) {
   return [
     "# Verified Provider Context Work Package Execution",
     "",
-    "You are a bounded external provider executor for AI Control Platform context work packages.",
+    "You are a bounded external provider executor for AI Control Platform context tasks.",
     "Return only one JSON object. Do not wrap it in prose.",
     "",
+    promptSafetyPreamble(),
+    "",
     "Completion rules:",
-    "- Use status=pass only if the selected work packages were actually completed by this provider run.",
+    "- Use status=pass only if the selected tasks were actually completed by this provider run.",
     "- Do not claim pass for local, mock, simulation, dry-run, planning-only, or unverified output.",
     "- If execution cannot complete, return status=fail with durable findings and evidence.",
     "- Every selected package must have a package_results entry with status and completion_evidence.",
@@ -229,17 +251,15 @@ function promptForProviderExecution(input = {}) {
     "",
     "Workflow identity:",
     JSON.stringify({
-      run_id: workflowState?.manifest?.run_id || null,
-      cycle_id: workflowState?.manifest?.cycle_id || null,
-      goal: workflowState?.manifest?.goal || null,
-      context_pack: workflowState?.manifest?.context_pack || null
+      ...promptSafeWorkflowIdentity(workflowState),
+      context_pack: promptSafeContextPack(workflowState?.manifest?.context_pack || {})
     }, null, 2),
     "",
-    "Selected work packages:",
-    JSON.stringify(selectedWorkPackages, null, 2),
+    "Selected tasks:",
+    JSON.stringify(promptSafeWorkPackages(selectedWorkPackages), null, 2),
     "",
     "Provider/model routing execution plan:",
-    JSON.stringify(executionPlan, null, 2)
+    JSON.stringify(promptSafeExecutionPlan(executionPlan), null, 2)
   ].join("\n");
 }
 

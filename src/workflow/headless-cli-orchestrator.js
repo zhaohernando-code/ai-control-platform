@@ -17,6 +17,12 @@ import { runContextWorkPackages } from "./context-work-package-runner.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { publishWorkbenchSnapshot } from "./workbench-snapshots.js";
+import {
+  promptSafeContextPack,
+  promptSafeWorkflowIdentity,
+  promptSafeWorkPackage,
+  promptSafetyPreamble
+} from "./external-prompt-safety.js";
 
 export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
 export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
@@ -391,7 +397,7 @@ export function parseHeadlessChildWorkerOutput(raw = {}) {
   return parseJsonCandidate(raw) || null;
 }
 
-function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
+export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
   const contextPack = workflowState?.manifest?.context_pack || {};
   const outputPath = normalizeString(options.child_worker_output_path_resolved || options.childWorkerOutputPathResolved) ||
     childWorkerCommandOutputPath(workPackage, {
@@ -409,17 +415,19 @@ function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options
       ]
     : [];
   return [
-    "# AI Control Platform Headless Child Worker",
+    "# AI Control Platform Bounded Implementation Task",
     "",
-    "role=child_worker",
+    "role=bounded_implementation_worker",
     "host=platform_core",
     "Return exactly one JSON object. Do not wrap it in prose.",
     "",
-    "You are not the main orchestrator. Only implement the bounded work package.",
+    promptSafetyPreamble(),
+    "",
+    "You are not the coordinator. Only implement the bounded task.",
     "",
     "Required rules:",
-    "- Read AGENTS.md, PROCESS.md, PROJECT_STATUS.json, PROJECT_RULES.md, docs/contracts/CODEX_PROXY_HANDOFF_CN.md, docs/contracts/AUTONOMOUS_DEVELOPMENT_FLOW_CN.md, and this Context Pack.",
-    "- Do not read more than five extra files outside the Context Pack unless you first report why.",
+    "- Read AGENTS.md, PROCESS.md, PROJECT_STATUS.json, PROJECT_RULES.md, docs/contracts/CODEX_PROXY_HANDOFF_CN.md, and this task context.",
+    "- Do not read more than five extra files outside the task context unless you first report why.",
     "- First produce the minimum runnable diff, then explain design.",
     "- If no patch is possible within the time box, return status=fail with no_diff=true, blocker, read_files, and next_minimal_patch_position.",
     "- Do not modify managed projects, legacy directories, or files outside owned_files.",
@@ -441,17 +449,13 @@ function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options
     }, null, 2),
     "",
     "Workflow identity:",
-    JSON.stringify({
-      run_id: workflowState?.manifest?.run_id || null,
-      cycle_id: workflowState?.manifest?.cycle_id || null,
-      goal: workflowState?.manifest?.goal || null
-    }, null, 2),
+    JSON.stringify(promptSafeWorkflowIdentity(workflowState), null, 2),
     "",
-    "Context Pack:",
-    JSON.stringify(contextPack, null, 2),
+    "Task context:",
+    JSON.stringify(promptSafeContextPack(contextPack), null, 2),
     "",
-    "Selected work package:",
-    JSON.stringify(workPackage, null, 2),
+    "Selected task:",
+    JSON.stringify(promptSafeWorkPackage(workPackage), null, 2),
     "",
     "Acceptance gates:",
     JSON.stringify(compactStrings(options.acceptance_gates || contextPack.acceptance_gates), null, 2),
@@ -608,7 +612,7 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
   if (!runner) return null;
 
   const tempDir = mkdtempSync(join(tmpdir(), "headless-child-worker-"));
-  const promptFile = join(tempDir, `${safeIdPart(workPackage.id)}-prompt.md`);
+  const promptFile = join(tempDir, "bounded-implementation-task.md");
   const outputPath = childWorkerCommandOutputPath(workPackage, {
     ...options,
     run_id: workflowState?.manifest?.run_id,

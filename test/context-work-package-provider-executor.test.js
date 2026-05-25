@@ -9,7 +9,8 @@ import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-w
 import {
   createClaudeDeepSeekContextWorkPackageProviderExecutor,
   createClaudeDeepSeekProviderCommand,
-  parseProviderExecutorOutput
+  parseProviderExecutorOutput,
+  promptForProviderExecution
 } from "../src/workflow/context-work-package-provider-executor.js";
 import {
   latestContextWorkPackagesRunArtifactId,
@@ -127,6 +128,43 @@ test("provider output parser requires structured JSON object", () => {
   assert.deepEqual(parseProviderExecutorOutput(`noise\n\`\`\`json\n${providerPassJson()}\n\`\`\``), JSON.parse(providerPassJson()));
   assert.equal(parseProviderExecutorOutput("plain provider prose without json"), null);
   assert.equal(parseProviderExecutorOutput("[1,2,3]"), null);
+});
+
+test("provider execution prompt uses compact prompt-safe task context", () => {
+  const state = workflowState();
+  state.manifest.goal = "Run self-governance scanner through autonomous-continuation dispatch and code-review-coverage dispatch.";
+  state.manifest.context_pack.requirement_summary = state.manifest.goal;
+  const prompt = promptForProviderExecution({
+    workflow_state: state,
+    selected_work_packages: [
+      {
+        id: "self-governance-scanner-autonomous-continuation-dispatch",
+        title: "Self-governance scanner autonomous-continuation dispatch",
+        action: "run_self_governance_scanner_dispatch",
+        owned_files: ["src/workflow/self-governance-scanner.js"],
+        source: { raw: "omitted" }
+      }
+    ],
+    execution_plan: {
+      status: "ready",
+      package_plans: [
+        {
+          routing_request: {
+            context_pack: {
+              requirement_summary: "raw self-governance scanner autonomous-continuation dispatch",
+              acceptance_gates: ["node --test test/self-governance.test.js"]
+            }
+          }
+        }
+      ]
+    }
+  });
+
+  assert.match(prompt, /Selected tasks:/);
+  assert.match(prompt, /Internal metadata is intentionally omitted/);
+  assert.match(prompt, /src\/workflow\/self-governance-scanner\.js/);
+  assert.doesNotMatch(prompt, /Self-governance scanner autonomous-continuation dispatch/);
+  assert.doesNotMatch(prompt, /raw self-governance scanner autonomous-continuation dispatch/);
 });
 
 test("provider attempt helper updates ledger artifact when manifest artifact is missing", () => {

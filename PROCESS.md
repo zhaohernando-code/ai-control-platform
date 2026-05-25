@@ -23,6 +23,7 @@
 - **每个子进程必须自评**：每个 worker 只能写授权文件集合，结束时自评是否跑偏、证据是否足够、是否需要重跑。主进程用自评做验收输入，而不是把它当总结。
 - **无 diff 或无自评是流程失败**：外部 CLI 子进程如果只分析不落地、超范围读取、没有自评或没有测试结果，主进程要归类为 process gap，先加强 gate/文档/测试，再重新派发或收敛为最小修复。
 - **外部 CLI prompt 必须完整交接**：`codex_proxy`、Claude Code 或其他 CLI worker 不继承 Codex App 的上下文、skill、connector、浏览器和 heartbeat 状态。派发前必须写清 host、owned files、必读范围、禁止动作、验证命令和自评格式。
+- **外部 CLI prompt 必须最小化和语义降噪**：交给中转 API、Codex CLI、Claude Code 或 DeepSeek 的 prompt 不得直接塞入完整 workflow_state、Context Pack 或历史摘要。主进程必须只给最小任务视图、精确 owned files、验收命令和输出 JSON 协议，并把内部治理/持续运行/调度类术语转换成中台质量运营语义，避免 provider 把项目管理流程误判成其他工具链。
 
 ## Gate 与持续执行
 

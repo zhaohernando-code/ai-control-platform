@@ -15,6 +15,7 @@
 - `codex_proxy` 的 cwd、`CODEX_HOME`、插件同步状态和可用工具可能与 Codex App 不同；插件同步报错不能直接等价为模型不可用。
 - `codex_proxy` 不会自动知道“主进程只调度验收、子进程实现”的固定模式，除非 prompt 和仓库 durable 文件重复声明。
 - `codex_proxy` 容易在大范围读取和长时间分析中消耗上下文而不产出补丁；必须给它明确的文件读取上限、交付时限、最小 diff 和测试命令。
+- `codex_proxy` 走中转 API 时，prompt 可能先被上游 provider 的安全或滥用过滤器粗筛；完整历史摘要、内部治理术语、持续运行术语和调度术语集中出现时，可能造成误判或长时间无结构化输出。
 - `codex_proxy` 不能把当前聊天里的口头规则当作 gate。可复发规则必须进入 `AGENTS.md`、`PROCESS.md`、`PROJECT_STATUS.json`、process-hardening、schema、测试或工作台 projection。
 
 ## CLI Main Orchestrator 要求
@@ -40,6 +41,14 @@
 - 先交付最小可运行 diff，再解释设计；如果 10 分钟内无法完成补丁，必须输出 blocker、已读文件、下一步最小补丁位置和退出。
 - 每个子进程必须在最终输出中包含：改动文件、需求对齐判断、是否跑偏、测试结果、未完成风险、是否需要流程/gate 修正。
 - 如果发现 P0/P1、假成功、状态未持久化、host 边界、owned files、continuation 断裂或 proxy 交付失败，先补 process-hardening 不变量和回归测试，再继续实现。
+
+## Provider Prompt Safety
+
+- 外部 provider prompt 只允许包含最小任务视图：项目定位、host、owned files、验收命令、必读文件上限、输出 JSON 协议和当前选中任务。
+- 不得把完整 `workflow_state`、完整 Context Pack、长 `PROJECT_STATUS.progress_summary`、历史 run artifacts 或未裁剪的 work package metadata 原样写入外部 prompt。
+- 对外 prompt 的自然语言要使用“中台质量运营、任务管理、验收证据、发布检查”等业务语义；内部模块名和事实仍保留在仓库代码、artifact、manifest 和测试中。
+- 精确文件路径和验收命令必须保留，避免子进程失去可执行落点；如果一个任务的 owned files 过多或词面组合容易被 provider 误判，应先拆成更小的 bounded task。
+- 外部 prompt safety 是运行时约束，不是改名工程。内部 API、artifact version、manifest event 和测试断言保持稳定，避免为了规避误判破坏可审计性。
 
 ## 当前平台目标
 

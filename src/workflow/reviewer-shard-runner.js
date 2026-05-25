@@ -4,6 +4,7 @@ import {
   shardResultsFromWorkflowState
 } from "./reviewer-shard-results.js";
 import { recordReviewerProviderHealthFact } from "./reviewer-provider-health.js";
+import { promptSafeReviewerShard, promptSafetyPreamble } from "./external-prompt-safety.js";
 
 const REVIEWER_SHARD_LOOP_ARTIFACT_VERSION = "reviewer-shard-loop-run.v1";
 
@@ -94,18 +95,21 @@ export function getPendingReviewerShards(workflowState = {}) {
 }
 
 export function createReviewerShardPrompt(shard = {}) {
-  const files = asArray(shard.files).map((file) => `- ${file}`).join("\n") || "- (none)";
-  const questions = asArray(shard.questions).map((question) => `- ${question}`).join("\n") || "- (none)";
-  const forbidden = asArray(shard.forbidden_actions).map((action) => `- ${action}`).join("\n") || "- Do not modify files.";
-  const tools = asArray(shard.allowed_tools).join(", ") || "none";
+  const safeShard = promptSafeReviewerShard(shard);
+  const files = asArray(safeShard.files).map((file) => `- ${file}`).join("\n") || "- (none)";
+  const questions = asArray(safeShard.questions).map((question) => `- ${question}`).join("\n") || "- (none)";
+  const forbidden = asArray(safeShard.forbidden_actions).map((action) => `- ${action}`).join("\n") || "- Do not modify files.";
+  const tools = asArray(safeShard.allowed_tools).join(", ") || "none";
 
   return [
     "你是 AI Control Platform 的只读 reviewer shard。",
     "",
-    `Shard: ${normalizeString(shard.id) || "unknown"}`,
-    `Provider: ${normalizeString(shard.provider) || "unknown"}`,
-    `Model: ${normalizeString(shard.model) || "unknown"}`,
-    `Profile: ${normalizeString(shard.profile) || "quick"}`,
+    promptSafetyPreamble(),
+    "",
+    `Shard: ${normalizeString(safeShard.id) || "unknown"}`,
+    `Provider: ${normalizeString(safeShard.provider) || "unknown"}`,
+    `Model: ${normalizeString(safeShard.model) || "unknown"}`,
+    `Profile: ${normalizeString(safeShard.profile) || "quick"}`,
     `Allowed tools: ${tools}`,
     "",
     "Files:",
@@ -115,7 +119,7 @@ export function createReviewerShardPrompt(shard = {}) {
     questions,
     "",
     "Scope:",
-    normalizeString(shard.prompt_excerpt || shard.scope) || "(none)",
+    normalizeString(safeShard.scope) || "(none)",
     "",
     "Forbidden actions:",
     forbidden,

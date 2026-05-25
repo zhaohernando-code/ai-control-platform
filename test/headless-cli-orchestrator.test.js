@@ -11,6 +11,7 @@ import {
   CHILD_WORKER_ROLE,
   HEADLESS_MAIN_ORCHESTRATOR_ROLE,
   evaluateHeadlessChildWorkerOutput,
+  headlessChildWorkerPrompt,
   parseHeadlessChildWorkerOutput,
   runHeadlessCliMainOrchestrator,
   runHeadlessCliMainOrchestratorLoop
@@ -412,9 +413,37 @@ test("headless CLI orchestrator can execute a real child command runner and pars
 
   assert.equal(result.status, "pass");
   assert.equal(calls.length, 1);
-  assert.match(readFileSync(calls[0].prompt_file, "utf8"), /role=child_worker/);
+  assert.match(readFileSync(calls[0].prompt_file, "utf8"), /"role": "child_worker"/);
   assert.equal(result.child_run.artifact.metadata.executor_provenance.command_runner_kind, "codex_proxy_child_process");
   assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
+});
+
+test("headless child prompt minimizes high-risk routing keywords for external CLI providers", () => {
+  const workflowState = sourceWorkflowState();
+  workflowState.manifest.goal = "Run self-governance scanner through autonomous-continuation dispatch and code-review-coverage dispatch.";
+  workflowState.manifest.context_pack.requirement_summary = workflowState.manifest.goal;
+  workflowState.manifest.context_pack.forbidden_actions = [
+    "Do not skip self-governance scanner evidence",
+    "Do not bypass autonomous-continuation dispatch"
+  ];
+  const prompt = headlessChildWorkerPrompt(workflowState, {
+    id: "self-governance-scanner-autonomous-continuation-dispatch",
+    title: "Self-governance scanner autonomous-continuation dispatch",
+    action: "run_self_governance_scanner_dispatch",
+    owned_files: [
+      "src/workflow/self-governance-scanner.js",
+      "src/workflow/autonomous-continuation.js",
+      "src/workflow/code-review-coverage-dispatch.js"
+    ],
+    acceptance_gates: ["npm run check:code-review-coverage"]
+  });
+
+  assert.match(prompt, /internal project-management and quality-operations platform/);
+  assert.match(prompt, /src\/workflow\/self-governance-scanner\.js/);
+  assert.doesNotMatch(prompt, /Self-governance scanner autonomous-continuation dispatch/);
+  assert.doesNotMatch(prompt, /run_self_governance_scanner_dispatch/);
+  assert.doesNotMatch(prompt, /docs\/contracts\/AUTONOMOUS_DEVELOPMENT_FLOW_CN\.md/);
+  assert.doesNotMatch(prompt, /"Context Pack"/);
 });
 
 test("headless CLI orchestrator passes configured output path into child prompt and parses file output", () => {
