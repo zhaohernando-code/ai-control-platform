@@ -7,6 +7,7 @@ import {
 
 const AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION = "autonomous-scheduler-loop-run.v1";
 const SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION = "scheduler-loop-resume-attempt.v1";
+const MAX_SNAPSHOT_ID_LENGTH = 80;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -103,7 +104,13 @@ function continuationReady(dispatchResponse = {}) {
 }
 
 function loopSnapshotId(prefix, projectionId, index) {
-  return `${safeIdPart(prefix)}-${safeIdPart(projectionId)}-${String(index + 1).padStart(2, "0")}`;
+  const suffix = String(index + 1).padStart(2, "0");
+  const base = `${safeIdPart(prefix)}-${safeIdPart(projectionId)}`;
+  const maxBaseLength = MAX_SNAPSHOT_ID_LENGTH - suffix.length - 1;
+  const safeBase = base.length > maxBaseLength
+    ? base.slice(0, maxBaseLength).replace(/[._-]+$/u, "")
+    : base;
+  return `${safeBase || "snapshot"}-${suffix}`;
 }
 
 function projectedNextProjectionId(actionResult = {}) {

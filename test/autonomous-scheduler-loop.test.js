@@ -178,6 +178,47 @@ test("scheduler loop can follow projected next-action recommendations", async ()
   assert.equal(calls[2][2].snapshot_id, "projected-loop-current-01");
 });
 
+test("scheduler loop keeps projected next-action snapshot ids publishable", async () => {
+  const calls = [];
+  const longProjectionId = "headless-live-context-cycle-1779570720000";
+  const client = {
+    async loadHistory() {
+      calls.push(["loadHistory"]);
+      return { latest: longProjectionId };
+    },
+    async loadProjection(id) {
+      calls.push(["projection", id]);
+      return {
+        next_action_readout: {
+          status: "ready",
+          action: "create_context_pack_from_seed"
+        }
+      };
+    },
+    async runNextAction(id, body) {
+      calls.push(["nextAction", id, body]);
+      return {
+        status: "executed",
+        action: body.expected_action,
+        result: { next_item: { id: `${id}-next` } }
+      };
+    }
+  };
+  const result = await runSchedulerLoopDriver({
+    max_iterations: 1,
+    execution_strategy: "projected_next_action",
+    snapshot_prefix: "requirement-intake-replay-20260525-module-update"
+  }, { client });
+  const snapshotId = calls[2][2].snapshot_id;
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "iteration_limit_reached");
+  assert.equal(result.iterations[0].projected_action, "create_context_pack_from_seed");
+  assert.ok(snapshotId.length <= 80);
+  assert.match(snapshotId, /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,80}$/);
+  assert.match(snapshotId, /-01$/);
+});
+
 test("scheduler loop executes projected lifecycle cleanup through next action in place", async () => {
   const calls = [];
   let cleaned = false;
