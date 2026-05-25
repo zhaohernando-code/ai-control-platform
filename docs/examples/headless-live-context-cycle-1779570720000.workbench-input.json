@@ -2,322 +2,27 @@
   "generated_at": "2026-05-21T16:25:00.000Z",
   "project_status": {
     "project": "ai-control-platform",
-    "status": "in_progress",
-    "current_phase": {
-      "id": "p0-boundary-and-process",
-      "label": "Host boundary and autonomous development process foundation"
-    },
-    "current_milestone": {
-      "id": "new-platform-repo-bootstrap",
-      "label": "Create standalone platform repo and codify anti-drift workflow gates"
-    },
-    "updated_at": "2026-05-25T11:17:25.341Z",
-    "progress_summary": "Standalone platform repository has been created and pushed to GitHub at git@github.com:zhaohernando-code/ai-control-platform.git to prevent platform-core work from drifting into managed business projects. Existing Chinese design docs, capability matrix, recovery redesign, and PC/mobile visual drafts are copied into this repo. Host-boundary and project-onboarding gates are active. Current-session platform materials have been migrated into this repo: formal contracts and visuals are active docs, while stock_dashboard autonomous-flow trials/code/tests and root hook route fixes are quarantined under docs/migrations and legacy for platform-neutral refactoring. The current round extended the platform self-trial from text evaluation into machine-readable workflow primitives: run manifest, artifact ledger, task DAG, goal guard, LLM reviewer gate, model router, workbench projection, autonomous continuation, process hardening, operator event ingestion, workbench snapshot publishing, and the first PC/mobile workbench shell. The reviewer gate is now a platform data model; Claude+DeepSeek is treated as one provider/model option selected by policy, not a hard-coded workflow. Workbench projection now provides PC/mobile one-screen state input without requiring UI code to parse logs. Projection schema validation and CLI gate protect PC/mobile rendering from malformed projection JSON. Autonomous continuation now prevents the platform from stopping after a completed cycle while PROJECT_STATUS.next_step or next_work_packages are available and no human blocker exists. PC and mobile workbench shells are separate static entries and consume validated projection JSON. Workbench projection source abstraction supports a service endpoint through a safe query parameter while preserving the local fixture fallback. A lightweight local workbench server now exposes projection and projection-history APIs, and browser verification confirms desktop/mobile API-backed rendering has no horizontal overflow. Projection history selection now lets operators switch between current and previous autonomous cycles in both desktop and mobile shells. Workbench controls now persist operator action events through /api/workbench/events, so validate/next actions become durable process facts instead of UI-only text changes. Process-hardening is now connected to executable closeout via npm run check:process-hardening and npm run check:closeout, browser event verification is committed as npm run check:workbench:browser-events, and run-with-node18 makes closeout self-heal from the current Node 16 shell by selecting an available Node 18+ runtime. Operator events can now be ingested into Run Manifest events and Artifact Ledger artifacts idempotently and atomically, so workbench actions participate in autonomous evaluation state instead of remaining a side-channel ledger. Workbench projection generation now applies operator event ingestion before summarizing manifest, artifacts, autonomous_run, and closeout evidence, ignores stale run_result/run_evaluation whenever operator events are present, and browser closeout now covers both desktop event writes and mobile projection rendering. Workbench server now prefers projection history input_path snapshots and dynamically generates projection from workflow state, with projection_path retained as historical fallback. History item paths are constrained to relative docs/examples or snapshot paths, and the server has tests proving dynamic input priority over static fallback. Snapshot APIs can now persist projection-ready workflow state input and update projection history latest. Autonomous continuation now emits a snapshot_publish_plan only when workflow_state passes the same publish readiness gate used by the publisher; otherwise it returns snapshot_publish_issues. Closeout runner now executes that plan through either local snapshot publishing or the workbench snapshot API, refuses non-platform local roots, rejects output paths outside the platform repo, validates HTTP API acknowledgements and returned projection identity, rejects unknown modes, normalizes snapshot ids, fails closed when the plan is missing, writes success/failure evidence back to workflow_state manifest events plus artifact ledger, and republishes the evidence-bearing workflow_state to the same snapshot id so workbench latest can display it. PC/mobile projection schemas now require a closeout summary object, both workbench shells render closeout status from projection.closeout, deterministic loop coverage proves decideContinuation -> runCloseoutPlan -> projection -> decideContinuation remains autonomous, runAutonomousCloseoutLoop exposes that path as a reusable orchestration runner plus CLI, and the CLI can write replayable autonomous-closeout-loop-run.v1 input/output artifacts. Replay validation now checks stored autonomous closeout loop artifacts before reuse, including host identity, result consistency, projection schema, closeout evidence, and next continuation state. Scheduler continuation reuse now goes through prepareAutonomousContinuationFromLoopArtifact and run-autonomous-closeout-loop --resume-from, so invalid replay artifacts become structured blockers instead of continuation input. Blocked replay validation attempts with available workflow state now write autonomous_loop_replay_validation events and failed evaluation artifacts back into workflow_state for workbench projection and recovery evaluation. Model routing now supports codex_plan_pressure and adds DeepSeek V4 Pro process_guard before expensive GPT implementation/arbitration work. Reviewer gate now creates DeepSeek invocation policies with official Anthropic endpoint, Claude Code model, keepalive expectations, bounded timeout profiles, effort, scope limits, split_required signals, and provider smoke recovery so DS Pro can participate more often without turning timeout into a manual blocker. Workbench projection and PC/mobile shells now expose replay validation blockers as first-class resume_health status instead of burying them in artifact totals. Reviewer provider health facts now persist smoke, retry, split, and fallback decisions into manifest events and artifact ledger, and PC/mobile workbench projection exposes latest provider health and next action. Reviewer tool timeout recovery now has a concrete reviewer_scope_split layer: smoke-pass DS tool timeouts can be converted into durable bounded shards, continuation consumes those shards as run_reviewer_scope_shard work packages, and PC/mobile projection exposes shard_count, pending_shards, and next_shard. Reviewer shard execution is now durable: shard results and aggregates are persisted as manifest/artifact facts, continuation skips completed shards, aggregate findings feed manifest.review_findings after all shards complete, and PC/mobile projection exposes reviewer_shard_review status. Reviewer shard outputs now have reusable recording paths: a CLI, workbench API, and projection-source method can persist shard results and optional aggregates without manual JSON edits. Reviewer shard execution now has a provider-neutral runner that selects pending shards, builds read-only prompts, requires an executor adapter, records shard results, and aggregates automatically after the final shard. A Claude+DeepSeek shard executor adapter now uses the canonical claude-deepseek skill wrapper and no-proxy launcher path, parses structured findings, and converts timeouts or wrapper failures into durable reviewer findings. Reviewer shard runner now has a scheduler CLI entrypoint, npm run run:reviewer-shard, that executes pending shards with the Claude+DeepSeek adapter by default or deterministic mock findings in tests, writes workflow state, and aggregates after the final shard. A real Claude+DeepSeek no-tools reviewer shard was executed through npm run run:reviewer-shard against a temporary workflow snapshot and completed successfully in the shard_recorded phase with one pass finding, one pending shard, and no false provider-health write. Runner-level reviewer_timeout findings now optionally create reviewer_provider_health facts and schedule provider smoke. Reviewer shard runner now supports bounded self-progress through --all, continuing pending shards until aggregate or provider-health recovery without requiring the main process to manually choose every shard. Autonomous continuation now re-evaluates completed reviewer shard aggregates from merged findings so stale pass/rerun evaluations cannot hide failed shard review or repeat recovered timeout work. Reviewer shard loop execution can now emit reviewer-shard-loop-run.v1 replay artifacts with identity validation, runner parameters, shard runs, aggregate/provider-health stop facts, and output workflow state. Deterministic reviewer shard loop closeout trial passed end-to-end when history/snapshot paths stayed inside the platform repo; an attempted /tmp publish correctly failed closed on host boundary. Reviewer shard loop artifacts now have a scheduler reuse CLI that emits closeout/continuation input without manual JSON assembly. run_reviewer_scope_shard work packages now map to an auditable three-step scheduler dispatch plan covering reviewer shard loop, artifact-to-continuation preparation, and autonomous closeout loop. Scheduler dispatch execution is now bounded by a plan validator, npm script allowlist, dependency ordering, stop-on-failure behavior, dry-run mode, and scheduler-dispatch-run.v1 artifacts. Scheduler dispatch planner now supports explicit reviewer mock options for deterministic full-chain trials without hiding provider bypass at execution time. A full non-dry-run scheduler dispatch trial with reviewer mock completed all three approved steps and reached autonomous closeout phase next_continuation. Scheduler dispatch policy decisions are now durable workflow facts: the workbench server records scheduler_dispatch_policy events and scheduler-dispatch-policy.v1 artifacts before execution or rejection, and PC/mobile projections render policy status, execution mode, issue count, and the first rejection reason. The workbench now has a named approved_mock_non_dry_run profile for bounded non-dry-run dispatch: the server expands the profile into explicit zero-external-call mocked controls, rejects unsupported profiles, and browser gates verify both dry-run and approved mock dispatch rendering. The trial also hardened scheduler-owned paths by making reviewer shard CLI outputs create directories and allowing snapshot publishing to initialize missing projection history inside controlled roots. Scheduler dispatch run artifacts now summarize declared step outputs, including reviewer shard aggregate state, continuation input metadata, and autonomous closeout loop next continuation status/action/work package count. PC/mobile workbench surfaces the approved dispatch next-continuation evidence so the system can continue from structured state instead of parsing stdout. Scheduler dispatch runs can now be converted into next continuation input through a dedicated replay-validating adapter and CLI, prepare:scheduler-dispatch-continuation. The adapter rereads the declared closeout loop artifact path and reuses autonomous closeout replay validation before emitting continuation input, blocking missing or non-reusable artifacts. run-scheduler-dispatch-plan now supports --continuation-output, invoking the replay-validating scheduler dispatch continuation adapter immediately after the run artifact is written; blocked continuation generation fails the runner instead of leaving a pass artifact that still needs manual assembly. Scheduler dispatch plans now carry continuation_output destinations, and run-scheduler-dispatch-plan automatically uses the plan destination for non-dry-run continuation generation while keeping dry-run as structure-only validation. Workbench server now turns approved non-dry-run scheduler dispatch continuation into durable state: it writes scheduler_dispatch_continuation facts, exposes continuation readiness in projection history, provides POST /api/workbench/scheduler-next-cycle, validates generated continuation input identity, records scheduler_next_cycle_enqueue, and publishes the next workflow snapshot so autonomous execution has a server-side handoff instead of stopping at a ready artifact.",
-    "latest_update": "Fixed development mode remains active: the main process stays watchdog/orchestrator and evaluates bounded child processes instead of treating implementation edits as success. Prompt safety hardening is now integrated for external Codex CLI and DeepSeek provider calls. The headless child worker, context work package provider executor, and reviewer shard runner now emit minimized provider-facing prompts through src/workflow/external-prompt-safety.js: natural-language workflow/task text is converted to quality-operations terminology, full workflow_state/context metadata is not dumped into provider prompts, exact owned_files and acceptance gates are preserved, and prompt files use neutral names. PROCESS.md and docs/contracts/CODEX_PROXY_HANDOFF_CN.md now require minimized provider prompts and warn that dense internal governance/continuation/dispatch terminology can be misclassified by upstream provider filters. Verification passed: node --test test/headless-cli-orchestrator.test.js test/context-work-package-provider-executor.test.js test/reviewer-shard-runner.test.js; npm test; npm run check:process-hardening; npm run check:worker-runtime-readiness -- --script check:closeout; npm run check:closeout; git diff --check. Live workbench route was republished by restarting com.codex.ai-control-platform.workbench from the canonical checkout and reverified on the public route after prompt-safety hardening; HTTP probe and browser evidence both passed at 2026-05-25T09:23:19.064Z.",
-    "workbench_live_route_evidence": {
-      "status": "pass",
-      "path": "docs/examples/public-live-route-evidence-20260525-prompt-safety-pass.json",
-      "schema": "workbench-live-route-evidence.v1",
-      "captured_at": "2026-05-25T09:23:19.064Z",
-      "durable": true,
-      "committed_artifact": true,
-      "source": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs --url https://hernando-zhao.cn/projects/ai-control-platform/ --output docs/examples/public-live-route-evidence-20260525-prompt-safety-pass.json",
-      "secret_policy": "Only request header names are recorded for HTTP probes; browser dev-login token values are not stored.",
-      "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
-      "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
-      "local_loopback": false,
-      "request_header_names": [
-        "X-HZ-Dev-Auth-Bypass-Token"
-      ],
-      "browser_evidence": {
-        "status": "pass",
-        "path": "docs/examples/public-live-route-browser-evidence-20260525-prompt-safety-pass.json",
-        "schema": "workbench-public-browser-evidence.v1",
-        "captured_at": "2026-05-25T09:24:49.661Z",
-        "auth_method": "edge_dev_login",
-        "title": "AI Control Platform Workbench",
-        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
-        "workbench_rendered": true,
-        "auth_redirect_detected": false,
-        "mounted_api_http_status": 200,
-        "request_header_names": []
-      }
-    },
-    "blockers": [],
+    "next_step": "Continue autonomous platform development by wiring browser-events recording into the runner or closeout flow.",
     "global_goals": [
-      {
-        "id": "requirement-unknown-20260525111725",
-        "title": "“提需求”模块更新",
-        "status": "in_progress",
-        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-        "owned_files": [
-          "apps/workbench",
-          "src/workflow/workbench-projection.js",
-          "src/workflow/frontend-acceptance.js",
-          "tools/check-workbench-browser-events.mjs",
-          "tools/check-workbench-frontend-acceptance.mjs",
-          "test/workbench-shell.test.js",
-          "test/workbench-server.test.js",
-          "test/workbench-projection.test.js",
-          "test/frontend-acceptance.test.js"
-        ],
-        "acceptance_gates": [
-          "npm run check:workbench:browser-events",
-          "npm run check:closeout"
-        ],
-        "source": "workbench_requirement_intake",
-        "submitted_at": "2026-05-25T11:17:25.341Z"
-      },
       {
         "id": "platform-boundary-and-state-foundation",
         "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
-        "status": "completed",
-        "next_step": "",
-        "owned_files": [
-          "PROJECT_STATUS.json",
-          "src/workflow",
-          "tools/workbench-server.mjs",
-          "test/workbench-server.test.js",
-          "tools/run-headless-cli-orchestrator.mjs",
-          "test/headless-cli-orchestrator.test.js",
-          "docs/contracts",
-          "docs/examples/process-hardening-current.json"
-        ],
-        "completed": true
+        "status": "in_progress",
+        "next_step": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters."
       },
       {
         "id": "pc-mobile-autonomous-workbench",
         "title": "PC/mobile 单页中台工作台和一屏状态投影",
-        "status": "completed",
-        "next_step": "",
-        "owned_files": [
-          "apps/workbench",
-          "src/workflow/workbench-projection.js",
-          "tools/check-workbench-browser-events.mjs",
-          "tools/check-workbench-frontend-acceptance.mjs",
-          "src/workflow/frontend-acceptance.js",
-          "docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md"
-        ],
-        "completed": true
+        "status": "in_progress",
+        "next_step": "Continue wiring browser-events recording into the browser verification runner or closeout flow."
       },
       {
         "id": "autonomous-scheduler-and-reviewer-loop",
         "title": "任务拆解、调度、multi-LLM reviewer、自恢复和持续运行闭环",
-        "status": "completed",
-        "next_step": "",
-        "owned_files": [
-          "src/workflow/autonomous-continuation.js",
-          "src/workflow/autonomous-scheduler-loop.js",
-          "src/workflow/reviewer-shard-runner.js",
-          "tools/workbench-server.mjs",
-          "src/workflow/context-work-package-execution-adapter.js",
-          "test/context-work-package-execution-adapter.test.js",
-          "test/autonomous-scheduler-loop.test.js",
-          "docs/examples/process-hardening-current.json",
-          "docs/contracts/MODEL_ROUTING_POLICY_CN.md"
-        ],
-        "completed": true
+        "status": "in_progress",
+        "next_step": "Continue converting scheduler/reviewer recovery outputs into durable service-side continuation facts."
       }
-    ],
-    "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-    "linked_docs": [
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/PROJECT_PLAN.md",
-        "role": "plan"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/AUTONOMOUS_DEVELOPMENT_FLOW_CN.md",
-        "role": "process_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/CONTEXT_PACK_CN.md",
-        "role": "context_pack_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/AUTONOMOUS_RUN_EVALUATION_CN.md",
-        "role": "run_evaluation_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/RUN_MANIFEST_LEDGER_DAG_CN.md",
-        "role": "run_manifest_ledger_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/LLM_REVIEWER_GATE_CN.md",
-        "role": "reviewer_gate_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/MODEL_ROUTING_POLICY_CN.md",
-        "role": "model_routing_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/WORKBENCH_PROJECTION_CN.md",
-        "role": "workbench_projection_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/AUTONOMOUS_CONTINUATION_CN.md",
-        "role": "autonomous_continuation_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/PLATFORM_FOUNDATION_DESIGN_CN.md",
-        "role": "product_design"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_SELF_TRIAL_CONTEXT_RUN_EVAL_CN.md",
-        "role": "self_trial_evaluation"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_SELF_TRIAL_RUN_MANIFEST_MODEL_ROUTING_CN.md",
-        "role": "self_trial_evaluation"
-      },
-      {
-        "path": "git@github.com:zhaohernando-code/ai-control-platform.git",
-        "role": "remote_repository"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_REAL_DS_REVIEWER_SHARD_RUN_CN.md",
-        "role": "real_ds_shard_trial"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_REVIEWER_SHARD_LOOP_CLOSEOUT_TRIAL_CN.md",
-        "role": "reviewer_shard_loop_closeout_trial"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260521_SCHEDULER_DISPATCH_FULL_CHAIN_TRIAL_CN.md",
-        "role": "scheduler_dispatch_full_chain_trial"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260522_PROVIDER_TRIAL_FALLBACK_CN.md",
-        "role": "provider_trial_fallback_evaluation"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260522_AGENT_LIFECYCLE_POOL_CN.md",
-        "role": "agent_lifecycle_pool_evaluation"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/evaluations/20260522_AGENT_LIFECYCLE_RECORDER_CN.md",
-        "role": "agent_lifecycle_recorder_evaluation"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/CODEX_PROXY_HANDOFF_CN.md",
-        "role": "codex_proxy_handoff_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",
-        "role": "frontend_development_acceptance_contract"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/examples/audit-skill-trial-current.json",
-        "role": "current_governance_skill_trial"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/examples/public-live-route-evidence-20260524.json",
-        "role": "current_public_workbench_live_route_evidence"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/examples/public-live-route-evidence-20260525-pass.json",
-        "role": "current_public_workbench_live_route_evidence"
-      },
-      {
-        "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/docs/examples/public-live-route-browser-evidence-20260525-pass.json",
-        "role": "current_public_workbench_browser_route_evidence"
-      }
-    ],
-    "latest_public_live_route_probe": {
-      "status": "pass",
-      "path": "docs/examples/public-live-route-evidence-20260525-pass.json",
-      "schema": "workbench-live-route-evidence.v1",
-      "durable": true,
-      "committed_artifact": true,
-      "source": "npm run probe:workbench:live-route -- --output docs/examples/public-live-route-evidence-20260525-pass.json",
-      "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
-      "expected_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
-      "observed_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
-      "workbench_rendered": true,
-      "mounted_api_verified": true,
-      "auth_redirect_detected": false,
-      "secret_policy": "No cookies, tokens, authorization headers, or secret values are stored."
-    },
-    "latest_public_live_route_browser_evidence": {
-      "status": "pass",
-      "path": "docs/examples/public-live-route-browser-evidence-20260525-pass.json",
-      "schema": "workbench-public-browser-evidence.v1",
-      "durable": true,
-      "committed_artifact": true,
-      "source": "Playwright Chromium navigation to https://hernando-zhao.cn/projects/ai-control-platform/",
-      "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
-      "observed_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
-      "observed_title": "AI Control Platform Workbench",
-      "workbench_rendered": true,
-      "auth_redirect_detected": false,
-      "secret_policy": "Only request metadata and a short visible body text sample are stored; no cookies, tokens, authorization headers, session values, or secret values are stored."
-    },
-    "next_work_packages": [
-      {
-        "id": "requirement-unknown-20260525111725-intake",
-        "title": "处理需求：“提需求”模块更新",
-        "action": "continue_requirement_intake",
-        "owned_files": [
-          "apps/workbench",
-          "src/workflow/workbench-projection.js",
-          "src/workflow/frontend-acceptance.js",
-          "tools/check-workbench-browser-events.mjs",
-          "tools/check-workbench-frontend-acceptance.mjs",
-          "test/workbench-shell.test.js",
-          "test/workbench-server.test.js",
-          "test/workbench-projection.test.js",
-          "test/frontend-acceptance.test.js"
-        ],
-        "acceptance_gates": [
-          "npm run check:workbench:browser-events",
-          "npm run check:closeout"
-        ],
-        "reason": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-        "global_goal_id": "requirement-unknown-20260525111725",
-        "source": {
-          "requirement_id": "requirement-unknown-20260525111725",
-          "intake_channel": "workbench_frontend",
-          "surface_area": "workbench_frontend",
-          "acceptance_criteria": "验收标准不应该由用户提出",
-          "constraints": "注意：此次需求的范围不只是前端"
-        }
-      }
-    ],
-    "requirement_intake": {
-      "version": "workbench-requirement-intake.v1",
-      "active_requirement_id": "requirement-unknown-20260525111725",
-      "latest_requirement_id": "requirement-unknown-20260525111725",
-      "submitted_count": 1,
-      "open_count": 1,
-      "items": [
-        {
-          "id": "requirement-unknown-20260525111725",
-          "title": "“提需求”模块更新",
-          "status": "submitted",
-          "submitted_at": "2026-05-25T11:17:25.341Z",
-          "surface_area": "workbench_frontend",
-          "surface_label": "Workbench 前端",
-          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
-          "acceptance_criteria": "验收标准不应该由用户提出",
-          "constraints": "注意：此次需求的范围不只是前端",
-          "owned_files": [
-            "apps/workbench",
-            "src/workflow/workbench-projection.js",
-            "src/workflow/frontend-acceptance.js",
-            "tools/check-workbench-browser-events.mjs",
-            "tools/check-workbench-frontend-acceptance.mjs",
-            "test/workbench-shell.test.js",
-            "test/workbench-server.test.js",
-            "test/workbench-projection.test.js",
-            "test/frontend-acceptance.test.js"
-          ],
-          "acceptance_gates": [
-            "npm run check:workbench:browser-events",
-            "npm run check:closeout"
-          ],
-          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
-        }
-      ]
-    }
+    ]
   },
   "manifest": {
     "run_id": "run-20260521-platform-self-trial",
@@ -10706,74 +10411,6 @@
           "id": "frontend-acceptance-live-workbench-20260524",
           "type": "frontend_acceptance_run"
         }
-      },
-      {
-        "id": "event-requirement-intake-run-20260521-platform-self-trial-cycle-headless-live-1779566400000-context-pack-1779561756582-requirement-unknown-20260525111725-001",
-        "type": "requirement_intake_submitted",
-        "status": "ready",
-        "artifact_id": "requirement-intake-run-20260521-platform-self-trial-cycle-headless-live-1779566400000-context-pack-1779561756582-requirement-unknown-20260525111725-001",
-        "message": "workbench requirement submitted: “提需求”模块更新",
-        "created_at": "2026-05-25T11:17:25.341Z",
-        "metadata": {
-          "version": "workbench-requirement-intake.v1",
-          "type": "requirement_intake_submitted",
-          "status": "ready",
-          "run_id": "run-20260521-platform-self-trial",
-          "cycle_id": "cycle-headless-live-1779566400000-context-pack-1779561756582",
-          "requirement": {
-            "id": "requirement-unknown-20260525111725",
-            "title": "“提需求”模块更新",
-            "status": "submitted",
-            "submitted_at": "2026-05-25T11:17:25.341Z",
-            "surface_area": "workbench_frontend",
-            "surface_label": "Workbench 前端",
-            "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
-            "acceptance_criteria": "验收标准不应该由用户提出",
-            "constraints": "注意：此次需求的范围不只是前端",
-            "owned_files": [
-              "apps/workbench",
-              "src/workflow/workbench-projection.js",
-              "src/workflow/frontend-acceptance.js",
-              "tools/check-workbench-browser-events.mjs",
-              "tools/check-workbench-frontend-acceptance.mjs",
-              "test/workbench-shell.test.js",
-              "test/workbench-server.test.js",
-              "test/workbench-projection.test.js",
-              "test/frontend-acceptance.test.js"
-            ],
-            "acceptance_gates": [
-              "npm run check:workbench:browser-events",
-              "npm run check:closeout"
-            ],
-            "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
-          },
-          "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-          "global_goal_id": "requirement-unknown-20260525111725",
-          "next_work_package_count": 1,
-          "next_work_packages": [
-            {
-              "id": "requirement-unknown-20260525111725-intake",
-              "title": "处理需求：“提需求”模块更新",
-              "action": "continue_requirement_intake",
-              "global_goal_id": "requirement-unknown-20260525111725",
-              "owned_files": [
-                "apps/workbench",
-                "src/workflow/workbench-projection.js",
-                "src/workflow/frontend-acceptance.js",
-                "tools/check-workbench-browser-events.mjs",
-                "tools/check-workbench-frontend-acceptance.mjs",
-                "test/workbench-shell.test.js",
-                "test/workbench-server.test.js",
-                "test/workbench-projection.test.js",
-                "test/frontend-acceptance.test.js"
-              ],
-              "acceptance_gates": [
-                "npm run check:workbench:browser-events",
-                "npm run check:closeout"
-              ]
-            }
-          ]
-        }
       }
     ],
     "artifacts": [
@@ -20946,74 +20583,6 @@
           "id": "frontend-acceptance-live-workbench-20260524",
           "type": "frontend_acceptance_run"
         }
-      },
-      {
-        "id": "requirement-intake-run-20260521-platform-self-trial-cycle-headless-live-1779566400000-context-pack-1779561756582-requirement-unknown-20260525111725-001",
-        "type": "evaluation",
-        "status": "pass",
-        "producer": "workbench-requirement-intake",
-        "uri": "requirement-intake://run-20260521-platform-self-trial/cycle-headless-live-1779566400000-context-pack-1779561756582/requirement-unknown-20260525111725",
-        "created_at": "2026-05-25T11:17:25.341Z",
-        "metadata": {
-          "version": "workbench-requirement-intake.v1",
-          "type": "requirement_intake_submitted",
-          "status": "ready",
-          "run_id": "run-20260521-platform-self-trial",
-          "cycle_id": "cycle-headless-live-1779566400000-context-pack-1779561756582",
-          "requirement": {
-            "id": "requirement-unknown-20260525111725",
-            "title": "“提需求”模块更新",
-            "status": "submitted",
-            "submitted_at": "2026-05-25T11:17:25.341Z",
-            "surface_area": "workbench_frontend",
-            "surface_label": "Workbench 前端",
-            "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
-            "acceptance_criteria": "验收标准不应该由用户提出",
-            "constraints": "注意：此次需求的范围不只是前端",
-            "owned_files": [
-              "apps/workbench",
-              "src/workflow/workbench-projection.js",
-              "src/workflow/frontend-acceptance.js",
-              "tools/check-workbench-browser-events.mjs",
-              "tools/check-workbench-frontend-acceptance.mjs",
-              "test/workbench-shell.test.js",
-              "test/workbench-server.test.js",
-              "test/workbench-projection.test.js",
-              "test/frontend-acceptance.test.js"
-            ],
-            "acceptance_gates": [
-              "npm run check:workbench:browser-events",
-              "npm run check:closeout"
-            ],
-            "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
-          },
-          "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-          "global_goal_id": "requirement-unknown-20260525111725",
-          "next_work_package_count": 1,
-          "next_work_packages": [
-            {
-              "id": "requirement-unknown-20260525111725-intake",
-              "title": "处理需求：“提需求”模块更新",
-              "action": "continue_requirement_intake",
-              "global_goal_id": "requirement-unknown-20260525111725",
-              "owned_files": [
-                "apps/workbench",
-                "src/workflow/workbench-projection.js",
-                "src/workflow/frontend-acceptance.js",
-                "tools/check-workbench-browser-events.mjs",
-                "tools/check-workbench-frontend-acceptance.mjs",
-                "test/workbench-shell.test.js",
-                "test/workbench-server.test.js",
-                "test/workbench-projection.test.js",
-                "test/frontend-acceptance.test.js"
-              ],
-              "acceptance_gates": [
-                "npm run check:workbench:browser-events",
-                "npm run check:closeout"
-              ]
-            }
-          ]
-        }
       }
     ],
     "gate_results": [
@@ -21048,7 +20617,7 @@
     "review_findings": [],
     "recovery_attempts": [],
     "created_at": "2026-05-24T04:24:00.000Z",
-    "updated_at": "2026-05-25T11:17:25.341Z"
+    "updated_at": "2026-05-24T12:14:00.000Z"
   },
   "artifact_ledger": {
     "run_id": "run-20260521-platform-self-trial",
@@ -31223,78 +30792,10 @@
           "id": "frontend-acceptance-live-workbench-20260524",
           "type": "frontend_acceptance_run"
         }
-      },
-      {
-        "id": "requirement-intake-run-20260521-platform-self-trial-cycle-headless-live-1779566400000-context-pack-1779561756582-requirement-unknown-20260525111725-001",
-        "type": "evaluation",
-        "status": "pass",
-        "uri": "requirement-intake://run-20260521-platform-self-trial/cycle-headless-live-1779566400000-context-pack-1779561756582/requirement-unknown-20260525111725",
-        "producer": "workbench-requirement-intake",
-        "created_at": "2026-05-25T11:17:25.341Z",
-        "metadata": {
-          "version": "workbench-requirement-intake.v1",
-          "type": "requirement_intake_submitted",
-          "status": "ready",
-          "run_id": "run-20260521-platform-self-trial",
-          "cycle_id": "cycle-headless-live-1779566400000-context-pack-1779561756582",
-          "requirement": {
-            "id": "requirement-unknown-20260525111725",
-            "title": "“提需求”模块更新",
-            "status": "submitted",
-            "submitted_at": "2026-05-25T11:17:25.341Z",
-            "surface_area": "workbench_frontend",
-            "surface_label": "Workbench 前端",
-            "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
-            "acceptance_criteria": "验收标准不应该由用户提出",
-            "constraints": "注意：此次需求的范围不只是前端",
-            "owned_files": [
-              "apps/workbench",
-              "src/workflow/workbench-projection.js",
-              "src/workflow/frontend-acceptance.js",
-              "tools/check-workbench-browser-events.mjs",
-              "tools/check-workbench-frontend-acceptance.mjs",
-              "test/workbench-shell.test.js",
-              "test/workbench-server.test.js",
-              "test/workbench-projection.test.js",
-              "test/frontend-acceptance.test.js"
-            ],
-            "acceptance_gates": [
-              "npm run check:workbench:browser-events",
-              "npm run check:closeout"
-            ],
-            "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
-          },
-          "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-          "global_goal_id": "requirement-unknown-20260525111725",
-          "next_work_package_count": 1,
-          "next_work_packages": [
-            {
-              "id": "requirement-unknown-20260525111725-intake",
-              "title": "处理需求：“提需求”模块更新",
-              "action": "continue_requirement_intake",
-              "global_goal_id": "requirement-unknown-20260525111725",
-              "owned_files": [
-                "apps/workbench",
-                "src/workflow/workbench-projection.js",
-                "src/workflow/frontend-acceptance.js",
-                "tools/check-workbench-browser-events.mjs",
-                "tools/check-workbench-frontend-acceptance.mjs",
-                "test/workbench-shell.test.js",
-                "test/workbench-server.test.js",
-                "test/workbench-projection.test.js",
-                "test/frontend-acceptance.test.js"
-              ],
-              "acceptance_gates": [
-                "npm run check:workbench:browser-events",
-                "npm run check:closeout"
-              ]
-            }
-          ]
-        }
       }
     ],
     "created_at": "2026-05-24T04:24:00.000Z",
-    "updated_at": "2026-05-25T11:17:25.341Z"
+    "updated_at": "2026-05-24T12:14:00.000Z"
   },
   "operator_event_ledger": {
     "version": "operator-events.v1",
@@ -31481,81 +30982,6 @@
       "status": "completed",
       "result": "pass",
       "completed_at": "2026-05-24T05:12:00.000Z"
-    }
-  ],
-  "global_goals": [
-    {
-      "id": "requirement-unknown-20260525111725",
-      "title": "“提需求”模块更新",
-      "status": "in_progress",
-      "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
-      "owned_files": [
-        "apps/workbench",
-        "src/workflow/workbench-projection.js",
-        "src/workflow/frontend-acceptance.js",
-        "tools/check-workbench-browser-events.mjs",
-        "tools/check-workbench-frontend-acceptance.mjs",
-        "test/workbench-shell.test.js",
-        "test/workbench-server.test.js",
-        "test/workbench-projection.test.js",
-        "test/frontend-acceptance.test.js"
-      ],
-      "acceptance_gates": [
-        "npm run check:workbench:browser-events",
-        "npm run check:closeout"
-      ],
-      "source": "workbench_requirement_intake",
-      "submitted_at": "2026-05-25T11:17:25.341Z"
-    },
-    {
-      "id": "platform-boundary-and-state-foundation",
-      "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
-      "status": "completed",
-      "next_step": "",
-      "owned_files": [
-        "PROJECT_STATUS.json",
-        "src/workflow",
-        "tools/workbench-server.mjs",
-        "test/workbench-server.test.js",
-        "tools/run-headless-cli-orchestrator.mjs",
-        "test/headless-cli-orchestrator.test.js",
-        "docs/contracts",
-        "docs/examples/process-hardening-current.json"
-      ],
-      "completed": true
-    },
-    {
-      "id": "pc-mobile-autonomous-workbench",
-      "title": "PC/mobile 单页中台工作台和一屏状态投影",
-      "status": "completed",
-      "next_step": "",
-      "owned_files": [
-        "apps/workbench",
-        "src/workflow/workbench-projection.js",
-        "tools/check-workbench-browser-events.mjs",
-        "tools/check-workbench-frontend-acceptance.mjs",
-        "src/workflow/frontend-acceptance.js",
-        "docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md"
-      ],
-      "completed": true
-    },
-    {
-      "id": "autonomous-scheduler-and-reviewer-loop",
-      "title": "任务拆解、调度、multi-LLM reviewer、自恢复和持续运行闭环",
-      "status": "completed",
-      "next_step": "",
-      "owned_files": [
-        "src/workflow/autonomous-continuation.js",
-        "src/workflow/autonomous-scheduler-loop.js",
-        "src/workflow/reviewer-shard-runner.js",
-        "tools/workbench-server.mjs",
-        "src/workflow/context-work-package-execution-adapter.js",
-        "test/context-work-package-execution-adapter.test.js",
-        "test/autonomous-scheduler-loop.test.js",
-        "docs/examples/process-hardening-current.json",
-        "docs/contracts/MODEL_ROUTING_POLICY_CN.md"
-      ],
-      "completed": true
     }
   ]
 }

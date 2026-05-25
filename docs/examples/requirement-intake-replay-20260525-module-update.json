@@ -1,0 +1,20 @@
+{
+  "version": "requirement-intake-replay.v1",
+  "project": "ai-control-platform",
+  "captured_at": "2026-05-25T11:17:25.341Z",
+  "source": "workbench_requirement_intake",
+  "status": "pending_replay_after_flow_repair",
+  "requirement": {
+    "title": "“提需求”模块更新",
+    "surface_area": "workbench_frontend",
+    "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+    "acceptance_criteria": "验收标准不应该由用户提出",
+    "constraints": "注意：此次需求的范围不只是前端"
+  },
+  "replay_expectation": {
+    "must_start_from_clean_intake": true,
+    "must_advance_beyond": "requirement_intake_submitted",
+    "must_not_stop_at": "prepare_project_status_continuation",
+    "monitoring_required": true
+  }
+}

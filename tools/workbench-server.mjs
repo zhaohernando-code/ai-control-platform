@@ -149,6 +149,79 @@ function generatedContextPackSnapshotId(selectedId) {
   return `context-pack-cycle-${safeSnapshotIdPart(selectedId)}-${Date.now()}`.slice(0, 80);
 }
 
+function requirementAutoAdvanceEnabled(input = {}) {
+  return input.auto_advance !== false && input.autoAdvance !== false;
+}
+
+function requirementAutoAdvanceInput(selectedId, input = {}) {
+  return {
+    start_projection_id: selectedId,
+    max_iterations: Math.min(Math.max(Number(input.auto_advance_max_iterations || input.autoAdvanceMaxIterations || 2), 1), 2),
+    execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
+    execution_strategy: "projected_next_action",
+    snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "requirement-intake-auto",
+    created_at: input.created_at || input.createdAt
+  };
+}
+
+async function runRequirementAutoAdvance({
+  req,
+  selectedId,
+  input,
+  inputPath,
+  serverHistoryPath,
+  allowedHistoryRoots,
+  projectStatusPath,
+  workbenchProjection
+}) {
+  if (!requirementAutoAdvanceEnabled(input)) {
+    return {
+      status: "disabled",
+      result: null,
+      artifact: null,
+      projection: workbenchProjection(readJson(inputPath))
+    };
+  }
+
+  const loopInput = requirementAutoAdvanceInput(selectedId, input);
+  const loopResult = await runSchedulerLoopDriver(loopInput, {
+    client: createWorkbenchLoopClient(workbenchBaseUrlFromRequest(req))
+  });
+  const loopArtifact = createSchedulerLoopRunArtifact(loopInput, loopResult, {
+    created_at: input.created_at || input.createdAt
+  });
+  const latestWorkflowState = readJson(inputPath);
+  const recorded = recordAutonomousSchedulerLoopRunArtifact(latestWorkflowState, loopArtifact, {
+    created_at: input.created_at || input.createdAt
+  });
+  if (recorded.status !== "pass") {
+    return {
+      status: "failed",
+      result: loopResult,
+      artifact: loopArtifact,
+      issues: recorded.issues,
+      projection: workbenchProjection(latestWorkflowState)
+    };
+  }
+
+  writeFileSync(inputPath, `${JSON.stringify({ ...latestWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
+  const history = readJson(serverHistoryPath);
+  let projection = workbenchProjection(recorded.workflow_state);
+  try {
+    projection = projectionById(history.latest, history, allowedHistoryRoots, projectStatusPath).projection;
+  } catch {
+    projection = workbenchProjection(recorded.workflow_state);
+  }
+
+  return {
+    status: loopResult.status === "pass" ? "created" : "failed",
+    result: loopResult,
+    artifact: loopArtifact,
+    issues: loopResult.issues || [],
+    projection
+  };
+}
+
 function artifactsOf(workflowState = {}) {
   return [
     ...asArray(workflowState?.artifact_ledger?.artifacts || workflowState?.artifactLedger?.artifacts),
@@ -1264,13 +1337,25 @@ export function createWorkbenchServer(options = {}) {
         writeProjectStatus(projectStatusPath, submitted.project_status);
         writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
         const projection = workbenchProjection(recorded.workflow_state);
+        const auto_advance = await runRequirementAutoAdvance({
+          req,
+          selectedId,
+          input,
+          inputPath,
+          serverHistoryPath,
+          allowedHistoryRoots,
+          projectStatusPath,
+          workbenchProjection
+        });
         jsonResponse(res, 201, {
           status: "created",
           item,
           requirement: submitted.requirement,
           artifact: recorded.artifact,
-          next_action_readout: projection.next_action_readout,
-          projection
+          next_action_readout: auto_advance.projection?.next_action_readout || projection.next_action_readout,
+          projection: auto_advance.projection || projection,
+          submitted_projection: projection,
+          auto_advance
         });
         return;
       }

@@ -693,28 +693,21 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     assert.equal(response.status, 201);
     assert.equal(payload.status, "created");
     assert.equal(payload.requirement.id, "requirement-from-workbench");
-    assert.equal(payload.projection.next_action_readout.action, "prepare_project_status_continuation");
-    assert.equal(payload.projection.next_action_readout.source_type, "requirement_intake_submitted");
+    assert.equal(payload.submitted_projection.next_action_readout.action, "prepare_project_status_continuation");
+    assert.equal(payload.submitted_projection.next_action_readout.source_type, "requirement_intake_submitted");
+    assert.equal(payload.auto_advance.status, "created");
+    assert.equal(payload.auto_advance.result.status, "pass");
+    assert.equal(payload.auto_advance.result.phase, "iteration_limit_reached");
+    assert.deepEqual(
+      payload.auto_advance.result.iterations.map((iteration) => iteration.projected_action),
+      ["prepare_project_status_continuation", "create_context_pack_from_seed"]
+    );
+    assert.equal(payload.projection.next_action_readout.action, "run_context_work_packages");
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-from-workbench");
     assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
     assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("apps/workbench"));
-    assert.equal(savedWorkflowState.manifest.events.at(-1).type, "requirement_intake_submitted");
-
-    const continued = await request(`${baseUrl}/api/workbench/next-action?id=requirement-intake`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        expected_action: "prepare_project_status_continuation",
-        created_at: "2026-05-25T09:01:00.000Z"
-      })
-    });
-    const continuedPayload = continued.json();
-
-    assert.equal(continued.status, 201);
-    assert.equal(continuedPayload.action, "prepare_project_status_continuation");
-    assert.equal(continuedPayload.result.artifact.metadata.context_pack_seed.target_project_id, "ai-control-platform");
-    assert.equal(continuedPayload.result.artifact.metadata.context_pack_seed.subtasks[0].action, "continue_requirement_intake");
-    assert.equal(continuedPayload.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+    assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
+    assert.equal(savedWorkflowState.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 
