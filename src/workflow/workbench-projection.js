@@ -1250,6 +1250,18 @@ export function createWorkbenchProjection(input = {}) {
   const agentLifecyclePool = summarizeAgentLifecyclePool(manifest, artifactLedger);
   const selfGovernanceReport = createSelfGovernanceReport({
     ...input,
+    generate_findings: true,
+    governance_sources: {
+      project_status: input.project_status || input.projectStatus || {},
+      frontend_acceptance: frontendAcceptance,
+      workbench_browser_events: browserEventsSummary,
+      scheduler_dispatch: schedulerDispatch,
+      scheduler_continuation: schedulerContinuation,
+      scheduler_loop: schedulerLoop,
+      reviewer_provider_health: reviewerProviderHealth,
+      reviewer_shard_review: reviewerShardReview,
+      closeout: closeoutSummary
+    },
     workflow_state: input.workflow_state || input.workflowState || { manifest, artifact_ledger: artifactLedger }
   });
   const selfGovernance = summarizeSelfGovernance(selfGovernanceReport);

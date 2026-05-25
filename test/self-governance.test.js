@@ -9,6 +9,11 @@ import {
   summarizeSelfGovernance,
   validateSelfGovernanceInput
 } from "../src/workflow/self-governance.js";
+import {
+  createSelfGovernanceDispatchPlan,
+  dispatchSelfGovernanceAutoRepairs
+} from "../src/workflow/self-governance-dispatch.js";
+import { generateSelfGovernanceFindings } from "../src/workflow/self-governance-scanner.js";
 
 function sampleFindings() {
   return [
@@ -147,6 +152,155 @@ test("self-governance can read durable findings from workflow state events", () 
 
   assert.equal(report.finding_count, 1);
   assert.equal(report.auto_repair.count, 1);
+});
+
+test("self-governance scanner generates findings from real gate and acceptance evidence without sample input", () => {
+  const scan = generateSelfGovernanceFindings({
+    project_status: {
+      blockers: [],
+      next_step: ""
+    },
+    git_worktree_isolation: {
+      status: "fail",
+      issues: [
+        {
+          code: "dirty_main_worktree_not_allowed",
+          message: "main branch must stay clean"
+        }
+      ]
+    },
+    frontend_acceptance: {
+      status: "fail",
+      artifact_id: "frontend-acceptance-current-workbench",
+      blocking_count: 1,
+      latest_finding: "mobile navigation overlaps control buttons",
+      finding_codes: ["mobile_control_overlap"],
+      repair_required: true,
+      repair_work_package: {
+        owned_files: ["apps/workbench/mobile.html"],
+        acceptance_gates: ["npm run check:workbench:frontend-acceptance"]
+      }
+    },
+    scheduler_continuation: {
+      status: "pass",
+      ready: true,
+      next_work_package_count: 1,
+      artifact_id: "scheduler-continuation-ready"
+    }
+  });
+
+  assert.equal(scan.status, "pass");
+  assert.equal(scan.finding_count, 3);
+  assert.ok(scan.findings.some((finding) => finding.id === "git-worktree-isolation-failed"));
+  assert.ok(scan.findings.some((finding) => finding.id === "frontend-acceptance-blockers"));
+  assert.ok(scan.findings.some((finding) => finding.id === "scheduler-continuation-ready-not-consumed"));
+
+  const report = createSelfGovernanceReport({
+    generate_findings: true,
+    governance_sources: {
+      git_worktree_isolation: scan.findings.find(() => false),
+      frontend_acceptance: {
+        status: "fail",
+        artifact_id: "frontend-acceptance-current-workbench",
+        blocking_count: 1,
+        latest_finding: "mobile navigation overlaps control buttons",
+        repair_required: true
+      },
+      scheduler_continuation: {
+        status: "pass",
+        ready: true,
+        next_work_package_count: 1
+      }
+    }
+  });
+
+  assert.equal(report.auto_repair.count, 1);
+  assert.equal(report.evidence_building.count, 1);
+  assert.equal(report.findings[0].id, "frontend-acceptance-blockers");
+});
+
+test("self-governance scan records evidence coverage when real sources have no findings", () => {
+  const report = createSelfGovernanceReport({
+    generate_findings: true,
+    governance_sources: {
+      require_scanner_findings: true,
+      evidence_sources: ["frontend_acceptance", "workbench_browser_events", "scheduler_dispatch"],
+      frontend_acceptance: { status: "pass", blocking_count: 0 },
+      workbench_browser_events: { status: "pass", scenario_count: 15 },
+      scheduler_dispatch: { status: "pass" },
+      scheduler_continuation: { status: "not_configured", ready: false },
+      scheduler_loop: { status: "not_configured" },
+      project_status: { blockers: [], next_step: "" }
+    }
+  });
+
+  assert.equal(report.finding_count, 1);
+  assert.equal(report.evidence_building.count, 1);
+  assert.equal(report.findings[0].id, "self-governance-no-real-findings-recorded");
+});
+
+test("self-governance scanner turns unrunnable evidence commands into evidence gaps", () => {
+  const report = createSelfGovernanceReport({
+    generate_findings: true,
+    governance_sources: {
+      command_results: [
+        {
+          id: "workbench-frontend-acceptance",
+          command: "node tools/check-workbench-frontend-acceptance.mjs",
+          status: "fail",
+          stderr: "Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright'"
+        }
+      ],
+      project_status: { blockers: [], next_step: "" }
+    }
+  });
+
+  assert.equal(report.finding_count, 1);
+  assert.equal(report.evidence_building.count, 1);
+  assert.equal(report.findings[0].id, "governance-command-workbench-frontend-acceptance");
+  assert.equal(report.findings[0].category, "evidence_gap");
+});
+
+test("self-governance auto-repair dispatch starts context workflow execution", () => {
+  const report = createSelfGovernanceReport({
+    findings: [
+      {
+        id: "project-status-has-blockers",
+        category: "defect",
+        dimension: "flow_integrity",
+        severity: "high",
+        title: "项目状态仍存在阻塞项",
+        recommended_fix: "把 PROJECT_STATUS.blockers 转成可派发修复工作包。",
+        owned_files: ["PROJECT_STATUS.json", "src/workflow/project-status-continuation.js"],
+        acceptance_gates: ["npm run check:closeout"]
+      }
+    ]
+  });
+  const plan = createSelfGovernanceDispatchPlan(report, {
+    run_id: "run-self-governance-dispatch-test",
+    cycle_id: "cycle-self-governance-dispatch-test",
+    created_at: "2026-05-24T00:00:00.000Z"
+  });
+
+  assert.equal(plan.status, "ready");
+  assert.equal(plan.auto_repair_count, 1);
+  assert.equal(plan.workflow_state.manifest.work_packages[0].id, "self-governance-fix-project-status-has-blockers");
+
+  const run = dispatchSelfGovernanceAutoRepairs(report, {
+    run_id: "run-self-governance-dispatch-test",
+    cycle_id: "cycle-self-governance-dispatch-test",
+    created_at: "2026-05-24T00:01:00.000Z"
+  });
+
+  assert.equal(run.status, "pass");
+  assert.equal(run.started_work_package_count, 1);
+  assert.deepEqual(run.started_work_package_ids, ["self-governance-fix-project-status-has-blockers"]);
+  assert.equal(
+    run.workflow_state.manifest.work_packages[0].status,
+    "completed"
+  );
+  assert.ok(run.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_run"));
+  assert.ok(run.workflow_state.manifest.events.some((event) => event.type === "WorkerSpawned"));
 });
 
 test("self-governance summary is workbench-friendly", () => {
