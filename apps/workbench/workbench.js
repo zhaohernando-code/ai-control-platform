@@ -602,13 +602,15 @@ function renderRequirementIntake(projectManagement) {
   const lists = qsa('[data-list="requirement_intake"]');
   if (lists.length === 0) return;
   const intake = projectManagement.requirement_intake || {};
-  const rows = asArray(intake.items).length > 0
-    ? asArray(intake.items).slice(0, 4)
-    : [{ title: "暂无前端提交的需求", status: "idle", summary: "提交后会写入 PROJECT_STATUS，并成为推荐动作的输入。" }];
+  const items = asArray(intake.items).slice(0, 4);
 
   for (const list of lists) {
+    if (items.length === 0) {
+      list.replaceChildren();
+      continue;
+    }
     list.replaceChildren(
-      ...rows.map((item) => {
+      ...items.map((item) => {
         const row = document.createElement("article");
         row.className = list.classList.contains("mobile-list") ? "mobile-action requirement-item" : "requirement-item";
         row.innerHTML = `<strong>${displayHtml(item.title)}</strong><span>${statusHtml(item.status)} · ${compactHtml(item.summary || item.problem_statement || item.surface_label, 130)}</span>`;
@@ -616,6 +618,27 @@ function renderRequirementIntake(projectManagement) {
       })
     );
   }
+}
+
+function renderPlanReview(projectManagement) {
+  const planReview = projectManagement.plan_review || {};
+  setText("plan_review_status", planReview.status_label || planReview.status);
+  setText("plan_review_summary", planReview.summary);
+  setText("plan_review_requirement", planReview.requirement_title);
+  setText("plan_review_phase", planReview.phase_label || planReview.phase);
+  setText("plan_review_plan_id", planReview.plan_id);
+  setText("plan_review_next_action", planReview.next_action);
+  setText("plan_review_assessment", planReview.assessment_summary);
+  setText("plan_review_acceptance_plan", planReview.proposed_acceptance_plan);
+
+  const buttons = qsa("[data-plan-review-action]");
+  const reviewable = Boolean(planReview.reviewable);
+  const planStatus = qs("[data-plan-review-status]");
+  for (const button of buttons) {
+    button.dataset.requirementId = planReview.requirement_id || "";
+    button.disabled = !reviewable;
+  }
+  if (planStatus) planStatus.textContent = planReview.action_status || (reviewable ? "等待你确认方案" : "等待方案生成");
 }
 
 function renderProjection(projection) {
@@ -795,6 +818,7 @@ function renderProjection(projection) {
   renderProjectTaskFlow(projectManagement);
   renderProjectAgents(projectManagement);
   renderRequirementIntake(projectManagement);
+  renderPlanReview(projectManagement);
 }
 
 function projectionUrlForHistoryItem(item) {
@@ -906,19 +930,25 @@ qsa("[data-requirement-form]").forEach((form) => {
     const submitButton = form.querySelector("[data-requirement-submit]");
     const status = form.querySelector("[data-requirement-status]");
     const data = new FormData(form);
+    const projectSelect = form.querySelector("[data-requirement-project]");
+    const selectedOption = projectSelect?.selectedOptions?.[0];
+    const projectId = text(data.get("project_id"), "ai-control-platform");
+    const surfaceArea = text(selectedOption?.dataset?.surfaceArea, "workbench_frontend");
+    const problemStatement = text(data.get("problem_statement"), "");
     const input = {
       projection_id: currentProjectionId,
       title: text(data.get("title"), ""),
-      surface_area: text(data.get("surface_area"), "workbench_frontend"),
-      problem_statement: text(data.get("problem_statement"), ""),
-      acceptance_criteria: text(data.get("acceptance_criteria"), ""),
+      project_id: projectId,
+      surface_area: surfaceArea,
+      problem_statement: problemStatement,
       constraints: text(data.get("constraints"), ""),
+      plan_review_requested: true,
       created_at: new Date().toISOString()
     };
 
     if (submitButton) {
       submitButton.dataset.eventState = "pending";
-      submitButton.textContent = "写入流程中";
+      submitButton.textContent = "提交中";
       submitButton.disabled = true;
     }
     if (status) status.textContent = "正在写入 PROJECT_STATUS 和工作流事实";
@@ -927,9 +957,9 @@ qsa("[data-requirement-form]").forEach((form) => {
       const result = await source.submitRequirement(input);
       if (submitButton) {
         submitButton.dataset.eventState = "recorded";
-        submitButton.textContent = "已接入流程";
+        submitButton.textContent = "已提交，等待方案审核";
       }
-      if (status) status.textContent = "已生成流程输入，可执行推荐动作";
+      if (status) status.textContent = "已生成流程输入，等待方案评估审核";
       form.reset();
       if (result.projection) {
         currentProjection = result.projection;
@@ -948,6 +978,43 @@ qsa("[data-requirement-form]").forEach((form) => {
       if (status) status.textContent = displayText(issue, "需求写入失败");
     } finally {
       if (submitButton) submitButton.disabled = false;
+    }
+  });
+});
+
+qsa("[data-plan-review-action]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const action = button.dataset.planReviewAction;
+    const requirementId = button.dataset.requirementId ||
+      currentProjection?.project_management?.plan_review?.requirement_id;
+    const status = qs("[data-plan-review-status]");
+    if (!action || !requirementId) return;
+
+    button.dataset.eventState = "pending";
+    button.disabled = true;
+    if (status) status.textContent = action === "approve" ? "正在确认方案" : "正在退回方案";
+
+    try {
+      const result = await source.updatePlanReview({
+        projection_id: currentProjectionId,
+        requirement_id: requirementId,
+        action,
+        created_at: new Date().toISOString()
+      });
+      button.dataset.eventState = "recorded";
+      if (status) status.textContent = action === "approve" ? "已同意进入开发" : "已退回修订";
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch (error) {
+      if (error.projection) {
+        currentProjection = error.projection;
+        renderProjection(error.projection);
+      }
+      button.dataset.eventState = "failed";
+      if (status) status.textContent = error.response?.issues?.[0]?.message || "方案审核写入失败";
+      button.disabled = false;
     }
   });
 });

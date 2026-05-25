@@ -678,7 +678,7 @@ function projectManagementSemanticResultForViewport(result = {}) {
     : ["总览", "项目", "任务流", "Agents", "风险", "治理"];
   const requiredLifecycle = ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"];
   const requiredProjectFields = ["项目列表", "AI Control Platform", "ai-control-platform", "阶段", "当前任务", "Agent", "进度", "更新"];
-  const requiredIntakeFields = ["提需求", "提交到流程"];
+  const requiredIntakeFields = ["新建任务", "提交"];
   const hasRequiredNav = requiredNav.every((label) => navLabels.has(label));
   const hasProjectList = includesAllText(text, requiredProjectFields);
   const hasLifecycle = includesAllText(text, requiredLifecycle);

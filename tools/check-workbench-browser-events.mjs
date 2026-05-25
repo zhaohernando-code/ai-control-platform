@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { chromium } from "playwright";
 
 import { createWorkbenchServer } from "./workbench-server.mjs";
+import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
 const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
 const scenarioResults = [];
@@ -70,7 +71,32 @@ function isNoSourceResumeAttemptReadout(value) {
   return normalized === NO_SOURCE_RESUME_ATTEMPT_COPY;
 }
 
+function clearRequirementIntakeState(workflowState) {
+  if (workflowState.project_status) {
+    delete workflowState.project_status.plan_reviews;
+    delete workflowState.project_status.requirement_intake;
+  }
+  workflowState.manifest.events = (workflowState.manifest.events || [])
+    .filter((event) => event.type !== "requirement_intake_submitted");
+  workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+    .filter((artifact) => artifact.metadata?.type !== "requirement_intake_submitted");
+  workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+    .filter((artifact) => artifact.metadata?.type !== "requirement_intake_submitted");
+}
+
+function clearSchedulerLoopState(workflowState) {
+  const schedulerEventTypes = new Set(["autonomous_scheduler_loop_run", "scheduler_loop_resume_attempt"]);
+  workflowState.manifest.events = (workflowState.manifest.events || [])
+    .filter((event) => !schedulerEventTypes.has(event.type));
+  workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+    .filter((artifact) => !schedulerEventTypes.has(artifact.metadata?.type));
+  workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+    .filter((artifact) => !schedulerEventTypes.has(artifact.metadata?.type));
+}
+
 function pendingReviewerShardWorkflowState(workflowState) {
+  clearRequirementIntakeState(workflowState);
+  clearSchedulerLoopState(workflowState);
   const reviewerShardEventTypes = new Set([
     "reviewer_shard_result",
     "reviewer_shard_aggregate",
@@ -203,8 +229,9 @@ async function withWorkbenchServer(fn, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-ui-events-"));
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-browser-snapshots-"));
   const eventsPath = join(dir, "operator-events.json");
-  const projectStatusPath = options.projectStatusPath ||
-    (typeof options.projectStatusFactory === "function" ? options.projectStatusFactory(dir) : undefined);
+  const projectStatusPath = Object.hasOwn(options, "projectStatusPath")
+    ? options.projectStatusPath
+    : (typeof options.projectStatusFactory === "function" ? options.projectStatusFactory(dir) : undefined);
   const inputPath = join(snapshotsRoot, "current-session-workbench-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
@@ -416,7 +443,7 @@ async function verifySchedulerDispatchClick(browser) {
       scheduler_policy_mode: schedulerPolicyMode,
       dimensions
     });
-  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState, projectStatusPath: null });
 }
 
 async function verifyApprovedMockSchedulerDispatchClick(browser) {
@@ -462,7 +489,7 @@ async function verifyApprovedMockSchedulerDispatchClick(browser) {
       scheduler_continuation_ready: schedulerContinuationReady,
       dimensions
     });
-  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState, projectStatusPath: null });
 }
 
 async function verifyGuardedNextActionClick(browser) {
@@ -498,7 +525,7 @@ async function verifyGuardedNextActionClick(browser) {
       scheduler_continuation_ready: schedulerContinuationReady,
       dimensions
     });
-  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState, projectStatusPath: null });
 }
 
 function injectLifecycleCleanupState(workflowState) {
@@ -910,6 +937,7 @@ async function verifyProjectedRealPartialShardReadout(browser) {
     });
   }, {
     workflowStateMutator: pendingReviewerShardWorkflowState,
+    projectStatusPath: null,
     realReviewerExecutor: async ({ shard }) => {
       calls.push(shard.id);
       return {
@@ -980,7 +1008,13 @@ async function verifyTerminalNextActionReadout(browser) {
       desktop_dimensions: desktopDimensions,
       mobile_dimensions: mobileDimensions
     });
-  }, { workflowStateMutator: injectTerminalNextActionState });
+  }, {
+    workflowStateMutator: (workflowState) => {
+      clearRequirementIntakeState(workflowState);
+      injectTerminalNextActionState(workflowState);
+    },
+    projectStatusPath: null
+  });
 }
 
 async function verifyAutonomousSchedulerLoopClick(browser) {
@@ -1035,13 +1069,17 @@ async function verifyAutonomousSchedulerLoopClick(browser) {
       next_action_readout: nextActionReadout,
       dimensions
     });
-  }, { workflowStateMutator: pendingReviewerShardWorkflowState });
+  }, { workflowStateMutator: pendingReviewerShardWorkflowState, projectStatusPath: null });
 }
 
 async function verifyLatestDurableGlobalGoalLifecycleProjection(browser) {
   const durableProjectionId = "headless-live-context-cycle-1779570720000";
   const durableInputPath = resolve("docs/examples/headless-live-context-cycle-1779570720000.workbench-input.json");
   const durableWorkflowState = JSON.parse(readFileSync(durableInputPath, "utf8"));
+  const durableProjection = createWorkbenchProjection(durableWorkflowState);
+  const expectedCompleted = String(durableProjection.global_goal_completion.completed);
+  const expectedTotal = String(durableProjection.global_goal_completion.total);
+  const expectedBlocked = String(durableProjection.global_goal_completion.blocked);
   await withWorkbenchServer(async ({ port }) => {
     const url = `http://127.0.0.1:${port}`;
     const projectionQuery = `?projection=/api/workbench/projection%3Fid%3D${durableProjectionId}&history=/api/workbench/projections`;
@@ -1075,15 +1113,15 @@ async function verifyLatestDurableGlobalGoalLifecycleProjection(browser) {
     await desktop.close();
     await mobile.close();
 
-    assert(desktopGlobalCompleted === "3", "desktop latest projection must render three completed global goals");
-    assert(desktopGlobalTotal === "3", "desktop latest projection must render three total global goals");
-    assert(desktopGlobalBlocked === "0", "desktop latest projection must render zero blocked global goals");
+    assert(desktopGlobalCompleted === expectedCompleted, "desktop durable projection must render expected completed global goals");
+    assert(desktopGlobalTotal === expectedTotal, "desktop durable projection must render expected total global goals");
+    assert(desktopGlobalBlocked === expectedBlocked, "desktop durable projection must render expected blocked global goals");
     assert(desktopLifecycleCompleted === "3", "desktop latest projection must render three completed lifecycle workers");
     assert(desktopLifecycleEvaluated === "3", "desktop latest projection must render three evaluated lifecycle workers");
     assert(desktopLifecycleClosed === "3", "desktop latest projection must render three closed lifecycle workers");
-    assert(mobileGlobalCompleted === "3", "mobile latest projection must render three completed global goals");
-    assert(mobileGlobalTotal === "3", "mobile latest projection must render three total global goals");
-    assert(mobileGlobalBlocked === "0", "mobile latest projection must render zero blocked global goals");
+    assert(mobileGlobalCompleted === expectedCompleted, "mobile durable projection must render expected completed global goals");
+    assert(mobileGlobalTotal === expectedTotal, "mobile durable projection must render expected total global goals");
+    assert(mobileGlobalBlocked === expectedBlocked, "mobile durable projection must render expected blocked global goals");
     assert(mobileLifecycleCompleted === "3", "mobile latest projection must render three completed lifecycle workers");
     assert(mobileLifecycleEvaluated === "3", "mobile latest projection must render three evaluated lifecycle workers");
     assert(mobileLifecycleClosed === "3", "mobile latest projection must render three closed lifecycle workers");
@@ -1112,7 +1150,8 @@ async function verifyLatestDurableGlobalGoalLifecycleProjection(browser) {
   }, {
     projectionId: durableProjectionId,
     projectionLabel: "Headless live context cycle",
-    workflowStateFactory: () => durableWorkflowState
+    workflowStateFactory: () => durableWorkflowState,
+    projectStatusPath: null
   });
 }
 

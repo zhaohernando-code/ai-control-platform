@@ -55,7 +55,8 @@ import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-w
 import { createHeadlessProviderExecutor } from "../src/workflow/headless-cli-orchestrator.js";
 import {
   recordRequirementIntakeSubmitted,
-  submitRequirementToProjectStatus
+  submitRequirementToProjectStatus,
+  updateRequirementPlanReview
 } from "../src/workflow/requirement-intake.js";
 
 const root = resolve(process.cwd());
@@ -90,7 +91,8 @@ function projectionInputWithProjectStatus(input = {}, projectStatusPath = null) 
   const projectStatus = readJson(projectStatusPath);
   return {
     ...input,
-    project_status: projectStatus
+    project_status: projectStatus,
+    global_goals: Array.isArray(projectStatus.global_goals) ? projectStatus.global_goals : input.global_goals
   };
 }
 
@@ -153,6 +155,13 @@ function generatedContextPackSnapshotId(selectedId) {
 
 function requirementAutoAdvanceEnabled(input = {}) {
   return input.auto_advance !== false && input.autoAdvance !== false;
+}
+
+function requirementAutoAdvanceAllowedAfterPlanReview(input = {}) {
+  return input.auto_advance_after_plan_review === true ||
+    input.autoAdvanceAfterPlanReview === true ||
+    input.plan_review_approved === true ||
+    input.planReviewApproved === true;
 }
 
 function requirementAutoAdvanceInput(selectedId, input = {}) {
@@ -1410,7 +1419,31 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const recorded = recordRequirementIntakeSubmitted(workflowState, submitted, {
+        let effectiveSubmission = submitted;
+        if (
+          submitted.plan_review?.phase === "ready_for_review" &&
+          requirementAutoAdvanceAllowedAfterPlanReview(input)
+        ) {
+          const approved = updateRequirementPlanReview(submitted.project_status, {
+            requirement_id: submitted.requirement.id,
+            action: "approve",
+            note: "auto advance was explicitly allowed for an already-approved plan review",
+            created_at: input.created_at || input.createdAt
+          }, {
+            created_at: input.created_at || input.createdAt
+          });
+          if (approved.status !== "pass") {
+            jsonResponse(res, 400, { error: "plan review approval failed", issues: approved.issues });
+            return;
+          }
+          effectiveSubmission = {
+            ...submitted,
+            plan_review: approved.plan_review,
+            project_status: approved.project_status
+          };
+        }
+
+        const recorded = recordRequirementIntakeSubmitted(workflowState, effectiveSubmission, {
           created_at: input.created_at || input.createdAt
         });
         if (recorded.status !== "pass") {
@@ -1418,25 +1451,106 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeProjectStatus(projectStatusPath, submitted.project_status);
+        writeProjectStatus(projectStatusPath, effectiveSubmission.project_status);
         writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
         const projection = workbenchProjection(recorded.workflow_state);
-        const auto_advance = await runRequirementAutoAdvance({
-          req,
-          selectedId,
-          input,
-          inputPath,
-          serverHistoryPath,
-          allowedHistoryRoots,
-          projectStatusPath,
-          workbenchProjection
-        });
+        const planReviewPending = effectiveSubmission.plan_review?.phase === "ready_for_review" &&
+          !requirementAutoAdvanceAllowedAfterPlanReview(input);
+        const auto_advance = planReviewPending
+          ? {
+            status: "waiting_for_plan_review",
+            result: null,
+            artifact: null,
+            projection,
+            reason: "requirement plan review must be approved before automatic development can continue"
+          }
+          : await runRequirementAutoAdvance({
+            req,
+            selectedId,
+            input,
+            inputPath,
+            serverHistoryPath,
+            allowedHistoryRoots,
+            projectStatusPath,
+            workbenchProjection
+          });
         jsonResponse(res, 201, {
           status: "created",
           item,
-          requirement: submitted.requirement,
+          requirement: effectiveSubmission.requirement,
+          plan_review: effectiveSubmission.plan_review,
           artifact: recorded.artifact,
           next_action_readout: auto_advance.projection?.next_action_readout || projection.next_action_readout,
+          projection: auto_advance.projection || projection,
+          submitted_projection: projection,
+          auto_advance
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/plan-reviews" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const currentProjectStatus = projectStatusPath ? readJson(projectStatusPath) : workflowState.project_status;
+        const updated = updateRequirementPlanReview(currentProjectStatus || {}, input, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (updated.status !== "pass") {
+          jsonResponse(res, 400, { error: "invalid plan review update", issues: updated.issues });
+          return;
+        }
+
+        const nextWorkflowState = {
+          ...workflowState,
+          project_status: updated.project_status,
+          global_goals: Array.isArray(updated.project_status.global_goals) ? updated.project_status.global_goals : workflowState.global_goals
+        };
+        writeProjectStatus(projectStatusPath, updated.project_status);
+        writeFileSync(inputPath, `${JSON.stringify(nextWorkflowState, null, 2)}\n`);
+        const projection = workbenchProjection(nextWorkflowState);
+        const shouldAutoAdvanceAfterApproval = normalizeString(input.action).toLowerCase() === "approve" &&
+          requirementAutoAdvanceEnabled(input);
+        const auto_advance = shouldAutoAdvanceAfterApproval
+          ? await runRequirementAutoAdvance({
+            req,
+            selectedId,
+            input: {
+              ...input,
+              auto_advance_after_plan_review: true
+            },
+            inputPath,
+            serverHistoryPath,
+            allowedHistoryRoots,
+            projectStatusPath,
+            workbenchProjection
+          })
+          : {
+            status: "disabled",
+            result: null,
+            artifact: null,
+            projection
+          };
+        jsonResponse(res, 201, {
+          status: "updated",
+          item,
+          plan_review: updated.plan_review,
           projection: auto_advance.projection || projection,
           submitted_projection: projection,
           auto_advance

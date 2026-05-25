@@ -139,13 +139,12 @@ function buildNextWorkflowState(sourceWorkflowState = {}, contextPack, options =
     artifacts: [artifact],
     created_at: artifact.created_at
   });
+  const projectStatusGoals = asArray(projectStatus?.global_goals || projectStatus?.globalGoals);
 
   return {
     ...sourceWorkflowState,
     project_status: projectStatus,
-    global_goals: sourceGlobalGoals.length > 0
-      ? sourceGlobalGoals
-      : asArray(projectStatus?.global_goals || projectStatus?.globalGoals),
+    global_goals: projectStatusGoals.length > 0 ? projectStatusGoals : sourceGlobalGoals,
     manifest,
     artifact_ledger: ledger,
     task_dag: manifest.work_packages,

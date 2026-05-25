@@ -32,14 +32,14 @@ function statusOf(goal = {}) {
 
 function goalSources(input = {}) {
   return [
-    input?.global_goals,
-    input?.globalGoals,
     input?.project_status?.global_goals,
     input?.projectStatus?.global_goals,
-    input?.workflow_state?.global_goals,
-    input?.workflowState?.global_goals,
     input?.workflow_state?.project_status?.global_goals,
-    input?.workflowState?.project_status?.global_goals
+    input?.workflowState?.project_status?.global_goals,
+    input?.global_goals,
+    input?.globalGoals,
+    input?.workflow_state?.global_goals,
+    input?.workflowState?.global_goals
   ];
 }
 

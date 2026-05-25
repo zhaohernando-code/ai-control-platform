@@ -91,6 +91,71 @@ function projectStatusPhase(status = "", schedulerDispatch = {}, frontendAccepta
   return "状态确认";
 }
 
+function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
+  const latest = requirementIntake?.latest || null;
+  if (!latest) {
+    return {
+      status: "not_configured",
+      status_label: "暂无需要评估的需求",
+      summary: "提交需求后，平台会先让大模型生成评估方案和验收方案，再由你审核。",
+      requirement_id: null,
+      requirement_title: null,
+      plan_id: null,
+      phase: "idle",
+      phase_label: "等待评估",
+      next_action: "提交需求即可进入评估",
+      assessment_summary: null,
+      proposed_acceptance_plan: null,
+      reviewable: false,
+      action_status: "等待方案生成",
+      origin: "workbench_requirement_intake"
+    };
+  }
+  const requirementTitle = normalizeString(latest.title) || null;
+  const planReviewRecord = (projectStatus?.plan_reviews && projectStatus.plan_reviews[latest.id]) || null;
+  const phase = normalizeString(planReviewRecord?.phase) || "pending_plan_generation";
+  const reviewable = phase === "ready_for_review";
+  const phaseLabelMap = {
+    pending_plan_generation: "等待大模型生成方案",
+    ready_for_review: "方案待你审核",
+    approved: "方案已通过",
+    revising: "方案退回修订",
+    idle: "等待评估"
+  };
+  const statusLabel = reviewable
+    ? "方案待审核"
+    : phase === "approved"
+      ? "方案已通过"
+      : phase === "revising"
+        ? "方案已退回"
+        : "评估进行中";
+  const nextAction = normalizeString(planReviewRecord?.next_action) || (reviewable
+    ? "请审核大模型生成的评估方案与验收方案"
+    : phase === "approved"
+      ? "方案已通过，可进入开发"
+      : phase === "revising"
+        ? "等待方案修订后重新审核"
+        : "等待大模型完成评估方案与验收方案");
+  return {
+    status: "available",
+    status_label: statusLabel,
+    summary: requirementTitle
+      ? `当前评估：${requirementTitle}。大模型会基于现状与目标生成评估摘要与验收方案，再由你审核。`
+      : "提交需求后，平台会让大模型生成评估方案与验收方案，再由你审核。",
+    requirement_id: latest.id || null,
+    requirement_title: requirementTitle,
+    plan_id: normalizeString(planReviewRecord?.plan_id) || null,
+    phase,
+    phase_label: phaseLabelMap[phase] || phase,
+    next_action: nextAction,
+    assessment_summary: normalizeString(planReviewRecord?.assessment_summary) || null,
+    proposed_acceptance_plan: normalizeString(planReviewRecord?.proposed_acceptance_plan) || null,
+    reviewable,
+    action_status: normalizeString(planReviewRecord?.action_status) || (reviewable ? "等待你确认方案" : "等待方案生成"),
+    origin: "workbench_requirement_intake"
+  };
+}
+
 function summarizeProjectManagement(input = {}, summaries = {}) {
   const projectStatus = input.project_status || input.projectStatus || {};
   const dagSummary = summaries.dagSummary || {};
@@ -100,6 +165,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const frontendAcceptance = summaries.frontendAcceptance || {};
   const nextActionReadout = summaries.nextActionReadout || {};
   const requirementIntake = summarizeRequirementIntake(projectStatus);
+  const planReview = summarizePlanReview(projectStatus, requirementIntake);
   const taskFlow = taskFlowFromDag(dagSummary);
   const latestRequirement = requirementIntake.latest || null;
   const currentTask = normalizeString(
@@ -149,6 +215,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
     active_work: [project],
     task_flow: taskFlow,
     requirement_intake: requirementIntake,
+    plan_review: planReview,
     design_alignment: {
       status: "partial",
       homepage_primary_surface: "project_management",
@@ -941,6 +1008,7 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
         next_action_role: operationNextActionRole(event.type, metadata),
         status: event.status || metadata.status || artifact?.status || "unknown",
         artifact_id: event.artifact_id || artifact?.id || null,
+        requirement_id: metadata.requirement?.id || metadata.requirement_id || metadata.global_goal_id || null,
         created_at: event.created_at || artifact?.created_at || null,
         summary: operationSummary(event.type, metadata)
       };
@@ -964,6 +1032,12 @@ function summarizeOperationsTimeline(manifest = {}, artifactLedger = {}) {
   };
 }
 
+function planReviewBlocksRequirementEvent(planReview = {}, event = {}) {
+  const reviewRequirementId = normalizeString(planReview.requirement_id || planReview.requirementId);
+  const eventRequirementId = normalizeString(event.requirement_id || event.requirementId);
+  return Boolean(planReview.reviewable && reviewRequirementId && eventRequirementId && reviewRequirementId === eventRequirementId);
+}
+
 function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const lifecyclePool = summaries.agentLifecyclePool || {};
   const projectStatus = summaries.projectStatus || {};
@@ -979,6 +1053,21 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
       target_projection_id: null,
       reason: lifecyclePool.latest_issue || `agent lifecycle pool requires cleanup: open=${lifecyclePool.open || 0}, unevaluated=${lifecyclePool.unevaluated || 0}, unclosed=${lifecyclePool.unclosed || 0}`,
       requires_operator: false
+    };
+  }
+
+  const pendingPlanReview = summaries.projectManagement?.plan_review || {};
+  const matchingRequirementEvent = asArray(operationsTimeline.items)
+    .find((item) => item.type === "requirement_intake_submitted" && planReviewBlocksRequirementEvent(pendingPlanReview, item));
+  if (pendingPlanReview.reviewable) {
+    return {
+      status: "blocked",
+      action: "review_requirement_plan",
+      source_event_id: matchingRequirementEvent?.event_id || null,
+      source_type: "plan_review",
+      target_projection_id: null,
+      reason: pendingPlanReview.next_action || "requirement plan requires operator review before development can continue",
+      requires_operator: true
     };
   }
 
@@ -1028,6 +1117,18 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   }
 
   if (driver.type === "requirement_intake_submitted") {
+    const planReview = summaries.projectManagement?.plan_review || {};
+    if (planReviewBlocksRequirementEvent(planReview, driver)) {
+      return {
+        status: "blocked",
+        action: "review_requirement_plan",
+        source_event_id: driver.event_id,
+        source_type: "plan_review",
+        target_projection_id: null,
+        reason: planReview.next_action || "requirement plan requires operator review before development can continue",
+        requires_operator: true
+      };
+    }
     return {
       status: "ready",
       action: "prepare_project_status_continuation",
@@ -1063,6 +1164,17 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   if (driver.type === "autonomous_scheduler_loop_run") {
     const loop = summaries.schedulerLoop || {};
     const shardReview = summaries.reviewerShardReview || {};
+    if (loop.phase === "no_dispatchable_scheduler_actions") {
+      return {
+        status: "idle",
+        action: "wait_for_new_work",
+        source_event_id: driver.event_id,
+        source_type: driver.type,
+        target_projection_id: loop.latest_projection_id || null,
+        reason: "scheduler loop found no dispatchable actions",
+        requires_operator: false
+      };
+    }
     if (
       loop.execution_strategy === "projected_next_action" &&
       loop.phase === "iteration_limit_reached" &&
@@ -1090,6 +1202,18 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     };
   }
   if (driver.type === "scheduler_loop_resume_attempt") {
+    const loop = summaries.schedulerLoop || {};
+    if (loop.phase === "no_dispatchable_scheduler_actions" || summaries.schedulerLoop?.latest_resume_status === "pass") {
+      return {
+        status: "idle",
+        action: "wait_for_new_work",
+        source_event_id: driver.event_id,
+        source_type: driver.type,
+        target_projection_id: loop.latest_resume_target || null,
+        reason: "scheduler loop resume completed; wait for new dispatchable work",
+        requires_operator: false
+      };
+    }
     return {
       status: "ready",
       action: "inspect_resume_target",
@@ -1220,6 +1344,18 @@ function nextActionTerminalInfoFromReadout(readout = {}) {
 function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
   const projectStatus = summaries.projectStatus || {};
   if (latest?.type === "requirement_intake_submitted") {
+    const planReview = summaries.projectManagement?.plan_review || {};
+    if (planReviewBlocksRequirementEvent(planReview, latest)) {
+      return {
+        status: "blocked",
+        action: "review_requirement_plan",
+        source_event_id: latest.event_id,
+        source_type: "plan_review",
+        target_projection_id: null,
+        reason: planReview.next_action || "requirement plan requires operator review before development can continue",
+        requires_operator: true
+      };
+    }
     return {
       status: "ready",
       action: "prepare_project_status_continuation",
@@ -1392,6 +1528,13 @@ export function createWorkbenchProjection(input = {}) {
   const modelSummary = summarizeModelRouting(modelPlan);
   const reviewerSummary = summarizeReviewerGate(reviewerGate);
   const dagSummary = summarizeDag(dagInput);
+  const projectManagementBase = summarizeProjectManagement(input, {
+    dagSummary,
+    manifestSummary,
+    globalGoalCompletion,
+    schedulerDispatch,
+    frontendAcceptance
+  });
   const nextActionReadout = createNextActionReadout(operationsTimeline, {
     schedulerLoop,
     reviewerProviderHealth,
@@ -1400,7 +1543,8 @@ export function createWorkbenchProjection(input = {}) {
     frontendAcceptance,
     globalGoalCompletion,
     taskDag: dagSummary,
-    projectStatus: input.project_status || input.projectStatus || {}
+    projectStatus: input.project_status || input.projectStatus || {},
+    projectManagement: projectManagementBase
   });
   const projectManagement = summarizeProjectManagement(input, {
     dagSummary,

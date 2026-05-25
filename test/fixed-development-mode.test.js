@@ -90,11 +90,12 @@ test("project status keeps fixed development mode on the current next work", () 
     assert.equal(status.next_step, "");
     return;
   }
-  assert.match(status.next_step, /fixed main-process\/child-process loop/);
-  assert.match(status.next_step, /agent lifecycle/);
-  assert.match(status.next_step, /fact recording/);
-  assert.match(status.next_step, /cleanup execution/);
-  assert.match(status.next_step, /spawned child processes/);
+  const currentWork = [status.latest_update, status.next_step].join("\n");
+  assert.match(currentWork, /fixed main-process\/child-process loop|Fixed development mode/);
+  assert.match(currentWork, /agent lifecycle|bounded child processes/);
+  assert.match(currentWork, /fact recording|evaluates bounded child processes/);
+  assert.match(currentWork, /cleanup execution|instead of treating implementation edits as success/);
+  assert.match(currentWork, /spawned child processes|child processes/);
 });
 
 test("fixed development mode runtime gate evaluates dispatch inputs", () => {

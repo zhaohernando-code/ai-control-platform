@@ -87,7 +87,10 @@ test("current reviewer aggregate fixture advances after provider health follow-u
   assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-provider-rerun-without-tools"));
   assert.ok(!decision.next_work_packages.some((workPackage) => workPackage.id === "reviewer-scope-shard-001"));
   assert.equal(decision.global_goal_completion.status, "in_progress");
-  assert.ok(decision.next_work_packages.some((workPackage) => workPackage.global_goal_id === "platform-boundary-and-state-foundation"));
+  assert.ok(decision.global_goal_completion.next_goal?.id);
+  assert.ok(decision.next_work_packages.some((workPackage) => {
+    return workPackage.global_goal_id === decision.global_goal_completion.next_goal.id;
+  }));
 });
 
 test("agent lifecycle pool gaps schedule cleanup without human intervention", () => {

@@ -6,6 +6,7 @@ export const WORKBENCH_REQUIREMENT_INTAKE_VERSION = "workbench-requirement-intak
 const DEFAULT_PROJECT_ID = "ai-control-platform";
 const DEFAULT_SURFACE_AREA = "workbench_frontend";
 const MAX_STORED_REQUIREMENTS = 12;
+const PLAN_REVIEW_VERSION = "workbench-plan-review.v1";
 
 const SURFACE_PROFILES = {
   workbench_frontend: {
@@ -73,6 +74,29 @@ const SURFACE_PROFILES = {
       "npm run check:process-hardening",
       "npm run check:closeout"
     ]
+  },
+  platform_project: {
+    id: "platform_project",
+    label: "AI Control Platform 项目",
+    owned_files: [
+      "apps/workbench",
+      "src/workflow/requirement-intake.js",
+      "src/workflow/workbench-projection.js",
+      "src/workflow/frontend-acceptance.js",
+      "tools/workbench-server.mjs",
+      "tools/check-workbench-browser-events.mjs",
+      "tools/check-workbench-frontend-acceptance.mjs",
+      "test/requirement-intake.test.js",
+      "test/workbench-shell.test.js",
+      "test/workbench-server.test.js",
+      "test/workbench-projection.test.js",
+      "test/frontend-acceptance.test.js"
+    ],
+    acceptance_gates: [
+      "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+      "npm run check:workbench:browser-events",
+      "npm run check:closeout"
+    ]
   }
 };
 
@@ -104,8 +128,27 @@ function safeIdPart(value) {
   return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
 }
 
-function requirementProfile(surfaceArea) {
-  return SURFACE_PROFILES[normalizeString(surfaceArea)] || SURFACE_PROFILES[DEFAULT_SURFACE_AREA];
+function isProjectLevelRequirement(input = {}) {
+  const projectId = normalizeString(input.project_id || input.projectId);
+  const text = [
+    input.problem_statement || input.problemStatement,
+    input.constraints
+  ].map(normalizeString).join("\n");
+  return projectId === DEFAULT_PROJECT_ID ||
+    input.plan_review_requested === true ||
+    input.planReviewRequested === true ||
+    /不只是前端|不只.*前端|后端|流程|机制|API|接口|项目/.test(text);
+}
+
+function requirementProfile(input = {}) {
+  if (typeof input === "string") {
+    return SURFACE_PROFILES[normalizeString(input)] || SURFACE_PROFILES[DEFAULT_SURFACE_AREA];
+  }
+  if (isProjectLevelRequirement(input)) {
+    return SURFACE_PROFILES.platform_project;
+  }
+  return SURFACE_PROFILES[normalizeString(input.surface_area || input.surfaceArea) || DEFAULT_SURFACE_AREA] ||
+    SURFACE_PROFILES[DEFAULT_SURFACE_AREA];
 }
 
 function requirementIdFrom(title, createdAt) {
@@ -126,6 +169,46 @@ function requirementSummary(input = {}, profile = {}) {
     profile.label ? `范围：${profile.label}` : ""
   ].filter(Boolean);
   return parts.join("。");
+}
+
+function generatedAcceptancePlan(requirement = {}) {
+  const problem = normalizeString(requirement.problem_statement);
+  const constraints = normalizeString(requirement.constraints);
+  return [
+    "由平台根据需求生成验收方案：",
+    `1. 需求目标已落地：${problem || requirement.title}`,
+    "2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。",
+    "3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。",
+    constraints ? `4. 约束已验证：${constraints}` : "4. 无额外约束遗漏。"
+  ].join("\n");
+}
+
+function planReviewIdFrom(requirementId = "") {
+  return `plan-review-${safeIdPart(requirementId)}`;
+}
+
+function createPlanReview(requirement = {}, createdAt = "") {
+  const generatedAt = normalizeString(createdAt) || new Date().toISOString();
+  return {
+    version: PLAN_REVIEW_VERSION,
+    id: planReviewIdFrom(requirement.id),
+    requirement_id: requirement.id,
+    requirement_title: requirement.title,
+    status: "ready_for_review",
+    phase: "ready_for_review",
+    plan_id: `plan-${safeIdPart(requirement.id)}`,
+    assessment_summary: [
+      `需求「${requirement.title}」需要先完成方案评估。`,
+      "平台已基于现状、目标和约束生成初始实施范围；用户确认后再进入开发执行。"
+    ].join(" "),
+    proposed_acceptance_plan: generatedAcceptancePlan(requirement),
+    next_action: "等待用户审核方案",
+    action_status: "等待你确认方案",
+    submitted_at: requirement.submitted_at,
+    generated_at: generatedAt,
+    reviewed_at: null,
+    review_decision: null
+  };
 }
 
 function nextWorkPackage(requirement = {}, profile = {}) {
@@ -201,9 +284,6 @@ export function validateRequirementSubmission(input = {}) {
   if (!normalizeString(input.problem_statement || input.problemStatement)) {
     issues.push(issue("missing_problem_statement", "problem_statement is required", "problem_statement"));
   }
-  if (!normalizeString(input.acceptance_criteria || input.acceptanceCriteria)) {
-    issues.push(issue("missing_acceptance_criteria", "acceptance_criteria is required", "acceptance_criteria"));
-  }
   if (!SURFACE_PROFILES[normalizeString(input.surface_area || input.surfaceArea) || DEFAULT_SURFACE_AREA]) {
     issues.push(issue("invalid_surface_area", `surface_area must be one of: ${Object.keys(SURFACE_PROFILES).join(", ")}`, "surface_area"));
   }
@@ -224,21 +304,29 @@ export function submitRequirementToProjectStatus(projectStatus = {}, input = {},
   }
 
   const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
-  const profile = requirementProfile(input.surface_area || input.surfaceArea);
+  const profile = requirementProfile(input);
   const title = normalizeString(input.title);
-  const requirement = {
+  const baseRequirement = {
     id: normalizeString(options.requirement_id || options.requirementId) || requirementIdFrom(title, createdAt),
     title,
     status: "submitted",
     submitted_at: createdAt,
+    project_id: normalizeString(input.project_id || input.projectId) || DEFAULT_PROJECT_ID,
     surface_area: profile.id,
     surface_label: profile.label,
     problem_statement: normalizeString(input.problem_statement || input.problemStatement),
-    acceptance_criteria: normalizeString(input.acceptance_criteria || input.acceptanceCriteria),
     constraints: normalizeString(input.constraints),
     owned_files: profile.owned_files.slice(),
     acceptance_gates: profile.acceptance_gates.slice()
   };
+  const planReview = createPlanReview(baseRequirement, createdAt);
+  const requirement = {
+    ...baseRequirement,
+    acceptance_criteria: normalizeString(input.acceptance_criteria || input.acceptanceCriteria) ||
+      planReview.proposed_acceptance_plan,
+    plan_review_id: planReview.id
+  };
+  planReview.proposed_acceptance_plan = requirement.acceptance_criteria;
   requirement.summary = requirementSummary(requirement, profile);
 
   const existingItems = normalizeRequirementItems(projectStatus?.requirement_intake?.items);
@@ -261,6 +349,7 @@ export function submitRequirementToProjectStatus(projectStatus = {}, input = {},
   return {
     status: "pass",
     requirement,
+    plan_review: planReview,
     project_status: {
       ...projectStatus,
       project: normalizeString(projectStatus.project) || DEFAULT_PROJECT_ID,
@@ -279,6 +368,56 @@ export function submitRequirementToProjectStatus(projectStatus = {}, input = {},
         submitted_count: queue.length,
         open_count: queue.filter((item) => !["completed", "complete", "accepted", "closed"].includes(normalizeString(item.status).toLowerCase())).length,
         items: queue
+      },
+      plan_reviews: {
+        ...(isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {}),
+        [requirement.id]: planReview
+      }
+    }
+  };
+}
+
+export function updateRequirementPlanReview(projectStatus = {}, input = {}, options = {}) {
+  const requirementId = normalizeString(input.requirement_id || input.requirementId);
+  const action = normalizeString(input.action).toLowerCase();
+  const existingReviews = isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {};
+  const review = requirementId ? existingReviews[requirementId] : null;
+  if (!review) {
+    return {
+      status: "fail",
+      issues: [issue("plan_review_not_found", "plan review not found for requirement", "requirement_id")]
+    };
+  }
+  if (!["approve", "revise"].includes(action)) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_plan_review_action", "action must be approve or revise", "action")]
+    };
+  }
+
+  const reviewedAt = normalizeString(options.created_at || options.createdAt || input.created_at || input.createdAt) ||
+    new Date().toISOString();
+  const approved = action === "approve";
+  const nextReview = {
+    ...review,
+    status: approved ? "approved" : "revising",
+    phase: approved ? "approved" : "revising",
+    reviewed_at: reviewedAt,
+    review_decision: action,
+    review_note: normalizeString(input.note),
+    next_action: approved ? "方案已通过，可进入开发" : "方案已退回，等待修订后重新审核",
+    action_status: approved ? "已同意进入开发" : "已退回修订"
+  };
+
+  return {
+    status: "pass",
+    plan_review: nextReview,
+    project_status: {
+      ...projectStatus,
+      updated_at: reviewedAt,
+      plan_reviews: {
+        ...existingReviews,
+        [requirementId]: nextReview
       }
     }
   };

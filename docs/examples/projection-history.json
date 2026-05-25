@@ -1,7 +1,111 @@
 {
   "version": "projection-history.v1",
-  "latest": "headless-live-context-cycle-1779570720000",
+  "latest": "requirement-intake-auto-current-session-02",
   "items": [
+    {
+      "id": "requirement-intake-auto-current-session-02",
+      "label": "Context pack cycle from current-session",
+      "input_path": "docs/examples/requirement-intake-auto-current-session-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T16:10:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-claude-worker-04-current-session-02",
+      "label": "Context pack cycle from current-session",
+      "input_path": "docs/examples/requirement-intake-claude-worker-04-current-session-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T14:25:45.198Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-claude-worker-03-headless-live-context-cycle-1779566400000-02",
+      "label": "Context pack cycle from headless-live-context-cycle-1779566400000",
+      "input_path": "docs/examples/requirement-intake-claude-worker-03-headless-live-context-cycle-1779566400000-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T15:22:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-claude-worker-02-headless-live-context-cycle-1779567840000-02",
+      "label": "Context pack cycle from headless-live-context-cycle-1779567840000",
+      "input_path": "docs/examples/requirement-intake-claude-worker-02-headless-live-context-cycle-1779567840000-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T15:08:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-claude-worker-01-headless-live-context-cycle-1779568800000-02",
+      "label": "Context pack cycle from headless-live-context-cycle-1779568800000",
+      "input_path": "docs/examples/requirement-intake-claude-worker-01-headless-live-context-cycle-1779568800000-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T14:55:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-account-worker-01-requirement-intake-child-worker-05-requi-02",
+      "label": "Context pack cycle from requirement-intake-child-worker-05-requirement-intake-child-worker-04-require-02",
+      "input_path": "docs/examples/requirement-intake-account-worker-01-requirement-intake-child-worker-05-requi-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T14:00:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-child-worker-05-requirement-intake-child-worker-04-require-02",
+      "label": "Context pack cycle from requirement-intake-child-worker-04-requirement-intake-child-worker-03-require-02",
+      "input_path": "docs/examples/requirement-intake-child-worker-05-requirement-intake-child-worker-04-require-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T13:55:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-child-worker-04-requirement-intake-child-worker-03-require-02",
+      "label": "Context pack cycle from requirement-intake-child-worker-03-requirement-intake-child-worker-02-require-02",
+      "input_path": "docs/examples/requirement-intake-child-worker-04-requirement-intake-child-worker-03-require-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T13:45:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-child-worker-03-requirement-intake-child-worker-02-require-02",
+      "label": "Context pack cycle from requirement-intake-child-worker-02-requirement-intake-child-worker-requiremen-02",
+      "input_path": "docs/examples/requirement-intake-child-worker-03-requirement-intake-child-worker-02-require-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T13:30:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-child-worker-02-requirement-intake-child-worker-requiremen-02",
+      "label": "Context pack cycle from requirement-intake-child-worker-requirement-intake-guard-check-requirement-in-02",
+      "input_path": "docs/examples/requirement-intake-child-worker-02-requirement-intake-child-worker-requiremen-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T13:20:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-child-worker-requirement-intake-guard-check-requirement-in-02",
+      "label": "Context pack cycle from requirement-intake-guard-check-requirement-intake-replay-20260525-module-upda-02",
+      "input_path": "docs/examples/requirement-intake-child-worker-requirement-intake-guard-check-requirement-in-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T13:10:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-guard-check-requirement-intake-replay-20260525-module-upda-02",
+      "label": "Context pack cycle from requirement-intake-replay-20260525-module-update-headless-live-context-cycle-02",
+      "input_path": "docs/examples/requirement-intake-guard-check-requirement-intake-replay-20260525-module-upda-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T13:00:00.000Z",
+      "status": "rerun"
+    },
+    {
+      "id": "requirement-intake-replay-20260525-module-update-headless-live-context-cycle-02",
+      "label": "Context pack cycle from headless-live-context-cycle-1779570720000",
+      "input_path": "docs/examples/requirement-intake-replay-20260525-module-update-headless-live-context-cycle-02.workbench-input.json",
+      "projection_path": null,
+      "created_at": "2026-05-25T12:30:00.000Z",
+      "status": "rerun"
+    },
     {
       "id": "headless-live-context-cycle-1779570720000",
       "label": "Headless live context cycle after scheduler package",

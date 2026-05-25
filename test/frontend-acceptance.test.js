@@ -22,8 +22,8 @@ import {
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
 const PROJECT_MANAGEMENT_TEXT = [
-  "提需求",
-  "提交到流程",
+  "新建任务",
+  "提交",
   "项目列表",
   "AI Control Platform",
   "ai-control-platform",

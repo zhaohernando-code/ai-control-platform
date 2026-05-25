@@ -22,7 +22,7 @@
     "status": "pass",
     "issues": [],
     "work_package_count": 3,
-    "event_count": 10
+    "event_count": 19
   },
   "operator_events": {
     "status": "pass",
@@ -34,14 +34,14 @@
     "issues": []
   },
   "artifacts": {
-    "total": 10,
+    "total": 19,
     "by_type": {
       "test": 1,
       "review": 4,
-      "evaluation": 5
+      "evaluation": 14
     },
     "by_status": {
-      "pass": 9,
+      "pass": 18,
       "fail": 1
     }
   },
@@ -195,28 +195,28 @@
     "created_at": null
   },
   "scheduler_loop": {
-    "status": "not_configured",
-    "phase": null,
-    "artifact_id": null,
-    "run_count": 0,
+    "status": "pass",
+    "phase": "iteration_limit_reached",
+    "artifact_id": "autonomous-scheduler-loop-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-002",
+    "run_count": 2,
     "invalid_count": 0,
-    "iteration_count": 0,
-    "latest_iteration_status": null,
-    "latest_projection_id": null,
-    "recovery_status": "not_configured",
-    "recovery_action": "start_bounded_loop",
-    "resumable": false,
-    "resume_projection_id": null,
-    "execution_strategy": null,
-    "execution_profile": null,
-    "latest_resume_status": "not_configured",
-    "latest_resume_target": null,
+    "iteration_count": 3,
+    "latest_iteration_status": "executed",
+    "latest_projection_id": "requirement-intake-auto-current-session-02",
+    "recovery_status": "ready",
+    "recovery_action": "resume_from_latest_projection",
+    "resumable": true,
+    "resume_projection_id": "requirement-intake-auto-current-session-02",
+    "execution_strategy": "projected_next_action",
+    "execution_profile": "approved_mock_non_dry_run",
+    "latest_resume_status": "pass",
+    "latest_resume_target": "requirement-intake-auto-current-session-02",
     "latest_resume_issue": null,
     "terminal_action": null,
     "terminal_reason": null,
     "issue_count": 0,
     "latest_issue": null,
-    "created_at": null
+    "created_at": "2026-05-25T16:10:00.000Z"
   },
   "agent_lifecycle_pool": {
     "status": "not_configured",
@@ -295,10 +295,10 @@
         "type": "platform",
         "status": "in_progress",
         "phase": "持续开发",
-        "current_task": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+        "current_task": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目",
         "owner_agent": "main_orchestrator",
-        "progress": 0,
-        "last_updated": "2026-05-21T16:25:00.000Z",
+        "progress": 19,
+        "last_updated": "2026-05-25T16:10:00.000Z",
         "risks": [],
         "human_decisions": 0,
         "latest_run_projection_id": null,
@@ -355,10 +355,10 @@
         "type": "platform",
         "status": "in_progress",
         "phase": "持续开发",
-        "current_task": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+        "current_task": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目",
         "owner_agent": "main_orchestrator",
-        "progress": 0,
-        "last_updated": "2026-05-21T16:25:00.000Z",
+        "progress": 19,
+        "last_updated": "2026-05-25T16:10:00.000Z",
         "risks": [],
         "human_decisions": 0,
         "latest_run_projection_id": null,
@@ -453,12 +453,391 @@
       }
     ],
     "requirement_intake": {
-      "status": "not_configured",
-      "submitted_count": 0,
-      "open_count": 0,
-      "active_requirement_id": null,
-      "latest": null,
-      "items": []
+      "status": "available",
+      "submitted_count": 12,
+      "open_count": 12,
+      "active_requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
+      "latest": {
+        "id": "requirement-intake-replay-20260525-module-update-final-01",
+        "title": "“提需求”模块更新",
+        "status": "submitted",
+        "submitted_at": "2026-05-25T15:30:00.598Z",
+        "project_id": "ai-control-platform",
+        "surface_area": "platform_project",
+        "surface_label": "AI Control Platform 项目",
+        "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+        "constraints": "注意：此次需求的范围不只是前端",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/requirement-intake.js",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/workbench-server.mjs",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/requirement-intake.test.js",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "acceptance_criteria": "由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端",
+        "plan_review_id": "plan-review-requirement-intake-replay-20260525-module-update-final-01",
+        "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目"
+      },
+      "items": [
+        {
+          "id": "requirement-intake-replay-20260525-module-update-final-01",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T15:30:00.598Z",
+          "project_id": "ai-control-platform",
+          "surface_area": "platform_project",
+          "surface_label": "AI Control Platform 项目",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/requirement-intake.js",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/workbench-server.mjs",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/requirement-intake.test.js",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "acceptance_criteria": "由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端",
+          "plan_review_id": "plan-review-requirement-intake-replay-20260525-module-update-final-01",
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目"
+        },
+        {
+          "id": "requirement-intake-claude-worker-04",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T14:25:45.198Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-claude-worker-03",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T15:22:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-claude-worker-02",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T15:08:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-claude-worker-01",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T14:55:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-account-worker-01",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T14:00:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-child-worker-05",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T13:55:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-child-worker-04",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T13:45:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-child-worker-03",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T13:30:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-child-worker-02",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T13:20:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-child-worker",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T13:10:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        },
+        {
+          "id": "requirement-intake-replay-20260525-module-update-guard-check",
+          "title": "“提需求”模块更新",
+          "status": "submitted",
+          "submitted_at": "2026-05-25T13:00:00.000Z",
+          "surface_area": "workbench_frontend",
+          "surface_label": "Workbench 前端",
+          "problem_statement": "1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”",
+          "acceptance_criteria": "验收标准不应该由用户提出",
+          "constraints": "注意：此次需求的范围不只是前端",
+          "owned_files": [
+            "apps/workbench",
+            "src/workflow/workbench-projection.js",
+            "src/workflow/frontend-acceptance.js",
+            "tools/check-workbench-browser-events.mjs",
+            "tools/check-workbench-frontend-acceptance.mjs",
+            "test/workbench-shell.test.js",
+            "test/workbench-server.test.js",
+            "test/workbench-projection.test.js",
+            "test/frontend-acceptance.test.js"
+          ],
+          "acceptance_gates": [
+            "npm run check:workbench:browser-events",
+            "npm run check:closeout"
+          ],
+          "summary": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+        }
+      ]
+    },
+    "plan_review": {
+      "status": "available",
+      "status_label": "方案已通过",
+      "summary": "当前评估：“提需求”模块更新。大模型会基于现状与目标生成评估摘要与验收方案，再由你审核。",
+      "requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
+      "requirement_title": "“提需求”模块更新",
+      "plan_id": "plan-requirement-intake-replay-20260525-module-update-final-01",
+      "phase": "approved",
+      "phase_label": "方案已通过",
+      "next_action": "方案已通过，可进入开发",
+      "assessment_summary": "需求「“提需求”模块更新」需要先完成方案评估。 平台已基于现状、目标和约束生成初始实施范围；用户确认后再进入开发执行。",
+      "proposed_acceptance_plan": "由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端",
+      "reviewable": false,
+      "action_status": "已同意进入开发",
+      "origin": "workbench_requirement_intake"
     },
     "design_alignment": {
       "status": "partial",
@@ -469,68 +848,411 @@
   },
   "global_goal_completion": {
     "status": "in_progress",
-    "total": 3,
-    "completed": 0,
-    "pending": 3,
+    "total": 16,
+    "completed": 3,
+    "pending": 13,
     "blocked": 0,
     "next_goal": {
-      "id": "platform-boundary-and-state-foundation",
-      "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
-      "next_step": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters."
+      "id": "requirement-intake-replay-20260525-module-update-final-01",
+      "title": "“提需求”模块更新",
+      "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目"
     },
     "pending_goals": [
       {
-        "id": "platform-boundary-and-state-foundation",
-        "title": "独立中台仓库、宿主边界、durable 状态和防跑偏门禁",
+        "id": "requirement-intake-replay-20260525-module-update-final-01",
+        "title": "“提需求”模块更新",
         "status": "in_progress",
-        "next_step": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters."
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目"
       },
       {
-        "id": "pc-mobile-autonomous-workbench",
-        "title": "PC/mobile 单页中台工作台和一屏状态投影",
+        "id": "requirement-intake-claude-worker-04",
+        "title": "“提需求”模块更新",
         "status": "in_progress",
-        "next_step": "Continue wiring browser-events recording into the browser verification runner or closeout flow."
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
       },
       {
-        "id": "autonomous-scheduler-and-reviewer-loop",
-        "title": "任务拆解、调度、multi-LLM reviewer、自恢复和持续运行闭环",
+        "id": "requirement-intake-replay-20260525-module-update-claude-worker-03",
+        "title": "“提需求”模块更新",
         "status": "in_progress",
-        "next_step": "Continue converting scheduler/reviewer recovery outputs into durable service-side continuation facts."
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-claude-worker-02",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-claude-worker-01",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-account-worker-01",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-child-worker-05",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-child-worker-04",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-child-worker-03",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-child-worker-02",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-child-worker",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update-guard-check",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
+      },
+      {
+        "id": "requirement-intake-replay-20260525-module-update",
+        "title": "“提需求”模块更新",
+        "status": "in_progress",
+        "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端"
       }
     ],
     "blocked_goals": [],
     "next_work_packages": [
       {
-        "id": "global-goal-platform-boundary-and-state-foundation",
-        "title": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-final-01",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目",
         "action": "continue_global_goal",
-        "owned_files": [],
-        "acceptance_gates": [],
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/requirement-intake.js",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/workbench-server.mjs",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/requirement-intake.test.js",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
         "rollback_conditions": [],
         "depends_on": [],
-        "global_goal_id": "platform-boundary-and-state-foundation",
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-final-01",
         "reason": "global goal remains incomplete after the current requirement"
       },
       {
-        "id": "global-goal-pc-mobile-autonomous-workbench",
-        "title": "Continue wiring browser-events recording into the browser verification runner or closeout flow.",
+        "id": "global-goal-requirement-intake-claude-worker-04",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
         "action": "continue_global_goal",
-        "owned_files": [],
-        "acceptance_gates": [],
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
         "rollback_conditions": [],
         "depends_on": [],
-        "global_goal_id": "pc-mobile-autonomous-workbench",
+        "global_goal_id": "requirement-intake-claude-worker-04",
         "reason": "global goal remains incomplete after the current requirement"
       },
       {
-        "id": "global-goal-autonomous-scheduler-and-reviewer-loop",
-        "title": "Continue converting scheduler/reviewer recovery outputs into durable service-side continuation facts.",
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-claude-worker-03",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
         "action": "continue_global_goal",
-        "owned_files": [],
-        "acceptance_gates": [],
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
         "rollback_conditions": [],
         "depends_on": [],
-        "global_goal_id": "autonomous-scheduler-and-reviewer-loop",
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-claude-worker-03",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-claude-worker-02",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-claude-worker-02",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-claude-worker-01",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-claude-worker-01",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-account-worker-01",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-account-worker-01",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-child-worker-05",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-child-worker-05",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-child-worker-04",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-child-worker-04",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-child-worker-03",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-child-worker-03",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-child-worker-02",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-child-worker-02",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-child-worker",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-child-worker",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update-guard-check",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update-guard-check",
+        "reason": "global goal remains incomplete after the current requirement"
+      },
+      {
+        "id": "global-goal-requirement-intake-replay-20260525-module-update",
+        "title": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：验收标准不应该由用户提出。约束：注意：此次需求的范围不只是前端。范围：Workbench 前端",
+        "action": "continue_global_goal",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "rollback_conditions": [],
+        "depends_on": [],
+        "global_goal_id": "requirement-intake-replay-20260525-module-update",
         "reason": "global goal remains incomplete after the current requirement"
       }
     ],
@@ -538,80 +1260,39 @@
   },
   "operations_timeline": {
     "status": "available",
-    "count": 7,
+    "count": 12,
     "group_counts": {
-      "reviewer_recovery": 5,
-      "scheduler": 2
+      "reviewer_recovery": 1,
+      "scheduler": 9,
+      "requirement_intake": 2
     },
-    "driver_count": 3,
-    "operator_only_count": 4,
+    "driver_count": 6,
+    "operator_only_count": 6,
     "latest_driver": {
-      "sequence": 7,
-      "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "type": "reviewer_shard_aggregate",
-      "group": "reviewer_recovery",
+      "sequence": 18,
+      "event_id": "event-scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "type": "scheduler_loop_resume_attempt",
+      "group": "scheduler",
       "next_action_role": "automation_driver",
       "status": "pass",
-      "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "created_at": "2026-05-24T02:37:00.000Z",
-      "summary": "pass / 0 failed"
+      "artifact_id": "scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "requirement_id": null,
+      "created_at": "2026-05-25T16:35:00.000Z",
+      "summary": "pass -> requirement-intake-auto-current-session-02"
     },
     "latest": {
-      "sequence": 9,
-      "event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "type": "context_pack_cycle_materialized",
+      "sequence": 18,
+      "event_id": "event-scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "type": "scheduler_loop_resume_attempt",
       "group": "scheduler",
-      "next_action_role": "operator_observable",
-      "status": "ready",
-      "artifact_id": "context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-      "created_at": "2026-05-24T03:08:00.000Z",
-      "summary": "ready -> cycle-20260521-autonomous-platform-context-pack-1779557971220"
+      "next_action_role": "automation_driver",
+      "status": "pass",
+      "artifact_id": "scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "requirement_id": null,
+      "created_at": "2026-05-25T16:35:00.000Z",
+      "summary": "pass -> requirement-intake-auto-current-session-02"
     },
     "items": [
-      {
-        "sequence": 3,
-        "event_id": "event-reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "type": "reviewer_provider_health",
-        "group": "reviewer_recovery",
-        "next_action_role": "automation_driver",
-        "status": "retry",
-        "artifact_id": "reviewer-provider-health-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "created_at": "2026-05-21T19:55:30.000+08:00",
-        "summary": "healthy / rerun_without_tools, split_scope"
-      },
-      {
-        "sequence": 4,
-        "event_id": "event-reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "type": "reviewer_scope_split",
-        "group": "reviewer_recovery",
-        "next_action_role": "automation_driver",
-        "status": "planned",
-        "artifact_id": "reviewer-scope-split-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "created_at": "2026-05-21T20:20:30.000Z",
-        "summary": "2 shard(s)"
-      },
-      {
-        "sequence": 5,
-        "event_id": "event-reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "type": "reviewer_shard_result",
-        "group": "reviewer_recovery",
-        "next_action_role": "operator_observable",
-        "status": "pass",
-        "artifact_id": "reviewer-shard-result-reviewer-scope-shard-001-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "created_at": "2026-05-24T02:36:00.000Z",
-        "summary": "reviewer-scope-shard-001"
-      },
-      {
-        "sequence": 6,
-        "event_id": "event-reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "type": "reviewer_shard_result",
-        "group": "reviewer_recovery",
-        "next_action_role": "operator_observable",
-        "status": "pass",
-        "artifact_id": "reviewer-shard-result-reviewer-scope-shard-002-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-        "created_at": "2026-05-24T02:36:00.000Z",
-        "summary": "reviewer-scope-shard-002"
-      },
       {
         "sequence": 7,
         "event_id": "event-reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
@@ -620,6 +1301,7 @@
         "next_action_role": "automation_driver",
         "status": "pass",
         "artifact_id": "reviewer-shard-aggregate-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
         "created_at": "2026-05-24T02:37:00.000Z",
         "summary": "pass / 0 failed"
       },
@@ -631,6 +1313,7 @@
         "next_action_role": "operator_observable",
         "status": "ready",
         "artifact_id": "project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
         "created_at": "2026-05-24T03:05:00.000Z",
         "summary": "ready / 3 package(s)"
       },
@@ -642,24 +1325,133 @@
         "next_action_role": "operator_observable",
         "status": "ready",
         "artifact_id": "context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
         "created_at": "2026-05-24T03:08:00.000Z",
         "summary": "ready -> cycle-20260521-autonomous-platform-context-pack-1779557971220"
+      },
+      {
+        "sequence": 10,
+        "event_id": "event-requirement-intake-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-requirement-intake-claude-worker-04-001",
+        "type": "requirement_intake_submitted",
+        "group": "requirement_intake",
+        "next_action_role": "automation_driver",
+        "status": "ready",
+        "artifact_id": "requirement-intake-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-requirement-intake-claude-worker-04-001",
+        "requirement_id": "requirement-intake-claude-worker-04",
+        "created_at": "2026-05-25T14:25:45.198Z",
+        "summary": "“提需求”模块更新"
+      },
+      {
+        "sequence": 11,
+        "event_id": "event-project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-002",
+        "type": "project_status_continuation",
+        "group": "scheduler",
+        "next_action_role": "operator_observable",
+        "status": "ready",
+        "artifact_id": "project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-002",
+        "requirement_id": null,
+        "created_at": "2026-05-25T14:25:45.198Z",
+        "summary": "ready / 1 package(s)"
+      },
+      {
+        "sequence": 12,
+        "event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "context_pack_cycle_materialized",
+        "group": "scheduler",
+        "next_action_role": "operator_observable",
+        "status": "ready",
+        "artifact_id": "context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
+        "created_at": "2026-05-25T14:25:45.198Z",
+        "summary": "ready -> cycle-20260521-autonomous-platform-context-pack-1779557971220"
+      },
+      {
+        "sequence": 13,
+        "event_id": "event-autonomous-scheduler-loop-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "autonomous_scheduler_loop_run",
+        "group": "scheduler",
+        "next_action_role": "automation_driver",
+        "status": "pass",
+        "artifact_id": "autonomous-scheduler-loop-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
+        "created_at": "2026-05-25T14:25:45.198Z",
+        "summary": "iteration_limit_reached / 3 iteration(s)"
+      },
+      {
+        "sequence": 14,
+        "event_id": "event-requirement-intake-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-requirement-intake-replay-20260525-module-update-final-01-001",
+        "type": "requirement_intake_submitted",
+        "group": "requirement_intake",
+        "next_action_role": "automation_driver",
+        "status": "ready",
+        "artifact_id": "requirement-intake-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-requirement-intake-replay-20260525-module-update-final-01-001",
+        "requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
+        "created_at": "2026-05-25T15:30:00.598Z",
+        "summary": "“提需求”模块更新"
+      },
+      {
+        "sequence": 15,
+        "event_id": "event-project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-003",
+        "type": "project_status_continuation",
+        "group": "scheduler",
+        "next_action_role": "operator_observable",
+        "status": "ready",
+        "artifact_id": "project-status-continuation-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-003",
+        "requirement_id": null,
+        "created_at": "2026-05-25T16:10:00.000Z",
+        "summary": "ready / 1 package(s)"
+      },
+      {
+        "sequence": 16,
+        "event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "context_pack_cycle_materialized",
+        "group": "scheduler",
+        "next_action_role": "operator_observable",
+        "status": "ready",
+        "artifact_id": "context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
+        "created_at": "2026-05-25T16:10:00.000Z",
+        "summary": "ready -> cycle-20260521-autonomous-platform-context-pack-1779557971220"
+      },
+      {
+        "sequence": 17,
+        "event_id": "event-autonomous-scheduler-loop-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-002",
+        "type": "autonomous_scheduler_loop_run",
+        "group": "scheduler",
+        "next_action_role": "automation_driver",
+        "status": "pass",
+        "artifact_id": "autonomous-scheduler-loop-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-002",
+        "requirement_id": null,
+        "created_at": "2026-05-25T16:10:00.000Z",
+        "summary": "iteration_limit_reached / 3 iteration(s)"
+      },
+      {
+        "sequence": 18,
+        "event_id": "event-scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "type": "scheduler_loop_resume_attempt",
+        "group": "scheduler",
+        "next_action_role": "automation_driver",
+        "status": "pass",
+        "artifact_id": "scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+        "requirement_id": null,
+        "created_at": "2026-05-25T16:35:00.000Z",
+        "summary": "pass -> requirement-intake-auto-current-session-02"
       }
     ]
   },
   "next_action_readout": {
-    "status": "ready",
-    "action": "prepare_project_status_continuation",
-    "source_event_id": "event-context-pack-cycle-materialized-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
-    "source_type": "context_pack_cycle_materialized",
-    "target_projection_id": null,
-    "reason": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+    "status": "idle",
+    "action": "wait_for_new_work",
+    "source_event_id": "event-scheduler-loop-resume-attempt-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+    "source_type": "scheduler_loop_resume_attempt",
+    "target_projection_id": "requirement-intake-auto-current-session-02",
+    "reason": "scheduler loop resume completed; wait for new dispatchable work",
     "requires_operator": false
   },
   "next_action_terminal": {
-    "status": "ready",
-    "terminal_action": null,
-    "terminal_reason": null
+    "status": "idle",
+    "terminal_action": "wait_for_new_work",
+    "terminal_reason": "scheduler loop resume completed; wait for new dispatchable work"
   },
   "model_routing": {
     "status": "pass",
@@ -713,8 +1505,8 @@
         "unknown": 0
       },
       "artifacts": {
-        "total": 10,
-        "passed": 9,
+        "total": 19,
+        "passed": 18,
         "failed": 1,
         "unknown": 0
       },
@@ -790,7 +1582,7 @@
     ],
     "counters": {
       "work_packages": 3,
-      "artifacts": 10,
+      "artifacts": 19,
       "reviewer_findings": 1,
       "dispatchable_tasks": 0,
       "closeout_publishes": 0,
@@ -805,7 +1597,7 @@
       "projected_action_progress_events": 0,
       "scheduler_dispatch_steps": 0,
       "scheduler_continuation_ready": 0,
-      "scheduler_loop_iterations": 0,
+      "scheduler_loop_iterations": 3,
       "agent_lifecycle_open": 0,
       "agent_lifecycle_unevaluated": 0,
       "agent_lifecycle_unclosed": 0,
@@ -824,12 +1616,12 @@
       "active_tasks": 0,
       "released_services": 0,
       "human_decisions": 0,
-      "global_goals_total": 3,
-      "global_goals_pending": 3,
-      "global_goals_completed": 0,
+      "global_goals_total": 16,
+      "global_goals_pending": 13,
+      "global_goals_completed": 3,
       "global_goals_blocked": 0,
-      "operation_events": 7
+      "operation_events": 12
     },
-    "recommended_action": "prepare_project_status_continuation"
+    "recommended_action": "wait_for_new_work"
   }
 }

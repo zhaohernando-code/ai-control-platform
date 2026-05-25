@@ -19,7 +19,7 @@
         </div>
         <nav class="nav-list">
           <a class="active" href="#overview" data-workbench-tab="overview" aria-current="page">总览</a>
-          <a href="#requirements" data-workbench-tab="requirements">提需求</a>
+          <a href="#requirements" data-workbench-tab="requirements">新建任务</a>
           <a href="#projects" data-workbench-tab="projects">项目</a>
           <a href="#flow" data-workbench-tab="flow">任务流</a>
           <a href="#agents" data-workbench-tab="agents">Agents</a>
@@ -102,8 +102,8 @@
 
           <section class="panel wide requirement-panel" id="requirements" data-section="overview requirements" tabindex="-1">
             <div class="section-title">
-              <h2>提需求</h2>
-              <span>进入自动开发流程</span>
+              <h2>新建任务</h2>
+              <span>提交需求，进入评估与方案审核</span>
             </div>
             <form class="requirement-form" data-requirement-form>
               <div class="requirement-grid">
@@ -112,12 +112,9 @@
                   <input name="title" type="text" required maxlength="96" placeholder="例如：在项目列表显示任务阶段" />
                 </label>
                 <label>
-                  <span>范围</span>
-                  <select name="surface_area">
-                    <option value="workbench_frontend">Workbench 前端</option>
-                    <option value="workflow_runtime">流程引擎</option>
-                    <option value="reviewer_scheduler">调度与审查</option>
-                    <option value="governance_process">治理与门禁</option>
+                  <span>项目</span>
+                  <select name="project_id" data-requirement-project>
+                    <option value="ai-control-platform" data-surface-area="workbench_frontend">AI Control Platform · 中台本体</option>
                   </select>
                 </label>
                 <label class="full">
@@ -125,20 +122,37 @@
                   <textarea name="problem_statement" required maxlength="600" rows="3" placeholder="描述当前问题、期望结果和为什么需要它"></textarea>
                 </label>
                 <label class="full">
-                  <span>验收标准</span>
-                  <textarea name="acceptance_criteria" required maxlength="600" rows="3" placeholder="说明怎样证明需求已经完成"></textarea>
-                </label>
-                <label class="full">
                   <span>约束</span>
                   <textarea name="constraints" maxlength="400" rows="2" placeholder="可选：禁止动作、范围边界、上线要求"></textarea>
                 </label>
               </div>
+              <p class="requirement-hint" data-requirement-hint>验收方案由大模型根据需求生成，无需在此填写；提交后会进入“方案评估与审核”待你确认。</p>
               <div class="requirement-actions">
-                <button class="primary" type="submit" data-requirement-submit>提交到流程</button>
+                <button class="primary" type="submit" data-requirement-submit>提交</button>
                 <span data-requirement-status>等待需求输入</span>
               </div>
             </form>
-            <div class="requirement-queue" data-list="requirement_intake"></div>
+          </section>
+
+          <section class="panel wide plan-review-panel" id="plan-review" data-section="overview requirements" tabindex="-1">
+            <div class="section-title">
+              <h2>方案评估与审核</h2>
+              <span data-bind="plan_review_status">等待评估方案</span>
+            </div>
+            <p class="panel-copy" data-bind="plan_review_summary">提交需求后，平台会先让大模型生成评估方案和验收方案，再由你审核确认。</p>
+            <div class="plan-review-grid">
+              <div><span>当前需求</span><strong data-bind="plan_review_requirement">暂无需评估的需求</strong></div>
+              <div><span>方案阶段</span><strong data-bind="plan_review_phase">等待评估</strong></div>
+              <div><span>方案 ID</span><strong data-bind="plan_review_plan_id">尚未生成</strong></div>
+              <div><span>下一步</span><strong data-bind="plan_review_next_action">提交需求即可进入评估</strong></div>
+              <div class="full"><span>评估摘要</span><strong data-bind="plan_review_assessment">等待大模型生成评估摘要</strong></div>
+              <div class="full"><span>建议验收方案</span><strong data-bind="plan_review_acceptance_plan">等待大模型生成验收方案</strong></div>
+            </div>
+            <div class="requirement-actions">
+              <button type="button" data-plan-review-action="approve" disabled>同意进入开发</button>
+              <button type="button" data-plan-review-action="revise" disabled>退回修订</button>
+              <span data-plan-review-status>等待方案生成</span>
+            </div>
           </section>
 
           <section class="panel wide project-panel" id="projects" data-section="overview projects" tabindex="-1">
@@ -165,6 +179,11 @@
               <span>需求 -> 拆解 -> 子任务 -> Review -> 发布 -> Live 验证 -> 验收</span>
             </div>
             <div class="flow-rail" data-list="project_task_flow"></div>
+            <div class="flow-subtitle">
+              <h3>项目下的需求队列</h3>
+              <span>已提交的需求与方案审核状态</span>
+            </div>
+            <div class="requirement-queue" data-list="requirement_intake"></div>
           </section>
 
           <section class="panel" id="agents" data-section="overview agents" tabindex="-1">

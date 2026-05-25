@@ -88,6 +88,18 @@ function fakeClient(overrides = {}) {
   };
 }
 
+function currentSessionWithoutSchedulerLoop() {
+  const workflowState = currentSessionWorkflowState();
+  const schedulerEventTypes = new Set(["autonomous_scheduler_loop_run", "scheduler_loop_resume_attempt"]);
+  workflowState.manifest.events = (workflowState.manifest.events || [])
+    .filter((event) => !schedulerEventTypes.has(event.type));
+  workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+    .filter((artifact) => !schedulerEventTypes.has(artifact.metadata?.type));
+  workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+    .filter((artifact) => !schedulerEventTypes.has(artifact.metadata?.type));
+  return workflowState;
+}
+
 test("scheduler loop stops without dispatch when plan has no steps", async () => {
   const client = fakeClient({
     plan: {
@@ -567,7 +579,7 @@ test("scheduler loop run artifact records into workflow state", async () => {
 });
 
 test("scheduler loop registry and recovery policy resume from latest queued projection", async () => {
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   const result = await runSchedulerLoopDriver({ max_iterations: 1 }, { client: fakeClient() });
   const artifact = createSchedulerLoopRunArtifact({ max_iterations: 1 }, result, {
     created_at: "2026-05-22T01:05:00.000Z"
@@ -585,6 +597,43 @@ test("scheduler loop registry and recovery policy resume from latest queued proj
   assert.equal(recovery.status, "ready");
   assert.equal(recovery.action, "resume_from_latest_projection");
   assert.equal(recovery.resume_projection_id, "current-next");
+});
+
+test("scheduler loop recovery can resume from the latest executed projection", () => {
+  const workflowState = currentSessionWithoutSchedulerLoop();
+  const artifact = createSchedulerLoopRunArtifact({
+    max_iterations: 3,
+    execution_strategy: "projected_next_action",
+    snapshot_prefix: "requirement-intake-auto"
+  }, {
+    status: "pass",
+    phase: "iteration_limit_reached",
+    issues: [],
+    iterations: [
+      {
+        index: 3,
+        projection_id: "requirement-intake-auto-current-session-02",
+        status: "executed",
+        projected_action: "run_context_work_packages",
+        next_action_status: "ready",
+        next_projection_id: null,
+        issues: []
+      }
+    ]
+  }, {
+    created_at: "2026-05-22T01:07:00.000Z"
+  });
+  const recorded = recordAutonomousSchedulerLoopRunArtifact(workflowState, artifact, {
+    created_at: "2026-05-22T01:07:00.000Z"
+  });
+  const registry = buildSchedulerLoopRunRegistry(recorded.workflow_state);
+  const recovery = evaluateSchedulerLoopRecovery(registry);
+
+  assert.equal(registry.latest.resume_projection_id, null);
+  assert.equal(registry.latest.latest_projection_id, "requirement-intake-auto-current-session-02");
+  assert.equal(recovery.status, "ready");
+  assert.equal(recovery.action, "resume_from_latest_projection");
+  assert.equal(recovery.resume_projection_id, "requirement-intake-auto-current-session-02");
 });
 
 test("scheduler loop registry blocks invalid durable artifacts", async () => {

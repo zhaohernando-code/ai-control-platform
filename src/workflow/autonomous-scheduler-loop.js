@@ -564,12 +564,16 @@ export function evaluateSchedulerLoopRecovery(registry = {}) {
       issues: registry.issues || latest.issues || []
     };
   }
-  if (latest.status === "pass" && latest.resume_projection_id) {
+  const resumeProjectionId = latest.resume_projection_id ||
+    (latest.phase === "iteration_limit_reached" && latest.latest_projection_id
+      ? latest.latest_projection_id
+      : null);
+  if (latest.status === "pass" && resumeProjectionId) {
     return {
       status: "ready",
       action: "resume_from_latest_projection",
       resumable: true,
-      resume_projection_id: latest.resume_projection_id,
+      resume_projection_id: resumeProjectionId,
       issues: []
     };
   }

@@ -110,6 +110,16 @@ function closeoutArtifact(plan = {}, result = {}, options = {}) {
   };
 }
 
+function dedupeArtifactsById(artifacts = []) {
+  const byId = new Map();
+  for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+    const id = normalizeString(artifact?.id);
+    if (!id) continue;
+    byId.set(id, artifact);
+  }
+  return Array.from(byId.values());
+}
+
 function recordCloseoutEvidence(workflowState = {}, result = {}, options = {}) {
   if (!isObject(workflowState)) return workflowState;
   const plan = options.plan || {};
@@ -124,13 +134,11 @@ function recordCloseoutEvidence(workflowState = {}, result = {}, options = {}) {
     created_at: artifact.created_at,
     metadata: artifact.metadata
   });
-  const manifestArtifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
+  const manifestArtifacts = dedupeArtifactsById(manifest.artifacts);
   const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
   const artifactLedger = recordArtifact({
     ...baseLedger,
-    artifacts: Array.isArray(baseLedger.artifacts)
-      ? baseLedger.artifacts.filter((item) => item.id !== artifact.id)
-      : []
+    artifacts: dedupeArtifactsById(baseLedger.artifacts).filter((item) => item.id !== artifact.id)
   }, artifact);
 
   return {

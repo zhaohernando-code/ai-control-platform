@@ -24,6 +24,37 @@ function currentProjectionHistory() {
   return JSON.parse(readFileSync("docs/examples/projection-history.json", "utf8"));
 }
 
+function currentSessionWithoutRequirementPlanReview() {
+  const workflowState = currentSessionWorkflowState();
+  if (workflowState.project_status) {
+    delete workflowState.project_status.plan_reviews;
+    delete workflowState.project_status.requirement_intake;
+  }
+  if (workflowState.manifest) {
+    workflowState.manifest.events = (workflowState.manifest.events || [])
+      .filter((event) => event.type !== "requirement_intake_submitted");
+    workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+      .filter((artifact) => artifact.metadata?.type !== "requirement_intake_submitted");
+  }
+  if (workflowState.artifact_ledger) {
+    workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+      .filter((artifact) => artifact.metadata?.type !== "requirement_intake_submitted");
+  }
+  return workflowState;
+}
+
+function currentSessionWithoutSchedulerLoop() {
+  const workflowState = currentSessionWithoutRequirementPlanReview();
+  const schedulerEventTypes = new Set(["autonomous_scheduler_loop_run", "scheduler_loop_resume_attempt"]);
+  workflowState.manifest.events = (workflowState.manifest.events || [])
+    .filter((event) => !schedulerEventTypes.has(event.type));
+  workflowState.manifest.artifacts = (workflowState.manifest.artifacts || [])
+    .filter((artifact) => !schedulerEventTypes.has(artifact.metadata?.type));
+  workflowState.artifact_ledger.artifacts = (workflowState.artifact_ledger.artifacts || [])
+    .filter((artifact) => !schedulerEventTypes.has(artifact.metadata?.type));
+  return workflowState;
+}
+
 async function withServer(fn, options = {}) {
   const server = createWorkbenchServer(options);
   server.listen(0, "127.0.0.1");
@@ -249,7 +280,7 @@ test("workbench server CLI can start with isolated history and snapshot roots", 
   const eventsPath = join(dir, "operator-events.json");
   const inputPath = join(snapshotsRoot, "input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   mkdirSync(snapshotsRoot, { recursive: true });
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
@@ -347,7 +378,7 @@ test("workbench server overlays repository PROJECT_STATUS into workflow projecti
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "project-status-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.project_status = {
     project: "ai-control-platform",
     next_step: "",
@@ -398,7 +429,7 @@ test("workbench server executes project status continuation next action", async 
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "project-status-next-action-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
@@ -649,7 +680,7 @@ test("workbench server accepts frontend requirements into autonomous continuatio
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "requirement-intake-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
@@ -677,11 +708,12 @@ test("workbench server accepts frontend requirements into autonomous continuatio
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        title: "前端可提交中台需求",
+        title: "提需求模块更新",
+        project_id: "ai-control-platform",
         surface_area: "workbench_frontend",
-        problem_statement: "看板需要让操作员直接输入需求。",
-        acceptance_criteria: "提交后需求进入 PROJECT_STATUS，并让推荐动作变为 prepare_project_status_continuation。",
+        problem_statement: "看板提需求页面需要改成新建任务，并由后端生成方案等待用户审核，不只是前端展示。",
         constraints: "不能绕过自动开发、验收和门禁流程。",
+        plan_review_requested: true,
         created_at: "2026-05-25T09:00:00.000Z",
         requirement_id: "requirement-from-workbench"
       })
@@ -689,32 +721,93 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     const payload = response.json();
     const savedProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
     const savedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
-    const savedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
-    const latestHistoryItem = savedHistory.items.find((entry) => entry.id === savedHistory.latest);
-    const latestWorkflowState = JSON.parse(readFileSync(join(process.cwd(), latestHistoryItem.input_path), "utf8"));
 
     assert.equal(response.status, 201);
     assert.equal(payload.status, "created");
     assert.equal(payload.requirement.id, "requirement-from-workbench");
-    assert.equal(payload.submitted_projection.next_action_readout.action, "prepare_project_status_continuation");
-    assert.equal(payload.submitted_projection.next_action_readout.source_type, "requirement_intake_submitted");
-    assert.equal(payload.auto_advance.status, "failed");
-    assert.equal(payload.auto_advance.result.status, "fail");
-    assert.equal(payload.auto_advance.result.phase, "projected_action_blocked");
-    assert.ok(payload.auto_advance.result.issues.some((issue) => issue.code === "missing_provider_executor"));
-    assert.deepEqual(
-      payload.auto_advance.result.iterations.map((iteration) => iteration.projected_action),
-      ["prepare_project_status_continuation", "create_context_pack_from_seed", "run_context_work_packages"]
-    );
-    assert.equal(payload.projection.next_action_readout.action, "run_context_work_packages");
+    assert.equal(payload.plan_review.phase, "ready_for_review");
+    assert.equal(payload.submitted_projection.next_action_readout.action, "review_requirement_plan");
+    assert.equal(payload.submitted_projection.next_action_readout.source_type, "plan_review");
+    assert.equal(payload.submitted_projection.next_action_readout.requires_operator, true);
+    assert.equal(payload.auto_advance.status, "waiting_for_plan_review");
+    assert.equal(payload.auto_advance.result, null);
+    assert.equal(payload.projection.next_action_readout.action, "review_requirement_plan");
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-from-workbench");
+    assert.equal(savedProjectStatus.plan_reviews["requirement-from-workbench"].phase, "ready_for_review");
     assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
     assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("apps/workbench"));
+    assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("tools/workbench-server.mjs"));
+    assert.match(savedProjectStatus.next_work_packages[0].source.acceptance_criteria, /由平台根据需求生成验收方案/);
     assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
-    assert.equal(latestWorkflowState.manifest.work_packages[0].action, "continue_requirement_intake");
-    assert.notEqual(latestWorkflowState.manifest.work_packages[0].status, "completed");
-    assert.equal(latestWorkflowState.manifest.events.some((event) => event.type === "context_work_packages_run"), false);
-    assert.equal(savedWorkflowState.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
+    assert.equal(savedWorkflowState.project_status.next_work_packages[0].action, "continue_requirement_intake");
+    assert.equal(savedWorkflowState.manifest.events.some((event) => event.type === "context_work_packages_run"), false);
+    assert.equal(savedWorkflowState.manifest.events.at(-1).type, "requirement_intake_submitted");
+  }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
+test("workbench server records plan review decisions", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-plan-review-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "plan-review-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = currentSessionWithoutRequirementPlanReview();
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "plan-review",
+    items: [
+      {
+        id: "plan-review",
+        label: "Plan review",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const submitted = await request(`${baseUrl}/api/workbench/requirements?id=plan-review`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "提需求模块更新",
+        project_id: "ai-control-platform",
+        problem_statement: "提需求页面需要先生成方案并等待用户审核。",
+        plan_review_requested: true,
+        auto_advance: false,
+        created_at: "2026-05-25T09:00:00.000Z",
+        requirement_id: "requirement-plan-review-server"
+      })
+    });
+    const response = await request(`${baseUrl}/api/workbench/plan-reviews?id=plan-review`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requirement_id: "requirement-plan-review-server",
+        action: "approve",
+        auto_advance: false,
+        created_at: "2026-05-25T09:05:00.000Z"
+      })
+    });
+    const payload = response.json();
+    const savedProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+    const savedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(submitted.status, 201);
+    assert.equal(response.status, 201);
+    assert.equal(payload.status, "updated");
+    assert.equal(payload.plan_review.phase, "approved");
+    assert.equal(payload.projection.project_management.plan_review.phase, "approved");
+    assert.equal(savedProjectStatus.plan_reviews["requirement-plan-review-server"].phase, "approved");
+    assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-plan-review-server"].phase, "approved");
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 
@@ -723,7 +816,7 @@ test("workbench server completes requirement intake only with verified provider 
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "requirement-provider-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
@@ -756,6 +849,7 @@ test("workbench server completes requirement intake only with verified provider 
         problem_statement: "需求提交后的实现包必须由具备完成权限的执行器完成。",
         acceptance_criteria: "配置 verified provider executor 时，auto advance 可以完成 context work package。",
         constraints: "不能让 local bounded runner 写 completed。",
+        auto_advance_after_plan_review: true,
         created_at: "2026-05-25T09:30:00.000Z",
         requirement_id: "requirement-provider-authorized"
       })
@@ -820,7 +914,7 @@ test("workbench server can complete requirement intake through configured headle
   const inputPath = join(snapshotsRoot, "requirement-child-command-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
   const childScriptPath = join(snapshotsRoot, "child-worker.js");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
   writeFileSync(childScriptPath, `
 console.log(JSON.stringify({
@@ -866,6 +960,7 @@ console.log(JSON.stringify({
         problem_statement: "需求提交后的实现包必须由受控子进程完成。",
         acceptance_criteria: "配置 child command 时，auto advance 可以完成 context work package。",
         constraints: "不能让 local bounded runner 写 completed。",
+        auto_advance_after_plan_review: true,
         created_at: "2026-05-25T09:45:00.000Z",
         requirement_id: "requirement-child-command-authorized"
       })
@@ -903,7 +998,7 @@ test("workbench server truncates generated context pack snapshot ids for long pr
   const inputPath = join(snapshotsRoot, "long-context-id-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
   const longProjectionId = "headless-continuation-third-cycle-20260521-autonomous-platform-headless-01-headl";
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
@@ -1163,7 +1258,7 @@ test("workbench server persists workflow state snapshots and updates history", a
     assert.equal(projection.run_id, "run-20260521-platform-self-trial");
     assert.equal(projection.operator_events.status, "pass");
     assert.equal(snapshot.manifest.run_id, "run-20260521-platform-self-trial");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server records reviewer provider health into workflow state input", async () => {
@@ -1208,7 +1303,7 @@ test("workbench server records reviewer provider health into workflow state inpu
     assert.equal(created.projection.reviewer_provider_health.provider_health, "unhealthy");
     assert.equal(state.manifest.events.at(-1).type, "reviewer_provider_health");
     assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.provider_health, "unhealthy");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server rejects provider health recording without workflow state input", async () => {
@@ -1282,7 +1377,7 @@ test("workbench server records reviewer shard results into workflow state input"
     assert.equal(created.projection.reviewer_shard_review.failed_finding_count, 1);
     assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_aggregate");
     assert.ok(state.manifest.review_findings.some((finding) => finding.finding_id === "api-shard-finding"));
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server records agent lifecycle cleanup into workflow state input", async () => {
@@ -1353,7 +1448,7 @@ test("workbench server records agent lifecycle cleanup into workflow state input
     ]);
     assert.equal(state.manifest.events.at(-1).type, "PoolIterationClosed");
     assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.lifecycle_event, "PoolIterationClosed");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server rejects agent lifecycle recording without workflow state input", async () => {
@@ -1417,7 +1512,7 @@ test("workbench server records workbench browser event run artifacts", async () 
     assert.equal(created.projection.workbench_browser_events.partial_shard_ready, true);
     assert.equal(state.manifest.events.at(-1).type, "workbench_browser_events_run");
     assert.equal(state.artifact_ledger.artifacts.at(-1).metadata.version, "workbench-browser-events-run.v1");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server creates scheduler dispatch plans from projection history input", async () => {
@@ -1425,7 +1520,7 @@ test("workbench server creates scheduler dispatch plans from projection history 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-scheduler-plan-"));
   const inputPath = join(snapshotsRoot, "scheduler-plan-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1458,7 +1553,7 @@ test("workbench server creates scheduler dispatch plans from projection history 
     assert.equal(created.plan.writeback.projection_id, "scheduler-plan");
     assert.ok(created.plan.steps[0].args.includes(relative(process.cwd(), inputPath)));
     assert.ok(created.plan.steps[0].args.includes("--mock-status"));
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server runs guarded scheduler dispatch dry-run from projection history input", async () => {
@@ -1499,7 +1594,7 @@ test("workbench server runs guarded scheduler dispatch dry-run from projection h
     assert.equal(created.projection.scheduler_dispatch.step_count, 3);
     assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_policy");
     assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server runs approved mocked non-dry-run scheduler dispatch from profile", async () => {
@@ -1570,7 +1665,7 @@ test("workbench server runs approved mocked non-dry-run scheduler dispatch from 
     assert.equal(state.manifest.events.at(-3).type, "scheduler_dispatch_run");
     assert.equal(state.manifest.events.at(-2).type, "scheduler_dispatch_continuation");
     assert.equal(state.manifest.events.at(-1).type, "scheduler_next_cycle_enqueue");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server runs approved non-dry-run scheduler dispatch for lifecycle cleanup without continuation", async () => {
@@ -1646,7 +1741,7 @@ test("workbench server runs approved non-dry-run scheduler dispatch for lifecycl
     assert.ok(state.manifest.events.some((event) => event.type === "WorkerClosed"));
     assert.ok(state.manifest.events.some((event) => event.type === "PoolIterationClosed"));
     assert.equal(state.manifest.events.at(-1).type, "scheduler_dispatch_run");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server rejects scheduler next-cycle without workflow state input", async () => {
@@ -1694,7 +1789,7 @@ test("workbench server rejects scheduler next-cycle without dispatch run artifac
     assert.equal(response.status, 400);
     assert.equal(rejected.error, "scheduler dispatch run artifact not found");
     assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server executes allowlisted projected next actions", async () => {
@@ -1702,7 +1797,7 @@ test("workbench server executes allowlisted projected next actions", async () =>
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-"));
   const inputPath = join(snapshotsRoot, "next-action-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1768,7 +1863,7 @@ test("workbench server executes allowlisted projected next actions", async () =>
     assert.equal(looped.result.status, "created");
     assert.equal(looped.result.result.phase, "iteration_limit_reached");
     assert.equal(sourceAfterLoop.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server advances from completed context work packages to project status continuation", async () => {
@@ -1776,7 +1871,7 @@ test("workbench server advances from completed context work packages to project 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-context-work-packages-next-action-"));
   const inputPath = join(snapshotsRoot, "context-work-packages-next-action-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.project_status = {
     project: "ai-control-platform",
     next_step: "",
@@ -1853,7 +1948,7 @@ test("workbench server runs reviewer shard through projected next action", async
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-"));
   const inputPath = join(snapshotsRoot, "next-action-reviewer-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1887,7 +1982,7 @@ test("workbench server runs reviewer shard through projected next action", async
     assert.equal(created.result.phase, "shard_recorded");
     assert.equal(created.projection.reviewer_shard_review.completed_shards, 1);
     assert.equal(state.manifest.events.at(-1).type, "reviewer_shard_result");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server continues after reviewer aggregate through projected next action", async () => {
@@ -1895,7 +1990,7 @@ test("workbench server continues after reviewer aggregate through projected next
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-reviewer-aggregate-"));
   const inputPath = join(snapshotsRoot, "next-action-reviewer-aggregate-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -1999,7 +2094,7 @@ test("workbench server blocks reviewer shard execution when mock profile has no 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-reviewer-policy-block-"));
   const inputPath = join(snapshotsRoot, "reviewer-policy-block-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2029,7 +2124,7 @@ test("workbench server blocks reviewer shard execution when mock profile has no 
     assert.equal(rejected.error, "reviewer execution policy rejected");
     assert.ok(rejected.issues.some((entry) => entry.code === "missing_mock_reviewer_output"));
     assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server runs bounded real reviewer profile only with explicit budget", async () => {
@@ -2090,6 +2185,7 @@ test("workbench server runs bounded real reviewer profile only with explicit bud
   }, {
     historyPath,
     snapshotsRoot,
+    projectStatusPath: null,
     realReviewerExecutor: async ({ shard }) => {
       calls.push(shard.id);
       return {
@@ -2148,7 +2244,7 @@ test("workbench server blocks bounded real reviewer profile without healthy prov
     assert.equal(rejected.error, "reviewer execution policy rejected");
     assert.ok(rejected.issues.some((entry) => entry.code === "reviewer_provider_health_preflight_required"));
     assert.equal(state.manifest.events.length, workflowState.manifest.events.length);
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server records direct reviewer shard runs", async () => {
@@ -2187,7 +2283,7 @@ test("workbench server records direct reviewer shard runs", async () => {
     assert.equal(created.shard_id, "reviewer-scope-shard-001");
     assert.equal(created.pending_shards, 1);
     assert.equal(created.projection.reviewer_shard_review.completed_shards, 1);
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server resumes scheduler loop through projected next action", async () => {
@@ -2195,7 +2291,7 @@ test("workbench server resumes scheduler loop through projected next action", as
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-resume-"));
   const inputPath = join(snapshotsRoot, "next-action-resume-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2240,7 +2336,7 @@ test("workbench server resumes scheduler loop through projected next action", as
     assert.equal(created.result.recovery.status, "ready");
     assert.equal(sourceState.manifest.events.at(-1).type, "scheduler_loop_resume_attempt");
     assert.equal(sourceState.manifest.events.at(-1).status, "pass");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server fails closed for unsupported projected next action", async () => {
@@ -2248,7 +2344,7 @@ test("workbench server fails closed for unsupported projected next action", asyn
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-next-action-unsupported-"));
   const inputPath = join(snapshotsRoot, "next-action-unsupported-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutRequirementPlanReview();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2288,20 +2384,20 @@ test("workbench server fails closed for unsupported projected next action", asyn
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        expected_action: "inspect_resume_target",
+        expected_action: "wait_for_new_work",
         created_at: "2026-05-22T02:54:00.000Z"
       })
     });
     const rejected = response.json();
 
     assert.equal(response.status, 409);
-    assert.equal(rejected.next_action_readout.action, "inspect_resume_target");
-    assert.equal(rejected.projection.next_action_terminal.status, "ready");
-    assert.equal(rejected.projection.next_action_terminal.terminal_action, null);
-    assert.equal(rejected.projection.next_action_terminal.terminal_reason, null);
+    assert.equal(rejected.next_action_readout.action, "wait_for_new_work");
+    assert.equal(rejected.projection.next_action_terminal.status, "idle");
+    assert.equal(rejected.projection.next_action_terminal.terminal_action, "wait_for_new_work");
+    assert.equal(rejected.projection.next_action_terminal.terminal_reason, "scheduler loop resume completed; wait for new dispatchable work");
     assert.equal(assertWorkbenchProjectionSchema(rejected.projection).status, "pass");
     assert.equal(rejected.issues[0].code, "unsupported_projected_next_action");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server fails closed when projected next action drifts", async () => {
@@ -2368,7 +2464,7 @@ test("workbench server runs bounded autonomous scheduler loop from projection hi
     assert.equal(sourceItem.scheduler_loop.recovery_status, "ready");
     assert.equal(sourceItem.scheduler_loop.resume_projection_id, "server-loop-autonomous-loop-01");
     assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server can run autonomous scheduler loop through projected next actions", async () => {
@@ -2376,7 +2472,7 @@ test("workbench server can run autonomous scheduler loop through projected next 
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-loop-"));
   const inputPath = join(snapshotsRoot, "projected-loop-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2413,7 +2509,7 @@ test("workbench server can run autonomous scheduler loop through projected next 
     assert.equal(state.manifest.events.at(-2).type, "reviewer_shard_aggregate");
     assert.equal(state.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
     assert.equal(created.projection.reviewer_shard_review.pending_shards, 0);
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server can run projected real reviewer loop with injected executor", async () => {
@@ -2421,7 +2517,7 @@ test("workbench server can run projected real reviewer loop with injected execut
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-real-loop-"));
   const inputPath = join(snapshotsRoot, "projected-real-loop-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2465,6 +2561,7 @@ test("workbench server can run projected real reviewer loop with injected execut
   }, {
     historyPath,
     snapshotsRoot,
+    projectStatusPath: null,
     realReviewerExecutor: async ({ shard }) => {
       calls.push(shard.id);
       return {
@@ -2487,7 +2584,7 @@ test("workbench server continues projected real reviewer loop from durable parti
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-projected-real-resume-"));
   const inputPath = join(snapshotsRoot, "projected-real-resume-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2571,6 +2668,7 @@ test("workbench server continues projected real reviewer loop from durable parti
   }, {
     historyPath,
     snapshotsRoot,
+    projectStatusPath: null,
     realReviewerExecutor
   });
 });
@@ -2639,7 +2737,7 @@ test("workbench server rejects autonomous scheduler loop resume without ready re
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-autonomous-loop-resume-blocked-"));
   const inputPath = join(snapshotsRoot, "autonomous-loop-resume-blocked-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const workflowState = currentSessionWorkflowState();
+  const workflowState = currentSessionWithoutSchedulerLoop();
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
@@ -2663,12 +2761,13 @@ test("workbench server rejects autonomous scheduler loop resume without ready re
     const state = JSON.parse(readFileSync(inputPath, "utf8"));
 
     assert.equal(response.status, 409);
-    assert.equal(rejected.recovery.status, "not_configured");
+    assert.notEqual(rejected.recovery.status, "ready");
+    assert.equal(rejected.recovery.resumable, false);
     assert.equal(rejected.resume_attempt.metadata.status, "blocked");
     assert.equal(rejected.projection.scheduler_loop.latest_resume_status, "blocked");
     assert.equal(state.manifest.events.at(-1).type, "scheduler_loop_resume_attempt");
     assert.equal(state.manifest.events.at(-1).status, "blocked");
-  }, { historyPath, snapshotsRoot });
+  }, { historyPath, snapshotsRoot, projectStatusPath: null });
 });
 
 test("workbench server rejects autonomous scheduler loop without workflow state input", async () => {
