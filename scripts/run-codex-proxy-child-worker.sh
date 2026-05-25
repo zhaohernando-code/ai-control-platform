@@ -10,6 +10,7 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_PROXY="${AI_CONTROL_WORKBENCH_CODEX_PROXY:-/Users/hernando_zhao/codex-proxy.sh}"
+CODEX_MODEL="${AI_CONTROL_WORKBENCH_CODEX_MODEL:-gpt-5}"
 export PATH="$HOME/.nvm/versions/node/v22.16.0/bin:/Applications/Codex.app/Contents/Resources:$PATH"
 
 if [[ ! -x "$CODEX_PROXY" ]]; then
@@ -18,6 +19,7 @@ if [[ ! -x "$CODEX_PROXY" ]]; then
 fi
 
 exec "$CODEX_PROXY" exec \
+  -m "$CODEX_MODEL" \
   --dangerously-bypass-approvals-and-sandbox \
   -C "$REPO_ROOT" \
   - < "$PROMPT_FILE"
