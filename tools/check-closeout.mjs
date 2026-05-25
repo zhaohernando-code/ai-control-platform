@@ -12,6 +12,7 @@ import {
 
 const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
 const AUDIT_SKILL_TRIAL_RUN_ENV = "AUDIT_SKILL_TRIAL_RUN";
+const DEFAULT_AUDIT_SKILL_TRIAL_RUN_PATH = "docs/examples/audit-skill-trial-current.json";
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -42,9 +43,8 @@ export function runCloseoutChecks() {
   run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
   run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
   run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
-  if (process.env[AUDIT_SKILL_TRIAL_RUN_ENV]) {
-    run("audit skill trial", ["tools/check-audit-skill-trial-run.mjs", process.env[AUDIT_SKILL_TRIAL_RUN_ENV]]);
-  }
+  run("audit skill trial", ["tools/check-audit-skill-trial-run.mjs", process.env[AUDIT_SKILL_TRIAL_RUN_ENV] || DEFAULT_AUDIT_SKILL_TRIAL_RUN_PATH]);
+  run("mainline release readiness", ["tools/check-mainline-release-readiness.mjs", "--project-status", "PROJECT_STATUS.json"]);
   const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
   const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
   run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);

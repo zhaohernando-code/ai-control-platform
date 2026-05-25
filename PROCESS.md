@@ -30,6 +30,7 @@
 - **不合格先改流程/gate**：发现 P0/P1、假成功、状态未持久化、宿主越界、owned files 越界或 continuation 断裂时，先新增或更新 invariant、gate、schema、测试、fixture 或 projection，再重跑实现。
 - **完成定义包含继续能力和全局不跑偏**：单个子任务测试通过不代表平台完成。只要存在 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next action，就必须生成 continuation seed 或明确阻塞原因，并复核当前工作仍服务 ai-control-platform 的全局目标。
 - **Process hardening 是合入前条件**：阻塞级 reviewer finding 必须有 invariant、enforcement target、regression test、verification 和 completed 状态；缺任一项不能合入实现。
+- **治理 skill 编排是必经门禁**：closeout 必须验证当前治理编排 artifact；该 artifact 要覆盖适用审计维度、真实代码/运行证据、缺陷修复调度、证据缺口和用户决策包。不得把治理 orchestrator 只当人工提示或可选试跑。
 - **固定开发模式要 runtime gate 支撑**：AGENTS/PROCESS/合同用于恢复上下文；真正调度前必须由 runtime gate 校验宿主、Context Pack root owned files、subtasks owned files、selected package owned files 和 managed project 路径。
 
 ## 多模型与 reviewer
@@ -47,5 +48,6 @@
 ## Git 与执行角色
 
 - **主线必须保持干净**：`main` 只承载已验收结果；发现 primary worktree 在 `main` 且有未提交修改时，先切到隔离分支或 worktree，再继续派发/验收。
+- **收口必须证明远端主线一致**：最终 closeout 不能只证明本地测试通过；必须确认本地 `main` 干净、HEAD 与 `origin/main` 一致，并且用户可见入口或发布入口有通过证据。
 - **child worker 必须使用隔离 worktree**：分支名不是宿主边界。`child_worker` 只能在 primary worktree 之外的 worker worktree 中累积 diff；`main_orchestrator`/integration closeout 才能在受控集成路径验收。
 - **CLI orchestrator 与 CLI worker 分层**：同一 Codex CLI 能力可以承担 main orchestrator 或 child worker，但运行模式必须显式声明；worker 不能反向接管拆任务、验收和流程修正职责。
