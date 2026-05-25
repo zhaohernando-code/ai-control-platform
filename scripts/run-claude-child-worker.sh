@@ -10,6 +10,7 @@ fi
 
 CLAUDE_PROXY="${AI_CONTROL_WORKBENCH_CLAUDE_PROXY:-$HOME/claude-proxy.sh}"
 CLAUDE_MODEL="${AI_CONTROL_WORKBENCH_CLAUDE_MODEL:-claude-opus-4-7}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/v22.16.0/bin:/Applications/Codex.app/Contents/Resources:$PATH"
 
 if [[ ! -x "$CLAUDE_PROXY" ]]; then
@@ -21,4 +22,9 @@ for env_name in "${!AI_CONTROL_WORKBENCH_CHILD_WORKER_@}"; do
   unset "$env_name"
 done
 
-exec "$CLAUDE_PROXY" -m "$CLAUDE_MODEL" -p "$(cat "$PROMPT_FILE")"
+exec "$CLAUDE_PROXY" \
+  -m "$CLAUDE_MODEL" \
+  --permission-mode bypassPermissions \
+  --no-session-persistence \
+  --add-dir "$REPO_ROOT" \
+  -p "$(cat "$PROMPT_FILE")"
