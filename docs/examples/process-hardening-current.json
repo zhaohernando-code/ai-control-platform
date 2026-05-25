@@ -934,6 +934,13 @@
       "message": "Authenticated public workbench live-route evidence must not remain only in ignored tmp files or manual WORKBENCH_LIVE_ROUTE_EVIDENCE env; headless closeout needs a committed durable evidence artifact referenced by PROJECT_STATUS."
     },
     {
+      "id": "public-live-route-stale-durable-evidence",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Committed public workbench live-route evidence must not let closeout pass after PROJECT_STATUS records a newer unresolved auth or canonical route blocker."
+    },
+    {
       "id": "self-governance-invalid-finding-fallback",
       "status": "fail",
       "category": "quality_gate_gap",
@@ -2287,6 +2294,14 @@
       "enforcement_target": "tools/check-workbench-live-route.mjs; test/live-route-acceptance.test.js; docs/examples/public-live-route-evidence-20260524.json; PROJECT_STATUS.json; docs/examples/process-hardening-current.json",
       "regression_test": "live route CLI accepts PROJECT_STATUS durable evidence path when explicit evidence is absent; live route CLI still fails closed when status has no durable evidence path",
       "verification": "node --test test/live-route-acceptance.test.js; npm run check:workbench:live-route; npm run check:closeout; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "public-live-route-stale-durable-evidence",
+      "invariant": "When PROJECT_STATUS has unresolved public/canonical workbench live-route blockers, durable public-route evidence must be generated after the current blocker/status update and within the live-route freshness window; stale committed evidence must fail closed instead of satisfying closeout.",
+      "enforcement_target": "src/workflow/live-route-acceptance.js; tools/check-workbench-live-route.mjs; tools/check-closeout.mjs; test/live-route-acceptance.test.js; docs/examples/process-hardening-current.json; PROJECT_STATUS.json",
+      "regression_test": "live route acceptance rejects stale durable evidence while blocker is unresolved; live route freshness requires evidence newer than current blocker state; live route CLI rejects stale PROJECT_STATUS durable evidence path under unresolved blocker",
+      "verification": "node --test test/live-route-acceptance.test.js test/live-route-probe.test.js; npm run check:workbench:live-route; npm run check:process-hardening; git diff --check",
       "status": "completed"
     },
     {
