@@ -661,6 +661,13 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
       };
     }
     normalized = normalizeCommandRunnerResult(result, workPackage, promptFile, outputPath);
+    const template = commandTemplateFrom(options);
+    if (template?.model && !normalizeString(normalized?.selected_model)) {
+      normalized = {
+        ...normalized,
+        selected_model: template.model
+      };
+    }
     attempts.push({
       attempt: attemptIndex + 1,
       status: normalized.status || "fail",

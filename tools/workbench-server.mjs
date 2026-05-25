@@ -533,6 +533,24 @@ function envFlagEnabled(name) {
   return value === "1" || value === "true" || value === "yes";
 }
 
+function defaultChildProviderForCommand(command) {
+  const normalizedCommand = normalizeString(command);
+  if (/run-claude-child-worker\.sh$|claude/i.test(normalizedCommand)) {
+    return {
+      command_runner_kind: "external_provider_child_process",
+      executor_kind: "claude_proxy_cli_worker",
+      provider: "claude_proxy",
+      model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "claude-opus-4-7"
+    };
+  }
+  return {
+    command_runner_kind: "codex_proxy_child_process",
+    executor_kind: "codex_proxy_cli_worker",
+    provider: "codex_proxy",
+    model: "codex-cli"
+  };
+}
+
 function configuredHeadlessChildProviderExecutor(options = {}) {
   if (typeof options.contextWorkPackageProviderExecutor === "function" ||
     typeof options.context_work_package_provider_executor === "function") {
@@ -549,6 +567,7 @@ function configuredHeadlessChildProviderExecutor(options = {}) {
     : Array.isArray(options.child_worker_args)
       ? options.child_worker_args
       : jsonArrayOption(process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_ARGS_JSON);
+  const childProvider = defaultChildProviderForCommand(command);
   return createHeadlessProviderExecutor({
     child_worker_command: command,
     child_worker_args: args,
@@ -569,10 +588,11 @@ function configuredHeadlessChildProviderExecutor(options = {}) {
       options.child_worker_cwd ||
       process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_CWD ||
       root,
-    command_runner_kind: "codex_proxy_child_process",
+    command_runner_kind: childProvider.command_runner_kind,
+    executor_kind: childProvider.executor_kind,
     default_child_provider: {
-      provider: "codex_proxy",
-      model: "codex-cli"
+      provider: childProvider.provider,
+      model: childProvider.model
     }
   });
 }
