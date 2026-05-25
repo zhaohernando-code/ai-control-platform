@@ -1462,5 +1462,8 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   );
   assert.match(closeout, /check-workbench-live-route\.mjs/);
   assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
-  assert.ok(projectStatus.blockers.some((blocker) => blocker.id === "public-project-route-auth-gate"));
+  assert.equal(
+    projectStatus.workbench_live_route_evidence?.path,
+    "docs/examples/public-live-route-evidence-20260525-pass.json"
+  );
 });
