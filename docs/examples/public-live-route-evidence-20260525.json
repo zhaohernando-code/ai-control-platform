@@ -1,0 +1,139 @@
+{
+  "version": "workbench-live-route-evidence.v1",
+  "status": "fail",
+  "created_at": "2026-05-25T02:37:41.541Z",
+  "project": "ai-control-platform",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/?next=%2Fprojects%2Fai-control-platform%2F",
+  "http_status": 200,
+  "public_route_verified": false,
+  "mounted_workbench_route_verified": false,
+  "workbench_rendered": false,
+  "mounted_api_verified": false,
+  "auth_redirect_detected": true,
+  "local_loopback": false,
+  "verification_mode": "public_https",
+  "request_header_names": [],
+  "route": {
+    "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "final_url": "https://hernando-zhao.cn/?next=%2Fprojects%2Fai-control-platform%2F",
+    "http_status": 200,
+    "redirect_count": 1,
+    "auth_redirect_detected": true,
+    "public_route_verified": false
+  },
+  "workbench": {
+    "shell_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+    "shell_final_url": "https://hernando-zhao.cn/?next=%2Fprojects%2Fai-control-platform%2Fapps%2Fworkbench%2Fdesktop.html",
+    "shell_http_status": 200,
+    "mounted_route_verified": false,
+    "rendered": false,
+    "api_url": "https://hernando-zhao.cn/projects/ai-control-platform/api/workbench/projection",
+    "api_http_status": 401,
+    "mounted_api_verified": false
+  },
+  "redirects": [
+    {
+      "from_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "to_url": "https://hernando-zhao.cn/?next=%2Fprojects%2Fai-control-platform%2F",
+      "http_status": 302,
+      "auth_redirect_detected": true
+    }
+  ],
+  "issues": [
+    {
+      "code": "route_auth_redirect_detected",
+      "message": "probe detected an authentication redirect or session reset"
+    },
+    {
+      "code": "public_route_not_verified",
+      "message": "route did not verify as an authenticated mounted workbench route"
+    },
+    {
+      "code": "mounted_workbench_route_not_verified",
+      "message": "mounted desktop workbench shell did not render successfully"
+    },
+    {
+      "code": "workbench_render_not_verified",
+      "message": "HTML did not contain expected workbench shell markers"
+    },
+    {
+      "code": "mounted_api_not_verified",
+      "message": "mounted workbench API did not return a 2xx JSON response"
+    },
+    {
+      "code": "live_route_evidence_not_passed",
+      "path": "status"
+    },
+    {
+      "code": "live_route_final_url_not_project_mount",
+      "path": "final_url"
+    },
+    {
+      "code": "live_route_auth_redirect_detected",
+      "path": "final_url"
+    },
+    {
+      "code": "public_live_route_not_verified",
+      "path": "public_route_verified",
+      "message": "public_route_verified must be true in verified workbench live-route evidence"
+    },
+    {
+      "code": "mounted_workbench_route_not_verified",
+      "path": "mounted_workbench_route_verified",
+      "message": "mounted_workbench_route_verified must be true in verified workbench live-route evidence"
+    },
+    {
+      "code": "workbench_render_not_verified",
+      "path": "workbench_rendered",
+      "message": "workbench_rendered must be true in verified workbench live-route evidence"
+    },
+    {
+      "code": "mounted_workbench_api_not_verified",
+      "path": "mounted_api_verified",
+      "message": "mounted_api_verified must be true in verified workbench live-route evidence"
+    }
+  ],
+  "validation": {
+    "status": "fail",
+    "version": "workbench-live-route-evidence.v1",
+    "generated_at": "2026-05-25T02:37:41.541Z",
+    "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "final_url": "https://hernando-zhao.cn/",
+    "http_status": 200,
+    "issues": [
+      {
+        "code": "live_route_evidence_not_passed",
+        "path": "status"
+      },
+      {
+        "code": "live_route_final_url_not_project_mount",
+        "path": "final_url"
+      },
+      {
+        "code": "live_route_auth_redirect_detected",
+        "path": "final_url"
+      },
+      {
+        "code": "public_live_route_not_verified",
+        "path": "public_route_verified",
+        "message": "public_route_verified must be true in verified workbench live-route evidence"
+      },
+      {
+        "code": "mounted_workbench_route_not_verified",
+        "path": "mounted_workbench_route_verified",
+        "message": "mounted_workbench_route_verified must be true in verified workbench live-route evidence"
+      },
+      {
+        "code": "workbench_render_not_verified",
+        "path": "workbench_rendered",
+        "message": "workbench_rendered must be true in verified workbench live-route evidence"
+      },
+      {
+        "code": "mounted_workbench_api_not_verified",
+        "path": "mounted_api_verified",
+        "message": "mounted_api_verified must be true in verified workbench live-route evidence"
+      }
+    ]
+  }
+}

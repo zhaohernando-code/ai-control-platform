@@ -24,6 +24,7 @@
 - 验收 desktop、desktop narrow、mobile 三个 viewport。
 - 检查导航可交互、首屏层级、文案可读性、危险操作分级、布局重叠、横向 overflow、移动端任务优先性。
 - Artifact 必须包含 `content_completion_results`：每个 viewport 从真实浏览器 DOM 可见文本提取 section/body 文本、占位符计数、遥测/诊断 token 计数、操作员行动标签和下一步上下文；截图只能作为辅助证据，不能替代 DOM 文本证据。
+- Artifact 必须包含 `control_results.command_architecture` 和 `layout_results`：每个 viewport 从真实浏览器 DOM 记录命令控件数量、所在区域、主要/高级分组、重复动作、高风险动作数量、可见 section 数和命令密度；缺失这些证据、过载却没有 finding、或控件架构 false pass 都要 fail closed。
 - 验收发现 P0/P1 时，artifact 必须 `status=fail`，并写出结构化 finding。
 
 ## 4. 硬门禁
@@ -47,3 +48,4 @@
 - 默认桌面/窄桌面即使包含较多“下一步/执行/审查/完成”等行动词，也不能用行动词数量抵消高密度诊断字段墙；当 DOM 可见内容出现约 50 个 data-bind/诊断字段、正文约 40 个未配置/未知/`--` 占位符，或单个 section 同时有 10+ data-bind 和 6+ 未配置/未知/`--` 占位 token 时，`content_completion_results` 必须 fail closed。
 - 合法操作员 dashboard 可以显示多个数字状态计数，但数字必须带有目标、原因、影响和下一步上下文；不能仅因少量带标签计数失败。
 - `frontend-acceptance-run.v1` 中 `content_completion_results` 的 fail/pass、blocking finding codes 和顶层 P0/P1 findings 必须一致；缺失 viewport DOM 文本证据、false pass 或计数不一致都要 fail closed。
+- 命令控件不能靠“能点击”通过验收；默认视图最多保留少量主操作，高风险调度、mock、real execution、loop/resume 应进入受控分组。可见命令超过 release 阈值、单一区域动作过密、主操作区高风险动作过多、重复同一动作或缺失 `browser_dom_controls`/`browser_dom_layout` 证据时，frontend acceptance 必须给出 P0/P1 finding 并阻断 closeout。

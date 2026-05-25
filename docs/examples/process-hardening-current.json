@@ -864,6 +864,13 @@
       "message": "Frontend acceptance must count visible role=button and data-action command controls, not only native button elements, so scheduler/provider/next-action chip pileups cannot pass closeout."
     },
     {
+      "id": "frontend-command-architecture-false-pass",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend acceptance must record command-control information architecture and layout density so overloaded primary actions, repeated commands, high-risk action clusters, and dense button layouts cannot pass release closeout."
+    },
+    {
       "id": "frontend-browser-console-errors-unblocked",
       "status": "fail",
       "category": "quality_gate_gap",
@@ -2206,6 +2213,14 @@
       "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
       "regression_test": "frontend acceptance counts and blocks semantic command controls",
       "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "frontend-command-architecture-false-pass",
+      "invariant": "Frontend acceptance artifacts must include browser_dom_controls command architecture and browser_dom_layout density evidence per viewport, and must fail closed when visible command controls overload the workspace, repeat the same action, place too many high-risk actions in primary areas, or omit matching P0/P1 findings.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/frontend-acceptance.test.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance blocks overloaded command information architecture; frontend acceptance validation rejects command architecture false pass artifacts",
+      "verification": "node tools/run-with-node18.mjs --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail --output tmp/frontend-acceptance-ux-followup.json; npm run check:process-hardening; git diff --check",
       "status": "completed"
     },
     {

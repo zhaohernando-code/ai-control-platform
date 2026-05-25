@@ -458,6 +458,10 @@ const DESKTOP_DIAGNOSTIC_PLACEHOLDER_FIELD_THRESHOLD = 18;
 const DESKTOP_BODY_PLACEHOLDER_WALL_THRESHOLD = 36;
 const DESKTOP_SECTION_DATA_BIND_WALL_THRESHOLD = 10;
 const DESKTOP_SECTION_PLACEHOLDER_WALL_THRESHOLD = 6;
+const MAX_RELEASE_COMMAND_CONTROLS = 8;
+const MAX_PRIMARY_COMMAND_CONTROLS = 3;
+const MAX_RISKY_PRIMARY_COMMAND_CONTROLS = 1;
+const MAX_COMMANDS_PER_SECTION = 6;
 
 function browserErrorsOf(result = {}) {
   return Array.isArray(result.browserErrors)
@@ -656,6 +660,111 @@ function contentCompletionResultForViewport(result = {}) {
   };
 }
 
+function commandControlScopeOf(button = {}) {
+  return normalizeText(button.scope || button.control_scope || button.controlScope || "ungrouped") || "ungrouped";
+}
+
+function commandSectionOf(button = {}) {
+  return normalizeText(button.section_key || button.section || button.sectionKey || "unknown") || "unknown";
+}
+
+function isPrimaryCommand(button = {}) {
+  const scope = commandControlScopeOf(button);
+  return scope === "primary_actions" || scope === "top_actions";
+}
+
+function isAdvancedCommand(button = {}) {
+  const scope = commandControlScopeOf(button);
+  return scope === "advanced_drawer" || scope === "diagnostic_drawer";
+}
+
+function isRiskyCommand(button = {}) {
+  return RISKY_COMMAND_PATTERN.test([
+    button.text,
+    button.action,
+    button.action_attribute,
+    button.command
+  ].filter(Boolean).join(" "));
+}
+
+function commandArchitectureResultForViewport(result = {}) {
+  const buttons = Array.isArray(result.buttons) ? result.buttons : [];
+  const riskyButtons = buttons.filter(isRiskyCommand);
+  const primaryButtons = buttons.filter(isPrimaryCommand);
+  const advancedButtons = buttons.filter(isAdvancedCommand);
+  const ungroupedRiskyButtons = riskyButtons.filter((button) => {
+    const scope = commandControlScopeOf(button);
+    return scope === "ungrouped" || scope === "command_actions";
+  });
+  const primaryRiskyButtons = primaryButtons.filter(isRiskyCommand);
+  const actionCounts = new Map();
+  const sectionCounts = new Map();
+
+  for (const button of buttons) {
+    const actionKey = normalizeText(button.action || button.text);
+    if (actionKey) actionCounts.set(actionKey, (actionCounts.get(actionKey) || 0) + 1);
+    const sectionKey = commandSectionOf(button);
+    sectionCounts.set(sectionKey, (sectionCounts.get(sectionKey) || 0) + 1);
+  }
+
+  const repeatedActions = [...actionCounts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([action, count]) => ({ action, count }));
+  const overloadedSections = [...sectionCounts.entries()]
+    .filter(([, count]) => count > MAX_COMMANDS_PER_SECTION)
+    .map(([section_key, count]) => ({ section_key, count }));
+  const blockingFindingCodes = [
+    buttons.length > MAX_RELEASE_COMMAND_CONTROLS ? "frontend_command_control_overload" : null,
+    primaryButtons.length > MAX_PRIMARY_COMMAND_CONTROLS ? "frontend_primary_action_overload" : null,
+    primaryRiskyButtons.length > MAX_RISKY_PRIMARY_COMMAND_CONTROLS ? "frontend_primary_risky_action_overload" : null,
+    ungroupedRiskyButtons.length > 0 ? "frontend_command_information_architecture" : null,
+    repeatedActions.length > 0 ? "frontend_repeated_command_actions" : null,
+    overloadedSections.length > 0 ? "frontend_action_cluster_overload" : null
+  ].filter(Boolean);
+
+  return {
+    viewport: result.viewport,
+    source_type: "browser_dom_controls",
+    status: blockingFindingCodes.length > 0 ? "fail" : "pass",
+    control_count: buttons.length,
+    primary_control_count: primaryButtons.length,
+    advanced_control_count: advancedButtons.length,
+    risky_control_count: riskyButtons.length,
+    risky_primary_control_count: primaryRiskyButtons.length,
+    ungrouped_risky_control_count: ungroupedRiskyButtons.length,
+    repeated_actions: repeatedActions,
+    overloaded_sections: overloadedSections,
+    blocking_finding_codes: blockingFindingCodes,
+    controls: buttons.map((button) => ({
+      text: button.text,
+      action: button.action || null,
+      action_attribute: button.action_attribute || null,
+      tag: button.tag || null,
+      role: button.role || null,
+      command: button.command || null,
+      scope: commandControlScopeOf(button),
+      section_key: commandSectionOf(button)
+    }))
+  };
+}
+
+function layoutDensityResultForViewport(result = {}) {
+  const dimensions = result.dimensions || {};
+  const sectionCount = Math.max(contentSectionsOf(result).length, 1);
+  const buttonCount = Array.isArray(result.buttons) ? result.buttons.length : 0;
+  const commandDensity = Number((buttonCount / sectionCount).toFixed(2));
+  return {
+    viewport: result.viewport,
+    dimensions,
+    overlap_count: Array.isArray(result.overlapPairs) ? result.overlapPairs.length : 0,
+    visible_section_count: sectionCount,
+    visible_command_count: buttonCount,
+    command_density: commandDensity,
+    dense_command_layout: buttonCount > MAX_RELEASE_COMMAND_CONTROLS || commandDensity > MAX_COMMANDS_PER_SECTION,
+    source_type: "browser_dom_layout"
+  };
+}
+
 function findingsForContentCompletion(contentCompletionResults = []) {
   const findings = [];
   for (const result of contentCompletionResults) {
@@ -741,12 +850,28 @@ async function auditViewport(page, viewport, browserErrors = [], options = {}) {
       const action = actionOf(node);
       const tag = node.tagName.toLowerCase();
       const role = node.getAttribute("role") || null;
+      const section = node.closest("[data-section]");
+      const scope = node.closest(".top-actions")
+        ? "top_actions"
+        : node.closest(".primary-actions")
+          ? "primary_actions"
+          : node.closest("details.control-drawer")
+            ? "advanced_drawer"
+            : node.closest("details.diagnostic-drawer")
+              ? "diagnostic_drawer"
+              : node.closest(".provider-actions")
+                ? "provider_actions"
+                : node.closest(".command-actions")
+                  ? "command_actions"
+                  : "ungrouped";
       return {
         text: textOf(node),
         action: action.value,
         action_attribute: action.attribute,
         tag,
         role,
+        scope,
+        section_key: section?.dataset.section || section?.id || null,
         command: tag === "button"
           ? "native_button"
           : role === "button"
@@ -1007,6 +1132,7 @@ function findingsForControls(viewportResults) {
 
   for (const result of viewportResults) {
     const buttons = result.buttons || [];
+    const architecture = commandArchitectureResultForViewport(result);
     const riskyButtons = buttons.filter((button) => RISKY_COMMAND_PATTERN.test([
       button.text,
       button.action,
@@ -1026,10 +1152,51 @@ function findingsForControls(viewportResults) {
       }));
     }
     if (buttons.length > 8) {
+      findings.push(finding("frontend_command_control_overload", "p1", `${result.viewport} exposes more visible command controls than the release workbench can support`, {
+        viewport: result.viewport,
+        control_count: buttons.length,
+        max_release_command_controls: MAX_RELEASE_COMMAND_CONTROLS
+      }));
       findings.push(finding("frontend_button_pileup", "p1", `${result.viewport} exposes too many unrelated command controls`, {
         viewport: result.viewport,
         button_count: buttons.length,
         buttons: buttons.map((button) => button.text)
+      }));
+    }
+    if (architecture.ungrouped_risky_control_count > 0) {
+      findings.push(finding("frontend_command_information_architecture", "p1", `${result.viewport} exposes high-risk command controls outside a primary or advanced control group`, {
+        viewport: result.viewport,
+        controls: architecture.controls.filter((control) => {
+          return architecture.blocking_finding_codes.includes("frontend_command_information_architecture") &&
+            isRiskyCommand(control) &&
+            ["ungrouped", "command_actions"].includes(control.scope);
+        })
+      }));
+    }
+    if (architecture.primary_control_count > MAX_PRIMARY_COMMAND_CONTROLS) {
+      findings.push(finding("frontend_primary_action_overload", "p1", `${result.viewport} has too many primary command actions competing for operator attention`, {
+        viewport: result.viewport,
+        primary_control_count: architecture.primary_control_count,
+        max_primary_command_controls: MAX_PRIMARY_COMMAND_CONTROLS
+      }));
+    }
+    if (architecture.risky_primary_control_count > MAX_RISKY_PRIMARY_COMMAND_CONTROLS) {
+      findings.push(finding("frontend_primary_risky_action_overload", "p1", `${result.viewport} puts too many high-risk commands in the primary action area`, {
+        viewport: result.viewport,
+        risky_primary_control_count: architecture.risky_primary_control_count,
+        max_risky_primary_command_controls: MAX_RISKY_PRIMARY_COMMAND_CONTROLS
+      }));
+    }
+    if (architecture.repeated_actions.length > 0) {
+      findings.push(finding("frontend_repeated_command_actions", "p1", `${result.viewport} repeats the same command action in the visible workspace`, {
+        viewport: result.viewport,
+        repeated_actions: architecture.repeated_actions
+      }));
+    }
+    if (architecture.overloaded_sections.length > 0) {
+      findings.push(finding("frontend_action_cluster_overload", "p1", `${result.viewport} has a section with too many visible command controls`, {
+        viewport: result.viewport,
+        overloaded_sections: architecture.overloaded_sections
       }));
     }
   }
@@ -1099,11 +1266,8 @@ function findingsForBrowserErrors(viewportResults) {
 
 export function buildArtifact({ viewportResults, navigationResults, screenshots, targetInfo = {} }) {
   const contentCompletionResults = viewportResults.map(contentCompletionResultForViewport);
-  const layoutResults = viewportResults.map((result) => ({
-    viewport: result.viewport,
-    dimensions: result.dimensions,
-    overlap_count: result.overlapPairs.length
-  }));
+  const commandArchitectureResults = viewportResults.map(commandArchitectureResultForViewport);
+  const layoutResults = viewportResults.map(layoutDensityResultForViewport);
   const copyResults = viewportResults.map((result) => ({
     viewport: result.viewport,
     risky_tokens: result.riskyTokens,
@@ -1147,8 +1311,11 @@ export function buildArtifact({ viewportResults, navigationResults, screenshots,
       action_attribute: button.action_attribute || null,
       tag: button.tag || null,
       role: button.role || null,
-      command: button.command || null
-    }))
+      command: button.command || null,
+      scope: commandControlScopeOf(button),
+      section_key: commandSectionOf(button)
+    })),
+    command_architecture: commandArchitectureResults.find((architecture) => architecture.viewport === result.viewport) || null
   }));
   const browserErrorResults = viewportResults.map((result) => {
     const errors = browserErrorsOf(result).map(compactBrowserError);
