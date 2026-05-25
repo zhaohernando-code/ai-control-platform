@@ -16,7 +16,7 @@ import { createWorkbenchProjection } from "../src/workflow/workbench-projection.
 import {
   isRenderedPassStatus,
   validateWorkbenchBrowserEventsArtifact
-} from "../tools/check-closeout.mjs";
+} from "../src/workflow/closeout-validation.js";
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));

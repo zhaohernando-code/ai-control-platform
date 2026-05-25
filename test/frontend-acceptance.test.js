@@ -1455,11 +1455,11 @@ test("frontend acceptance allows navigation with distinct visible content", () =
 });
 
 test("closeout rejects fixture-only frontend acceptance artifacts", () => {
-  const closeout = readFileSync("tools/check-closeout.mjs", "utf8");
+  const closeoutValidation = readFileSync("src/workflow/closeout-validation.js", "utf8");
 
-  assert.match(closeout, /frontend acceptance artifact must validate the release default latest projection/);
-  assert.match(closeout, /latest projection evidence/);
-  assert.match(closeout, /current-session/);
+  assert.match(closeoutValidation, /frontend acceptance artifact must validate the release default latest projection/);
+  assert.match(closeoutValidation, /latest projection evidence/);
+  assert.match(closeoutValidation, /current-session/);
 });
 
 test("failed frontend acceptance creates a bounded repair work package", () => {
@@ -1551,14 +1551,16 @@ test("failed frontend acceptance schedules a bounded UI repair child-worker pack
 test("closeout and package scripts wire frontend acceptance as a hard gate", () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   const closeout = readFileSync("tools/check-closeout.mjs", "utf8");
+  const closeoutValidation = readFileSync("src/workflow/closeout-validation.js", "utf8");
 
   assert.equal(
     pkg.scripts["check:workbench:frontend-acceptance"],
     "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs"
   );
   assert.match(closeout, /check-workbench-frontend-acceptance\.mjs/);
-  assert.match(closeout, /frontend acceptance artifact did not pass/);
-  assert.match(closeout, /release default latest projection/);
+  assert.match(closeout, /validateFrontendAcceptanceArtifact/);
+  assert.match(closeoutValidation, /frontend acceptance artifact did not pass/);
+  assert.match(closeoutValidation, /release default latest projection/);
 });
 
 test("closeout and package scripts wire public workbench live-route acceptance as a hard gate", () => {
