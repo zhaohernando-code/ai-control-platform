@@ -1,0 +1,59 @@
+{
+  "version": "workbench-public-browser-evidence.v1",
+  "created_at": "2026-05-25T03:35:01.694Z",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+  "http_status": 200,
+  "title": "AI Control Platform Workbench",
+  "body_text_sample": "AI 控制中台 自主开发中台 总览 运行 审查 模型 风险 OP 值班员 当前周期 运行状态 需重跑 调度决策 需重跑 主模型 gpt 审查状态 未通过 最近自动运行 · 需重跑 工作台修复后自动运行 · 需重跑 边界修复后自动运行 · 需重跑 自动运行周期 · 需重跑 任务上下文续跑 · 需重跑 来自当前会话的上下文周期 当前会话 · 需重跑 当前平台自运行试验 · 需重跑 平台仓库初始化 · 通过 校验状态 下一步 当前目标 需重跑 · 准备续跑状态 需重跑:证据已记录: 失败 需重跑 任务包 3 证据 38 审查发现 1 可派发 0 调度步数 0 总目标待办 0 总目标完成 3 自我治理 3 目标与阻塞 操作员摘要 目标：状态详情已归档；下一步查看推荐任务。。上下文：需重跑:证据已记录: 失败 阻塞：1 条审查失败或回退。影响：先处理风险后再续跑。下一步：准备续跑状态。 风险与证据 收口判断 风险：审查通道该通道未启用；无阻塞时继续主任务。。影响：可能延迟续跑或发布验收。下一步：优先处理最高风险项。 证据：收口该通道未启用；无阻塞时继续主任务。，界面验收需要补充浏览器证据，已有 ",
+  "workbench_rendered": true,
+  "auth_redirect_detected": false,
+  "mounted_project_route": true,
+  "api": {
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "json_ok": true,
+    "text_sample": "{ \"projection_version\": \"workbench.v1\", \"generated_at\": \"2026-05-21T16:25:00.000Z\", \"run_id\": \"run-20260521-platform-self-trial\", \"cycle_id\": \"cycle-headless-live-1779566400000-context-pack-1779561756582\", \"goal\": \"Continue the fixed main-p"
+  },
+  "navigation_error": null,
+  "responses": [
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "status": 302,
+      "content_type": null
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/styles.css",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/workbench.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/projection-source.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/api/workbench/projections",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/api/workbench/projection",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    }
+  ],
+  "request_header_names": [],
+  "secret_policy": "Only request metadata and short visible text/API samples are stored; no cookies, tokens, authorization headers, session values, or secret values are stored.",
+  "status": "pass"
+}

@@ -1,4 +1,6 @@
 export const WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION = "workbench-live-route-evidence.v1";
+export const DEFAULT_WORKBENCH_LIVE_ROUTE_EVIDENCE_MAX_AGE_MS = 60 * 60 * 1000;
+const DEFAULT_ALLOWED_EVIDENCE_FUTURE_SKEW_MS = 5 * 60 * 1000;
 
 const RESOLVED_STATUSES = new Set([
   "pass",
@@ -193,6 +195,89 @@ function firstBoolean(paths) {
   return undefined;
 }
 
+function parseTimestampMs(value) {
+  const normalized = normalizeString(value);
+  if (!normalized) return NaN;
+  const timestamp = Date.parse(normalized);
+  return Number.isFinite(timestamp) ? timestamp : NaN;
+}
+
+function latestTimestamp(values) {
+  let latest = NaN;
+  for (const value of values) {
+    const timestamp = parseTimestampMs(value);
+    if (!Number.isFinite(timestamp)) continue;
+    if (!Number.isFinite(latest) || timestamp > latest) latest = timestamp;
+  }
+  return latest;
+}
+
+function timestampInfo(values) {
+  for (const value of values) {
+    const raw = normalizeString(value);
+    if (!raw) continue;
+    const timestamp = parseTimestampMs(raw);
+    return {
+      raw,
+      timestamp: Number.isFinite(timestamp) ? timestamp : NaN
+    };
+  }
+  return {
+    raw: "",
+    timestamp: NaN
+  };
+}
+
+function evidenceTimestampInfo(artifact = {}, evidenceMetadata = {}) {
+  const evidence = isObject(artifact.evidence) ? artifact.evidence : {};
+  const route = isObject(artifact.route) ? artifact.route : {};
+  return timestampInfo([
+    artifact.generated_at,
+    artifact.generatedAt,
+    artifact.created_at,
+    artifact.createdAt,
+    artifact.captured_at,
+    artifact.capturedAt,
+    evidence.generated_at,
+    evidence.generatedAt,
+    evidence.created_at,
+    evidence.createdAt,
+    evidence.captured_at,
+    evidence.capturedAt,
+    route.generated_at,
+    route.generatedAt,
+    route.created_at,
+    route.createdAt,
+    route.captured_at,
+    route.capturedAt,
+    evidenceMetadata.generated_at,
+    evidenceMetadata.generatedAt,
+    evidenceMetadata.created_at,
+    evidenceMetadata.createdAt,
+    evidenceMetadata.captured_at,
+    evidenceMetadata.capturedAt
+  ]);
+}
+
+function projectStatusFreshnessAnchor(projectStatus = {}, blockers = []) {
+  return latestTimestamp([
+    projectStatus.updated_at,
+    projectStatus.updatedAt,
+    projectStatus.status_updated_at,
+    projectStatus.statusUpdatedAt,
+    ...blockers.flatMap((blocker) => [
+      blocker.updated_at,
+      blocker.updatedAt,
+      blocker.detected_at,
+      blocker.detectedAt,
+      blocker.created_at,
+      blocker.createdAt,
+      blocker.captured_at,
+      blocker.capturedAt
+    ])
+  ]);
+}
+
 function requireTrue(artifact, code, label, paths, issues) {
   if (firstBoolean(paths) !== true) {
     issues.push({
@@ -232,8 +317,11 @@ export function validateWorkbenchLiveRouteEvidenceArtifact(artifact = {}, option
   if (normalizeToken(artifact.status) !== "pass") {
     issues.push({ code: "live_route_evidence_not_passed", path: "status" });
   }
-  if (!normalizeString(artifact.created_at || artifact.createdAt)) {
+  const generatedAt = evidenceTimestampInfo(artifact);
+  if (!generatedAt.raw) {
     issues.push({ code: "missing_live_route_evidence_timestamp", path: "created_at" });
+  } else if (!Number.isFinite(generatedAt.timestamp)) {
+    issues.push({ code: "invalid_live_route_evidence_timestamp", path: "created_at" });
   }
 
   const artifactProject = firstString([artifact.project, artifact.project_id, artifact.projectId]);
@@ -370,9 +458,83 @@ export function validateWorkbenchLiveRouteEvidenceArtifact(artifact = {}, option
   return {
     status: issues.length > 0 ? "fail" : "pass",
     version: artifact.version,
+    generated_at: generatedAt.raw || "",
     route_url: normalizedRouteUrl,
     final_url: normalizedFinalUrl,
     http_status: Number.isFinite(httpStatus) ? httpStatus : null,
+    issues
+  };
+}
+
+export function validateWorkbenchLiveRouteEvidenceFreshness(input = {}) {
+  const projectStatus = isObject(input.projectStatus) ? input.projectStatus : {};
+  const blockers = asArray(input.blockers);
+  const evidenceArtifact = isObject(input.evidenceArtifact) ? input.evidenceArtifact : {};
+  const evidenceMetadata = isObject(input.evidenceMetadata) ? input.evidenceMetadata : {};
+  const maxAgeMs = Number.isFinite(Number(input.maxEvidenceAgeMs))
+    ? Number(input.maxEvidenceAgeMs)
+    : DEFAULT_WORKBENCH_LIVE_ROUTE_EVIDENCE_MAX_AGE_MS;
+  const allowedFutureSkewMs = Number.isFinite(Number(input.allowedFutureSkewMs))
+    ? Number(input.allowedFutureSkewMs)
+    : DEFAULT_ALLOWED_EVIDENCE_FUTURE_SKEW_MS;
+  const nowMs = input.now ? parseTimestampMs(input.now) : Date.now();
+  const generatedAt = evidenceTimestampInfo(evidenceArtifact, evidenceMetadata);
+  const requiredAfterMs = projectStatusFreshnessAnchor(projectStatus, blockers);
+  const issues = [];
+
+  if (!generatedAt.raw) {
+    issues.push({
+      code: "missing_live_route_evidence_timestamp",
+      path: "created_at",
+      message: "public live-route evidence must include a generated_at, created_at, or captured_at timestamp"
+    });
+  } else if (!Number.isFinite(generatedAt.timestamp)) {
+    issues.push({
+      code: "invalid_live_route_evidence_timestamp",
+      path: "created_at",
+      generated_at: generatedAt.raw
+    });
+  }
+
+  if (Number.isFinite(generatedAt.timestamp)) {
+    if (Number.isFinite(requiredAfterMs) && generatedAt.timestamp <= requiredAfterMs) {
+      issues.push({
+        code: "stale_live_route_evidence",
+        path: "created_at",
+        reason: "older_than_project_status_update",
+        generated_at: generatedAt.raw,
+        required_after: new Date(requiredAfterMs).toISOString(),
+        message: "public live-route evidence predates the current unresolved route blocker state"
+      });
+    }
+    if (Number.isFinite(nowMs)) {
+      const ageMs = nowMs - generatedAt.timestamp;
+      if (ageMs > maxAgeMs) {
+        issues.push({
+          code: "stale_live_route_evidence",
+          path: "created_at",
+          reason: "exceeds_freshness_window",
+          generated_at: generatedAt.raw,
+          max_age_ms: maxAgeMs,
+          age_ms: ageMs,
+          message: "public live-route evidence is outside the freshness window for unresolved route blockers"
+        });
+      } else if (generatedAt.timestamp - nowMs > allowedFutureSkewMs) {
+        issues.push({
+          code: "future_live_route_evidence_timestamp",
+          path: "created_at",
+          generated_at: generatedAt.raw,
+          now: new Date(nowMs).toISOString()
+        });
+      }
+    }
+  }
+
+  return {
+    status: issues.length > 0 ? "fail" : "pass",
+    generated_at: generatedAt.raw || "",
+    required_after: Number.isFinite(requiredAfterMs) ? new Date(requiredAfterMs).toISOString() : "",
+    max_age_ms: maxAgeMs,
     issues
   };
 }
@@ -384,12 +546,24 @@ export function evaluateWorkbenchLiveRouteAcceptance(input = {}) {
   const projectId = normalizeString(projectStatus.project);
   const issues = [];
   let evidenceValidation = null;
+  let evidenceFreshness = null;
 
   if (input.evidenceArtifact !== undefined && input.evidenceArtifact !== null) {
     evidenceValidation = validateWorkbenchLiveRouteEvidenceArtifact(input.evidenceArtifact, {
       expectedRouteUrls,
       projectId
     });
+    if (blockers.length > 0) {
+      evidenceFreshness = validateWorkbenchLiveRouteEvidenceFreshness({
+        projectStatus,
+        blockers,
+        evidenceArtifact: input.evidenceArtifact,
+        evidenceMetadata: input.evidenceMetadata,
+        now: input.now,
+        maxEvidenceAgeMs: input.maxEvidenceAgeMs,
+        allowedFutureSkewMs: input.allowedFutureSkewMs
+      });
+    }
   }
 
   if (blockers.length > 0 && !evidenceValidation) {
@@ -402,6 +576,12 @@ export function evaluateWorkbenchLiveRouteAcceptance(input = {}) {
   if (evidenceValidation?.status === "fail") {
     issues.push(...evidenceValidation.issues);
   }
+  if (evidenceFreshness?.status === "fail") {
+    issues.push(...evidenceFreshness.issues);
+  }
+
+  const evidenceAccepted = evidenceValidation?.status === "pass" &&
+    (!evidenceFreshness || evidenceFreshness.status === "pass");
 
   return {
     gate_id: "workbench-live-route-acceptance",
@@ -414,8 +594,9 @@ export function evaluateWorkbenchLiveRouteAcceptance(input = {}) {
       requires_human: Boolean(blocker.requires_human)
     })),
     expected_route_urls: expectedRouteUrls,
-    evidence_status: evidenceValidation ? evidenceValidation.status : blockers.length > 0 ? "missing" : "not_required",
+    evidence_status: evidenceValidation ? evidenceAccepted ? "pass" : "fail" : blockers.length > 0 ? "missing" : "not_required",
     evidence: evidenceValidation,
+    evidence_freshness: evidenceFreshness,
     issues
   };
 }

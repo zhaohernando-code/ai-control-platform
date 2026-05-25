@@ -20,6 +20,9 @@ const DESKTOP_DIAGNOSTIC_PLACEHOLDER_FIELD_THRESHOLD = 18;
 const DESKTOP_BODY_PLACEHOLDER_WALL_THRESHOLD = 36;
 const DESKTOP_SECTION_DATA_BIND_WALL_THRESHOLD = 10;
 const DESKTOP_SECTION_PLACEHOLDER_WALL_THRESHOLD = 6;
+const MAX_RELEASE_COMMAND_CONTROLS = 8;
+const MAX_PRIMARY_COMMAND_CONTROLS = 3;
+const MAX_RISKY_PRIMARY_COMMAND_CONTROLS = 1;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -94,6 +97,27 @@ function contentCompletionHasBlocker(result = {}) {
   if (contentCompletionHasDiagnosticWall(result)) return true;
   if (result.mobile_telemetry_dump === true || result.mobileTelemetryDump === true) return true;
   return asArray(result.placeholder_dominated_sections || result.placeholderDominatedSections).length > 0;
+}
+
+function commandArchitectureOf(controlResult = {}) {
+  return controlResult.command_architecture || controlResult.commandArchitecture || {};
+}
+
+function commandArchitectureFindingCodes(result = {}) {
+  return asArray(result.blocking_finding_codes || result.blockingFindingCodes)
+    .map(normalizeString)
+    .filter(Boolean);
+}
+
+function commandArchitectureHasBlocker(result = {}) {
+  if (normalizeString(result.status).toLowerCase() === "fail") return true;
+  if (commandArchitectureFindingCodes(result).length > 0) return true;
+  if (countValue(result.primary_control_count ?? result.primaryControlCount) > MAX_PRIMARY_COMMAND_CONTROLS) return true;
+  if (countValue(result.risky_primary_control_count ?? result.riskyPrimaryControlCount) > MAX_RISKY_PRIMARY_COMMAND_CONTROLS) return true;
+  if (countValue(result.ungrouped_risky_control_count ?? result.ungroupedRiskyControlCount) > 0) return true;
+  if (asArray(result.repeated_actions || result.repeatedActions).length > 0) return true;
+  if (asArray(result.overloaded_sections || result.overloadedSections).length > 0) return true;
+  return false;
 }
 
 function navigationLabel(result = {}) {
@@ -278,10 +302,14 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
   const viewportResultsByName = new Map(asArray(artifact.viewport_results).map((result) => [normalizeString(result.viewport), result]));
   const resourceResultsByName = new Map(asArray(artifact.resource_results).map((result) => [normalizeString(result.viewport), result]));
   const contentCompletionResultsByName = new Map(asArray(artifact.content_completion_results).map((result) => [normalizeString(result.viewport), result]));
+  const controlResultsByName = new Map(asArray(artifact.control_results).map((result) => [normalizeString(result.viewport), result]));
+  const layoutResultsByName = new Map(asArray(artifact.layout_results).map((result) => [normalizeString(result.viewport), result]));
   for (const requiredViewport of ["desktop", "desktop_narrow", "mobile"]) {
     const viewportResult = viewportResultsByName.get(requiredViewport) || {};
     const resourceResult = resourceResultsByName.get(requiredViewport) || {};
     const contentResult = contentCompletionResultsByName.get(requiredViewport) || null;
+    const controlResult = controlResultsByName.get(requiredViewport) || null;
+    const layoutResult = layoutResultsByName.get(requiredViewport) || null;
     if (viewportResult.mounted_workbench_route !== true && resourceResult.mounted_workbench_route !== true) {
       issues.push(issue("missing_mounted_workbench_route", `${requiredViewport} must exercise the project-mounted workbench route`, "viewport_results"));
     }
@@ -330,15 +358,61 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
         }
       }
     }
+    if (!controlResult) {
+      issues.push(issue("missing_frontend_control_architecture_evidence", `${requiredViewport} must include command control architecture evidence`, "control_results"));
+    } else {
+      const controlCount = countValue(controlResult.control_count ?? controlResult.controlCount ?? controlResult.button_count ?? controlResult.buttonCount);
+      const architecture = commandArchitectureOf(controlResult);
+      const architectureStatus = normalizeString(architecture.status).toLowerCase();
+      const architectureHasBlocker = commandArchitectureHasBlocker(architecture);
+      const architectureCodes = commandArchitectureFindingCodes(architecture);
+      if (controlCount > MAX_RELEASE_COMMAND_CONTROLS && !architectureCodes.includes("frontend_command_control_overload")) {
+        issues.push(issue("frontend_control_overload_missing_architecture_finding", `${requiredViewport} command control overload must be declared in command architecture findings`, "control_results"));
+      }
+      if (normalizeString(architecture.source_type || architecture.sourceType) !== "browser_dom_controls") {
+        issues.push(issue("frontend_control_architecture_requires_dom_controls", `${requiredViewport} command architecture evidence must come from browser DOM controls`, "control_results"));
+      }
+      if (architectureStatus === "pass" && architectureHasBlocker) {
+        issues.push(issue("frontend_control_architecture_false_pass", `${requiredViewport} command architecture cannot pass with blocker flags`, "control_results"));
+      }
+      if (architectureStatus === "fail" && !architectureHasBlocker) {
+        issues.push(issue("frontend_control_architecture_fail_without_blocker", `${requiredViewport} command architecture failure must include blocker evidence`, "control_results"));
+      }
+      if (architectureHasBlocker && architectureCodes.length === 0) {
+        issues.push(issue("frontend_control_architecture_missing_finding_codes", `${requiredViewport} command architecture blockers must declare matching finding codes`, "control_results"));
+      }
+    }
+    if (!layoutResult) {
+      issues.push(issue("missing_frontend_layout_density_evidence", `${requiredViewport} must include layout density evidence`, "layout_results"));
+    } else {
+      if (normalizeString(layoutResult.source_type || layoutResult.sourceType) !== "browser_dom_layout") {
+        issues.push(issue("frontend_layout_density_requires_dom_layout", `${requiredViewport} layout density evidence must come from browser DOM layout`, "layout_results"));
+      }
+      if (
+        (layoutResult.dense_command_layout === true || layoutResult.denseCommandLayout === true) &&
+        !findings.some((finding) => ["frontend_button_pileup", "frontend_action_cluster_overload", "frontend_command_control_overload"].includes(findingCode(finding)))
+      ) {
+        issues.push(issue("frontend_dense_command_layout_missing_finding", `${requiredViewport} dense command layouts must have a matching P0/P1 finding`, "layout_results"));
+      }
+    }
   }
 
   const contentCompletionBlockerCodes = asArray(artifact.content_completion_results)
     .filter(contentCompletionHasBlocker)
     .flatMap(contentCompletionFindingCodes);
+  const commandArchitectureBlockerCodes = asArray(artifact.control_results)
+    .map(commandArchitectureOf)
+    .filter(commandArchitectureHasBlocker)
+    .flatMap(commandArchitectureFindingCodes);
   const findingCodes = new Set(findings.map(findingCode).filter(Boolean));
   for (const code of contentCompletionBlockerCodes) {
     if (!findingCodes.has(code)) {
       issues.push(issue("frontend_content_completion_finding_mismatch", `content completion blocker ${code} must have a matching P0/P1 finding`, "findings"));
+    }
+  }
+  for (const code of commandArchitectureBlockerCodes) {
+    if (!findingCodes.has(code)) {
+      issues.push(issue("frontend_control_architecture_finding_mismatch", `command architecture blocker ${code} must have a matching P0/P1 finding`, "findings"));
     }
   }
 

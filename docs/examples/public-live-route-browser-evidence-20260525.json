@@ -1,0 +1,38 @@
+{
+  "version": "workbench-public-browser-evidence.v1",
+  "status": "fail",
+  "created_at": "2026-05-25T02:43:49.359Z",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/?next=%2Fprojects%2Fai-control-platform%2F",
+  "http_status": 200,
+  "title": "登录 | 橘子鸡的小站",
+  "body_text_sample": "PRIVATE ACCESS LAYER 统一身份入口 所有内部页面都先经过这层登录。你后面继续往这个域名下面接新页面，也会沿用同一套登录态。 01 统一认证 未登录时不展示业务页面，直接回到当前登录入口。 02 同域名接入 中台、股票看板和后续新页面都继续挂在当前域名下面。 03 少量内部账号 不开放公开注册；由 root 在站内管理页为少数用户开通账户。 身份验证 进入主页控制台 当前只开放内部少量账号。登录成功后进入统一入口主页，再选择具体页面。 账号 密码 登录 访问策略 主页登录成功后，`/middle`、`/stocks`、`/tools/*`、`/api/*` 都会沿用当前登录态。 hernando-zhao.cn 浙ICP备2026026960号-1",
+  "workbench_rendered": false,
+  "auth_redirect_detected": true,
+  "mounted_project_route": false,
+  "request_header_names": [],
+  "secret_policy": "Only request metadata and a short visible body text sample are stored; no cookies, tokens, authorization headers, session values, or secret values are stored.",
+  "navigation_error": null,
+  "responses": [
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "status": 302,
+      "content_type": null
+    },
+    {
+      "url": "https://hernando-zhao.cn/?next=%2Fprojects%2Fai-control-platform%2F",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/styles.css",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/auth.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    }
+  ]
+}

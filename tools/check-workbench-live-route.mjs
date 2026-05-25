@@ -16,7 +16,10 @@ function parseArgs(argv) {
   const options = {
     projectStatusPath: "PROJECT_STATUS.json",
     evidencePath: "",
-    evidenceSource: ""
+    evidenceSource: "",
+    evidenceMetadata: {},
+    now: "",
+    maxEvidenceAgeMs: undefined
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -26,6 +29,12 @@ function parseArgs(argv) {
     } else if (arg === "--evidence") {
       options.evidencePath = argv[index + 1] || "";
       options.evidenceSource = "argv";
+      index += 1;
+    } else if (arg === "--now") {
+      options.now = argv[index + 1] || "";
+      index += 1;
+    } else if (arg === "--max-evidence-age-ms") {
+      options.maxEvidenceAgeMs = Number(argv[index + 1]);
       index += 1;
     } else if (arg === "--help" || arg === "-h") {
       options.help = true;
@@ -39,14 +48,16 @@ function parseArgs(argv) {
 function usage() {
   return [
     "usage: check-workbench-live-route.mjs [--project-status PROJECT_STATUS.json] [--evidence evidence.json]",
+    "                                      [--now ISO_TIMESTAMP] [--max-evidence-age-ms MS]",
     "",
     "The gate fails closed when PROJECT_STATUS has unresolved public/canonical workbench live-route blockers.",
     "Set --evidence or WORKBENCH_LIVE_ROUTE_EVIDENCE to a verified public-route evidence artifact to unblock it.",
-    "When neither is provided, the gate can read PROJECT_STATUS.workbench_live_route_evidence.path."
+    "When neither is provided, the gate can read PROJECT_STATUS.workbench_live_route_evidence.path.",
+    "Evidence for unresolved blockers must be fresh and newer than the current PROJECT_STATUS route-blocker state."
   ].join("\n");
 }
 
-function durableEvidencePathFromProjectStatus(projectStatus = {}) {
+function durableEvidenceDescriptorFromProjectStatus(projectStatus = {}) {
   const candidates = [
     projectStatus.workbench_live_route_evidence,
     projectStatus.workbenchLiveRouteEvidence,
@@ -56,14 +67,17 @@ function durableEvidencePathFromProjectStatus(projectStatus = {}) {
 
   for (const candidate of candidates) {
     if (!candidate) continue;
-    if (typeof candidate === "string") return candidate.trim();
+    if (typeof candidate === "string") {
+      const path = candidate.trim();
+      if (path) return { path, metadata: {} };
+    }
     if (typeof candidate === "object" && !Array.isArray(candidate)) {
       const explicitPath = String(candidate.path || candidate.artifact_path || candidate.artifactPath || "").trim();
-      if (explicitPath) return explicitPath;
+      if (explicitPath) return { path: explicitPath, metadata: candidate };
     }
   }
 
-  return "";
+  return { path: "", metadata: {} };
 }
 
 function resolveEvidencePath(evidencePath, projectStatusPath) {
@@ -97,7 +111,9 @@ try {
     options.evidenceSource = "env";
   }
   if (!options.evidencePath) {
-    options.evidencePath = durableEvidencePathFromProjectStatus(projectStatus);
+    const durableEvidence = durableEvidenceDescriptorFromProjectStatus(projectStatus);
+    options.evidencePath = durableEvidence.path;
+    options.evidenceMetadata = durableEvidence.metadata;
     options.evidenceSource = options.evidencePath ? "project_status" : "";
   }
 
@@ -109,7 +125,10 @@ try {
   const evidenceArtifact = resolvedEvidencePath ? readJson(resolvedEvidencePath, "live route evidence") : null;
   const result = evaluateWorkbenchLiveRouteAcceptance({
     projectStatus,
-    evidenceArtifact
+    evidenceArtifact,
+    evidenceMetadata: options.evidenceMetadata,
+    now: options.now,
+    maxEvidenceAgeMs: options.maxEvidenceAgeMs
   });
   if (resolvedEvidencePath) {
     result.evidence_path = options.evidencePath;

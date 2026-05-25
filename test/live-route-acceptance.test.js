@@ -9,11 +9,15 @@ import {
   detectWorkbenchLiveRouteBlockers,
   evaluateWorkbenchLiveRouteAcceptance,
   extractExpectedPublicRouteUrls,
+  validateWorkbenchLiveRouteEvidenceFreshness,
   validateWorkbenchLiveRouteEvidenceArtifact,
   WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION
 } from "../src/workflow/live-route-acceptance.js";
 
 const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
+const FRESH_NOW = "2026-05-25T09:45:00.000Z";
+const FRESH_EVIDENCE_TIME = "2026-05-25T09:30:00.000Z";
+const STALE_EVIDENCE_TIME = "2026-05-24T16:13:13.897Z";
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -24,6 +28,7 @@ function withoutLiveRouteEvidenceEnv(env = process.env) {
 function projectStatus(overrides = {}) {
   return {
     project: "ai-control-platform",
+    updated_at: "2026-05-25T09:00:00.000Z",
     blockers: [
       {
         id: "public-project-route-auth-gate",
@@ -43,7 +48,7 @@ function liveEvidence(overrides = {}) {
   return {
     version: WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION,
     status: "pass",
-    created_at: "2026-05-24T16:00:00.000Z",
+    created_at: FRESH_EVIDENCE_TIME,
     project: "ai-control-platform",
     route_url: "https://hernando-zhao.cn/projects/ai-control-platform/",
     final_url: "https://hernando-zhao.cn/projects/ai-control-platform/",
@@ -69,7 +74,8 @@ test("detects unresolved public canonical workbench route blockers in project st
 
 test("live route acceptance fails closed when blocker has no verified public evidence", () => {
   const result = evaluateWorkbenchLiveRouteAcceptance({
-    projectStatus: projectStatus()
+    projectStatus: projectStatus(),
+    now: FRESH_NOW
   });
 
   assert.equal(result.status, "fail");
@@ -128,7 +134,8 @@ test("local loopback evidence is accepted only through explicit probe test mode"
 test("live route acceptance passes only with matching public mounted workbench evidence", () => {
   const result = evaluateWorkbenchLiveRouteAcceptance({
     projectStatus: projectStatus(),
-    evidenceArtifact: liveEvidence()
+    evidenceArtifact: liveEvidence(),
+    now: FRESH_NOW
   });
 
   assert.equal(result.status, "pass");
@@ -136,6 +143,43 @@ test("live route acceptance passes only with matching public mounted workbench e
   assert.equal(result.evidence_status, "pass");
   assert.equal(result.evidence.route_url, "https://hernando-zhao.cn/projects/ai-control-platform/");
   assert.equal(result.issues.length, 0);
+});
+
+test("live route acceptance rejects stale durable evidence while blocker is unresolved", () => {
+  const result = evaluateWorkbenchLiveRouteAcceptance({
+    projectStatus: projectStatus(),
+    evidenceArtifact: liveEvidence({
+      created_at: STALE_EVIDENCE_TIME
+    }),
+    evidenceMetadata: {
+      captured_at: STALE_EVIDENCE_TIME
+    },
+    now: FRESH_NOW
+  });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.evidence_status, "fail");
+  assert.equal(result.evidence_freshness.status, "fail");
+  assert.ok(result.issues.some((issue) => issue.code === "stale_live_route_evidence"));
+});
+
+test("live route freshness requires evidence newer than current blocker state", () => {
+  const freshness = validateWorkbenchLiveRouteEvidenceFreshness({
+    projectStatus: projectStatus({
+      updated_at: "2026-05-25T09:40:00.000Z"
+    }),
+    blockers: detectWorkbenchLiveRouteBlockers(projectStatus()),
+    evidenceArtifact: liveEvidence({
+      created_at: FRESH_EVIDENCE_TIME
+    }),
+    now: FRESH_NOW
+  });
+
+  assert.equal(freshness.status, "fail");
+  assert.ok(freshness.issues.some((issue) => (
+    issue.code === "stale_live_route_evidence" &&
+      issue.reason === "older_than_project_status_update"
+  )));
 });
 
 test("live route CLI blocks current project status without evidence and accepts explicit evidence", () => {
@@ -161,7 +205,9 @@ test("live route CLI blocks current project status without evidence and accepts 
     "--project-status",
     projectStatusPath,
     "--evidence",
-    evidencePath
+    evidencePath,
+    "--now",
+    FRESH_NOW
   ], {
     encoding: "utf8",
     env: closeoutContaminatedEnv
@@ -170,7 +216,7 @@ test("live route CLI blocks current project status without evidence and accepts 
   assert.match(accepted.stdout, /"status": "pass"/);
 });
 
-test("live route CLI accepts PROJECT_STATUS durable evidence path when explicit evidence is absent", () => {
+test("live route CLI accepts fresh PROJECT_STATUS durable evidence path when explicit evidence is absent", () => {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-route-durable-"));
   const evidenceRelativePath = "docs/examples/public-live-route-evidence.json";
   const projectStatusPath = join(dir, "PROJECT_STATUS.json");
@@ -186,7 +232,13 @@ test("live route CLI accepts PROJECT_STATUS durable evidence path when explicit 
     }
   }), null, 2)}\n`);
 
-  const accepted = spawnSync(process.execPath, ["tools/check-workbench-live-route.mjs", "--project-status", projectStatusPath], {
+  const accepted = spawnSync(process.execPath, [
+    "tools/check-workbench-live-route.mjs",
+    "--project-status",
+    projectStatusPath,
+    "--now",
+    FRESH_NOW
+  ], {
     encoding: "utf8",
     env: withoutLiveRouteEvidenceEnv()
   });
@@ -194,6 +246,41 @@ test("live route CLI accepts PROJECT_STATUS durable evidence path when explicit 
   assert.equal(accepted.status, 0);
   assert.match(accepted.stdout, /"status": "pass"/);
   assert.match(accepted.stdout, /"evidence_source": "project_status"/);
+});
+
+test("live route CLI rejects stale PROJECT_STATUS durable evidence path under unresolved blocker", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-route-stale-durable-"));
+  const evidenceRelativePath = "docs/examples/public-live-route-evidence.json";
+  const projectStatusPath = join(dir, "PROJECT_STATUS.json");
+  const evidencePath = join(dir, evidenceRelativePath);
+  mkdirSync(join(dir, "docs/examples"), { recursive: true });
+  writeFileSync(evidencePath, `${JSON.stringify(liveEvidence({
+    created_at: STALE_EVIDENCE_TIME
+  }), null, 2)}\n`);
+  writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus({
+    workbench_live_route_evidence: {
+      status: "pass",
+      path: evidenceRelativePath,
+      schema: WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION,
+      captured_at: STALE_EVIDENCE_TIME,
+      durable: true
+    }
+  }), null, 2)}\n`);
+
+  const blocked = spawnSync(process.execPath, [
+    "tools/check-workbench-live-route.mjs",
+    "--project-status",
+    projectStatusPath,
+    "--now",
+    FRESH_NOW
+  ], {
+    encoding: "utf8",
+    env: withoutLiveRouteEvidenceEnv()
+  });
+
+  assert.equal(blocked.status, 1);
+  assert.match(blocked.stdout, /stale_live_route_evidence/);
+  assert.match(blocked.stdout, /"evidence_source": "project_status"/);
 });
 
 test("live route CLI still fails closed when status has no durable evidence path", () => {

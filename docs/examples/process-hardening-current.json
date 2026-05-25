@@ -864,6 +864,13 @@
       "message": "Frontend acceptance must count visible role=button and data-action command controls, not only native button elements, so scheduler/provider/next-action chip pileups cannot pass closeout."
     },
     {
+      "id": "frontend-command-architecture-false-pass",
+      "status": "fail",
+      "category": "quality_gate_gap",
+      "severity": "p1",
+      "message": "Frontend acceptance must record command-control information architecture and layout density so overloaded primary actions, repeated commands, high-risk action clusters, and dense button layouts cannot pass release closeout."
+    },
+    {
       "id": "frontend-browser-console-errors-unblocked",
       "status": "fail",
       "category": "quality_gate_gap",
@@ -932,6 +939,13 @@
       "category": "state_persistence",
       "severity": "p1",
       "message": "Authenticated public workbench live-route evidence must not remain only in ignored tmp files or manual WORKBENCH_LIVE_ROUTE_EVIDENCE env; headless closeout needs a committed durable evidence artifact referenced by PROJECT_STATUS."
+    },
+    {
+      "id": "public-live-route-stale-durable-evidence",
+      "status": "fail",
+      "category": "false_success",
+      "severity": "p1",
+      "message": "Committed public workbench live-route evidence must not let closeout pass after PROJECT_STATUS records a newer unresolved auth or canonical route blocker."
     },
     {
       "id": "self-governance-invalid-finding-fallback",
@@ -2202,6 +2216,14 @@
       "status": "completed"
     },
     {
+      "finding_id": "frontend-command-architecture-false-pass",
+      "invariant": "Frontend acceptance artifacts must include browser_dom_controls command architecture and browser_dom_layout density evidence per viewport, and must fail closed when visible command controls overload the workspace, repeat the same action, place too many high-risk actions in primary areas, or omit matching P0/P1 findings.",
+      "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; src/workflow/frontend-acceptance.js; test/frontend-acceptance.test.js; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md; docs/examples/process-hardening-current.json",
+      "regression_test": "frontend acceptance blocks overloaded command information architecture; frontend acceptance validation rejects command architecture false pass artifacts",
+      "verification": "node tools/run-with-node18.mjs --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --allow-fail --output tmp/frontend-acceptance-ux-followup.json; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
       "finding_id": "frontend-browser-console-errors-unblocked",
       "invariant": "Frontend acceptance must collect console errors, page errors, and HTTP response errors per viewport, include them in frontend-acceptance-run.v1 artifacts, and fail on every non-allowed browser error.",
       "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
@@ -2287,6 +2309,14 @@
       "enforcement_target": "tools/check-workbench-live-route.mjs; test/live-route-acceptance.test.js; docs/examples/public-live-route-evidence-20260524.json; PROJECT_STATUS.json; docs/examples/process-hardening-current.json",
       "regression_test": "live route CLI accepts PROJECT_STATUS durable evidence path when explicit evidence is absent; live route CLI still fails closed when status has no durable evidence path",
       "verification": "node --test test/live-route-acceptance.test.js; npm run check:workbench:live-route; npm run check:closeout; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
+      "finding_id": "public-live-route-stale-durable-evidence",
+      "invariant": "When PROJECT_STATUS has unresolved public/canonical workbench live-route blockers, durable public-route evidence must be generated after the current blocker/status update and within the live-route freshness window; stale committed evidence must fail closed instead of satisfying closeout.",
+      "enforcement_target": "src/workflow/live-route-acceptance.js; tools/check-workbench-live-route.mjs; tools/check-closeout.mjs; test/live-route-acceptance.test.js; docs/examples/process-hardening-current.json; PROJECT_STATUS.json",
+      "regression_test": "live route acceptance rejects stale durable evidence while blocker is unresolved; live route freshness requires evidence newer than current blocker state; live route CLI rejects stale PROJECT_STATUS durable evidence path under unresolved blocker",
+      "verification": "node --test test/live-route-acceptance.test.js test/live-route-probe.test.js; npm run check:workbench:live-route; npm run check:process-hardening; git diff --check",
       "status": "completed"
     },
     {
