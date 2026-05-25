@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
+import { validateFrontendAcceptanceRunArtifact } from "../src/workflow/frontend-acceptance.js";
+
 const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
 const FRONTEND_ACCEPTANCE_RUN_VERSION = "frontend-acceptance-run.v1";
 const FRONTEND_ACCEPTANCE_RELEASE_TARGET = "latest_projection";
@@ -131,6 +133,13 @@ function validateFrontendAcceptanceArtifact(path) {
     if (!viewports.has(viewport)) {
       throw new Error(`frontend acceptance artifact is missing ${viewport} viewport evidence`);
     }
+  }
+  const validation = validateFrontendAcceptanceRunArtifact(artifact, {
+    requireDurableReleaseEvidence: true
+  });
+  if (validation.status !== "pass") {
+    const firstIssue = validation.issues[0] || {};
+    throw new Error(`frontend acceptance artifact is missing durable workflow/projection evidence: ${firstIssue.code || "unknown_issue"}`);
   }
 }
 

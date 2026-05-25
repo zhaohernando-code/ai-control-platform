@@ -11,6 +11,7 @@ import {
   CONTINUE
 } from "../src/workflow/autonomous-continuation.js";
 import {
+  createFrontendAcceptanceDurableEvidence,
   createFrontendAcceptanceRepairWorkPackage,
   FRONTEND_ACCEPTANCE_RUN_VERSION,
   FRONTEND_ACCEPTANCE_REPAIR_ACTION,
@@ -376,6 +377,36 @@ test("frontend acceptance run records durable workflow facts and projection summ
   const projection = createWorkbenchProjection(recorded.workflow_state);
   assert.equal(projection.frontend_acceptance.status, "pass");
   assert.equal(projection.one_screen.counters.frontend_acceptance_blockers, 0);
+});
+
+test("release frontend acceptance fails closed without durable workflow and projection evidence", () => {
+  const validation = validateFrontendAcceptanceRunArtifact(baseArtifact(), {
+    requireDurableReleaseEvidence: true
+  });
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((issue) => issue.code === "missing_frontend_acceptance_durable_evidence"));
+});
+
+test("release frontend acceptance accepts recordFrontendAcceptanceRunArtifact durable projection evidence", () => {
+  const workflowState = baseWorkflowState();
+  const artifact = baseArtifact();
+  const recorded = recordFrontendAcceptanceRunArtifact(workflowState, artifact, {
+    artifact_id: "frontend-acceptance-release"
+  });
+  const projection = createWorkbenchProjection(recorded.workflow_state);
+  const releaseArtifact = {
+    ...artifact,
+    durable_evidence: createFrontendAcceptanceDurableEvidence(recorded, projection)
+  };
+  const validation = validateFrontendAcceptanceRunArtifact(releaseArtifact, {
+    requireDurableReleaseEvidence: true
+  });
+
+  assert.equal(validation.status, "pass");
+  assert.equal(releaseArtifact.durable_evidence.workflow_state.manifest.events.at(-1).type, "frontend_acceptance_run");
+  assert.equal(releaseArtifact.durable_evidence.projection.frontend_acceptance.status, "pass");
+  assert.equal(releaseArtifact.durable_evidence.projection.one_screen.counters.frontend_acceptance_blockers, 0);
 });
 
 test("frontend acceptance CLI defaults to release latest projection mode", () => {
@@ -1130,6 +1161,7 @@ test("failed frontend acceptance schedules a bounded UI repair child-worker pack
   const recorded = recordFrontendAcceptanceRunArtifact(workflowState, artifact, {
     artifact_id: "frontend-acceptance-current-workbench"
   });
+  const projection = createWorkbenchProjection(recorded.workflow_state);
   const decision = decideContinuation({
     project_status: {
       project: "ai-control-platform",
@@ -1155,6 +1187,8 @@ test("failed frontend acceptance schedules a bounded UI repair child-worker pack
   assert.equal(repairSubtask.action, FRONTEND_ACCEPTANCE_REPAIR_ACTION);
   assert.equal(repairSubtask.source.frontend_acceptance.artifact_id, "frontend-acceptance-current-workbench");
   assert.deepEqual(repairSubtask.source.acceptance_gates, repairPackage.acceptance_gates);
+  assert.equal(projection.next_action_readout.action, FRONTEND_ACCEPTANCE_REPAIR_ACTION);
+  assert.ok(projection.one_screen.next_actions.some((action) => action.action === FRONTEND_ACCEPTANCE_REPAIR_ACTION));
 });
 
 test("closeout and package scripts wire frontend acceptance as a hard gate", () => {

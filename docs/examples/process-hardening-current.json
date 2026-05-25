@@ -2098,6 +2098,14 @@
       "status": "completed"
     },
     {
+      "finding_id": "frontend-acceptance-durable-release-evidence",
+      "invariant": "Release frontend acceptance must fail closed unless frontend-acceptance-run.v1 is recorded into workflow_state and artifact_ledger and the same workflow state projects a workbench frontend_acceptance summary; tmp-only JSON artifacts are not release evidence.",
+      "enforcement_target": "src/workflow/frontend-acceptance.js; src/workflow/workbench-projection.js; tools/check-workbench-frontend-acceptance.mjs; tools/check-closeout.mjs; test/frontend-acceptance.test.js; docs/examples/process-hardening-current.json",
+      "regression_test": "release frontend acceptance fails closed without durable workflow and projection evidence; release frontend acceptance accepts recordFrontendAcceptanceRunArtifact durable projection evidence",
+      "verification": "node --test test/frontend-acceptance.test.js; npm run check:workbench:frontend-acceptance -- --output tmp/frontend-acceptance-durable-worker.json; npm run check:process-hardening; git diff --check",
+      "status": "completed"
+    },
+    {
       "finding_id": "frontend-raw-projection-copy",
       "invariant": "Default workbench UI must translate backend/projection state into operator language; raw protocol tokens are allowed only inside explicit diagnostics surfaces.",
       "enforcement_target": "tools/check-workbench-frontend-acceptance.mjs; docs/contracts/FRONTEND_DEVELOPMENT_AND_ACCEPTANCE_CN.md",

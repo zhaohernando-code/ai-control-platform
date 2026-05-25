@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 
 import { createWorkbenchServer } from "./workbench-server.mjs";
 import {
+  createFrontendAcceptanceDurableEvidence,
   FRONTEND_ACCEPTANCE_RUN_VERSION,
+  recordFrontendAcceptanceRunArtifact,
   validateFrontendAcceptanceRunArtifact
 } from "../src/workflow/frontend-acceptance.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
@@ -186,6 +188,17 @@ function projectionForTarget(targetInfo = {}) {
     ...readJson("docs/examples/current-session-workbench-input.json"),
     project_status: readJson("PROJECT_STATUS.json")
   });
+}
+
+function workflowStateForTarget(targetInfo = {}) {
+  const evidence = targetInfo.projection_evidence || {};
+  if (evidence.input_path) {
+    return {
+      ...readJson(evidence.input_path),
+      project_status: readJson("PROJECT_STATUS.json")
+    };
+  }
+  throw new Error("release frontend acceptance requires latest projection workflow_state input_path for durable evidence");
 }
 
 function historyForTarget(targetInfo = {}) {
@@ -1208,7 +1221,9 @@ async function run() {
   const screenshotDir = options.screenshotDir || mkdtempSync(join(tmpdir(), "ai-control-platform-frontend-screenshots-"));
   const expectPass = options.expectPass;
   const { chromium } = await import("playwright");
+  let durableTargetInfo = null;
   const artifact = await withWorkbenchServer(options.target, async ({ port, targetInfo, staticRouteFallback = false }) => {
+    durableTargetInfo = targetInfo;
     const browser = await chromium.launch();
     const viewportResults = [];
     const screenshots = [];
@@ -1292,7 +1307,17 @@ async function run() {
     }
   });
 
-  const validation = validateFrontendAcceptanceRunArtifact(artifact);
+  if (options.target === TARGET_LATEST) {
+    const recorded = recordFrontendAcceptanceRunArtifact(workflowStateForTarget(durableTargetInfo), artifact);
+    const projection = recorded.status === "pass"
+      ? createWorkbenchProjection(recorded.workflow_state)
+      : {};
+    artifact.durable_evidence = createFrontendAcceptanceDurableEvidence(recorded, projection);
+  }
+
+  const validation = validateFrontendAcceptanceRunArtifact(artifact, {
+    requireDurableReleaseEvidence: options.target === TARGET_LATEST
+  });
   if (validation.status !== "pass") {
     artifact.status = "fail";
     artifact.validation_issues = validation.issues;
