@@ -21,6 +21,44 @@ import {
 } from "../src/workflow/frontend-acceptance.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
+const PROJECT_MANAGEMENT_TEXT = [
+  "项目列表",
+  "AI Control Platform",
+  "ai-control-platform",
+  "阶段",
+  "当前任务",
+  "Agent",
+  "进度",
+  "更新",
+  "任务流",
+  "需求",
+  "拆解",
+  "子任务",
+  "Review",
+  "发布",
+  "Live 验证",
+  "验收"
+].join(" ");
+
+function projectManagementSemanticResult(viewport, overrides = {}) {
+  return {
+    viewport,
+    status: "pass",
+    source_type: "browser_dom_product_semantics",
+    has_required_nav: true,
+    has_project_list: true,
+    has_platform_project: true,
+    has_project_fields: true,
+    has_task_lifecycle: true,
+    diagnostics_primary: false,
+    required_nav: viewport === "mobile" ? [] : ["总览", "项目", "任务流", "Agents", "风险", "治理"],
+    required_lifecycle: ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"],
+    text_sample: PROJECT_MANAGEMENT_TEXT,
+    blocking_finding_codes: [],
+    ...overrides
+  };
+}
+
 function baseArtifact(overrides = {}) {
   return {
     version: FRONTEND_ACCEPTANCE_RUN_VERSION,
@@ -177,6 +215,11 @@ function baseArtifact(overrides = {}) {
         ]
       }
     ],
+    project_management_semantic_results: [
+      projectManagementSemanticResult("desktop"),
+      projectManagementSemanticResult("desktop_narrow"),
+      projectManagementSemanticResult("mobile")
+    ],
     resource_results: [
       { viewport: "desktop", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
       { viewport: "desktop_narrow", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
@@ -270,12 +313,15 @@ function baseArtifact(overrides = {}) {
 function viewportAudit(overrides = {}) {
   const viewport = overrides.viewport || "desktop";
   const shell = viewport === "mobile" ? "mobile.html" : "desktop.html";
+  const nav = viewport === "mobile"
+    ? []
+    : ["总览", "项目", "任务流", "Agents", "风险", "治理", "运行诊断"].map((text) => ({ text }));
   return {
     viewport,
     routePath: `/projects/ai-control-platform/apps/workbench/${shell}`,
     mounted: true,
     dimensions: { width: 1440, height: 900, scrollWidth: 1440, scrollHeight: 900 },
-    nav: [],
+    nav,
     buttons: [],
     faviconLinks: [
       {
@@ -294,14 +340,14 @@ function viewportAudit(overrides = {}) {
     ],
     browserErrors: [],
     riskyTokens: [],
-    bodyText: "中台工作台 状态投影 任务包 证据 调度执行 收口验收 续跑健康 审查通道",
+    bodyText: `中台工作台 ${PROJECT_MANAGEMENT_TEXT} 状态投影 任务包 证据 调度执行 收口验收 续跑健康 审查通道`,
     contentSections: [
       {
         index: 0,
         section_key: viewport === "mobile" ? "mobile-priority" : "overview",
-        heading: viewport === "mobile" ? "优先任务" : "当前目标",
-        text: "当前目标 下一步处理 阻塞风险 证据验收 任务派发 审查恢复",
-        text_length: 42,
+        heading: viewport === "mobile" ? "项目列表" : "项目总览",
+        text: `${PROJECT_MANAGEMENT_TEXT} 当前任务 下一步处理 阻塞风险 证据验收 任务派发 审查恢复`,
+        text_length: PROJECT_MANAGEMENT_TEXT.length + 42,
         data_bind_count: 0,
         visible: true,
         source_type: "browser_dom_text"
@@ -645,17 +691,17 @@ test("frontend acceptance allows translated operator workbench copy", () => {
     viewportResults: [
       viewportAudit({
         viewport: "desktop",
-        bodyText: "任务包 证据 审查发现 可派发 调度步数 准备上下文 执行 审查 续跑 收口验收 状态快照 续跑健康 审查通道 连通正常"
+        bodyText: `${PROJECT_MANAGEMENT_TEXT} 任务包 证据 审查发现 可派发 调度步数 准备上下文 执行 审查 续跑 收口验收 状态快照 续跑健康 审查通道 连通正常`
       }),
       viewportAudit({
         viewport: "desktop_narrow",
         dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 },
-        bodyText: "任务包 证据 调度执行 状态投影"
+        bodyText: `${PROJECT_MANAGEMENT_TEXT} 任务包 证据 调度执行 状态投影`
       }),
       viewportAudit({
         viewport: "mobile",
         dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 },
-        bodyText: "中台工作台 状态投影 收口验收 自动调度 续跑健康 模型与审查 通道连通"
+        bodyText: `中台工作台 ${PROJECT_MANAGEMENT_TEXT} 状态投影 收口验收 自动调度 续跑健康 模型与审查 通道连通`
       })
     ],
     navigationResults: [],
@@ -675,6 +721,7 @@ test("frontend acceptance allows translated operator workbench copy", () => {
 
 test("frontend acceptance allows labeled operator status counts with next-action context", () => {
   const statusCountText = [
+    PROJECT_MANAGEMENT_TEXT,
     "目标 Agent 池恢复验证",
     "完成 8 待处理 2 失败 0",
     "原因 最近一轮审查需要补充成本证据",
@@ -974,6 +1021,65 @@ test("frontend acceptance validation rejects missing or inconsistent content com
   assert.equal(falsePass.status, "fail");
   assert.ok(falsePass.issues.some((issue) => issue.code === "frontend_content_completion_false_pass"));
   assert.ok(falsePass.issues.some((issue) => issue.code === "frontend_content_completion_finding_mismatch"));
+});
+
+test("frontend acceptance blocks workbench pages without project-management semantics", () => {
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        nav: ["总览", "运行", "审查", "模型", "风险"].map((text) => ({ text })),
+        bodyText: "运行诊断 状态投影 任务包 证据 调度执行 审查通道",
+        contentSections: [
+          {
+            index: 0,
+            section_key: "runs",
+            heading: "运行诊断",
+            text: "运行诊断 状态投影 任务包 证据 调度执行 审查通道",
+            text_length: 36,
+            data_bind_count: 0,
+            visible: true,
+            source_type: "browser_dom_text"
+          }
+        ]
+      }),
+      viewportAudit({ viewport: "desktop_narrow", dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 } }),
+      viewportAudit({ viewport: "mobile", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+
+  assert.equal(artifact.status, "fail");
+  assert.ok(artifact.findings.some((finding) => finding.code === "frontend_project_management_nav_missing"));
+  assert.ok(artifact.findings.some((finding) => finding.code === "frontend_project_management_project_list_missing"));
+  assert.ok(artifact.findings.some((finding) => finding.code === "frontend_project_management_task_flow_missing"));
+  assert.equal(validateFrontendAcceptanceRunArtifact(artifact).status, "pass");
+});
+
+test("frontend acceptance validation rejects false-pass project-management semantics", () => {
+  const validation = validateFrontendAcceptanceRunArtifact(baseArtifact({
+    project_management_semantic_results: [
+      projectManagementSemanticResult("desktop", {
+        status: "pass",
+        has_platform_project: false,
+        has_task_lifecycle: false,
+        blocking_finding_codes: ["frontend_project_management_project_list_missing"]
+      }),
+      projectManagementSemanticResult("desktop_narrow"),
+      projectManagementSemanticResult("mobile")
+    ]
+  }));
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((issue) => issue.code === "project_management_platform_project_missing"));
+  assert.ok(validation.issues.some((issue) => issue.code === "project_management_task_lifecycle_missing"));
+  assert.ok(validation.issues.some((issue) => issue.code === "project_management_semantic_finding_mismatch"));
 });
 
 test("frontend acceptance validation blocks legacy desktop diagnostic false pass artifacts", () => {

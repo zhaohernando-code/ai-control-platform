@@ -660,6 +660,75 @@ function contentCompletionResultForViewport(result = {}) {
   };
 }
 
+function includesAllText(text = "", values = []) {
+  const normalized = normalizeText(text);
+  return values.every((value) => normalized.includes(value));
+}
+
+function projectManagementSemanticResultForViewport(result = {}) {
+  const text = normalizeText(result.bodyText);
+  const contentText = normalizeText(
+    (Array.isArray(result.contentSections) ? result.contentSections : [])
+      .map((section) => `${section.heading || ""} ${section.text || section.text_sample || ""}`)
+      .join(" ")
+  ) || text;
+  const navLabels = new Set((result.nav || []).map((item) => normalizeText(item.text)));
+  const requiredNav = result.viewport === "mobile"
+    ? []
+    : ["总览", "项目", "任务流", "Agents", "风险", "治理"];
+  const requiredLifecycle = ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"];
+  const requiredProjectFields = ["项目列表", "AI Control Platform", "ai-control-platform", "阶段", "当前任务", "Agent", "进度", "更新"];
+  const hasRequiredNav = requiredNav.every((label) => navLabels.has(label));
+  const hasProjectList = includesAllText(text, requiredProjectFields);
+  const hasLifecycle = includesAllText(text, requiredLifecycle);
+  const diagnosticsPrimary = contentText.indexOf("运行诊断") >= 0 && contentText.indexOf("项目列表") > contentText.indexOf("运行诊断");
+  const status = hasRequiredNav && hasProjectList && hasLifecycle && !diagnosticsPrimary ? "pass" : "fail";
+  const blockingFindingCodes = [
+    hasRequiredNav ? null : "frontend_project_management_nav_missing",
+    hasProjectList ? null : "frontend_project_management_project_list_missing",
+    hasLifecycle ? null : "frontend_project_management_task_flow_missing",
+    diagnosticsPrimary ? "frontend_projection_diagnostics_primary" : null
+  ].filter(Boolean);
+
+  return {
+    viewport: result.viewport,
+    status,
+    source_type: "browser_dom_product_semantics",
+    has_required_nav: hasRequiredNav,
+    has_project_list: hasProjectList,
+    has_platform_project: text.includes("AI Control Platform") && text.includes("ai-control-platform"),
+    has_project_fields: includesAllText(text, ["阶段", "当前任务", "Agent", "进度", "更新"]),
+    has_task_lifecycle: hasLifecycle,
+    diagnostics_primary: diagnosticsPrimary,
+    required_nav: requiredNav,
+    required_lifecycle: requiredLifecycle,
+    text_sample: contentText.slice(0, 1000),
+    blocking_finding_codes: blockingFindingCodes
+  };
+}
+
+function findingsForProjectManagementSemantics(results = []) {
+  const findings = [];
+  for (const result of results) {
+    if (result.status === "pass") continue;
+    for (const code of result.blocking_finding_codes || []) {
+      const messages = {
+        frontend_project_management_nav_missing: "desktop workbench navigation must expose project-management sections from the original design",
+        frontend_project_management_project_list_missing: "workbench must show a project list with ai-control-platform and current project work fields",
+        frontend_project_management_task_flow_missing: "workbench must show the project task lifecycle from requirement through acceptance",
+        frontend_projection_diagnostics_primary: "projection diagnostics must not appear before the project-management surface"
+      };
+      findings.push(finding(code, "p1", messages[code] || "project-management semantic requirement failed", {
+        viewport: result.viewport,
+        text_sample: result.text_sample,
+        required_nav: result.required_nav,
+        required_lifecycle: result.required_lifecycle
+      }));
+    }
+  }
+  return findings;
+}
+
 function commandControlScopeOf(button = {}) {
   return normalizeText(button.scope || button.control_scope || button.controlScope || "ungrouped") || "ungrouped";
 }
@@ -1266,6 +1335,7 @@ function findingsForBrowserErrors(viewportResults) {
 
 export function buildArtifact({ viewportResults, navigationResults, screenshots, targetInfo = {} }) {
   const contentCompletionResults = viewportResults.map(contentCompletionResultForViewport);
+  const projectManagementSemanticResults = viewportResults.map(projectManagementSemanticResultForViewport);
   const commandArchitectureResults = viewportResults.map(commandArchitectureResultForViewport);
   const layoutResults = viewportResults.map(layoutDensityResultForViewport);
   const copyResults = viewportResults.map((result) => ({
@@ -1338,6 +1408,7 @@ export function buildArtifact({ viewportResults, navigationResults, screenshots,
   const findings = [
     ...viewportResults.flatMap(findingsForViewport),
     ...findingsForContentCompletion(contentCompletionResults),
+    ...findingsForProjectManagementSemantics(projectManagementSemanticResults),
     ...findingsForNavigation(navigationResults),
     ...findingsForControls(viewportResults),
     ...findingsForResources(viewportResults),
@@ -1372,6 +1443,7 @@ export function buildArtifact({ viewportResults, navigationResults, screenshots,
     layout_results: layoutResults,
     copy_results: copyResults,
     content_completion_results: contentCompletionResults,
+    project_management_semantic_results: projectManagementSemanticResults,
     resource_results: resourceResults,
     control_results: controlResults,
     browser_error_results: browserErrorResults,

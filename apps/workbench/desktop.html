@@ -19,10 +19,12 @@
         </div>
         <nav class="nav-list">
           <a class="active" href="#overview" data-workbench-tab="overview" aria-current="page">总览</a>
-          <a href="#runs" data-workbench-tab="runs">运行</a>
-          <a href="#review" data-workbench-tab="review">审查</a>
-          <a href="#models" data-workbench-tab="models">模型</a>
+          <a href="#projects" data-workbench-tab="projects">项目</a>
+          <a href="#flow" data-workbench-tab="flow">任务流</a>
+          <a href="#agents" data-workbench-tab="agents">Agents</a>
           <a href="#risks" data-workbench-tab="risks">风险</a>
+          <a href="#governance" data-workbench-tab="governance">治理</a>
+          <a href="#runs" data-workbench-tab="runs">运行诊断</a>
         </nav>
         <div class="operator">
           <div class="avatar">OP</div>
@@ -36,20 +38,20 @@
       <main class="workbench" id="overview">
         <header class="topbar">
           <div class="top-item">
-            <span>运行状态</span>
-            <strong data-bind="status">等待状态上报</strong>
+            <span>平台健康</span>
+            <strong data-bind="platform_health">等待状态上报</strong>
           </div>
           <div class="top-item">
-            <span>调度决策</span>
-            <strong data-bind="decision">等待调度决策</strong>
+            <span>项目总数</span>
+            <strong data-bind="counter_projects_total">0</strong>
           </div>
           <div class="top-item">
-            <span>主模型</span>
-            <strong data-bind="selected_model">等待模型选择</strong>
+            <span>进行中项目</span>
+            <strong data-bind="counter_active_projects">0</strong>
           </div>
           <div class="top-item">
-            <span>审查状态</span>
-            <strong data-bind="reviewer_status">等待审查状态</strong>
+            <span>需人工决策</span>
+            <strong data-bind="counter_human_decisions">0</strong>
           </div>
           <div class="top-actions">
             <select aria-label="状态投影历史" data-history-select></select>
@@ -61,48 +63,74 @@
         <section class="content-grid" data-active-section="overview">
           <section class="hero-panel" data-section="overview" tabindex="-1">
             <div>
-              <span class="caption">当前目标</span>
-              <h1 data-bind="headline">加载中</h1>
-              <p data-bind="reason">等待 projection 数据</p>
+              <span class="caption">项目总览</span>
+              <h1 data-bind="project_overview_headline">加载项目状态</h1>
+              <p data-bind="project_overview_summary">等待项目管理数据</p>
             </div>
             <div class="status-orbit" aria-hidden="true">
-              <span data-bind="status_short">待上报</span>
+              <span data-bind="platform_health_short">待上报</span>
             </div>
           </section>
 
           <section class="metrics" aria-label="核心计数" data-section="overview">
             <article class="metric">
-              <span>任务包</span>
-              <strong data-bind="counter_work_packages">0</strong>
+              <span>项目总数</span>
+              <strong data-bind="counter_projects_total">0</strong>
             </article>
             <article class="metric">
-              <span>证据</span>
-              <strong data-bind="counter_artifacts">0</strong>
+              <span>进行中项目</span>
+              <strong data-bind="counter_active_projects">0</strong>
             </article>
             <article class="metric">
-              <span>审查发现</span>
-              <strong data-bind="counter_reviewer_findings">0</strong>
+              <span>任务总数</span>
+              <strong data-bind="counter_tasks_total">0</strong>
             </article>
             <article class="metric">
-              <span>可派发</span>
-              <strong data-bind="counter_dispatchable_tasks">0</strong>
+              <span>进行中任务</span>
+              <strong data-bind="counter_active_tasks">0</strong>
             </article>
             <article class="metric">
-              <span>调度步数</span>
-              <strong data-bind="counter_scheduler_dispatch_steps">0</strong>
+              <span>已发布服务</span>
+              <strong data-bind="counter_released_services">0</strong>
             </article>
             <article class="metric">
-              <span>总目标待办</span>
-              <strong data-bind="counter_global_goals_pending">0</strong>
+              <span>需人工决策</span>
+              <strong data-bind="counter_human_decisions">0</strong>
             </article>
-            <article class="metric">
-              <span>总目标完成</span>
-              <strong data-bind="counter_global_goals_completed">0</strong>
-            </article>
-            <article class="metric">
-              <span>自我治理</span>
-              <strong data-bind="counter_self_governance_findings">0</strong>
-            </article>
+          </section>
+
+          <section class="panel wide project-panel" id="projects" data-section="overview projects" tabindex="-1">
+            <div class="section-title">
+              <h2>项目列表</h2>
+              <span>按更新时间排序</span>
+            </div>
+            <div class="project-table" role="table" aria-label="项目列表">
+              <div class="project-row project-head" role="row">
+                <span role="columnheader">项目</span>
+                <span role="columnheader">阶段</span>
+                <span role="columnheader">当前任务</span>
+                <span role="columnheader">Agent</span>
+                <span role="columnheader">进度</span>
+                <span role="columnheader">更新</span>
+              </div>
+              <div data-list="project_rows"></div>
+            </div>
+          </section>
+
+          <section class="panel wide flow-panel" id="flow" data-section="overview flow" tabindex="-1">
+            <div class="section-title">
+              <h2>任务流</h2>
+              <span>需求 -> 拆解 -> 子任务 -> Review -> 发布 -> Live 验证 -> 验收</span>
+            </div>
+            <div class="flow-rail" data-list="project_task_flow"></div>
+          </section>
+
+          <section class="panel" id="agents" data-section="overview agents" tabindex="-1">
+            <div class="section-title">
+              <h2>Agents 池</h2>
+              <span>角色和当前负载</span>
+            </div>
+            <div class="agent-list" data-list="project_agents"></div>
           </section>
 
           <section class="panel operator-summary wide" data-section="overview">
@@ -127,9 +155,9 @@
             </div>
           </section>
 
-          <section class="panel wide" data-section="overview runs">
+          <section class="panel wide" data-section="runs">
             <div class="section-title">
-              <h2>任务流</h2>
+              <h2>运行任务</h2>
               <span>准备上下文 -> 执行 -> 审查 -> 续跑</span>
             </div>
             <div class="timeline" data-list="next_actions"></div>
@@ -193,7 +221,7 @@
             </div>
           </section>
 
-          <section class="panel run-panel" id="runs" data-section="runs" tabindex="-1">
+          <section class="panel run-panel" id="governance" data-section="governance" tabindex="-1">
             <div class="section-title">
               <h2>平台自我治理</h2>
               <span>流程健康</span>
@@ -282,7 +310,7 @@
             </details>
           </section>
 
-          <section class="panel" id="models" data-section="models" tabindex="-1">
+          <section class="panel" id="models" data-section="runs" tabindex="-1">
             <div class="section-title">
               <h2>模型路由</h2>
               <span data-bind="model_summary">等待模型路线</span>
@@ -291,7 +319,7 @@
             <div class="stack" data-list="model_roles"></div>
           </section>
 
-          <section class="panel" id="review" data-section="review" tabindex="-1">
+          <section class="panel" id="review" data-section="review runs" tabindex="-1">
             <div class="section-title">
               <h2>审查门禁</h2>
               <span data-bind="reviewer_signal">等待审查信号</span>
@@ -305,7 +333,7 @@
             </div>
           </section>
 
-          <section class="panel" id="risks" data-section="overview risks" tabindex="-1">
+          <section class="panel" id="risks" data-section="risks" tabindex="-1">
             <div class="section-title">
               <h2>审查通道</h2>
               <span>模型准备</span>

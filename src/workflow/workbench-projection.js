@@ -64,6 +64,95 @@ function summarizeDag(dagInput) {
   };
 }
 
+function taskFlowFromDag(dagSummary = {}) {
+  const total = Number(dagSummary.total || 0);
+  const done = Number(dagSummary.by_status?.done || dagSummary.by_status?.completed || 0);
+  const dispatchable = asArray(dagSummary.dispatchable).length;
+  const inProgress = Math.max(0, total - done - dispatchable);
+
+  return [
+    { id: "requirements", label: "需求", status: total > 0 ? "pass" : "pending", count: total },
+    { id: "breakdown", label: "拆解", status: total > 0 ? "pass" : "pending", count: total },
+    { id: "subtasks", label: "子任务", status: dispatchable > 0 || inProgress > 0 ? "active" : done > 0 ? "pass" : "pending", count: total },
+    { id: "review", label: "Review", status: done > 0 ? "active" : "pending", count: done },
+    { id: "release", label: "发布", status: "pending", count: 0 },
+    { id: "live_validation", label: "Live 验证", status: "pending", count: 0 },
+    { id: "acceptance", label: "验收", status: done === total && total > 0 ? "active" : "pending", count: done }
+  ];
+}
+
+function projectStatusPhase(status = "", schedulerDispatch = {}, frontendAcceptance = {}) {
+  const normalized = normalizeString(status);
+  if (normalizeString(schedulerDispatch.status) === "fail") return "调度修复";
+  if (normalizeString(frontendAcceptance.status) === "fail") return "界面验收修复";
+  if (normalized === "in_progress") return "持续开发";
+  if (normalized === "completed" || normalized === "complete") return "收口验证";
+  return "状态确认";
+}
+
+function summarizeProjectManagement(input = {}, summaries = {}) {
+  const projectStatus = input.project_status || input.projectStatus || {};
+  const dagSummary = summaries.dagSummary || {};
+  const manifestSummary = summaries.manifestSummary || {};
+  const globalGoalCompletion = summaries.globalGoalCompletion || {};
+  const schedulerDispatch = summaries.schedulerDispatch || {};
+  const frontendAcceptance = summaries.frontendAcceptance || {};
+  const nextActionReadout = summaries.nextActionReadout || {};
+  const taskFlow = taskFlowFromDag(dagSummary);
+  const currentTask = normalizeString(
+    nextActionReadout.reason ||
+      nextActionReadout.action ||
+      projectStatus.next_step ||
+      projectStatus.latest_update ||
+      manifestSummary.goal
+  ) || "等待下一步任务";
+  const activeTasks = Math.max(
+    Number(dagSummary.total || 0) - Number(dagSummary.by_status?.done || dagSummary.by_status?.completed || 0),
+    asArray(dagSummary.dispatchable).length
+  );
+  const progress = Number(globalGoalCompletion.total || 0) > 0
+    ? Math.round((Number(globalGoalCompletion.completed || 0) / Number(globalGoalCompletion.total || 1)) * 100)
+    : 0;
+  const project = {
+    project_id: normalizeString(projectStatus.project) || "ai-control-platform",
+    display_name: "AI Control Platform",
+    type: "platform",
+    status: normalizeString(projectStatus.status) || "in_progress",
+    phase: projectStatusPhase(projectStatus.status || "in_progress", schedulerDispatch, frontendAcceptance),
+    current_task: currentTask,
+    owner_agent: "main_orchestrator",
+    progress,
+    last_updated: normalizeString(projectStatus.updated_at) || normalizeString(input.generated_at) || "等待更新时间",
+    risks: [
+      normalizeString(schedulerDispatch.status) === "fail" ? "调度派发未通过" : null,
+      Number(globalGoalCompletion.blocked || 0) > 0 ? "总目标存在阻塞" : null
+    ].filter(Boolean),
+    human_decisions: 0,
+    latest_run_projection_id: input.projection_id || input.projectionId || null,
+    task_flow: taskFlow
+  };
+
+  return {
+    status: "available",
+    source: "project_status_and_workflow_projection",
+    projects_total: 1,
+    active_projects: project.status === "completed" ? 0 : 1,
+    tasks_total: Number(dagSummary.total || manifestSummary.work_package_count || 0),
+    active_tasks: activeTasks,
+    released_services: 0,
+    human_decisions: 0,
+    projects: [project],
+    active_work: [project],
+    task_flow: taskFlow,
+    design_alignment: {
+      status: "partial",
+      homepage_primary_surface: "project_management",
+      diagnostics_surface: "run_diagnostics",
+      required_project_id: "ai-control-platform"
+    }
+  };
+}
+
 function summarizeManifest(manifest) {
   const validation = validateRunManifest(manifest);
   return {
@@ -1280,6 +1369,14 @@ export function createWorkbenchProjection(input = {}) {
     taskDag: dagSummary,
     projectStatus: input.project_status || input.projectStatus || {}
   });
+  const projectManagement = summarizeProjectManagement(input, {
+    dagSummary,
+    manifestSummary,
+    globalGoalCompletion,
+    schedulerDispatch,
+    frontendAcceptance,
+    nextActionReadout
+  });
   const operatorEventSummary = summarizeOperatorEvents(operatorApplication, operatorEventLedger);
   const status = maxStatus([
     inputValidation.status === "pass" ? "pass" : "human_intervention",
@@ -1325,6 +1422,7 @@ export function createWorkbenchProjection(input = {}) {
       evidence_work_packages: selfGovernanceReport.evidence_building.work_packages.slice(0, 5),
       decision_packages: selfGovernanceReport.user_decisions.packages.slice(0, 5)
     },
+    project_management: projectManagement,
     global_goal_completion: globalGoalCompletion,
     operations_timeline: operationsTimeline,
     next_action_readout: nextActionReadout,
@@ -1387,6 +1485,12 @@ export function createWorkbenchProjection(input = {}) {
         self_governance_auto_repairs: selfGovernance.auto_repair_count || 0,
         self_governance_evidence_tasks: selfGovernance.evidence_building_count || 0,
         self_governance_user_decisions: selfGovernance.user_decision_count || 0,
+        projects_total: projectManagement.projects_total || 0,
+        active_projects: projectManagement.active_projects || 0,
+        tasks_total: projectManagement.tasks_total || 0,
+        active_tasks: projectManagement.active_tasks || 0,
+        released_services: projectManagement.released_services || 0,
+        human_decisions: projectManagement.human_decisions || 0,
         global_goals_total: globalGoalCompletion.total || 0,
         global_goals_pending: globalGoalCompletion.pending || 0,
         global_goals_completed: globalGoalCompletion.completed || 0,
@@ -1434,6 +1538,16 @@ export function createMobileWorkbenchProjection(input = {}) {
       mobile_viewports: projection.frontend_acceptance.mobile_viewports,
       repair_required: projection.frontend_acceptance.repair_required,
       repair_work_package_id: projection.frontend_acceptance.repair_work_package?.id || null
+    },
+    project_management: {
+      status: projection.project_management.status,
+      projects_total: projection.project_management.projects_total,
+      active_projects: projection.project_management.active_projects,
+      tasks_total: projection.project_management.tasks_total,
+      active_tasks: projection.project_management.active_tasks,
+      human_decisions: projection.project_management.human_decisions,
+      projects: projection.project_management.projects.slice(0, 5),
+      task_flow: projection.project_management.task_flow
     },
     resume_health: {
       status: projection.resume_health.status,

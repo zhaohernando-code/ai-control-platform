@@ -259,6 +259,7 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
     "layout_results",
     "copy_results",
     "content_completion_results",
+    "project_management_semantic_results",
     "resource_results",
     "control_results",
     "mobile_results",
@@ -302,12 +303,14 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
   const viewportResultsByName = new Map(asArray(artifact.viewport_results).map((result) => [normalizeString(result.viewport), result]));
   const resourceResultsByName = new Map(asArray(artifact.resource_results).map((result) => [normalizeString(result.viewport), result]));
   const contentCompletionResultsByName = new Map(asArray(artifact.content_completion_results).map((result) => [normalizeString(result.viewport), result]));
+  const productSemanticResultsByName = new Map(asArray(artifact.project_management_semantic_results).map((result) => [normalizeString(result.viewport), result]));
   const controlResultsByName = new Map(asArray(artifact.control_results).map((result) => [normalizeString(result.viewport), result]));
   const layoutResultsByName = new Map(asArray(artifact.layout_results).map((result) => [normalizeString(result.viewport), result]));
   for (const requiredViewport of ["desktop", "desktop_narrow", "mobile"]) {
     const viewportResult = viewportResultsByName.get(requiredViewport) || {};
     const resourceResult = resourceResultsByName.get(requiredViewport) || {};
     const contentResult = contentCompletionResultsByName.get(requiredViewport) || null;
+    const semanticResult = productSemanticResultsByName.get(requiredViewport) || null;
     const controlResult = controlResultsByName.get(requiredViewport) || null;
     const layoutResult = layoutResultsByName.get(requiredViewport) || null;
     if (viewportResult.mounted_workbench_route !== true && resourceResult.mounted_workbench_route !== true) {
@@ -358,6 +361,30 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
         }
       }
     }
+    if (!semanticResult) {
+      issues.push(issue("missing_project_management_semantic_evidence", `${requiredViewport} must include project-management semantic evidence`, "project_management_semantic_results"));
+    } else {
+      if (normalizeString(semanticResult.source_type || semanticResult.sourceType) !== "browser_dom_product_semantics") {
+        issues.push(issue("project_management_semantics_requires_dom", `${requiredViewport} project-management semantic evidence must come from browser DOM`, "project_management_semantic_results"));
+      }
+      if (artifact.status === "pass") {
+        if (semanticResult.status !== "pass") {
+          issues.push(issue("project_management_semantics_failed", `${requiredViewport} must satisfy project-management semantics`, "project_management_semantic_results"));
+        }
+        if (semanticResult.has_platform_project !== true) {
+          issues.push(issue("project_management_platform_project_missing", `${requiredViewport} must show ai-control-platform as a managed project`, "project_management_semantic_results"));
+        }
+        if (semanticResult.has_task_lifecycle !== true) {
+          issues.push(issue("project_management_task_lifecycle_missing", `${requiredViewport} must show the project lifecycle`, "project_management_semantic_results"));
+        }
+        if (requiredViewport !== "mobile" && semanticResult.has_required_nav !== true) {
+          issues.push(issue("project_management_nav_missing", `${requiredViewport} must expose project-management navigation`, "project_management_semantic_results"));
+        }
+        if (semanticResult.diagnostics_primary === true) {
+          issues.push(issue("projection_diagnostics_primary_not_allowed", `${requiredViewport} diagnostics cannot be the primary workbench surface`, "project_management_semantic_results"));
+        }
+      }
+    }
     if (!controlResult) {
       issues.push(issue("missing_frontend_control_architecture_evidence", `${requiredViewport} must include command control architecture evidence`, "control_results"));
     } else {
@@ -404,6 +431,8 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
     .map(commandArchitectureOf)
     .filter(commandArchitectureHasBlocker)
     .flatMap(commandArchitectureFindingCodes);
+  const projectManagementBlockerCodes = asArray(artifact.project_management_semantic_results)
+    .flatMap((result) => asArray(result.blocking_finding_codes || result.blockingFindingCodes));
   const findingCodes = new Set(findings.map(findingCode).filter(Boolean));
   for (const code of contentCompletionBlockerCodes) {
     if (!findingCodes.has(code)) {
@@ -413,6 +442,11 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
   for (const code of commandArchitectureBlockerCodes) {
     if (!findingCodes.has(code)) {
       issues.push(issue("frontend_control_architecture_finding_mismatch", `command architecture blocker ${code} must have a matching P0/P1 finding`, "findings"));
+    }
+  }
+  for (const code of projectManagementBlockerCodes) {
+    if (!findingCodes.has(code)) {
+      issues.push(issue("project_management_semantic_finding_mismatch", `project-management blocker ${code} must have a matching P0/P1 finding`, "findings"));
     }
   }
 

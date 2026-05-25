@@ -151,6 +151,10 @@ function countValue(value) {
   return Number.isFinite(count) ? count : 0;
 }
 
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function hasPositiveStatus(value) {
   const normalized = String(value ?? "").toLowerCase();
   return normalized === "pass" ||
@@ -352,6 +356,51 @@ function operatorGovernanceSummary(selfGovernance, globalGoals) {
   return compactCopy(`治理：${governanceStatus}，${findingCopy}，${goalCopy}。下一步：${nextGoal}。`, 180);
 }
 
+function projectManagementOf(projection) {
+  return projection.project_management || {
+    projects_total: 0,
+    active_projects: 0,
+    tasks_total: 0,
+    active_tasks: 0,
+    released_services: 0,
+    human_decisions: 0,
+    projects: [],
+    active_work: [],
+    task_flow: []
+  };
+}
+
+function projectOverviewHeadline(projectManagement) {
+  const active = countValue(projectManagement.active_projects);
+  const total = countValue(projectManagement.projects_total);
+  const firstProject = projectManagement.projects?.[0];
+  if (firstProject) {
+    return `${displayText(firstProject.display_name || firstProject.project_id)} · ${displayText(firstProject.phase)}`;
+  }
+  return `项目 ${active}/${total} 进行中`;
+}
+
+function projectOverviewSummary(projectManagement) {
+  const project = projectManagement.projects?.[0] || {};
+  const currentTask = meaningfulCopy(project.current_task, "等待当前任务");
+  const owner = meaningfulCopy(project.owner_agent, "等待负责人");
+  const updated = meaningfulCopy(project.last_updated, "等待更新时间");
+  return compactCopy(`当前任务：${currentTask}。负责人：${owner}。更新时间：${updated}。`, 180);
+}
+
+function projectHealthText(projectManagement, projection) {
+  const risks = asArray(projectManagement.projects?.[0]?.risks);
+  if (risks.length > 0) return "需处理";
+  const status = normalizeToken(projectManagement.status || projection.status);
+  if (["available", "pass", "complete", "completed"].includes(status)) return "可运行";
+  if (["rerun", "fail", "failed"].includes(status)) return "需重跑";
+  return statusText(projectManagement.status || projection.status, "待确认");
+}
+
+function normalizeToken(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function bindTabs() {
   const tabs = qsa("[data-workbench-tab]");
   const grid = qs(".content-grid");
@@ -440,6 +489,83 @@ function renderModelRoles(projection) {
   );
 }
 
+function renderProjectRows(projectManagement) {
+  const lists = qsa('[data-list="project_rows"]');
+  const projects = asArray(projectManagement.active_work).length > 0
+    ? asArray(projectManagement.active_work)
+    : asArray(projectManagement.projects);
+  const rows = projects.length > 0 ? projects : [{
+    project_id: "ai-control-platform",
+    display_name: "AI Control Platform",
+    phase: "等待状态",
+    current_task: "等待项目管理数据",
+    owner_agent: "main_orchestrator",
+    progress: 0,
+    last_updated: "等待更新时间"
+  }];
+
+  for (const list of lists) {
+    list.replaceChildren(
+      ...rows.map((project) => {
+        const row = document.createElement("div");
+        row.className = "project-row";
+        row.setAttribute("role", "row");
+        row.innerHTML = `
+          <span role="cell"><strong>${displayText(project.display_name || project.project_id)}</strong><small>${displayText(project.project_id)}</small></span>
+          <span role="cell"><b class="cell-label">阶段</b>${displayText(project.phase)}</span>
+          <span role="cell"><b class="cell-label">当前任务</b>${compactCopy(project.current_task, 96)}</span>
+          <span role="cell"><b class="cell-label">Agent</b>${displayText(project.owner_agent)}</span>
+          <span role="cell"><b class="cell-label">进度</b><span class="progress-track"><i style="width:${Math.max(0, Math.min(100, countValue(project.progress)))}%"></i></span>${countValue(project.progress)}%</span>
+          <span role="cell"><b class="cell-label">更新</b>${displayText(project.last_updated)}</span>
+        `;
+        return row;
+      })
+    );
+  }
+}
+
+function renderProjectTaskFlow(projectManagement) {
+  const lists = qsa('[data-list="project_task_flow"]');
+  const flow = asArray(projectManagement.task_flow).length > 0
+    ? asArray(projectManagement.task_flow)
+    : ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"].map((label) => ({ label, status: "pending", count: 0 }));
+
+  for (const list of lists) {
+    list.replaceChildren(
+      ...flow.map((step, index) => {
+        const item = document.createElement("article");
+        item.className = `flow-step flow-${normalizeToken(step.status) || "pending"}`;
+        item.innerHTML = `<strong>${index + 1}. ${displayText(step.label)}</strong><span>${statusText(step.status, "待开始")} · ${countValue(step.count)}</span>`;
+        return item;
+      })
+    );
+  }
+}
+
+function renderProjectAgents(projectManagement) {
+  const list = qs('[data-list="project_agents"]');
+  if (!list) return;
+  const projects = asArray(projectManagement.projects);
+  const agents = projects.map((project) => ({
+    id: project.owner_agent || "main_orchestrator",
+    role: project.type === "platform" ? "orchestrator" : "implementer",
+    model: "codex-cli",
+    status: project.status || "in_progress",
+    load: project.progress || 0,
+    lock_domain: project.project_id || "ai-control-platform"
+  }));
+  const rows = agents.length > 0 ? agents : [{ id: "main_orchestrator", role: "orchestrator", model: "codex-cli", status: "waiting", load: 0, lock_domain: "ai-control-platform" }];
+
+  list.replaceChildren(
+    ...rows.map((agent) => {
+      const item = document.createElement("article");
+      item.className = "agent-item";
+      item.innerHTML = `<strong>${displayText(agent.id)}</strong><span>${displayText(agent.role)} · ${displayText(agent.model)} · ${displayText(agent.lock_domain)}</span><small>${statusText(agent.status)} · ${countValue(agent.load)}%</small>`;
+      return item;
+    })
+  );
+}
+
 function renderProjection(projection) {
   const counters = projection.one_screen?.counters || projection.counters || {};
   const reviewer = projection.reviewer_gate || projection.reviewer || {};
@@ -455,6 +581,7 @@ function renderProjection(projection) {
   const schedulerLoop = projection.scheduler_loop || {};
   const lifecyclePool = projection.agent_lifecycle_pool || {};
   const selfGovernance = projection.self_governance || {};
+  const projectManagement = projectManagementOf(projection);
   const globalGoals = projection.global_goal_completion || {};
   const nextActionReadout = projection.next_action_readout || {};
   const nextActionTerminal = projection.next_action_terminal || {};
@@ -477,6 +604,10 @@ function renderProjection(projection) {
 
   setText("run_id", workflowIdentityLabel(projection.run_id, "当前运行"));
   setText("cycle_id", workflowIdentityLabel(projection.cycle_id, "当前周期"));
+  setText("platform_health", projectHealthText(projectManagement, projection));
+  setText("platform_health_short", projectHealthText(projectManagement, projection));
+  setText("project_overview_headline", projectOverviewHeadline(projectManagement));
+  setText("project_overview_summary", projectOverviewSummary(projectManagement));
   setText("status", statusText(projection.status));
   setText("status_short", statusText(projection.status));
   setText("decision", statusText(projection.decision));
@@ -510,6 +641,12 @@ function renderProjection(projection) {
   setText("counter_global_goals_blocked", counters.global_goals_blocked ?? globalGoals.blocked ?? 0);
   setText("counter_operation_events", counters.operation_events ?? projection.operations_timeline?.count ?? 0);
   setText("counter_self_governance_findings", counters.self_governance_findings ?? selfGovernance.finding_count ?? 0);
+  setText("counter_projects_total", counters.projects_total ?? projectManagement.projects_total ?? 0);
+  setText("counter_active_projects", counters.active_projects ?? projectManagement.active_projects ?? 0);
+  setText("counter_tasks_total", counters.tasks_total ?? projectManagement.tasks_total ?? 0);
+  setText("counter_active_tasks", counters.active_tasks ?? projectManagement.active_tasks ?? 0);
+  setText("counter_released_services", counters.released_services ?? projectManagement.released_services ?? 0);
+  setText("counter_human_decisions", counters.human_decisions ?? projectManagement.human_decisions ?? 0);
   setText("closeout_status", closeout.status);
   setText("closeout_publish_status", closeout.publish_status);
   setText("closeout_snapshot", closeout.snapshot_id);
@@ -602,6 +739,9 @@ function renderProjection(projection) {
   renderNextActions(projection);
   renderOperationsTimeline(projection);
   renderModelRoles(projection);
+  renderProjectRows(projectManagement);
+  renderProjectTaskFlow(projectManagement);
+  renderProjectAgents(projectManagement);
 }
 
 function projectionUrlForHistoryItem(item) {

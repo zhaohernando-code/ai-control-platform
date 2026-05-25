@@ -9,6 +9,8 @@
 
 本 shell 只负责展示已经通过 schema gate 的 projection JSON。后续接真实服务时，接口返回也必须先通过 `tools/check-workbench-projection.mjs` 同等校验。
 
+产品主语是项目管理，合同见 `docs/contracts/PROJECT_MANAGEMENT_WORKBENCH_CN.md`。PC / mobile 首屏必须显示项目列表、`ai-control-platform`、当前阶段、当前任务、Agent、进度和项目生命周期；运行诊断只能作为次级信息。
+
 本地服务模式：
 
 ```bash

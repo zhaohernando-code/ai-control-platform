@@ -279,6 +279,186 @@
     ],
     "decision_packages": []
   },
+  "project_management": {
+    "status": "available",
+    "source": "project_status_and_workflow_projection",
+    "projects_total": 1,
+    "active_projects": 1,
+    "tasks_total": 3,
+    "active_tasks": 0,
+    "released_services": 0,
+    "human_decisions": 0,
+    "projects": [
+      {
+        "project_id": "ai-control-platform",
+        "display_name": "AI Control Platform",
+        "type": "platform",
+        "status": "in_progress",
+        "phase": "持续开发",
+        "current_task": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+        "owner_agent": "main_orchestrator",
+        "progress": 0,
+        "last_updated": "2026-05-21T16:25:00.000Z",
+        "risks": [],
+        "human_decisions": 0,
+        "latest_run_projection_id": null,
+        "task_flow": [
+          {
+            "id": "requirements",
+            "label": "需求",
+            "status": "pass",
+            "count": 3
+          },
+          {
+            "id": "breakdown",
+            "label": "拆解",
+            "status": "pass",
+            "count": 3
+          },
+          {
+            "id": "subtasks",
+            "label": "子任务",
+            "status": "pass",
+            "count": 3
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "status": "active",
+            "count": 3
+          },
+          {
+            "id": "release",
+            "label": "发布",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "live_validation",
+            "label": "Live 验证",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "acceptance",
+            "label": "验收",
+            "status": "active",
+            "count": 3
+          }
+        ]
+      }
+    ],
+    "active_work": [
+      {
+        "project_id": "ai-control-platform",
+        "display_name": "AI Control Platform",
+        "type": "platform",
+        "status": "in_progress",
+        "phase": "持续开发",
+        "current_task": "Keep hardening durable state, project-boundary gates, and global-goal completion checks before expanding managed project adapters.",
+        "owner_agent": "main_orchestrator",
+        "progress": 0,
+        "last_updated": "2026-05-21T16:25:00.000Z",
+        "risks": [],
+        "human_decisions": 0,
+        "latest_run_projection_id": null,
+        "task_flow": [
+          {
+            "id": "requirements",
+            "label": "需求",
+            "status": "pass",
+            "count": 3
+          },
+          {
+            "id": "breakdown",
+            "label": "拆解",
+            "status": "pass",
+            "count": 3
+          },
+          {
+            "id": "subtasks",
+            "label": "子任务",
+            "status": "pass",
+            "count": 3
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "status": "active",
+            "count": 3
+          },
+          {
+            "id": "release",
+            "label": "发布",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "live_validation",
+            "label": "Live 验证",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "acceptance",
+            "label": "验收",
+            "status": "active",
+            "count": 3
+          }
+        ]
+      }
+    ],
+    "task_flow": [
+      {
+        "id": "requirements",
+        "label": "需求",
+        "status": "pass",
+        "count": 3
+      },
+      {
+        "id": "breakdown",
+        "label": "拆解",
+        "status": "pass",
+        "count": 3
+      },
+      {
+        "id": "subtasks",
+        "label": "子任务",
+        "status": "pass",
+        "count": 3
+      },
+      {
+        "id": "review",
+        "label": "Review",
+        "status": "active",
+        "count": 3
+      },
+      {
+        "id": "release",
+        "label": "发布",
+        "status": "pending",
+        "count": 0
+      },
+      {
+        "id": "live_validation",
+        "label": "Live 验证",
+        "status": "pending",
+        "count": 0
+      },
+      {
+        "id": "acceptance",
+        "label": "验收",
+        "status": "active",
+        "count": 3
+      }
+    ],
+    "design_alignment": {
+      "status": "partial",
+      "homepage_primary_surface": "project_management",
+      "diagnostics_surface": "run_diagnostics",
+      "required_project_id": "ai-control-platform"
+    }
+  },
   "global_goal_completion": {
     "status": "in_progress",
     "total": 3,
@@ -630,6 +810,12 @@
       "self_governance_auto_repairs": 0,
       "self_governance_evidence_tasks": 1,
       "self_governance_user_decisions": 0,
+      "projects_total": 1,
+      "active_projects": 1,
+      "tasks_total": 3,
+      "active_tasks": 0,
+      "released_services": 0,
+      "human_decisions": 0,
       "global_goals_total": 3,
       "global_goals_pending": 3,
       "global_goals_completed": 0,

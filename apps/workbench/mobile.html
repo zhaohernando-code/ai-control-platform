@@ -19,28 +19,45 @@
         </header>
 
         <section class="mobile-hero">
-          <span class="caption">当前状态</span>
-          <h1 data-bind="status">等待状态上报</h1>
-          <p data-bind="reason">加载中</p>
+          <span class="caption">项目总览</span>
+          <h1 data-bind="project_overview_headline">加载项目状态</h1>
+          <p data-bind="project_overview_summary">等待项目管理数据</p>
         </section>
 
         <section class="mobile-metrics" aria-label="移动端核心计数">
           <article>
+            <span>项目</span>
+            <strong data-bind="counter_projects_total">0</strong>
+          </article>
+          <article>
+            <span>进行中</span>
+            <strong data-bind="counter_active_projects">0</strong>
+          </article>
+          <article>
             <span>任务</span>
-            <strong data-bind="counter_work_packages">0</strong>
+            <strong data-bind="counter_active_tasks">0</strong>
           </article>
           <article>
-            <span>证据</span>
-            <strong data-bind="counter_artifacts">0</strong>
+            <span>决策</span>
+            <strong data-bind="counter_human_decisions">0</strong>
           </article>
-          <article>
-            <span>派发</span>
-            <strong data-bind="counter_dispatchable_tasks">0</strong>
-          </article>
-          <article>
-            <span>调度</span>
-            <strong data-bind="counter_scheduler_dispatch_steps">0</strong>
-          </article>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
+            <h2>项目列表</h2>
+            <span>当前纳管</span>
+          </div>
+          <p class="mobile-copy">项目、阶段、当前任务、Agent、进度和更新时间</p>
+          <div class="mobile-list" data-list="project_rows"></div>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
+            <h2>任务流</h2>
+            <span>项目进度</span>
+          </div>
+          <div class="mobile-list mobile-flow-list" data-list="project_task_flow"></div>
         </section>
 
         <section class="mobile-section">
@@ -53,7 +70,7 @@
 
         <section class="mobile-section">
           <div class="mobile-section-title">
-            <h2>下一步</h2>
+            <h2>运行诊断</h2>
             <span data-bind="decision">等待调度决策</span>
           </div>
           <p class="mobile-copy" data-bind="operator_blocker_summary">阻塞：等待状态上报。影响：先确认可派发任务。下一步：查看推荐任务。</p>

@@ -62,6 +62,32 @@ function validateSelfGovernance(projection, issues, path = "self_governance") {
   }
 }
 
+function validateProjectManagement(projection, issues, path = "project_management") {
+  if (!hasObject(projection)) return;
+  for (const field of ["status", "projects_total", "active_projects", "tasks_total", "active_tasks", "human_decisions"]) {
+    requireOwnField(projection, field, issues, path);
+  }
+  if (!Array.isArray(projection.projects) || projection.projects.length === 0) {
+    issues.push(issue("missing_project_management_projects", "project_management.projects must include at least one project", `${path}.projects`));
+  }
+  const platformProject = asArray(projection.projects).find((project) => normalizeString(project?.project_id) === "ai-control-platform");
+  if (!platformProject) {
+    issues.push(issue("missing_platform_project", "project_management.projects must include ai-control-platform", `${path}.projects`));
+  } else {
+    for (const field of ["display_name", "phase", "current_task", "owner_agent", "last_updated"]) {
+      if (!normalizeString(platformProject[field])) {
+        issues.push(issue("missing_platform_project_field", `ai-control-platform must include ${field}`, `${path}.projects.ai-control-platform.${field}`));
+      }
+    }
+    if (!Array.isArray(platformProject.task_flow) || platformProject.task_flow.length < 7) {
+      issues.push(issue("missing_platform_project_task_flow", "ai-control-platform must expose the full task lifecycle", `${path}.projects.ai-control-platform.task_flow`));
+    }
+  }
+  if (!Array.isArray(projection.task_flow) || projection.task_flow.length < 7) {
+    issues.push(issue("missing_project_management_task_flow", "project_management.task_flow must expose the project lifecycle", `${path}.task_flow`));
+  }
+}
+
 function validateStatus(projection, issues) {
   const status = normalizeString(projection?.status);
   if (!PROJECTION_STATUSES.has(status)) {
@@ -91,6 +117,7 @@ function validatePcProjection(projection, issues) {
     "scheduler_loop",
     "agent_lifecycle_pool",
     "self_governance",
+    "project_management",
     "global_goal_completion",
     "operations_timeline",
     "next_action_readout",
@@ -115,6 +142,7 @@ function validatePcProjection(projection, issues) {
   }
   validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
   validateSelfGovernance(projection.self_governance, issues);
+  validateProjectManagement(projection.project_management, issues);
   validateNextActionTerminal(projection.next_action_terminal, issues);
 }
 
@@ -123,7 +151,7 @@ function validateMobileProjection(projection, issues) {
     requireString(projection, field, issues);
   }
 
-  for (const field of ["counters", "closeout", "frontend_acceptance", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "self_governance", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
+  for (const field of ["counters", "closeout", "frontend_acceptance", "project_management", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "self_governance", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
     requireObject(projection, field, issues);
   }
 
@@ -131,6 +159,7 @@ function validateMobileProjection(projection, issues) {
   requireArray(projection, "blockers", issues);
   validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
   validateSelfGovernance(projection.self_governance, issues);
+  validateProjectManagement(projection.project_management, issues);
   validateNextActionTerminal(projection.next_action_terminal, issues);
 }
 
