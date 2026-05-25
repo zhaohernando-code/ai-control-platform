@@ -58,7 +58,7 @@ function runGit(args, options = {}) {
     if (options.optional) return "";
     throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
   }
-  return result.stdout.trim();
+  return String(result.stdout || "").trim();
 }
 
 function readJson(path, label) {
