@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -11,6 +11,7 @@ import { probeWorkbenchLiveRoute } from "../tools/probe-workbench-live-route.mjs
 const SECRET_COOKIE = "hz_auth_session=secret-cookie-value";
 const SECRET_HEADER = "Bearer secret-header-value";
 const ROUTE_URL = "http://127.0.0.1:4180/projects/ai-control-platform/";
+const SHARED_EDGE_ROUTE_URL = "https://hernando-zhao.cn/projects/ai-control-platform/";
 const UNREACHABLE_ROUTE_URL = "http://127.0.0.1:0/projects/ai-control-platform/";
 
 function projectStatus(routeUrl = ROUTE_URL) {
@@ -36,7 +37,8 @@ function writeProjectStatus(dir, routeUrl = ROUTE_URL) {
 }
 
 function stubTransport(url, headers) {
-  const authorized = headers.Cookie === SECRET_COOKIE && headers.Authorization === SECRET_HEADER;
+  const authorized = (headers.Cookie === SECRET_COOKIE && headers.Authorization === SECRET_HEADER) ||
+    headers["X-HZ-Dev-Auth-Bypass-Token"] === "secret-header-value";
   const redirect = {
     url,
     finalUrl: "http://127.0.0.1:4180/?next=%2Fprojects%2Fai-control-platform%2F",
@@ -57,7 +59,8 @@ function stubTransport(url, headers) {
     authRedirectDetected: true
   };
   if (!authorized) return Promise.resolve(redirect);
-  if (url === ROUTE_URL || url === "http://127.0.0.1:4180/projects/ai-control-platform/apps/workbench/desktop.html") {
+  const pathname = new URL(url).pathname;
+  if (pathname === "/projects/ai-control-platform/" || pathname === "/projects/ai-control-platform/apps/workbench/desktop.html") {
     return Promise.resolve({
       url,
       finalUrl: url,
@@ -68,7 +71,7 @@ function stubTransport(url, headers) {
       authRedirectDetected: false
     });
   }
-  if (url === "http://127.0.0.1:4180/projects/ai-control-platform/api/workbench/projection") {
+  if (pathname === "/projects/ai-control-platform/api/workbench/projection") {
     return Promise.resolve({
       url,
       finalUrl: url,
@@ -163,6 +166,50 @@ test("probe writes authenticated local stub pass evidence accepted only in local
   assert.equal(testValidation.status, "pass");
   assert.equal(realValidation.status, "fail");
   assert.ok(realValidation.issues.some((issue) => issue.code === "local_live_route_evidence_not_allowed"));
+});
+
+test("probe auto-injects shared edge agent auth from env without printing the value", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-probe-"));
+  const statusPath = writeProjectStatus(dir, SHARED_EDGE_ROUTE_URL);
+  const artifact = await probeWorkbenchLiveRoute({
+    projectStatusPath: statusPath,
+    url: SHARED_EDGE_ROUTE_URL,
+    allowInsecureLocalTest: true,
+    headers: {},
+    headerNames: [],
+    env: {
+      HZ_DEV_AUTH_BYPASS_TOKEN: "secret-header-value"
+    },
+    requestText: stubTransport
+  });
+
+  assert.equal(artifact.status, "pass");
+  assert.deepEqual(artifact.request_header_names, ["X-HZ-Dev-Auth-Bypass-Token"]);
+  assert.doesNotMatch(JSON.stringify(artifact), /secret-header-value/);
+});
+
+test("probe auto-injects shared edge agent auth from helper when env token is absent", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-probe-"));
+  const statusPath = writeProjectStatus(dir, SHARED_EDGE_ROUTE_URL);
+  const helperPath = join(dir, "edge-agent-auth-token.sh");
+  writeFileSync(helperPath, "#!/usr/bin/env bash\nprintf '%s\\n' secret-header-value\n");
+  chmodSync(helperPath, 0o700);
+
+  const artifact = await probeWorkbenchLiveRoute({
+    projectStatusPath: statusPath,
+    url: SHARED_EDGE_ROUTE_URL,
+    allowInsecureLocalTest: true,
+    headers: {},
+    headerNames: [],
+    env: {
+      EDGE_AGENT_AUTH_TOKEN_HELPER: helperPath
+    },
+    requestText: stubTransport
+  });
+
+  assert.equal(artifact.status, "pass");
+  assert.deepEqual(artifact.request_header_names, ["X-HZ-Dev-Auth-Bypass-Token"]);
+  assert.doesNotMatch(JSON.stringify(artifact), /secret-header-value/);
 });
 
 test("probe CLI output redacts cookie and header values before any network request", async () => {

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -13,6 +14,8 @@ import {
 
 const DEFAULT_PROJECT_STATUS_PATH = "PROJECT_STATUS.json";
 const DEFAULT_OUTPUT_PATH = "tmp/workbench-live-route-evidence.json";
+const DEFAULT_EDGE_AGENT_TOKEN_HELPER = "/Users/hernando_zhao/codex/scripts/edge-agent-auth-token.sh";
+const EDGE_AGENT_AUTH_HEADER = "X-HZ-Dev-Auth-Bypass-Token";
 const MAX_REDIRECTS = 5;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
@@ -89,6 +92,13 @@ function addHeader(options, rawHeader) {
   noteHeader(options, name);
 }
 
+function hasExplicitAuthHeader(headers = {}) {
+  return Object.keys(headers).some((name) => {
+    const normalized = name.toLowerCase();
+    return normalized === "cookie" || normalized === "authorization" || normalized === EDGE_AGENT_AUTH_HEADER.toLowerCase();
+  });
+}
+
 function readJson(path, label) {
   try {
     return JSON.parse(readFileSync(path, "utf8"));
@@ -135,6 +145,45 @@ function isPublicHttpsRoute(value) {
   } catch {
     return false;
   }
+}
+
+function isSharedEdgeRoute(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && ["hernando-zhao.cn", "www.hernando-zhao.cn"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function resolveEdgeAgentAuthToken(routeUrl, env = process.env) {
+  if (!isSharedEdgeRoute(routeUrl) || env.WORKBENCH_LIVE_ROUTE_AUTO_EDGE_AUTH === "0") {
+    return "";
+  }
+
+  const envToken = String(env.HZ_DEV_AUTH_BYPASS_TOKEN || "").trim();
+  if (envToken) return envToken;
+
+  const helperPath = String(env.EDGE_AGENT_AUTH_TOKEN_HELPER || DEFAULT_EDGE_AGENT_TOKEN_HELPER).trim();
+  if (!helperPath) return "";
+
+  try {
+    return execFileSync(helperPath, [], {
+      encoding: "utf8",
+      timeout: 15000,
+      stdio: ["ignore", "pipe", "pipe"]
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function applyDefaultEdgeAgentAuth(options, routeUrl) {
+  if (hasExplicitAuthHeader(options.headers)) return;
+  const token = resolveEdgeAgentAuthToken(routeUrl, options.env || process.env);
+  if (!token) return;
+  options.headers[EDGE_AGENT_AUTH_HEADER] = token;
+  noteHeader(options, EDGE_AGENT_AUTH_HEADER);
 }
 
 function routeAllowed(value, allowInsecureLocalTest) {
@@ -303,6 +352,7 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
   const projectId = String(projectStatus.project || "ai-control-platform").trim() || "ai-control-platform";
   const expectedRouteUrls = extractExpectedPublicRouteUrls(projectStatus);
   const routeUrl = resolveRouteUrl(projectStatus, options.url);
+  applyDefaultEdgeAgentAuth(options, routeUrl);
   const shellUrl = mountedUrl(routeUrl, projectId, "apps/workbench/desktop.html");
   const apiUrl = mountedUrl(routeUrl, projectId, "api/workbench/projection");
   const localLoopback = isLocalRoute(routeUrl);
