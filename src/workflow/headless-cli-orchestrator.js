@@ -537,9 +537,21 @@ function childWorkerRunnerFrom(options = {}) {
     return spawnSync(template.command, args, {
       cwd: resolve(normalizeString(options.child_worker_cwd || options.childWorkerCwd) || process.cwd()),
       encoding: "utf8",
-      timeout: timeoutMs
+      timeout: timeoutMs,
+      env: childWorkerProcessEnv(options)
     });
   };
+}
+
+function childWorkerProcessEnv(options = {}) {
+  const baseEnv = isObject(options.child_worker_env)
+    ? options.child_worker_env
+    : isObject(options.childWorkerEnv)
+      ? options.childWorkerEnv
+      : process.env;
+  return Object.fromEntries(
+    Object.entries(baseEnv).filter(([name]) => !name.startsWith("AI_CONTROL_WORKBENCH_CHILD_WORKER_"))
+  );
 }
 
 function childWorkerCommandOutputPath(workPackage = {}, options = {}) {

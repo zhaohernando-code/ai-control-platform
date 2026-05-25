@@ -11,7 +11,7 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_PROXY="${AI_CONTROL_WORKBENCH_CODEX_PROXY:-/Users/hernando_zhao/codex-proxy.sh}"
 CODEX_BIN="${AI_CONTROL_WORKBENCH_CODEX_BIN:-codex}"
-CHILD_WORKER_MODE="${AI_CONTROL_WORKBENCH_CHILD_WORKER_MODE:-account}"
+CHILD_WORKER_MODE="${AI_CONTROL_WORKBENCH_CODEX_MODE:-${AI_CONTROL_WORKBENCH_CHILD_WORKER_MODE:-account}}"
 CODEX_MODEL="${AI_CONTROL_WORKBENCH_CODEX_MODEL:-}"
 export PATH="$HOME/.nvm/versions/node/v22.16.0/bin:/Applications/Codex.app/Contents/Resources:$PATH"
 
@@ -29,5 +29,9 @@ if [[ -n "$CODEX_MODEL" ]]; then
 fi
 ARGS+=(--dangerously-bypass-approvals-and-sandbox -C "$REPO_ROOT")
 ARGS+=(-)
+
+for env_name in "${!AI_CONTROL_WORKBENCH_CHILD_WORKER_@}"; do
+  unset "$env_name"
+done
 
 exec "$CODEX_BIN" "${ARGS[@]}" < "$PROMPT_FILE"

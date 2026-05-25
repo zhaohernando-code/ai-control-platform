@@ -10,6 +10,7 @@ import { createRunManifest } from "../src/workflow/run-manifest.js";
 import {
   CHILD_WORKER_ROLE,
   HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+  createHeadlessProviderExecutor,
   evaluateHeadlessChildWorkerOutput,
   headlessChildWorkerPrompt,
   parseHeadlessChildWorkerOutput,
@@ -240,6 +241,66 @@ test("headless CLI orchestrator continues existing context cycle without remater
   assert.equal(result.child_run.executed_work_packages[0].id, "pc-mobile-workbench");
   assert.equal(result.workflow_state.manifest.work_packages[0].status, "completed");
   assert.equal(result.workflow_state.manifest.work_packages[1].status, "completed");
+});
+
+test("headless child worker commands receive sanitized workbench child-worker environment", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "headless-child-env-"));
+  const workerScript = join(tempDir, "worker.mjs");
+  writeFileSync(workerScript, [
+    "const leaked = Object.keys(process.env).filter((name) => name.startsWith('AI_CONTROL_WORKBENCH_CHILD_WORKER_'));",
+    "const pass = leaked.length === 0;",
+    "console.log(JSON.stringify({",
+    "  status: pass ? 'pass' : 'fail',",
+    "  role: 'bounded_child_worker',",
+    "  host: 'platform_core',",
+    "  changed_files: ['src/workflow/headless-cli-orchestrator.js'],",
+    "  test_results: [{ command: 'child worker env isolation', status: pass ? 'pass' : 'fail' }],",
+    "  durable_state_updated: true,",
+    "  process_hardening: { required: false, status: 'not_required' },",
+    "  continuation_readiness: { ready: true },",
+    "  self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true },",
+    "  blocker: pass ? null : `leaked ${leaked.join(',')}`",
+    "}));"
+  ].join("\n"));
+
+  const previousCommand = process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND;
+  const previousOutputPath = process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH;
+  process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND = "would-recursively-spawn";
+  process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH = "would-recursively-write";
+  try {
+    const executor = createHeadlessProviderExecutor({
+      child_worker_command: process.execPath,
+      child_worker_args: [workerScript],
+      child_worker_timeout_ms: 10000,
+      child_worker_max_attempts: 1
+    });
+    const result = executor({
+      workflow_state: sourceWorkflowState(),
+      selected_work_packages: [
+        {
+          id: "child-env-isolation",
+          title: "Child environment isolation",
+          action: "continue_global_goal",
+          owned_files: ["src/workflow/headless-cli-orchestrator.js"]
+        }
+      ],
+      execution_plan: { package_plans: [] }
+    });
+
+    assert.equal(result.status, "pass");
+    assert.equal(result.package_results[0].status, "pass");
+  } finally {
+    if (previousCommand === undefined) {
+      delete process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND;
+    } else {
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND = previousCommand;
+    }
+    if (previousOutputPath === undefined) {
+      delete process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH;
+    } else {
+      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH = previousOutputPath;
+    }
+  }
 });
 
 test("headless CLI orchestrator blocks implicit mock child worker completion", () => {
