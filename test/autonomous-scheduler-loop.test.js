@@ -266,6 +266,43 @@ test("scheduler loop keeps scheduler profiles out of context work package execut
   assert.equal(body.snapshot_id, "context-loop-context-cycle-01");
 });
 
+test("scheduler loop surfaces blocked projected next action issues", async () => {
+  const client = {
+    async loadHistory() {
+      return { latest: "context-cycle" };
+    },
+    async loadProjection() {
+      return {
+        next_action_readout: {
+          status: "ready",
+          action: "run_context_work_packages"
+        }
+      };
+    },
+    async runNextAction() {
+      return {
+        status: "blocked",
+        issues: [{
+          code: "local_bounded_requirement_intake_requires_child_authority",
+          message: "requirement intake requires child authority",
+          path: "manifest.work_packages.requirement-intake"
+        }]
+      };
+    }
+  };
+  const result = await runSchedulerLoopDriver({
+    max_iterations: 3,
+    execution_strategy: "projected_next_action",
+    snapshot_prefix: "context-loop"
+  }, { client });
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.phase, "projected_action_blocked");
+  assert.equal(result.iterations.length, 1);
+  assert.equal(result.iterations[0].status, "blocked");
+  assert.ok(result.issues.some((entry) => entry.code === "local_bounded_requirement_intake_requires_child_authority"));
+});
+
 test("scheduler loop executes projected lifecycle cleanup through next action in place", async () => {
   const calls = [];
   let cleaned = false;

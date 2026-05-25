@@ -89,17 +89,28 @@ function isLocalBoundedExecution(options = {}) {
 
 function localBoundedCompletionIssues(selected = [], options = {}) {
   if (!isLocalBoundedExecution(options)) return [];
-  if (options.allow_local_bounded_global_goal_completion === true ||
-    options.allowLocalBoundedGlobalGoalCompletion === true) {
-    return [];
-  }
-  return selected
+  const issues = [];
+  if (!(options.allow_local_bounded_global_goal_completion === true ||
+    options.allowLocalBoundedGlobalGoalCompletion === true)) {
+    issues.push(...selected
     .filter((node) => normalizeString(node.action) === "continue_global_goal" && normalizeString(node.id).startsWith("global-goal-"))
     .map((node) => issue(
       "local_bounded_global_goal_completion_requires_child_authority",
       `local_bounded runner cannot complete broad global-goal work package without verified child-worker/provider completion authority: ${node.id}`,
       `manifest.work_packages.${node.id}`
-    ));
+    )));
+  }
+  if (!(options.allow_local_bounded_requirement_intake_completion === true ||
+    options.allowLocalBoundedRequirementIntakeCompletion === true)) {
+    issues.push(...selected
+      .filter((node) => normalizeString(node.action) === "continue_requirement_intake")
+      .map((node) => issue(
+        "local_bounded_requirement_intake_requires_child_authority",
+        `local_bounded runner cannot complete requirement-intake implementation work package without verified child-worker/provider completion authority: ${node.id}`,
+        `manifest.work_packages.${node.id}`
+      )));
+  }
+  return issues;
 }
 
 export function adapterResultAllowsWorkPackageCompletion(adapterResult = {}) {
@@ -565,7 +576,7 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
           allows_work_package_completion: false,
           authority: "local_bounded_runner",
           evidence_kind: "local_execution",
-          reason: "broad global-goal work packages require verified child-worker/provider completion authority"
+          reason: "implementation work packages require verified child-worker/provider completion authority"
         }
       };
     }

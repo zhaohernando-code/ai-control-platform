@@ -159,6 +159,7 @@ function requirementAutoAdvanceInput(selectedId, input = {}) {
     max_iterations: Math.min(Math.max(Number(input.auto_advance_max_iterations || input.autoAdvanceMaxIterations || 3), 1), 5),
     execution_profile: input.execution_profile || input.executionProfile || "approved_mock_non_dry_run",
     execution_strategy: "projected_next_action",
+    context_work_package_execution_profile: input.context_work_package_execution_profile || input.contextWorkPackageExecutionProfile,
     snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "requirement-intake-auto",
     created_at: input.created_at || input.createdAt
   };

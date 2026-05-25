@@ -698,21 +698,121 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     assert.equal(payload.requirement.id, "requirement-from-workbench");
     assert.equal(payload.submitted_projection.next_action_readout.action, "prepare_project_status_continuation");
     assert.equal(payload.submitted_projection.next_action_readout.source_type, "requirement_intake_submitted");
-    assert.equal(payload.auto_advance.status, "created");
-    assert.equal(payload.auto_advance.result.status, "pass");
-    assert.equal(payload.auto_advance.result.phase, "iteration_limit_reached");
+    assert.equal(payload.auto_advance.status, "failed");
+    assert.equal(payload.auto_advance.result.status, "fail");
+    assert.equal(payload.auto_advance.result.phase, "projected_action_blocked");
+    assert.ok(payload.auto_advance.result.issues.some((issue) => issue.code === "local_bounded_requirement_intake_requires_child_authority"));
     assert.deepEqual(
       payload.auto_advance.result.iterations.map((iteration) => iteration.projected_action),
       ["prepare_project_status_continuation", "create_context_pack_from_seed", "run_context_work_packages"]
     );
-    assert.equal(payload.projection.next_action_readout.action, "prepare_project_status_continuation");
+    assert.equal(payload.projection.next_action_readout.action, "run_context_work_packages");
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-from-workbench");
     assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
     assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("apps/workbench"));
     assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
-    assert.ok(latestWorkflowState.manifest.events.some((event) => event.type === "context_work_packages_run"));
+    assert.equal(latestWorkflowState.manifest.work_packages[0].action, "continue_requirement_intake");
+    assert.notEqual(latestWorkflowState.manifest.work_packages[0].status, "completed");
+    assert.equal(latestWorkflowState.manifest.events.some((event) => event.type === "context_work_packages_run"), false);
     assert.equal(savedWorkflowState.manifest.events.at(-1).type, "autonomous_scheduler_loop_run");
   }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
+test("workbench server completes requirement intake only with verified provider completion authority", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-provider-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "requirement-provider-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = currentSessionWorkflowState();
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "requirement-provider",
+    items: [
+      {
+        id: "requirement-provider",
+        label: "Requirement provider",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-provider`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "需求链路使用 verified provider",
+        surface_area: "workbench_frontend",
+        problem_statement: "需求提交后的实现包必须由具备完成权限的执行器完成。",
+        acceptance_criteria: "配置 verified provider executor 时，auto advance 可以完成 context work package。",
+        constraints: "不能让 local bounded runner 写 completed。",
+        context_work_package_execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        created_at: "2026-05-25T09:30:00.000Z",
+        requirement_id: "requirement-provider-authorized"
+      })
+    });
+    const payload = response.json();
+    const savedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
+    const latestHistoryItem = savedHistory.items.find((entry) => entry.id === savedHistory.latest);
+    const latestWorkflowState = JSON.parse(readFileSync(join(process.cwd(), latestHistoryItem.input_path), "utf8"));
+    const contextRunArtifact = latestWorkflowState.artifact_ledger.artifacts
+      .find((artifact) => artifact.metadata?.type === "context_work_packages_run");
+
+    assert.equal(response.status, 201);
+    assert.equal(payload.auto_advance.status, "created");
+    assert.equal(payload.auto_advance.result.status, "pass");
+    assert.equal(payload.auto_advance.result.phase, "iteration_limit_reached");
+    assert.equal(payload.projection.next_action_readout.action, "prepare_project_status_continuation");
+    assert.equal(latestWorkflowState.manifest.work_packages[0].action, "continue_requirement_intake");
+    assert.equal(latestWorkflowState.manifest.work_packages[0].status, "completed");
+    assert.equal(contextRunArtifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
+    assert.equal(contextRunArtifact.metadata.completion_authority.allows_work_package_completion, true);
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath,
+    contextWorkPackageProviderExecutor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "verified provider completed requirement intake package"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        allows_work_package_completion: true,
+        completion_authority: {
+          allows_work_package_completion: true,
+          authority: "verified_provider_executor",
+          evidence_kind: "provider_execution",
+          reason: "configured workbench provider executor completed requirement intake package"
+        },
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `requirement-provider-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "configured_workbench_provider_executor",
+        provider: "multi_provider",
+        execution_mode: "provider_model_routed",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 2,
+        deterministic: false
+      }
+    })
+  });
 });
 
 test("workbench server truncates generated context pack snapshot ids for long projection ids", async () => {

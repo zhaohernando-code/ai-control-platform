@@ -173,6 +173,50 @@ function workflowStateWithGlobalGoalPackage() {
   };
 }
 
+function workflowStateWithRequirementIntakePackage() {
+  const contextPack = {
+    requirement_summary: "Implement requirement intake update",
+    host: "platform_core",
+    target_project_id: "ai-control-platform",
+    non_goals: ["Do not fake product implementation"],
+    forbidden_actions: ["Do not complete without child-worker authority"],
+    owned_files: ["apps/workbench", "src/workflow/requirement-intake.js"],
+    acceptance_gates: ["node --test test/workbench-server.test.js"],
+    rollback_conditions: ["requirement package completed without implementation evidence"],
+    subtasks: [
+      {
+        id: "requirement-intake-replay-20260525-module-update-continue",
+        title: "Continue requirement intake",
+        action: "continue_requirement_intake",
+        owned_files: ["apps/workbench", "src/workflow/requirement-intake.js"],
+        global_goal_id: "requirement-intake-replay-20260525-module-update"
+      }
+    ]
+  };
+  const manifest = createRunManifest({
+    run_id: "run-requirement-intake",
+    cycle_id: "cycle-requirement-intake",
+    goal: contextPack.requirement_summary,
+    context_pack: contextPack,
+    events: [],
+    artifacts: [],
+    gate_results: [],
+    review_findings: [],
+    recovery_attempts: [],
+    created_at: "2026-05-25T12:45:00.000Z"
+  });
+
+  return {
+    manifest,
+    artifact_ledger: {
+      run_id: manifest.run_id,
+      cycle_id: manifest.cycle_id,
+      artifacts: []
+    },
+    task_dag: manifest.work_packages
+  };
+}
+
 test("context work package runner executes dispatchable packages and updates workflow state", () => {
   const workflowState = workflowStateWithContextCycle();
   const first = runContextWorkPackages(workflowState, {
@@ -234,6 +278,23 @@ test("context work package runner blocks local bounded global-goal completion wi
   assert.equal(result.phase, "local_bounded_completion_authority");
   assert.equal(result.allows_work_package_completion, false);
   assert.ok(result.issues.some((item) => item.code === "local_bounded_global_goal_completion_requires_child_authority"));
+  assert.equal(workflowState.manifest.work_packages[0].status, undefined);
+  assert.equal(workflowState.manifest.events.some((event) => event.type === "WorkerSpawned"), false);
+  assert.equal(workflowState.artifact_ledger.artifacts.length, 0);
+});
+
+test("context work package runner blocks local bounded requirement intake completion without child authority", () => {
+  const workflowState = workflowStateWithRequirementIntakePackage();
+
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-25T12:46:00.000Z"
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "local_bounded_completion_authority");
+  assert.equal(result.allows_work_package_completion, false);
+  assert.ok(result.issues.some((item) => item.code === "local_bounded_requirement_intake_requires_child_authority"));
   assert.equal(workflowState.manifest.work_packages[0].status, undefined);
   assert.equal(workflowState.manifest.events.some((event) => event.type === "WorkerSpawned"), false);
   assert.equal(workflowState.artifact_ledger.artifacts.length, 0);

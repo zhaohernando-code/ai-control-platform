@@ -271,6 +271,15 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
         );
         iteration.status = actionResult.status || "executed";
         iteration.next_projection_id = projectedNextProjectionId(actionResult);
+        if (iteration.status === "blocked") {
+          iteration.issues.push(...asArray(actionResult.issues));
+          return {
+            status: "fail",
+            phase: "projected_action_blocked",
+            issues: iteration.issues,
+            iterations
+          };
+        }
         const resultProjection = projectedActionResultProjection(actionResult);
         const hasProgress = projectionShowsProjectedActionProgress(readout, resultProjection) ||
           (resultProjection && projectedProgressKey(resultProjection) !== beforeProgressKey);
@@ -353,6 +362,22 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
       iterations
     };
   } catch (error) {
+    const latestIteration = iterations.at(-1);
+    const responseIssues = asArray(error.response?.issues);
+    if (normalized.execution_strategy === "projected_next_action" &&
+      latestIteration &&
+      (error.http_status === 409 || responseIssues.length > 0)) {
+      latestIteration.status = "blocked";
+      latestIteration.issues.push(...responseIssues);
+      return {
+        status: "fail",
+        phase: "projected_action_blocked",
+        issues: latestIteration.issues.length > 0
+          ? latestIteration.issues
+          : [issue("projected_action_blocked", error.message, "next_action")],
+        iterations
+      };
+    }
     return {
       status: "fail",
       phase: "execution",
