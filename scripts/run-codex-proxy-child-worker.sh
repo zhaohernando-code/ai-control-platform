@@ -10,16 +10,24 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_PROXY="${AI_CONTROL_WORKBENCH_CODEX_PROXY:-/Users/hernando_zhao/codex-proxy.sh}"
-CODEX_MODEL="${AI_CONTROL_WORKBENCH_CODEX_MODEL:-gpt-5.5}"
+CODEX_BIN="${AI_CONTROL_WORKBENCH_CODEX_BIN:-codex}"
+CHILD_WORKER_MODE="${AI_CONTROL_WORKBENCH_CHILD_WORKER_MODE:-account}"
+CODEX_MODEL="${AI_CONTROL_WORKBENCH_CODEX_MODEL:-}"
 export PATH="$HOME/.nvm/versions/node/v22.16.0/bin:/Applications/Codex.app/Contents/Resources:$PATH"
 
-if [[ ! -x "$CODEX_PROXY" ]]; then
-  echo "codex proxy executable not found: $CODEX_PROXY" >&2
-  exit 127
+if [[ "$CHILD_WORKER_MODE" == "proxy" ]]; then
+  if [[ ! -x "$CODEX_PROXY" ]]; then
+    echo "codex proxy executable not found: $CODEX_PROXY" >&2
+    exit 127
+  fi
+  CODEX_BIN="$CODEX_PROXY"
 fi
 
-exec "$CODEX_PROXY" exec \
-  -m "$CODEX_MODEL" \
-  --dangerously-bypass-approvals-and-sandbox \
-  -C "$REPO_ROOT" \
-  - < "$PROMPT_FILE"
+ARGS=(exec)
+if [[ -n "$CODEX_MODEL" ]]; then
+  ARGS+=(-m "$CODEX_MODEL")
+fi
+ARGS+=(--dangerously-bypass-approvals-and-sandbox -C "$REPO_ROOT")
+ARGS+=(-)
+
+exec "$CODEX_BIN" "${ARGS[@]}" < "$PROMPT_FILE"
