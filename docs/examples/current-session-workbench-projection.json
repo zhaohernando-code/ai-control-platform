@@ -452,6 +452,14 @@
         "count": 3
       }
     ],
+    "requirement_intake": {
+      "status": "not_configured",
+      "submitted_count": 0,
+      "open_count": 0,
+      "active_requirement_id": null,
+      "latest": null,
+      "items": []
+    },
     "design_alignment": {
       "status": "partial",
       "homepage_primary_surface": "project_management",

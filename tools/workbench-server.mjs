@@ -51,6 +51,10 @@ import {
 } from "../src/workflow/project-status-continuation.js";
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
+import {
+  recordRequirementIntakeSubmitted,
+  submitRequirementToProjectStatus
+} from "../src/workflow/requirement-intake.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -592,6 +596,12 @@ function appendEvent(eventsPath, event) {
   };
   writeFileSync(eventsPath, `${JSON.stringify(nextLedger, null, 2)}\n`);
   return nextLedger;
+}
+
+function writeProjectStatus(path, projectStatus) {
+  if (!path) return null;
+  writeFileSync(path, `${JSON.stringify(projectStatus, null, 2)}\n`);
+  return path;
 }
 
 const SUPPORTED_NEXT_ACTIONS = new Set([
@@ -1209,6 +1219,58 @@ export function createWorkbenchServer(options = {}) {
           continuation: prepared,
           artifact: recorded.artifact,
           projection: workbenchProjection(recorded.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/requirements" && req.method === "POST") {
+        const history = readJson(serverHistoryPath);
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+
+        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
+        const workflowState = readJson(inputPath);
+        const currentProjectStatus = projectStatusPath ? readJson(projectStatusPath) : workflowState.project_status;
+        const submitted = submitRequirementToProjectStatus(currentProjectStatus || {}, input, {
+          created_at: input.created_at || input.createdAt,
+          requirement_id: input.requirement_id || input.requirementId
+        });
+        if (submitted.status !== "pass") {
+          jsonResponse(res, 400, { error: "invalid requirement submission", issues: submitted.issues });
+          return;
+        }
+
+        const recorded = recordRequirementIntakeSubmitted(workflowState, submitted, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (recorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "requirement intake record failed", issues: recorded.issues });
+          return;
+        }
+
+        writeProjectStatus(projectStatusPath, submitted.project_status);
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        const projection = workbenchProjection(recorded.workflow_state);
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          requirement: submitted.requirement,
+          artifact: recorded.artifact,
+          next_action_readout: projection.next_action_readout,
+          projection
         });
         return;
       }

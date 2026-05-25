@@ -678,15 +678,18 @@ function projectManagementSemanticResultForViewport(result = {}) {
     : ["总览", "项目", "任务流", "Agents", "风险", "治理"];
   const requiredLifecycle = ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"];
   const requiredProjectFields = ["项目列表", "AI Control Platform", "ai-control-platform", "阶段", "当前任务", "Agent", "进度", "更新"];
+  const requiredIntakeFields = ["提需求", "提交到流程"];
   const hasRequiredNav = requiredNav.every((label) => navLabels.has(label));
   const hasProjectList = includesAllText(text, requiredProjectFields);
   const hasLifecycle = includesAllText(text, requiredLifecycle);
+  const hasRequirementIntake = includesAllText(text, requiredIntakeFields);
   const diagnosticsPrimary = contentText.indexOf("运行诊断") >= 0 && contentText.indexOf("项目列表") > contentText.indexOf("运行诊断");
-  const status = hasRequiredNav && hasProjectList && hasLifecycle && !diagnosticsPrimary ? "pass" : "fail";
+  const status = hasRequiredNav && hasProjectList && hasLifecycle && hasRequirementIntake && !diagnosticsPrimary ? "pass" : "fail";
   const blockingFindingCodes = [
     hasRequiredNav ? null : "frontend_project_management_nav_missing",
     hasProjectList ? null : "frontend_project_management_project_list_missing",
     hasLifecycle ? null : "frontend_project_management_task_flow_missing",
+    hasRequirementIntake ? null : "frontend_requirement_intake_missing",
     diagnosticsPrimary ? "frontend_projection_diagnostics_primary" : null
   ].filter(Boolean);
 
@@ -699,6 +702,7 @@ function projectManagementSemanticResultForViewport(result = {}) {
     has_platform_project: text.includes("AI Control Platform") && text.includes("ai-control-platform"),
     has_project_fields: includesAllText(text, ["阶段", "当前任务", "Agent", "进度", "更新"]),
     has_task_lifecycle: hasLifecycle,
+    has_requirement_intake: hasRequirementIntake,
     diagnostics_primary: diagnosticsPrimary,
     required_nav: requiredNav,
     required_lifecycle: requiredLifecycle,
@@ -716,6 +720,7 @@ function findingsForProjectManagementSemantics(results = []) {
         frontend_project_management_nav_missing: "desktop workbench navigation must expose project-management sections from the original design",
         frontend_project_management_project_list_missing: "workbench must show a project list with ai-control-platform and current project work fields",
         frontend_project_management_task_flow_missing: "workbench must show the project task lifecycle from requirement through acceptance",
+        frontend_requirement_intake_missing: "workbench must let operators submit requirements into the autonomous development flow",
         frontend_projection_diagnostics_primary: "projection diagnostics must not appear before the project-management surface"
       };
       findings.push(finding(code, "p1", messages[code] || "project-management semantic requirement failed", {

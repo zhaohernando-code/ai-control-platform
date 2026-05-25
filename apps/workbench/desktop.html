@@ -19,6 +19,7 @@
         </div>
         <nav class="nav-list">
           <a class="active" href="#overview" data-workbench-tab="overview" aria-current="page">总览</a>
+          <a href="#requirements" data-workbench-tab="requirements">提需求</a>
           <a href="#projects" data-workbench-tab="projects">项目</a>
           <a href="#flow" data-workbench-tab="flow">任务流</a>
           <a href="#agents" data-workbench-tab="agents">Agents</a>
@@ -97,6 +98,47 @@
               <span>需人工决策</span>
               <strong data-bind="counter_human_decisions">0</strong>
             </article>
+          </section>
+
+          <section class="panel wide requirement-panel" id="requirements" data-section="overview requirements" tabindex="-1">
+            <div class="section-title">
+              <h2>提需求</h2>
+              <span>进入自动开发流程</span>
+            </div>
+            <form class="requirement-form" data-requirement-form>
+              <div class="requirement-grid">
+                <label>
+                  <span>标题</span>
+                  <input name="title" type="text" required maxlength="96" placeholder="例如：在项目列表显示任务阶段" />
+                </label>
+                <label>
+                  <span>范围</span>
+                  <select name="surface_area">
+                    <option value="workbench_frontend">Workbench 前端</option>
+                    <option value="workflow_runtime">流程引擎</option>
+                    <option value="reviewer_scheduler">调度与审查</option>
+                    <option value="governance_process">治理与门禁</option>
+                  </select>
+                </label>
+                <label class="full">
+                  <span>现状与目标</span>
+                  <textarea name="problem_statement" required maxlength="600" rows="3" placeholder="描述当前问题、期望结果和为什么需要它"></textarea>
+                </label>
+                <label class="full">
+                  <span>验收标准</span>
+                  <textarea name="acceptance_criteria" required maxlength="600" rows="3" placeholder="说明怎样证明需求已经完成"></textarea>
+                </label>
+                <label class="full">
+                  <span>约束</span>
+                  <textarea name="constraints" maxlength="400" rows="2" placeholder="可选：禁止动作、范围边界、上线要求"></textarea>
+                </label>
+              </div>
+              <div class="requirement-actions">
+                <button class="primary" type="submit" data-requirement-submit>提交到流程</button>
+                <span data-requirement-status>等待需求输入</span>
+              </div>
+            </form>
+            <div class="requirement-queue" data-list="requirement_intake"></div>
           </section>
 
           <section class="panel wide project-panel" id="projects" data-section="overview projects" tabindex="-1">

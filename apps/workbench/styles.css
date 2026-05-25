@@ -399,9 +399,95 @@ h2 {
 
 .timeline,
 .stack,
-.agent-list {
+.agent-list,
+.requirement-queue {
   display: grid;
   gap: 8px;
+}
+
+.requirement-panel {
+  grid-column: span 4;
+}
+
+.requirement-form {
+  display: grid;
+  gap: 12px;
+}
+
+.requirement-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.6fr);
+  gap: 10px;
+}
+
+.requirement-form label,
+.requirement-form label span {
+  display: grid;
+  gap: 6px;
+}
+
+.requirement-form label span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.requirement-form .full {
+  grid-column: 1 / -1;
+}
+
+.requirement-form input,
+.requirement-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.requirement-form textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.requirement-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.requirement-actions span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.requirement-queue {
+  margin-top: 12px;
+}
+
+.requirement-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 12px;
+}
+
+.requirement-item strong {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.requirement-item span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .project-table {
@@ -731,6 +817,16 @@ h2 {
   width: 100%;
 }
 
+.mobile-requirement-form {
+  gap: 10px;
+}
+
+.mobile-requirement-form input,
+.mobile-requirement-form select,
+.mobile-requirement-form textarea {
+  width: 100%;
+}
+
 .mobile-tabbar {
   border-top: 1px solid var(--line);
   background: #fff;
@@ -765,6 +861,10 @@ h2 {
 
   .flow-rail {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .requirement-grid {
+    grid-template-columns: 1fr;
   }
 }
 

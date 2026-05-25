@@ -16,6 +16,7 @@ import {
   summarizeFrontendAcceptance
 } from "./frontend-acceptance.js";
 import { createSelfGovernanceReport, summarizeSelfGovernance } from "./self-governance.js";
+import { summarizeRequirementIntake } from "./requirement-intake.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -98,8 +99,11 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const schedulerDispatch = summaries.schedulerDispatch || {};
   const frontendAcceptance = summaries.frontendAcceptance || {};
   const nextActionReadout = summaries.nextActionReadout || {};
+  const requirementIntake = summarizeRequirementIntake(projectStatus);
   const taskFlow = taskFlowFromDag(dagSummary);
+  const latestRequirement = requirementIntake.latest || null;
   const currentTask = normalizeString(
+    latestRequirement?.summary ||
     nextActionReadout.reason ||
       nextActionReadout.action ||
       projectStatus.next_step ||
@@ -144,6 +148,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
     projects: [project],
     active_work: [project],
     task_flow: taskFlow,
+    requirement_intake: requirementIntake,
     design_alignment: {
       status: "partial",
       homepage_primary_surface: "project_management",
@@ -804,6 +809,7 @@ const AGENT_LIFECYCLE_EVENT_TYPES = new Set([
 ]);
 
 const OPERATION_EVENT_TYPES = new Set([
+  "requirement_intake_submitted",
   "scheduler_dispatch_policy",
   "scheduler_dispatch_run",
   "scheduler_dispatch_continuation",
@@ -825,6 +831,9 @@ const OPERATION_EVENT_TYPES = new Set([
 ]);
 
 function operationSummary(type, metadata = {}) {
+  if (type === "requirement_intake_submitted") {
+    return metadata.requirement?.title || metadata.next_step || "requirement submitted";
+  }
   if (type === "scheduler_dispatch_run") {
     return `${metadata.phase || metadata.result?.phase || "dispatch"} / ${asArray(metadata.result?.steps || metadata.steps).length} step(s)`;
   }
@@ -880,6 +889,7 @@ function operationSummary(type, metadata = {}) {
 }
 
 function operationGroup(type) {
+  if (type === "requirement_intake_submitted") return "requirement_intake";
   if (AGENT_LIFECYCLE_EVENT_TYPES.has(type)) return "agent_lifecycle_pool";
   if (String(type || "").startsWith("reviewer_")) return "reviewer_recovery";
   if (type === "headless_projected_action_progress") return "headless_orchestrator";
@@ -887,6 +897,7 @@ function operationGroup(type) {
 }
 
 function operationNextActionRole(type, metadata = {}) {
+  if (type === "requirement_intake_submitted") return "automation_driver";
   if (type === "scheduler_dispatch_continuation") {
     return metadata.status === "ready" || metadata.status === "pass" ? "automation_driver" : "operator_observable";
   }
@@ -1016,6 +1027,17 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     };
   }
 
+  if (driver.type === "requirement_intake_submitted") {
+    return {
+      status: "ready",
+      action: "prepare_project_status_continuation",
+      source_event_id: driver.event_id,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: driver.summary || normalizeString(projectStatus.next_step || projectStatus.nextStep),
+      requires_operator: false
+    };
+  }
   if (driver.type === "scheduler_dispatch_continuation") {
     return {
       status: "ready",
@@ -1197,6 +1219,17 @@ function nextActionTerminalInfoFromReadout(readout = {}) {
 
 function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
   const projectStatus = summaries.projectStatus || {};
+  if (latest?.type === "requirement_intake_submitted") {
+    return {
+      status: "ready",
+      action: "prepare_project_status_continuation",
+      source_event_id: latest.event_id,
+      source_type: latest.type,
+      target_projection_id: null,
+      reason: latest.summary || normalizeString(projectStatus.next_step || projectStatus.nextStep),
+      requires_operator: false
+    };
+  }
   if (latest?.type === "project_status_continuation") {
     return {
       status: "ready",

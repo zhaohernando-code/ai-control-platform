@@ -377,6 +377,9 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
         if (semanticResult.has_task_lifecycle !== true) {
           issues.push(issue("project_management_task_lifecycle_missing", `${requiredViewport} must show the project lifecycle`, "project_management_semantic_results"));
         }
+        if (semanticResult.has_requirement_intake !== true && semanticResult.hasRequirementIntake !== true) {
+          issues.push(issue("project_management_requirement_intake_missing", `${requiredViewport} must expose requirement intake into the autonomous flow`, "project_management_semantic_results"));
+        }
         if (requiredViewport !== "mobile" && semanticResult.has_required_nav !== true) {
           issues.push(issue("project_management_nav_missing", `${requiredViewport} must expose project-management navigation`, "project_management_semantic_results"));
         }

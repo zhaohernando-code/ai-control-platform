@@ -44,6 +44,12 @@ const RAW_TOKEN_COPY = new Map([
   ["scheduler_dispatch", "调度执行"],
   ["frontend_acceptance", "前端验收"],
   ["frontend_acceptance_run", "前端验收"],
+  ["requirement_intake_submitted", "需求已接入流程"],
+  ["continue_requirement_intake", "处理需求"],
+  ["workbench_frontend", "Workbench 前端"],
+  ["workflow_runtime", "流程引擎"],
+  ["reviewer_scheduler", "调度与审查"],
+  ["governance_process", "治理与门禁"],
   ["headless_projected_action_progress", "后台推进进度"],
   ["operator_observable", "操作员可见"],
   ["automation_driver", "自动化执行"],
@@ -207,6 +213,27 @@ function setText(name, value) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function displayHtml(value, fallback) {
+  return escapeHtml(displayText(value, fallback));
+}
+
+function statusHtml(value, fallback) {
+  return escapeHtml(statusText(value, fallback));
+}
+
+function compactHtml(value, limit = 140, fallback) {
+  return escapeHtml(compactCopy(value, limit, fallback));
+}
+
 function workflowIdentityLabel(value, fallback) {
   const raw = text(value, "");
   if (!raw) return fallback;
@@ -366,7 +393,8 @@ function projectManagementOf(projection) {
     human_decisions: 0,
     projects: [],
     active_work: [],
-    task_flow: []
+    task_flow: [],
+    requirement_intake: { items: [] }
   };
 }
 
@@ -382,6 +410,10 @@ function projectOverviewHeadline(projectManagement) {
 
 function projectOverviewSummary(projectManagement) {
   const project = projectManagement.projects?.[0] || {};
+  const latestRequirement = projectManagement.requirement_intake?.latest || null;
+  if (latestRequirement) {
+    return compactCopy(`最新需求：${latestRequirement.title}。下一步：${latestRequirement.summary || project.current_task || "准备续跑"}。`, 180);
+  }
   const currentTask = meaningfulCopy(project.current_task, "等待当前任务");
   const owner = meaningfulCopy(project.owner_agent, "等待负责人");
   const updated = meaningfulCopy(project.last_updated, "等待更新时间");
@@ -444,7 +476,7 @@ function renderNextActions(projection) {
       ...rows.map((action, index) => {
         const item = document.createElement("article");
         item.className = list.classList.contains("mobile-list") ? "mobile-action" : "timeline-item";
-        item.innerHTML = `<strong>${index + 1}. ${displayText(action.title || action.id)}</strong><span>${statusText(action.action)}</span>`;
+        item.innerHTML = `<strong>${index + 1}. ${displayHtml(action.title || action.id)}</strong><span>${statusHtml(action.action)}</span>`;
         return item;
       })
     );
@@ -463,7 +495,7 @@ function renderOperationsTimeline(projection) {
       ...rows.map((item) => {
         const row = document.createElement("article");
         row.className = list.classList.contains("mobile-list") ? "mobile-action" : "timeline-item";
-        row.innerHTML = `<strong>${displayText(item.group)} · ${displayText(item.next_action_role)}</strong><span>${displayText(item.type)} / ${displayText(item.summary)}</span>`;
+        row.innerHTML = `<strong>${displayHtml(item.group)} · ${displayHtml(item.next_action_role)}</strong><span>${displayHtml(item.type)} / ${displayHtml(item.summary)}</span>`;
         return row;
       })
     );
@@ -483,7 +515,7 @@ function renderModelRoles(projection) {
     ...rows.map((role) => {
       const item = document.createElement("article");
       item.className = "role-item";
-      item.innerHTML = `<strong>${displayText(role.model)}</strong><span>${role.count} 个职责</span>`;
+      item.innerHTML = `<strong>${displayHtml(role.model)}</strong><span>${countValue(role.count)} 个职责</span>`;
       return item;
     })
   );
@@ -511,12 +543,12 @@ function renderProjectRows(projectManagement) {
         row.className = "project-row";
         row.setAttribute("role", "row");
         row.innerHTML = `
-          <span role="cell"><strong>${displayText(project.display_name || project.project_id)}</strong><small>${displayText(project.project_id)}</small></span>
-          <span role="cell"><b class="cell-label">阶段</b>${displayText(project.phase)}</span>
-          <span role="cell"><b class="cell-label">当前任务</b>${compactCopy(project.current_task, 96)}</span>
-          <span role="cell"><b class="cell-label">Agent</b>${displayText(project.owner_agent)}</span>
+          <span role="cell"><strong>${displayHtml(project.display_name || project.project_id)}</strong><small>${displayHtml(project.project_id)}</small></span>
+          <span role="cell"><b class="cell-label">阶段</b>${displayHtml(project.phase)}</span>
+          <span role="cell"><b class="cell-label">当前任务</b>${compactHtml(project.current_task, 96)}</span>
+          <span role="cell"><b class="cell-label">Agent</b>${displayHtml(project.owner_agent)}</span>
           <span role="cell"><b class="cell-label">进度</b><span class="progress-track"><i style="width:${Math.max(0, Math.min(100, countValue(project.progress)))}%"></i></span>${countValue(project.progress)}%</span>
-          <span role="cell"><b class="cell-label">更新</b>${displayText(project.last_updated)}</span>
+          <span role="cell"><b class="cell-label">更新</b>${displayHtml(project.last_updated)}</span>
         `;
         return row;
       })
@@ -535,7 +567,7 @@ function renderProjectTaskFlow(projectManagement) {
       ...flow.map((step, index) => {
         const item = document.createElement("article");
         item.className = `flow-step flow-${normalizeToken(step.status) || "pending"}`;
-        item.innerHTML = `<strong>${index + 1}. ${displayText(step.label)}</strong><span>${statusText(step.status, "待开始")} · ${countValue(step.count)}</span>`;
+        item.innerHTML = `<strong>${index + 1}. ${displayHtml(step.label)}</strong><span>${statusHtml(step.status, "待开始")} · ${countValue(step.count)}</span>`;
         return item;
       })
     );
@@ -560,10 +592,30 @@ function renderProjectAgents(projectManagement) {
     ...rows.map((agent) => {
       const item = document.createElement("article");
       item.className = "agent-item";
-      item.innerHTML = `<strong>${displayText(agent.id)}</strong><span>${displayText(agent.role)} · ${displayText(agent.model)} · ${displayText(agent.lock_domain)}</span><small>${statusText(agent.status)} · ${countValue(agent.load)}%</small>`;
+      item.innerHTML = `<strong>${displayHtml(agent.id)}</strong><span>${displayHtml(agent.role)} · ${displayHtml(agent.model)} · ${displayHtml(agent.lock_domain)}</span><small>${statusHtml(agent.status)} · ${countValue(agent.load)}%</small>`;
       return item;
     })
   );
+}
+
+function renderRequirementIntake(projectManagement) {
+  const lists = qsa('[data-list="requirement_intake"]');
+  if (lists.length === 0) return;
+  const intake = projectManagement.requirement_intake || {};
+  const rows = asArray(intake.items).length > 0
+    ? asArray(intake.items).slice(0, 4)
+    : [{ title: "暂无前端提交的需求", status: "idle", summary: "提交后会写入 PROJECT_STATUS，并成为推荐动作的输入。" }];
+
+  for (const list of lists) {
+    list.replaceChildren(
+      ...rows.map((item) => {
+        const row = document.createElement("article");
+        row.className = list.classList.contains("mobile-list") ? "mobile-action requirement-item" : "requirement-item";
+        row.innerHTML = `<strong>${displayHtml(item.title)}</strong><span>${statusHtml(item.status)} · ${compactHtml(item.summary || item.problem_statement || item.surface_label, 130)}</span>`;
+        return row;
+      })
+    );
+  }
 }
 
 function renderProjection(projection) {
@@ -742,6 +794,7 @@ function renderProjection(projection) {
   renderProjectRows(projectManagement);
   renderProjectTaskFlow(projectManagement);
   renderProjectAgents(projectManagement);
+  renderRequirementIntake(projectManagement);
 }
 
 function projectionUrlForHistoryItem(item) {
@@ -844,6 +897,58 @@ qsa("[data-action]").forEach((button) => {
     }
 
     button.textContent = "已生成下一轮";
+  });
+});
+
+qsa("[data-requirement-form]").forEach((form) => {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = form.querySelector("[data-requirement-submit]");
+    const status = form.querySelector("[data-requirement-status]");
+    const data = new FormData(form);
+    const input = {
+      projection_id: currentProjectionId,
+      title: text(data.get("title"), ""),
+      surface_area: text(data.get("surface_area"), "workbench_frontend"),
+      problem_statement: text(data.get("problem_statement"), ""),
+      acceptance_criteria: text(data.get("acceptance_criteria"), ""),
+      constraints: text(data.get("constraints"), ""),
+      created_at: new Date().toISOString()
+    };
+
+    if (submitButton) {
+      submitButton.dataset.eventState = "pending";
+      submitButton.textContent = "写入流程中";
+      submitButton.disabled = true;
+    }
+    if (status) status.textContent = "正在写入 PROJECT_STATUS 和工作流事实";
+
+    try {
+      const result = await source.submitRequirement(input);
+      if (submitButton) {
+        submitButton.dataset.eventState = "recorded";
+        submitButton.textContent = "已接入流程";
+      }
+      if (status) status.textContent = "已生成流程输入，可执行推荐动作";
+      form.reset();
+      if (result.projection) {
+        currentProjection = result.projection;
+        renderProjection(result.projection);
+      }
+    } catch (error) {
+      if (error.projection) {
+        currentProjection = error.projection;
+        renderProjection(error.projection);
+      }
+      if (submitButton) {
+        submitButton.dataset.eventState = "failed";
+        submitButton.textContent = "提交失败";
+      }
+      const issue = error.response?.issues?.[0]?.message || error.message;
+      if (status) status.textContent = displayText(issue, "需求写入失败");
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
   });
 });
 

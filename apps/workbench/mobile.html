@@ -45,6 +45,45 @@
 
         <section class="mobile-section">
           <div class="mobile-section-title">
+            <h2>提需求</h2>
+            <span>进入自动开发流程</span>
+          </div>
+          <form class="requirement-form mobile-requirement-form" data-requirement-form>
+            <label>
+              <span>标题</span>
+              <input name="title" type="text" required maxlength="96" placeholder="需求标题" />
+            </label>
+            <label>
+              <span>范围</span>
+              <select name="surface_area">
+                <option value="workbench_frontend">Workbench 前端</option>
+                <option value="workflow_runtime">流程引擎</option>
+                <option value="reviewer_scheduler">调度与审查</option>
+                <option value="governance_process">治理与门禁</option>
+              </select>
+            </label>
+            <label>
+              <span>现状与目标</span>
+              <textarea name="problem_statement" required maxlength="600" rows="3" placeholder="描述当前问题和期望结果"></textarea>
+            </label>
+            <label>
+              <span>验收标准</span>
+              <textarea name="acceptance_criteria" required maxlength="600" rows="3" placeholder="说明怎样证明已经完成"></textarea>
+            </label>
+            <label>
+              <span>约束</span>
+              <textarea name="constraints" maxlength="400" rows="2" placeholder="可选"></textarea>
+            </label>
+            <div class="requirement-actions">
+              <button class="primary" type="submit" data-requirement-submit>提交到流程</button>
+              <span data-requirement-status>等待需求输入</span>
+            </div>
+          </form>
+          <div class="mobile-list" data-list="requirement_intake"></div>
+        </section>
+
+        <section class="mobile-section">
+          <div class="mobile-section-title">
             <h2>项目列表</h2>
             <span>当前纳管</span>
           </div>

@@ -644,6 +644,80 @@ test("workbench server executes project status continuation next action", async 
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 
+test("workbench server accepts frontend requirements into autonomous continuation flow", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-intake-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "requirement-intake-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = currentSessionWorkflowState();
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "requirement-intake",
+    items: [
+      {
+        id: "requirement-intake",
+        label: "Requirement intake",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-intake`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "前端可提交中台需求",
+        surface_area: "workbench_frontend",
+        problem_statement: "看板需要让操作员直接输入需求。",
+        acceptance_criteria: "提交后需求进入 PROJECT_STATUS，并让推荐动作变为 prepare_project_status_continuation。",
+        constraints: "不能绕过自动开发、验收和门禁流程。",
+        created_at: "2026-05-25T09:00:00.000Z",
+        requirement_id: "requirement-from-workbench"
+      })
+    });
+    const payload = response.json();
+    const savedProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+    const savedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(payload.status, "created");
+    assert.equal(payload.requirement.id, "requirement-from-workbench");
+    assert.equal(payload.projection.next_action_readout.action, "prepare_project_status_continuation");
+    assert.equal(payload.projection.next_action_readout.source_type, "requirement_intake_submitted");
+    assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-from-workbench");
+    assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
+    assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("apps/workbench"));
+    assert.equal(savedWorkflowState.manifest.events.at(-1).type, "requirement_intake_submitted");
+
+    const continued = await request(`${baseUrl}/api/workbench/next-action?id=requirement-intake`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        expected_action: "prepare_project_status_continuation",
+        created_at: "2026-05-25T09:01:00.000Z"
+      })
+    });
+    const continuedPayload = continued.json();
+
+    assert.equal(continued.status, 201);
+    assert.equal(continuedPayload.action, "prepare_project_status_continuation");
+    assert.equal(continuedPayload.result.artifact.metadata.context_pack_seed.target_project_id, "ai-control-platform");
+    assert.equal(continuedPayload.result.artifact.metadata.context_pack_seed.subtasks[0].action, "continue_requirement_intake");
+    assert.equal(continuedPayload.result.projection.next_action_readout.action, "create_context_pack_from_seed");
+  }, { historyPath, snapshotsRoot, projectStatusPath });
+});
+
 test("workbench server truncates generated context pack snapshot ids for long projection ids", async () => {
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-long-context-id-"));
   const historyPath = join(snapshotsRoot, "projection-history.json");

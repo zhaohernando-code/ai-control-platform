@@ -99,6 +99,7 @@ export function createProjectionSource(options = {}) {
   const autonomousSchedulerLoopUrl = options.autonomousSchedulerLoopUrl || mountedApiUrl("/api/workbench/autonomous-scheduler-loop", endpointLocation);
   const autonomousSchedulerLoopResumeUrl = options.autonomousSchedulerLoopResumeUrl || mountedApiUrl("/api/workbench/autonomous-scheduler-loop-resume", endpointLocation);
   const nextActionUrl = options.nextActionUrl || mountedApiUrl("/api/workbench/next-action", endpointLocation);
+  const requirementsUrl = options.requirementsUrl || mountedApiUrl("/api/workbench/requirements", endpointLocation);
   const fetchImpl = options.fetch || globalThis.fetch;
 
   return {
@@ -115,6 +116,7 @@ export function createProjectionSource(options = {}) {
     autonomousSchedulerLoopUrl,
     autonomousSchedulerLoopResumeUrl,
     nextActionUrl,
+    requirementsUrl,
     async load() {
       if (!fetchImpl) {
         throw new Error("fetch is not available for projection source");
@@ -329,6 +331,26 @@ export function createProjectionSource(options = {}) {
 
       if (!response.ok) {
         const error = new Error(`Workbench next action failed: ${response.status}`);
+        error.response = payload;
+        error.projection = payload?.projection || null;
+        throw error;
+      }
+
+      return payload;
+    },
+    async submitRequirement(input = {}) {
+      if (!fetchImpl) return { status: "skipped", reason: "fetch unavailable" };
+      const request = requestBodyWithoutProjectionId(input);
+
+      const response = await fetchImpl(urlWithProjectionId(requirementsUrl, request.projectionId), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request.body)
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        const error = new Error(`Requirement submission failed: ${response.status}`);
         error.response = payload;
         error.projection = payload?.projection || null;
         throw error;

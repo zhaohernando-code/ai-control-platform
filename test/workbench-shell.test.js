@@ -90,6 +90,13 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-list="project_rows"/);
   assert.match(desktop, /data-list="project_task_flow"/);
   assert.match(mobile, /data-list="project_task_flow"/);
+  assert.match(desktop, /data-workbench-tab="requirements"/);
+  assert.match(desktop, /data-requirement-form/);
+  assert.match(mobile, /data-requirement-form/);
+  assert.match(desktop, /data-list="requirement_intake"/);
+  assert.match(mobile, /data-list="requirement_intake"/);
+  assert.match(desktop, /提交到流程/);
+  assert.match(mobile, /提交到流程/);
   assert.match(desktop, /需求 -> 拆解 -> 子任务 -> Review -> 发布 -> Live 验证 -> 验收/);
   assert.match(mobile, /项目、阶段、当前任务、Agent、进度和更新时间/);
   assert.match(desktop, /data-list="operations_timeline"/);
@@ -194,7 +201,12 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(read("apps/workbench/styles.css"), /\.mobile-tabbar\s*{[\s\S]*min-height:\s*64px;/);
   assert.match(read("apps/workbench/styles.css"), /data-projection-mode="release-readout"[\s\S]*data-scheduler-dispatch/);
   assert.match(source, /enqueueSchedulerNextCycle/);
+  assert.match(source, /submitRequirement/);
+  assert.match(source, /\/api\/workbench\/requirements/);
   assert.match(source, /runAutonomousSchedulerLoop/);
+  assert.match(script, /submitRequirement/);
+  assert.match(script, /requirement_intake/);
+  assert.match(script, /已生成流程输入/);
   assert.match(script, /调度失败/);
   assert.match(script, /调度已拦截/);
   assert.match(script, /recordProviderHealth/);

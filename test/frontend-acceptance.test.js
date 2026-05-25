@@ -22,6 +22,8 @@ import {
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
 const PROJECT_MANAGEMENT_TEXT = [
+  "提需求",
+  "提交到流程",
   "项目列表",
   "AI Control Platform",
   "ai-control-platform",
@@ -50,6 +52,7 @@ function projectManagementSemanticResult(viewport, overrides = {}) {
     has_platform_project: true,
     has_project_fields: true,
     has_task_lifecycle: true,
+    has_requirement_intake: true,
     diagnostics_primary: false,
     required_nav: viewport === "mobile" ? [] : ["总览", "项目", "任务流", "Agents", "风险", "治理"],
     required_lifecycle: ["需求", "拆解", "子任务", "Review", "发布", "Live 验证", "验收"],
@@ -1069,6 +1072,7 @@ test("frontend acceptance validation rejects false-pass project-management seman
         status: "pass",
         has_platform_project: false,
         has_task_lifecycle: false,
+        has_requirement_intake: false,
         blocking_finding_codes: ["frontend_project_management_project_list_missing"]
       }),
       projectManagementSemanticResult("desktop_narrow"),
@@ -1079,6 +1083,7 @@ test("frontend acceptance validation rejects false-pass project-management seman
   assert.equal(validation.status, "fail");
   assert.ok(validation.issues.some((issue) => issue.code === "project_management_platform_project_missing"));
   assert.ok(validation.issues.some((issue) => issue.code === "project_management_task_lifecycle_missing"));
+  assert.ok(validation.issues.some((issue) => issue.code === "project_management_requirement_intake_missing"));
   assert.ok(validation.issues.some((issue) => issue.code === "project_management_semantic_finding_mismatch"));
 });
 
@@ -1561,6 +1566,8 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   const closeout = readFileSync("tools/check-closeout.mjs", "utf8");
   const liveRouteGate = readFileSync("tools/check-workbench-live-route.mjs", "utf8");
   const projectStatus = JSON.parse(readFileSync("PROJECT_STATUS.json", "utf8"));
+  const evidencePath = projectStatus.workbench_live_route_evidence?.path;
+  const evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
 
   assert.equal(
     pkg.scripts["check:workbench:live-route"],
@@ -1568,8 +1575,8 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   );
   assert.match(closeout, /check-workbench-live-route\.mjs/);
   assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
-  assert.equal(
-    projectStatus.workbench_live_route_evidence?.path,
-    "docs/examples/public-live-route-evidence-20260525-pass.json"
-  );
+  assert.match(evidencePath, /^docs\/examples\/public-live-route-evidence-.+\.json$/);
+  assert.equal(projectStatus.workbench_live_route_evidence?.status, "pass");
+  assert.equal(evidence.version, "workbench-live-route-evidence.v1");
+  assert.equal(evidence.status, "pass");
 });
