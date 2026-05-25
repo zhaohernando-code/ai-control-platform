@@ -10,7 +10,7 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_PROXY="${AI_CONTROL_WORKBENCH_CODEX_PROXY:-/Users/hernando_zhao/codex-proxy.sh}"
-CODEX_MODEL="${AI_CONTROL_WORKBENCH_CODEX_MODEL:-gpt-5}"
+CODEX_MODEL="${AI_CONTROL_WORKBENCH_CODEX_MODEL:-gpt-5.5}"
 export PATH="$HOME/.nvm/versions/node/v22.16.0/bin:/Applications/Codex.app/Contents/Resources:$PATH"
 
 if [[ ! -x "$CODEX_PROXY" ]]; then
