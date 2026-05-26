@@ -8,6 +8,7 @@ const DEFAULT_PROJECT_ID = "ai-control-platform";
 const DEFAULT_SURFACE_AREA = "workbench_frontend";
 const MAX_STORED_REQUIREMENTS = 12;
 const PLAN_REVIEW_VERSION = "workbench-plan-review.v1";
+const EXECUTION_GOVERNANCE_VERSION = "work-package-execution-governance.v1";
 
 const SURFACE_PROFILES = {
   workbench_frontend: {
@@ -242,6 +243,35 @@ const FRONTEND_VIEW_MIGRATION_SLICES = [
   }
 ];
 
+function planStepExecutionGovernance({
+  granularity = "single_step",
+  decompositionRequired = false,
+  decompositionStatus = "not_required",
+  decompositionEvidenceId = "",
+  parentWorkPackageId = "",
+  sliceId = "",
+  gateCount = 0
+} = {}) {
+  const decomposition = {
+    required: decompositionRequired,
+    status: decompositionStatus
+  };
+  if (decompositionEvidenceId) decomposition.evidence_id = decompositionEvidenceId;
+  if (parentWorkPackageId) decomposition.parent_work_package_id = parentWorkPackageId;
+  if (sliceId) decomposition.slice_id = sliceId;
+
+  return {
+    version: EXECUTION_GOVERNANCE_VERSION,
+    granularity,
+    decomposition,
+    verification: {
+      required: true,
+      status: gateCount > 0 ? "defined" : "missing",
+      gate_count: gateCount
+    }
+  };
+}
+
 function shouldSplitFrontendViewMigrationWorkPackage(workPackage = {}) {
   if (normalizeString(workPackage?.action) !== "execute_requirement_plan_step") return false;
   if (workPackage?.source?.plan_step_slice || workPackage?.source?.planStepSlice) return false;
@@ -275,6 +305,7 @@ export function normalizeRequirementPlanWorkPackageGranularity(workPackage = {})
 
   return FRONTEND_VIEW_MIGRATION_SLICES.map((slice, index) => {
     const sliceId = `${baseId}-${slice.id}`;
+    const parentWorkPackageId = normalizeString(workPackage.id || workPackage.work_package_id);
     const dependsOn = index === 0 ? originalDependsOn : [`${baseId}-${FRONTEND_VIEW_MIGRATION_SLICES[index - 1].id}`];
     const acceptanceGates = uniqueStrings([
       ...baseAcceptanceGates,
@@ -296,11 +327,20 @@ export function normalizeRequirementPlanWorkPackageGranularity(workPackage = {})
         ...(workPackage.source || {}),
         implementation_step: slice.reason,
         parent_implementation_step: baseReason,
-        parent_work_package_id: normalizeString(workPackage.id || workPackage.work_package_id),
+        parent_work_package_id: parentWorkPackageId,
         plan_step_slice: slice.id,
         plan_step_slice_index: index + 1,
         plan_step_slice_total: FRONTEND_VIEW_MIGRATION_SLICES.length,
-        acceptance_gates: acceptanceGates
+        acceptance_gates: acceptanceGates,
+        execution_governance: planStepExecutionGovernance({
+          granularity: "bounded_slice",
+          decompositionRequired: true,
+          decompositionStatus: "completed",
+          decompositionEvidenceId: `${baseId}-manager-decomposition`,
+          parentWorkPackageId,
+          sliceId: slice.id,
+          gateCount: acceptanceGates.length
+        })
       }
     };
   });
@@ -642,7 +682,11 @@ export function createRequirementPlanWorkPackages(projectStatus = {}, requiremen
         plan_step_total: total,
         implementation_step: step,
         constraints: normalizeString(requirement.constraints),
-        acceptance_gates: stepAcceptanceGates
+        acceptance_gates: stepAcceptanceGates,
+        execution_governance: planStepExecutionGovernance({
+          granularity: "single_step",
+          gateCount: stepAcceptanceGates.length
+        })
       }
     };
     const normalizedPackages = normalizeRequirementPlanWorkPackagesGranularity([workPackage]);

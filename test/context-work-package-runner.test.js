@@ -399,7 +399,20 @@ test("context work package runner blocks broad unsliced requirement plan steps b
         source: {
           requirement_id: "requirement-frontend-refactor",
           plan_step_index: 4,
-          implementation_step: "整体迁移所有前端代码到 React + Next.js + antd。"
+          implementation_step: "整体迁移所有前端代码到 React + Next.js + antd。",
+          execution_governance: {
+            version: "work-package-execution-governance.v1",
+            granularity: "bounded_slice",
+            decomposition: {
+              required: true,
+              status: "pending"
+            },
+            verification: {
+              required: true,
+              status: "defined",
+              gate_count: 1
+            }
+          }
         }
       }
     ]

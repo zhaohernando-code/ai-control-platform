@@ -10,7 +10,7 @@
 - 不合格结果必须先改流程不变量、gate、schema、测试或 workbench projection，再重跑；禁止只写普通总结或口头提醒。
 - 上下文压缩或新会话恢复后，必须从 `AGENTS.md`、`PROCESS.md`、`PROJECT_STATUS.json`、global_goals、durable run/artifact/task DAG 状态和 workbench continuation 继续，不得依赖聊天记忆替代状态。
 - 文档检查只证明恢复入口存在；`run_context_work_packages` 调度前必须通过 fixed-development-mode runtime gate，检查 Context Pack root/subtask/selected work package 的 `owned_files`，失败时不得把 work package 标记为 completed。
-- `run_context_work_packages` 还必须通过 work-package-execution-governance gate：需求实现类 work package 必须是具体可执行切片，必须保留 `reason`、`acceptance_gates`、依赖和 source 元数据；抽象的“整体迁移 / 按切片迁移 / 分阶段改造”步骤不得直接派发给 child/provider。
+- `run_context_work_packages` 还必须通过 work-package-execution-governance gate：需求实现类 work package 必须保留依赖和 source 元数据，并提供结构化 `source.execution_governance`。硬门禁只根据 `granularity`、`decomposition.required/status/evidence`、`verification.status/gate_count` 等结构化字段判定；自然语言步骤说明不得作为执行阻断依据。
 - 多模型协同必须经过 model routing plan、reviewer gate 和 durable findings/artifacts；禁止把某个模型或临时 skill 固定成绕过流程的默认实现者。
 - 最终 closeout 必须经过治理 skill 编排 artifact、远端 `origin/main` 一致性和用户可见入口证据；本地干净或单次测试通过不能单独代表合入发布完成。
 - 前端相关任务默认同时覆盖 PC Web 与手机尺寸；手机端可以独立信息架构，不得默认压缩 PC 页面。

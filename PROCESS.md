@@ -34,7 +34,7 @@
 - **Process hardening 是合入前条件**：阻塞级 reviewer finding 必须有 invariant、enforcement target、regression test、verification 和 completed 状态；缺任一项不能合入实现。
 - **治理 skill 编排是必经门禁**：closeout 必须验证当前治理编排 artifact；该 artifact 要覆盖适用审计维度、真实代码/运行证据、缺陷修复调度、证据缺口和用户决策包。不得把治理 orchestrator 只当人工提示或可选试跑。
 - **固定开发模式要 runtime gate 支撑**：AGENTS/PROCESS/合同用于恢复上下文；真正调度前必须由 runtime gate 校验宿主、Context Pack root owned files、subtasks owned files、selected package owned files 和 managed project 路径。
-- **执行前治理先于模型派发**：`run_context_work_packages` 不能把已审核方案步骤直接交给 child/provider。调度前必须先保留并校验 work package 的 `reason`、`acceptance_gates`、依赖和 source 元数据；抽象步骤、切片指令、整体迁移或缺少聚焦验证的需求实现包必须被 `work-package-execution-governance` 阻断，回到 manager 拆包。
+- **执行前治理先于模型派发**：`run_context_work_packages` 不能把已审核方案步骤直接交给 child/provider。调度前必须先保留并校验 work package 的依赖、source 元数据和 `source.execution_governance`；需求实现包只有在结构化声明 `granularity`、`decomposition`、`verification` 均满足执行合同后才能派发。自然语言描述只能辅助生成或兼容旧数据，不能作为硬阻断条件。
 - **拆包必须重写依赖**：当一个计划步骤被拆成多个可执行切片时，后续依赖原步骤 id 的 work package 必须改为依赖最后一个切片，避免 DAG 在执行时才出现未知依赖或绕过未完成切片。
 
 ## 多模型与 reviewer

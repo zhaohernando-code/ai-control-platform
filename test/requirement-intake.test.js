@@ -263,6 +263,9 @@ test("requirement plan review can be approved or returned for revision", () => {
   assert.equal(approved.plan_review.action_status, "开发中");
   assert.equal(approved.project_status.next_work_packages[0].action, "execute_requirement_plan_step");
   assert.equal(approved.project_status.next_work_packages[0].source.plan_step_index, 1);
+  assert.equal(approved.project_status.next_work_packages[0].source.execution_governance.granularity, "single_step");
+  assert.equal(approved.project_status.next_work_packages[0].source.execution_governance.decomposition.status, "not_required");
+  assert.equal(approved.project_status.next_work_packages[0].source.execution_governance.verification.status, "defined");
   assert.equal(revised.status, "pass");
   assert.equal(revised.plan_review.phase, "revising");
   assert.equal(revised.plan_review.action_status, "已退回修订");
@@ -295,6 +298,10 @@ test("frontend view migration plan step is split into bounded executable slices"
   assert.deepEqual(packages[1].depends_on, ["requirement-frontend-refactor-plan-step-04-workbench-home"]);
   assert.equal(packages[0].source.parent_work_package_id, "requirement-frontend-refactor-plan-step-04");
   assert.equal(packages[2].source.plan_step_slice, "plan-review");
+  assert.equal(packages[0].source.execution_governance.granularity, "bounded_slice");
+  assert.equal(packages[0].source.execution_governance.decomposition.status, "completed");
+  assert.equal(packages[0].source.execution_governance.decomposition.parent_work_package_id, "requirement-frontend-refactor-plan-step-04");
+  assert.equal(packages[0].source.execution_governance.verification.status, "defined");
   assert.ok(packages[1].acceptance_gates.some((gate) => gate.includes("需求录入流程")));
 });
 

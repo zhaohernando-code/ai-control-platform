@@ -144,7 +144,7 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 未请求 provider/model-routed mode 时，继续使用默认 `local_bounded` 路径；但该路径只能完成本地安全的、非产品实现类 work package。
 - 默认 `local_bounded` 只能消费“无显式执行身份”或显式身份全为 `local_bounded` 的请求；显式未知 `execution_profile` / `adapter_profile` / `executor_profile`、非 local `executor_kind`、provider-like 或非 local `execution_mode` 必须 blocked closed，不能被 local fallback 写成 completed。
 - `context_pack -> work_packages -> task_dag` 物化必须保留 `reason`、`acceptance_gates`、`depends_on` 和 `source`。这些字段不是展示信息，而是执行前治理、child prompt、验收和依赖重写的输入。
-- 需求实现类 work package 必须是具体可执行切片。抽象的“整体迁移 / 按切片迁移 / 分阶段改造 / 优先迁移多个视图”不能直接派发给 child/provider；必须先由 manager 拆为带 `plan_step_slice` 或等价 decomposition evidence 的工作包，并为后续依赖重写到最后一个切片。
+- 需求实现类 work package 必须是具体可执行切片。硬门禁不解析中文步骤文本；它只读取 `source.execution_governance` 中的 `granularity`、`decomposition.required/status/evidence`、`verification.status/gate_count`。需要拆包的步骤必须先由 manager 产出带 completed decomposition evidence 的工作包，并为后续依赖重写到最后一个切片。
 - work-package-execution-governance gate 必须在 already-satisfied preflight、provider/model-routed adapter 和 child-worker 启动之前执行；失败时返回 blocked，不得写 completed，也不得启动外部模型。
 - `continue_requirement_intake` 和 broad `continue_global_goal` 属于 implementation-bearing work package；没有 verified child-worker/provider completion authority 时，`local_bounded` 必须 blocked closed，并保持原 work package 状态。
 - 请求 provider/model-routed mode 时，必须提供已注册 `execution_profile`。当前可用于测试和工作台试跑的 profile 是 `bounded_mock_multi_agent`，它只做 deterministic mock execution，不调用真实 GPT/DeepSeek/Claude。

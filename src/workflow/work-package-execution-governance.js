@@ -38,53 +38,79 @@ function acceptanceGates(workPackage = {}) {
   ]);
 }
 
-function requirementPlanText(workPackage = {}) {
-  return [
-    workPackage.title,
-    workPackage.reason,
-    workPackage.summary,
-    workPackage.source?.implementation_step,
-    workPackage.source?.implementationStep,
-    workPackage.source?.parent_implementation_step,
-    workPackage.source?.parentImplementationStep
-  ].map(normalizeString).join("\n");
-}
-
 function isRequirementPlanStep(workPackage = {}) {
   return normalizeToken(workPackage.action) === "execute_requirement_plan_step";
 }
 
-function hasManagerSliceEvidence(workPackage = {}) {
-  return Boolean(
-    normalizeString(workPackage.source?.plan_step_slice || workPackage.source?.planStepSlice) ||
-      normalizeString(workPackage.source?.manager_decomposition_id || workPackage.source?.managerDecompositionId)
+function executionGovernance(workPackage = {}) {
+  const value = workPackage.execution_governance ||
+    workPackage.executionGovernance ||
+    workPackage.source?.execution_governance ||
+    workPackage.source?.executionGovernance;
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
+function executionGranularity(governance = {}) {
+  return normalizeToken(governance.granularity || governance.execution_granularity || governance.executionGranularity);
+}
+
+function decompositionStatus(governance = {}) {
+  const decomposition = governance.decomposition && typeof governance.decomposition === "object"
+    ? governance.decomposition
+    : {};
+  return normalizeToken(
+    governance.decomposition_status ||
+      governance.decompositionStatus ||
+      decomposition.status
   );
 }
 
-function broadPlanStepReason(text = "") {
-  if (/按.+切片|切片迁移|每个切片/.test(text)) {
-    return "plan step describes slicing work instead of one executable slice";
-  }
-  if (/优先迁移|高频核心视图|核心视图/.test(text) && /迁移|重构/.test(text)) {
-    return "plan step groups multiple high-frequency views";
-  }
-  if (/整体迁移|全量迁移|所有前端|所有.*代码|全部.*重构/.test(text)) {
-    return "plan step targets a whole surface rather than a bounded work package";
-  }
-  if (/分阶段|分批|逐步/.test(text) && /迁移|重构|改造/.test(text)) {
-    return "plan step is a process instruction and must be decomposed first";
-  }
-  return "";
+function decompositionRequired(governance = {}) {
+  const decomposition = governance.decomposition && typeof governance.decomposition === "object"
+    ? governance.decomposition
+    : {};
+  return governance.decomposition_required === true ||
+    governance.decompositionRequired === true ||
+    decomposition.required === true;
 }
 
-function hasFocusedVerification(gates = []) {
+function verificationRequired(governance = {}) {
+  const verification = governance.verification && typeof governance.verification === "object"
+    ? governance.verification
+    : {};
+  return governance.verification_required !== false &&
+    governance.verificationRequired !== false &&
+    verification.required !== false;
+}
+
+function hasStructuredVerification(workPackage = {}, governance = {}) {
+  const gates = acceptanceGates(workPackage);
   if (gates.length === 0) return false;
-  return gates.some((gate) => {
-    if (/node --test|npm run|pnpm |yarn |playwright|browser|验收|可展示|可提交|可触发|可端到端/.test(gate)) {
-      return true;
-    }
-    return /验证|证据|测试|通过/.test(gate);
-  });
+  const verification = governance.verification;
+  if (verification && typeof verification === "object" && !Array.isArray(verification)) {
+    const status = normalizeToken(verification.status);
+    const gateCount = Number(verification.gate_count ?? verification.gateCount ?? 0);
+    return verification.required !== false &&
+      status === "defined" &&
+      Number.isFinite(gateCount) &&
+      gateCount > 0 &&
+      gates.length >= gateCount;
+  }
+  return false;
+}
+
+function hasCompletedDecompositionEvidence(workPackage = {}, governance = {}) {
+  const decomposition = governance.decomposition && typeof governance.decomposition === "object"
+    ? governance.decomposition
+    : {};
+  if (decompositionStatus(governance) === "completed" &&
+    (normalizeString(governance.decomposition_id || governance.decompositionId || decomposition.evidence_id || decomposition.evidenceId) ||
+      normalizeString(governance.parent_work_package_id || governance.parentWorkPackageId || decomposition.parent_work_package_id || decomposition.parentWorkPackageId) ||
+      normalizeString(decomposition.slice_id || decomposition.sliceId) ||
+      normalizeString(workPackage.source?.plan_step_slice || workPackage.source?.planStepSlice))) {
+    return true;
+  }
+  return false;
 }
 
 export function evaluateWorkPackageExecutionGovernance(input = {}) {
@@ -96,8 +122,22 @@ export function evaluateWorkPackageExecutionGovernance(input = {}) {
     const path = `selected_work_packages[${index}]`;
     if (!isRequirementPlanStep(workPackage)) return;
 
-    const gates = acceptanceGates(workPackage);
-    if (!hasFocusedVerification(gates)) {
+    const governance = executionGovernance(workPackage);
+    if (!governance) {
+      issues.push(issue(
+        "requirement_plan_step_missing_execution_governance",
+        `${id} must declare structured execution governance before dispatch`,
+        `${path}.source.execution_governance`,
+        {
+          severity: "high",
+          repair_action: "return_to_manager_decomposition",
+          work_package_id: id
+        }
+      ));
+      return;
+    }
+
+    if (verificationRequired(governance) && !hasStructuredVerification(workPackage, governance)) {
       issues.push(issue(
         "requirement_plan_step_missing_focused_verification",
         `${id} must declare focused executable verification before dispatch`,
@@ -110,12 +150,25 @@ export function evaluateWorkPackageExecutionGovernance(input = {}) {
       ));
     }
 
-    const broadReason = broadPlanStepReason(requirementPlanText(workPackage));
-    if (broadReason && !hasManagerSliceEvidence(workPackage)) {
+    const granularity = executionGranularity(governance);
+    if (!["single_step", "bounded_slice"].includes(granularity)) {
+      issues.push(issue(
+        "requirement_plan_step_invalid_execution_granularity",
+        `${id} must declare execution_governance.granularity as single_step or bounded_slice`,
+        `${path}.source.execution_governance.granularity`,
+        {
+          severity: "high",
+          repair_action: "return_to_manager_decomposition",
+          work_package_id: id
+        }
+      ));
+    }
+
+    if (decompositionRequired(governance) && !hasCompletedDecompositionEvidence(workPackage, governance)) {
       issues.push(issue(
         "requirement_plan_step_requires_manager_decomposition",
-        `${id} is not directly executable: ${broadReason}`,
-        path,
+        `${id} requires completed manager decomposition evidence before dispatch`,
+        `${path}.source.execution_governance`,
         {
           severity: "high",
           repair_action: "split_into_executable_work_packages_before_dispatch",
