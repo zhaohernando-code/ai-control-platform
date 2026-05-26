@@ -849,6 +849,45 @@ test("headless child prompt includes selected requirement plan step context", ()
   assert.doesNotMatch(prompt, /Internal metadata is intentionally omitted/);
 });
 
+test("headless child prompt defers parent-owned release gates outside isolated worker execution", () => {
+  const workflowState = sourceWorkflowState();
+  workflowState.manifest.context_pack.acceptance_gates = [
+    "npm run check:workbench:browser-events",
+    "npm run check:closeout"
+  ];
+  const workPackage = {
+    id: "requirement-plan-step-03",
+    title: "前端重构：实施步骤 03 / 7",
+    action: "execute_requirement_plan_step",
+    owned_files: ["."],
+    acceptance_gates: [
+      "npm run check:workbench:browser-events",
+      "npm run check:closeout",
+      "完成已审核实施步骤 3：固化 antd + Next.js 约束"
+    ],
+    source: {
+      requirement_id: "requirement-front",
+      plan_step_index: 3,
+      plan_step_total: 7,
+      implementation_step: "固化 antd + Next.js 约束",
+      acceptance_gates: [
+        "npm run check:workbench:browser-events",
+        "npm run check:closeout",
+        "完成已审核实施步骤 3：固化 antd + Next.js 约束"
+      ]
+    }
+  };
+  const prompt = headlessChildWorkerPrompt(workflowState, workPackage);
+  const childOwnedPrompt = prompt.split("Deferred parent-owned release gates:")[0];
+
+  assert.match(prompt, /Child acceptance gates:/);
+  assert.match(prompt, /npm run check:workbench:browser-events/);
+  assert.match(prompt, /完成已审核实施步骤 3/);
+  assert.match(prompt, /Deferred parent-owned release gates:[\s\S]*npm run check:closeout/);
+  assert.doesNotMatch(childOwnedPrompt, /npm run check:closeout/);
+  assert.match(prompt, /Do not run deferred parent-owned release gates from the isolated worker branch/);
+});
+
 test("headless CLI orchestrator passes configured output path into child prompt and parses file output", () => {
   const dir = mkdtempSync(join(tmpdir(), "headless-child-output-path-"));
   const outputPattern = join(dir, "child-{work_package_id}-{run_id}-{cycle_id}.json");

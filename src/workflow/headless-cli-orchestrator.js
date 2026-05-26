@@ -422,21 +422,62 @@ function selectedChildAcceptanceGates(workPackage = {}, contextPack = {}, option
   const optionGates = compactStrings(options.acceptance_gates || options.acceptanceGates);
   const contextGates = compactStrings(contextPack.acceptance_gates || contextPack.acceptanceGates);
   const focused = [...new Set([...packageGates, ...sourceGates])];
-  return focused.length > 0 ? focused : [...new Set([...optionGates, ...contextGates])];
+  return splitChildAcceptanceGates(focused.length > 0 ? focused : [...new Set([...optionGates, ...contextGates])]).child_gates;
+}
+
+function isParentOwnedAcceptanceGate(gate = "") {
+  const normalized = normalizeString(gate).toLowerCase();
+  return normalized === "npm run check:closeout" ||
+    normalized.includes("check-closeout.mjs") ||
+    normalized.includes("mainline release readiness") ||
+    normalized.includes("mainline-release-readiness");
+}
+
+function splitChildAcceptanceGates(gates = []) {
+  const uniqueGates = [...new Set(compactStrings(gates))];
+  return {
+    child_gates: uniqueGates.filter((gate) => !isParentOwnedAcceptanceGate(gate)),
+    parent_gates: uniqueGates.filter(isParentOwnedAcceptanceGate)
+  };
+}
+
+function selectedParentAcceptanceGates(workPackage = {}, contextPack = {}, options = {}) {
+  const packageGates = compactStrings(workPackage.acceptance_gates || workPackage.acceptanceGates);
+  const sourceGates = compactStrings(workPackage.source?.acceptance_gates || workPackage.source?.acceptanceGates);
+  const optionGates = compactStrings(options.acceptance_gates || options.acceptanceGates);
+  const contextGates = compactStrings(contextPack.acceptance_gates || contextPack.acceptanceGates);
+  const focused = [...new Set([...packageGates, ...sourceGates])];
+  return splitChildAcceptanceGates(focused.length > 0 ? focused : [...new Set([...optionGates, ...contextGates])]).parent_gates;
+}
+
+function withAcceptanceGates(workPackage = {}, acceptanceGates = []) {
+  return {
+    ...workPackage,
+    acceptance_gates: acceptanceGates,
+    source: isObject(workPackage.source)
+      ? {
+          ...workPackage.source,
+          acceptance_gates: acceptanceGates
+        }
+      : workPackage.source
+  };
 }
 
 function promptSafeFocusedContextPack(contextPack = {}, workPackage = {}, acceptanceGates = []) {
   const safeContextPack = promptSafeContextPack(contextPack);
+  const focusedWorkPackage = withAcceptanceGates(workPackage, acceptanceGates);
   return {
     ...safeContextPack,
     acceptance_gates: acceptanceGates,
-    subtasks: [promptSafeWorkPackage(workPackage)]
+    subtasks: [promptSafeWorkPackage(focusedWorkPackage)]
   };
 }
 
 export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
   const contextPack = workflowState?.manifest?.context_pack || {};
   const acceptanceGates = selectedChildAcceptanceGates(workPackage, contextPack, options);
+  const parentAcceptanceGates = selectedParentAcceptanceGates(workPackage, contextPack, options);
+  const focusedWorkPackage = withAcceptanceGates(workPackage, acceptanceGates);
   const outputPath = normalizeString(options.child_worker_output_path_resolved || options.childWorkerOutputPathResolved) ||
     childWorkerCommandOutputPath(workPackage, {
       ...options,
@@ -472,6 +513,7 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     "- Do not create, switch to, or delegate into another worktree; the current working directory is the only execution root for this bounded child task.",
     "- Do not create .claude/worktrees or run claude --worktree; return status=fail if the current execution root is unsuitable.",
     "- If you are running inside an isolated worker worktree, commit the bounded changes on the current worker branch before returning status=pass; the parent runner owns mainline integration.",
+    "- Run only the child acceptance gates listed below. Do not run deferred parent-owned release gates from the isolated worker branch.",
     "",
     "Required JSON shape:",
     JSON.stringify({
@@ -480,6 +522,7 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
       host: "platform_core",
       changed_files: ["owned file path"],
       test_results: [{ command: "focused test command", status: "pass|fail" }],
+      deferred_parent_gates: ["parent-owned gate not run by child"],
       durable_state_updated: true,
       process_hardening: { required: false, status: "not_required|completed" },
       continuation_readiness: { ready: true },
@@ -496,10 +539,13 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     JSON.stringify(promptSafeFocusedContextPack(contextPack, workPackage, acceptanceGates), null, 2),
     "",
     "Selected task:",
-    JSON.stringify(promptSafeWorkPackage(workPackage), null, 2),
+    JSON.stringify(promptSafeWorkPackage(focusedWorkPackage), null, 2),
     "",
-    "Acceptance gates:",
+    "Child acceptance gates:",
     JSON.stringify(acceptanceGates, null, 2),
+    "",
+    "Deferred parent-owned release gates:",
+    JSON.stringify(parentAcceptanceGates, null, 2),
     ...outputPathInstructions
   ].join("\n");
 }
