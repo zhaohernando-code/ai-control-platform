@@ -114,9 +114,11 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
   const requirementTitle = normalizeString(latest.title) || null;
   const planReviewRecord = (projectStatus?.plan_reviews && projectStatus.plan_reviews[latest.id]) || null;
   const phase = normalizeString(planReviewRecord?.phase) || "pending_plan_generation";
+  const failureReason = normalizeString(planReviewRecord?.generation_error?.message || planReviewRecord?.failure_reason);
   const reviewable = phase === "ready_for_review";
   const phaseLabelMap = {
     pending_plan_generation: "等待大模型生成方案",
+    plan_generation_failed: "方案生成失败",
     ready_for_review: "方案待你审核",
     approved: "方案已通过",
     revising: "方案退回修订",
@@ -128,13 +130,17 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
       ? "方案已通过"
       : phase === "revising"
         ? "方案已退回"
-        : "评估进行中";
+        : phase === "plan_generation_failed"
+          ? "方案生成失败"
+          : "评估进行中";
   const nextAction = normalizeString(planReviewRecord?.next_action) || (reviewable
     ? "请审核大模型生成的评估方案与验收方案"
     : phase === "approved"
       ? "方案已通过，可进入开发"
       : phase === "revising"
         ? "等待方案修订后重新审核"
+        : phase === "plan_generation_failed"
+          ? "方案生成失败，请重试生成或检查模型入口"
         : "等待大模型完成评估方案与验收方案");
   return {
     status: "available",
@@ -148,10 +154,15 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
     phase,
     phase_label: phaseLabelMap[phase] || phase,
     next_action: nextAction,
-    assessment_summary: normalizeString(planReviewRecord?.assessment_summary) || null,
+    assessment_summary: normalizeString(planReviewRecord?.assessment_summary) ||
+      (phase === "plan_generation_failed" && failureReason ? `生成失败：${failureReason}` : null),
     proposed_acceptance_plan: normalizeString(planReviewRecord?.proposed_acceptance_plan) || null,
     reviewable,
-    action_status: normalizeString(planReviewRecord?.action_status) || (reviewable ? "等待你确认方案" : "等待方案生成"),
+    action_status: normalizeString(planReviewRecord?.action_status) ||
+      (reviewable ? "等待你确认方案" : phase === "plan_generation_failed" ? "方案生成失败" : "等待方案生成"),
+    failure_reason: failureReason || null,
+    generation_error: planReviewRecord?.generation_error || null,
+    generation_issues: asArray(planReviewRecord?.generation_issues),
     origin: "workbench_requirement_intake"
   };
 }
@@ -1037,7 +1048,7 @@ function planReviewBlocksRequirementEvent(planReview = {}, event = {}) {
   const eventRequirementId = normalizeString(event.requirement_id || event.requirementId);
   const phase = normalizeString(planReview.phase);
   return Boolean(
-    (planReview.reviewable || phase === "pending_plan_generation") &&
+    (planReview.reviewable || phase === "pending_plan_generation" || phase === "plan_generation_failed") &&
       reviewRequirementId &&
       eventRequirementId &&
       reviewRequirementId === eventRequirementId
@@ -1065,6 +1076,17 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const pendingPlanReview = summaries.projectManagement?.plan_review || {};
   const matchingRequirementEvent = asArray(operationsTimeline.items)
     .find((item) => item.type === "requirement_intake_submitted" && planReviewBlocksRequirementEvent(pendingPlanReview, item));
+  if (pendingPlanReview.phase === "plan_generation_failed") {
+    return {
+      status: "blocked",
+      action: "retry_requirement_plan_generation",
+      source_event_id: matchingRequirementEvent?.event_id || null,
+      source_type: "plan_review",
+      target_projection_id: null,
+      reason: pendingPlanReview.failure_reason || pendingPlanReview.next_action || "requirement plan generation failed",
+      requires_operator: false
+    };
+  }
   if (pendingPlanReview.phase === "pending_plan_generation") {
     return {
       status: "blocked",
@@ -1135,6 +1157,17 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
 
   if (driver.type === "requirement_intake_submitted") {
     const planReview = summaries.projectManagement?.plan_review || {};
+    if (planReview.phase === "plan_generation_failed") {
+      return {
+        status: "blocked",
+        action: "retry_requirement_plan_generation",
+        source_event_id: driver.event_id,
+        source_type: "plan_review",
+        target_projection_id: null,
+        reason: planReview.failure_reason || planReview.next_action || "requirement plan generation failed",
+        requires_operator: false
+      };
+    }
     if (planReview.phase === "pending_plan_generation") {
       return {
         status: "blocked",
@@ -1373,6 +1406,17 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
   const projectStatus = summaries.projectStatus || {};
   if (latest?.type === "requirement_intake_submitted") {
     const planReview = summaries.projectManagement?.plan_review || {};
+    if (planReview.phase === "plan_generation_failed") {
+      return {
+        status: "blocked",
+        action: "retry_requirement_plan_generation",
+        source_event_id: latest.event_id,
+        source_type: "plan_review",
+        target_projection_id: null,
+        reason: planReview.failure_reason || planReview.next_action || "requirement plan generation failed",
+        requires_operator: false
+      };
+    }
     if (planReviewBlocksRequirementEvent(planReview, latest)) {
       return {
         status: "blocked",

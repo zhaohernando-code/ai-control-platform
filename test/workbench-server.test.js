@@ -817,11 +817,16 @@ test("workbench server persists frontend requirement before model plan generatio
     assert.equal(response.status, 201);
     assert.equal(observedPendingWrite, true);
     assert.equal(payload.plan_generation.status, "fail");
-    assert.equal(payload.plan_review.phase, "pending_plan_generation");
+    assert.equal(payload.plan_review.phase, "plan_generation_failed");
+    assert.match(payload.plan_review.generation_error.message, /simulated model timeout/);
+    assert.equal(payload.auto_advance.status, "plan_generation_failed");
+    assert.equal(payload.projection.next_action_readout.action, "retry_requirement_plan_generation");
     assert.equal(payload.projection.project_management.plan_review.requirement_id, "requirement-frontend-refactor");
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-frontend-refactor");
-    assert.equal(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].phase, "pending_plan_generation");
+    assert.equal(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].phase, "plan_generation_failed");
+    assert.match(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].generation_error.stderr, /simulated model timeout/);
     assert.equal(savedWorkflowState.project_status.requirement_intake.latest_requirement_id, "requirement-frontend-refactor");
+    assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-frontend-refactor"].phase, "plan_generation_failed");
     assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
   }, {
     historyPath,

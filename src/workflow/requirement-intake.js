@@ -302,6 +302,64 @@ function pendingPlanReview(requirement = {}, createdAt = "") {
   };
 }
 
+function generationIssueSummary(issues = []) {
+  return asArray(issues)
+    .map((item) => normalizeString(item?.message || item?.code || item))
+    .filter(Boolean)
+    .join("；")
+    .slice(0, 1000);
+}
+
+export function markRequirementPlanGenerationFailed(projectStatus = {}, input = {}, options = {}) {
+  const requirementId = normalizeString(input.requirement_id || input.requirementId);
+  const existingReviews = isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {};
+  const review = requirementId ? existingReviews[requirementId] : null;
+  if (!review) {
+    return {
+      status: "fail",
+      issues: [issue("plan_review_not_found", "plan review not found for requirement", "requirement_id")]
+    };
+  }
+
+  const failedAt = normalizeString(options.created_at || options.createdAt || input.created_at || input.createdAt) ||
+    new Date().toISOString();
+  const issues = asArray(input.issues);
+  const stderr = normalizeString(input.stderr).slice(0, 2000);
+  const message = normalizeString(input.message) ||
+    stderr ||
+    generationIssueSummary(issues) ||
+    "model plan generation failed";
+  const nextReview = {
+    ...review,
+    status: "plan_generation_failed",
+    phase: "plan_generation_failed",
+    generator: input.generator || input.provenance || review.generator || null,
+    generation_error: {
+      message,
+      stderr: stderr || null,
+      issues,
+      failed_at: failedAt
+    },
+    generation_issues: issues,
+    failed_at: failedAt,
+    next_action: "方案生成失败，请重试生成或检查模型入口",
+    action_status: "方案生成失败"
+  };
+
+  return {
+    status: "pass",
+    plan_review: nextReview,
+    project_status: {
+      ...projectStatus,
+      updated_at: failedAt,
+      plan_reviews: {
+        ...existingReviews,
+        [requirementId]: nextReview
+      }
+    }
+  };
+}
+
 export function applyGeneratedRequirementPlan(projectStatus = {}, input = {}, options = {}) {
   const requirementId = normalizeString(input.requirement_id || input.requirementId);
   const existingReviews = isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {};

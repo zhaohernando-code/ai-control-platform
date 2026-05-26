@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   applyGeneratedRequirementPlan,
   createRequirementPlanPrompt,
+  markRequirementPlanGenerationFailed,
   parseRequirementPlanGenerationOutput,
   recordRequirementIntakeSubmitted,
   submitRequirementToProjectStatus,
@@ -139,6 +140,38 @@ test("requirement plan generator output cannot be a verbatim problem copy", () =
 
   assert.equal(parsed.status, "fail");
   assert.ok(parsed.issues.some((item) => item.code === "generated_plan_copies_problem_statement"));
+});
+
+test("requirement plan generation failures are persisted as explicit failed state", () => {
+  const submitted = submitRequirementToProjectStatus(workflowState().project_status, {
+    title: "前端重构",
+    project_id: "ai-control-platform",
+    problem_statement: "迁移到 React 和 Ant Design，并保持单页工作台形态。",
+    plan_review_requested: true
+  }, {
+    created_at: "2026-05-25T08:00:00.000Z",
+    requirement_id: "requirement-plan-failed"
+  });
+  const failed = markRequirementPlanGenerationFailed(submitted.project_status, {
+    requirement_id: "requirement-plan-failed",
+    issues: [{ code: "requirement_plan_generation_failed", message: "simulated model timeout", path: "plan_generation" }],
+    stderr: "simulated model timeout",
+    generator: { kind: "test_model_plan" }
+  }, {
+    created_at: "2026-05-25T08:02:00.000Z"
+  });
+  const projection = createWorkbenchProjection({
+    ...workflowState(),
+    project_status: failed.project_status
+  });
+
+  assert.equal(failed.status, "pass");
+  assert.equal(failed.plan_review.phase, "plan_generation_failed");
+  assert.equal(failed.plan_review.action_status, "方案生成失败");
+  assert.match(failed.plan_review.generation_error.message, /simulated model timeout/);
+  assert.equal(projection.project_management.plan_review.phase, "plan_generation_failed");
+  assert.equal(projection.next_action_readout.action, "retry_requirement_plan_generation");
+  assert.match(projection.project_management.plan_review.assessment_summary, /生成失败/);
 });
 
 test("requirement intake fact drives workbench next action into existing autonomous flow", () => {
