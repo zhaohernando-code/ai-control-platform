@@ -228,7 +228,7 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.match(script, /updatePlanReview/);
   assert.match(script, /auto_advance_after_plan_review/);
   assert.match(script, /正在确认方案并进入开发/);
-  assert.match(script, /已进入开发/);
+  assert.match(script, /开发中/);
   assert.match(script, /requirement_intake/);
   assert.match(script, /plan_review_status/);
   assert.match(script, /等待大模型生成方案/);

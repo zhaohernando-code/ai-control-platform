@@ -910,10 +910,11 @@ test("workbench server records plan review decisions", async () => {
     assert.equal(submitted.status, 201);
     assert.equal(response.status, 201);
     assert.equal(payload.status, "updated");
-    assert.equal(payload.plan_review.phase, "approved");
-    assert.equal(payload.projection.project_management.plan_review.phase, "approved");
-    assert.equal(savedProjectStatus.plan_reviews["requirement-plan-review-server"].phase, "approved");
-    assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-plan-review-server"].phase, "approved");
+    assert.equal(payload.plan_review.phase, "in_development");
+    assert.equal(payload.projection.project_management.plan_review.phase, "in_development");
+    assert.equal(payload.projection.project_management.plan_review.action_status, "开发中");
+    assert.equal(savedProjectStatus.plan_reviews["requirement-plan-review-server"].phase, "in_development");
+    assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-plan-review-server"].phase, "in_development");
   }, { historyPath, snapshotsRoot, projectStatusPath });
 });
 
@@ -979,7 +980,8 @@ test("workbench server starts development automatically after plan review approv
 
     assert.equal(submitted.status, 201);
     assert.equal(response.status, 201);
-    assert.equal(payload.plan_review.phase, "approved");
+    assert.equal(payload.plan_review.phase, "in_development");
+    assert.equal(payload.projection.project_management.plan_review.action_status, "开发中");
     assert.equal(payload.auto_advance.status, "created");
     assert.equal(payload.auto_advance.result.status, "pass");
     assert.ok(payload.auto_advance.result.iterations.some((iteration) => iteration.projected_action === "run_context_work_packages"));

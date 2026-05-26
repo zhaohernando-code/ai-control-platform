@@ -1105,7 +1105,7 @@ qsa("[data-plan-review-action]").forEach((button) => {
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      if (status) status.textContent = action === "approve" ? "已进入开发" : "已退回修订";
+      if (status) status.textContent = action === "approve" ? "开发中" : "已退回修订";
       if (result.projection) {
         currentProjection = result.projection;
         renderProjection(result.projection);

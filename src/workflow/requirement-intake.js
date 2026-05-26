@@ -615,13 +615,13 @@ export function updateRequirementPlanReview(projectStatus = {}, input = {}, opti
   const approved = action === "approve";
   const nextReview = {
     ...review,
-    status: approved ? "approved" : "revising",
-    phase: approved ? "approved" : "revising",
+    status: approved ? "in_development" : "revising",
+    phase: approved ? "in_development" : "revising",
     reviewed_at: reviewedAt,
     review_decision: action,
     review_note: normalizeString(input.note),
-    next_action: approved ? "方案已通过，可进入开发" : "方案已退回，等待修订后重新审核",
-    action_status: approved ? "已同意进入开发" : "已退回修订"
+    next_action: approved ? "开发已开始" : "方案已退回，等待修订后重新审核",
+    action_status: approved ? "开发中" : "已退回修订"
   };
 
   return {

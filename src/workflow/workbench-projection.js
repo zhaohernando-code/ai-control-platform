@@ -113,35 +113,41 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
   }
   const requirementTitle = normalizeString(latest.title) || null;
   const planReviewRecord = (projectStatus?.plan_reviews && projectStatus.plan_reviews[latest.id]) || null;
-  const phase = normalizeString(planReviewRecord?.phase) || "pending_plan_generation";
+  const storedPhase = normalizeString(planReviewRecord?.phase) || "pending_plan_generation";
+  const phase = storedPhase === "approved" ? "in_development" : storedPhase;
   const failureReason = normalizeString(planReviewRecord?.generation_error?.message || planReviewRecord?.failure_reason);
   const reviewable = phase === "ready_for_review";
   const phaseLabelMap = {
     pending_plan_generation: "等待大模型生成方案",
     plan_generation_failed: "方案生成失败",
     ready_for_review: "方案待你审核",
-    approved: "方案已通过",
+    in_development: "开发中",
     revising: "方案退回修订",
     idle: "等待评估"
   };
   const statusLabel = reviewable
     ? "方案待审核"
-    : phase === "approved"
-      ? "方案已通过"
+    : phase === "in_development"
+      ? "开发中"
       : phase === "revising"
         ? "方案已退回"
         : phase === "plan_generation_failed"
           ? "方案生成失败"
           : "评估进行中";
-  const nextAction = normalizeString(planReviewRecord?.next_action) || (reviewable
+  const storedNextAction = normalizeString(planReviewRecord?.next_action);
+  const nextAction = phase === "in_development"
+    ? "开发已开始"
+    : storedNextAction || (reviewable
     ? "请审核大模型生成的评估方案与验收方案"
-    : phase === "approved"
-      ? "方案已通过，可进入开发"
-      : phase === "revising"
+    : phase === "revising"
         ? "等待方案修订后重新审核"
         : phase === "plan_generation_failed"
           ? "方案生成失败，请重试生成或检查模型入口"
         : "等待大模型完成评估方案与验收方案");
+  const storedActionStatus = normalizeString(planReviewRecord?.action_status);
+  const actionStatus = phase === "in_development"
+    ? "开发中"
+    : storedActionStatus || (reviewable ? "等待你确认方案" : phase === "plan_generation_failed" ? "方案生成失败" : "等待方案生成");
   return {
     status: "available",
     status_label: statusLabel,
@@ -158,8 +164,7 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
       (phase === "plan_generation_failed" && failureReason ? `生成失败：${failureReason}` : null),
     proposed_acceptance_plan: normalizeString(planReviewRecord?.proposed_acceptance_plan) || null,
     reviewable,
-    action_status: normalizeString(planReviewRecord?.action_status) ||
-      (reviewable ? "等待你确认方案" : phase === "plan_generation_failed" ? "方案生成失败" : "等待方案生成"),
+    action_status: actionStatus,
     failure_reason: failureReason || null,
     generation_error: planReviewRecord?.generation_error || null,
     generation_issues: asArray(planReviewRecord?.generation_issues),
