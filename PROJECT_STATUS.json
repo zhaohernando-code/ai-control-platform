@@ -9,7 +9,7 @@
     "id": "new-platform-repo-bootstrap",
     "label": "Create standalone platform repo and codify anti-drift workflow gates"
   },
-  "updated_at": "2026-05-26T03:55:06.328Z",
+  "updated_at": "2026-05-26T07:55:48.925Z",
   "progress_summary": "Standalone platform repository has been created and pushed to GitHub at git@github.com:zhaohernando-code/ai-control-platform.git to prevent platform-core work from drifting into managed business projects. Existing Chinese design docs, capability matrix, recovery redesign, and PC/mobile visual drafts are copied into this repo. Host-boundary and project-onboarding gates are active. Current-session platform materials have been migrated into this repo: formal contracts and visuals are active docs, while stock_dashboard autonomous-flow trials/code/tests and root hook route fixes are quarantined under docs/migrations and legacy for platform-neutral refactoring. The current round extended the platform self-trial from text evaluation into machine-readable workflow primitives: run manifest, artifact ledger, task DAG, goal guard, LLM reviewer gate, model router, workbench projection, autonomous continuation, process hardening, operator event ingestion, workbench snapshot publishing, and the first PC/mobile workbench shell. The reviewer gate is now a platform data model; Claude+DeepSeek is treated as one provider/model option selected by policy, not a hard-coded workflow. Workbench projection now provides PC/mobile one-screen state input without requiring UI code to parse logs. Projection schema validation and CLI gate protect PC/mobile rendering from malformed projection JSON. Autonomous continuation now prevents the platform from stopping after a completed cycle while PROJECT_STATUS.next_step or next_work_packages are available and no human blocker exists. PC and mobile workbench shells are separate static entries and consume validated projection JSON. Workbench projection source abstraction supports a service endpoint through a safe query parameter while preserving the local fixture fallback. A lightweight local workbench server now exposes projection and projection-history APIs, and browser verification confirms desktop/mobile API-backed rendering has no horizontal overflow. Projection history selection now lets operators switch between current and previous autonomous cycles in both desktop and mobile shells. Workbench controls now persist operator action events through /api/workbench/events, so validate/next actions become durable process facts instead of UI-only text changes. Process-hardening is now connected to executable closeout via npm run check:process-hardening and npm run check:closeout, browser event verification is committed as npm run check:workbench:browser-events, and run-with-node18 makes closeout self-heal from the current Node 16 shell by selecting an available Node 18+ runtime. Operator events can now be ingested into Run Manifest events and Artifact Ledger artifacts idempotently and atomically, so workbench actions participate in autonomous evaluation state instead of remaining a side-channel ledger. Workbench projection generation now applies operator event ingestion before summarizing manifest, artifacts, autonomous_run, and closeout evidence, ignores stale run_result/run_evaluation whenever operator events are present, and browser closeout now covers both desktop event writes and mobile projection rendering. Workbench server now prefers projection history input_path snapshots and dynamically generates projection from workflow state, with projection_path retained as historical fallback. History item paths are constrained to relative docs/examples or snapshot paths, and the server has tests proving dynamic input priority over static fallback. Snapshot APIs can now persist projection-ready workflow state input and update projection history latest. Autonomous continuation now emits a snapshot_publish_plan only when workflow_state passes the same publish readiness gate used by the publisher; otherwise it returns snapshot_publish_issues. Closeout runner now executes that plan through either local snapshot publishing or the workbench snapshot API, refuses non-platform local roots, rejects output paths outside the platform repo, validates HTTP API acknowledgements and returned projection identity, rejects unknown modes, normalizes snapshot ids, fails closed when the plan is missing, writes success/failure evidence back to workflow_state manifest events plus artifact ledger, and republishes the evidence-bearing workflow_state to the same snapshot id so workbench latest can display it. PC/mobile projection schemas now require a closeout summary object, both workbench shells render closeout status from projection.closeout, deterministic loop coverage proves decideContinuation -> runCloseoutPlan -> projection -> decideContinuation remains autonomous, runAutonomousCloseoutLoop exposes that path as a reusable orchestration runner plus CLI, and the CLI can write replayable autonomous-closeout-loop-run.v1 input/output artifacts. Replay validation now checks stored autonomous closeout loop artifacts before reuse, including host identity, result consistency, projection schema, closeout evidence, and next continuation state. Scheduler continuation reuse now goes through prepareAutonomousContinuationFromLoopArtifact and run-autonomous-closeout-loop --resume-from, so invalid replay artifacts become structured blockers instead of continuation input. Blocked replay validation attempts with available workflow state now write autonomous_loop_replay_validation events and failed evaluation artifacts back into workflow_state for workbench projection and recovery evaluation. Model routing now supports codex_plan_pressure and adds DeepSeek V4 Pro process_guard before expensive GPT implementation/arbitration work. Reviewer gate now creates DeepSeek invocation policies with official Anthropic endpoint, Claude Code model, keepalive expectations, bounded timeout profiles, effort, scope limits, split_required signals, and provider smoke recovery so DS Pro can participate more often without turning timeout into a manual blocker. Workbench projection and PC/mobile shells now expose replay validation blockers as first-class resume_health status instead of burying them in artifact totals. Reviewer provider health facts now persist smoke, retry, split, and fallback decisions into manifest events and artifact ledger, and PC/mobile workbench projection exposes latest provider health and next action. Reviewer tool timeout recovery now has a concrete reviewer_scope_split layer: smoke-pass DS tool timeouts can be converted into durable bounded shards, continuation consumes those shards as run_reviewer_scope_shard work packages, and PC/mobile projection exposes shard_count, pending_shards, and next_shard. Reviewer shard execution is now durable: shard results and aggregates are persisted as manifest/artifact facts, continuation skips completed shards, aggregate findings feed manifest.review_findings after all shards complete, and PC/mobile projection exposes reviewer_shard_review status. Reviewer shard outputs now have reusable recording paths: a CLI, workbench API, and projection-source method can persist shard results and optional aggregates without manual JSON edits. Reviewer shard execution now has a provider-neutral runner that selects pending shards, builds read-only prompts, requires an executor adapter, records shard results, and aggregates automatically after the final shard. A Claude+DeepSeek shard executor adapter now uses the canonical claude-deepseek skill wrapper and no-proxy launcher path, parses structured findings, and converts timeouts or wrapper failures into durable reviewer findings. Reviewer shard runner now has a scheduler CLI entrypoint, npm run run:reviewer-shard, that executes pending shards with the Claude+DeepSeek adapter by default or deterministic mock findings in tests, writes workflow state, and aggregates after the final shard. A real Claude+DeepSeek no-tools reviewer shard was executed through npm run run:reviewer-shard against a temporary workflow snapshot and completed successfully in the shard_recorded phase with one pass finding, one pending shard, and no false provider-health write. Runner-level reviewer_timeout findings now optionally create reviewer_provider_health facts and schedule provider smoke. Reviewer shard runner now supports bounded self-progress through --all, continuing pending shards until aggregate or provider-health recovery without requiring the main process to manually choose every shard. Autonomous continuation now re-evaluates completed reviewer shard aggregates from merged findings so stale pass/rerun evaluations cannot hide failed shard review or repeat recovered timeout work. Reviewer shard loop execution can now emit reviewer-shard-loop-run.v1 replay artifacts with identity validation, runner parameters, shard runs, aggregate/provider-health stop facts, and output workflow state. Deterministic reviewer shard loop closeout trial passed end-to-end when history/snapshot paths stayed inside the platform repo; an attempted /tmp publish correctly failed closed on host boundary. Reviewer shard loop artifacts now have a scheduler reuse CLI that emits closeout/continuation input without manual JSON assembly. run_reviewer_scope_shard work packages now map to an auditable three-step scheduler dispatch plan covering reviewer shard loop, artifact-to-continuation preparation, and autonomous closeout loop. Scheduler dispatch execution is now bounded by a plan validator, npm script allowlist, dependency ordering, stop-on-failure behavior, dry-run mode, and scheduler-dispatch-run.v1 artifacts. Scheduler dispatch planner now supports explicit reviewer mock options for deterministic full-chain trials without hiding provider bypass at execution time. A full non-dry-run scheduler dispatch trial with reviewer mock completed all three approved steps and reached autonomous closeout phase next_continuation. Scheduler dispatch policy decisions are now durable workflow facts: the workbench server records scheduler_dispatch_policy events and scheduler-dispatch-policy.v1 artifacts before execution or rejection, and PC/mobile projections render policy status, execution mode, issue count, and the first rejection reason. The workbench now has a named approved_mock_non_dry_run profile for bounded non-dry-run dispatch: the server expands the profile into explicit zero-external-call mocked controls, rejects unsupported profiles, and browser gates verify both dry-run and approved mock dispatch rendering. The trial also hardened scheduler-owned paths by making reviewer shard CLI outputs create directories and allowing snapshot publishing to initialize missing projection history inside controlled roots. Scheduler dispatch run artifacts now summarize declared step outputs, including reviewer shard aggregate state, continuation input metadata, and autonomous closeout loop next continuation status/action/work package count. PC/mobile workbench surfaces the approved dispatch next-continuation evidence so the system can continue from structured state instead of parsing stdout. Scheduler dispatch runs can now be converted into next continuation input through a dedicated replay-validating adapter and CLI, prepare:scheduler-dispatch-continuation. The adapter rereads the declared closeout loop artifact path and reuses autonomous closeout replay validation before emitting continuation input, blocking missing or non-reusable artifacts. run-scheduler-dispatch-plan now supports --continuation-output, invoking the replay-validating scheduler dispatch continuation adapter immediately after the run artifact is written; blocked continuation generation fails the runner instead of leaving a pass artifact that still needs manual assembly. Scheduler dispatch plans now carry continuation_output destinations, and run-scheduler-dispatch-plan automatically uses the plan destination for non-dry-run continuation generation while keeping dry-run as structure-only validation. Workbench server now turns approved non-dry-run scheduler dispatch continuation into durable state: it writes scheduler_dispatch_continuation facts, exposes continuation readiness in projection history, provides POST /api/workbench/scheduler-next-cycle, validates generated continuation input identity, records scheduler_next_cycle_enqueue, and publishes the next workflow snapshot so autonomous execution has a server-side handoff instead of stopping at a ready artifact.",
   "latest_update": "Fixed development mode remains active: the main process stays watchdog/orchestrator and evaluates bounded child processes instead of treating implementation edits as success. Prompt safety hardening is now integrated for external Codex CLI and DeepSeek provider calls. The headless child worker, context work package provider executor, and reviewer shard runner now emit minimized provider-facing prompts through src/workflow/external-prompt-safety.js: natural-language workflow/task text is converted to quality-operations terminology, full workflow_state/context metadata is not dumped into provider prompts, exact owned_files and acceptance gates are preserved, and prompt files use neutral names. PROCESS.md and docs/contracts/CODEX_PROXY_HANDOFF_CN.md now require minimized provider prompts and warn that dense internal governance/continuation/dispatch terminology can be misclassified by upstream provider filters. Verification passed: node --test test/headless-cli-orchestrator.test.js test/context-work-package-provider-executor.test.js test/reviewer-shard-runner.test.js; npm test; npm run check:process-hardening; npm run check:worker-runtime-readiness -- --script check:closeout; npm run check:closeout; git diff --check. Live workbench route was republished by restarting com.codex.ai-control-platform.workbench from the canonical checkout and reverified on the public route after prompt-safety hardening; HTTP probe and browser evidence both passed at 2026-05-25T09:23:19.064Z.",
   "workbench_live_route_evidence": {
@@ -44,9 +44,36 @@
   "blockers": [],
   "global_goals": [
     {
+      "id": "requirement-unknown-20260526033003",
+      "title": "前端重构",
+      "status": "in_progress",
+      "next_step": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目",
+      "owned_files": [
+        "apps/workbench",
+        "src/workflow/requirement-intake.js",
+        "src/workflow/workbench-projection.js",
+        "src/workflow/frontend-acceptance.js",
+        "tools/workbench-server.mjs",
+        "tools/check-workbench-browser-events.mjs",
+        "tools/check-workbench-frontend-acceptance.mjs",
+        "test/requirement-intake.test.js",
+        "test/workbench-shell.test.js",
+        "test/workbench-server.test.js",
+        "test/workbench-projection.test.js",
+        "test/frontend-acceptance.test.js"
+      ],
+      "acceptance_gates": [
+        "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+        "npm run check:workbench:browser-events",
+        "npm run check:closeout"
+      ],
+      "source": "workbench_requirement_intake",
+      "submitted_at": "2026-05-26T03:30:03.063Z"
+    },
+    {
       "id": "requirement-intake-replay-20260525-module-update-final-01",
       "title": "“提需求”模块更新",
-      "status": "in_progress",
+      "status": "completed",
       "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目",
       "owned_files": [
         "apps/workbench",
@@ -121,7 +148,7 @@
       "completed": true
     }
   ],
-  "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目",
+  "next_step": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目",
   "linked_docs": [
     {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/PROJECT_PLAN.md",
@@ -253,18 +280,85 @@
     "auth_redirect_detected": false,
     "secret_policy": "Only request metadata and a short visible body text sample are stored; no cookies, tokens, authorization headers, session values, or secret values are stored."
   },
-  "next_work_packages": [],
+  "next_work_packages": [
+    {
+      "id": "requirement-unknown-20260526033003-intake",
+      "title": "处理需求：前端重构",
+      "action": "continue_requirement_intake",
+      "owned_files": [
+        "apps/workbench",
+        "src/workflow/requirement-intake.js",
+        "src/workflow/workbench-projection.js",
+        "src/workflow/frontend-acceptance.js",
+        "tools/workbench-server.mjs",
+        "tools/check-workbench-browser-events.mjs",
+        "tools/check-workbench-frontend-acceptance.mjs",
+        "test/requirement-intake.test.js",
+        "test/workbench-shell.test.js",
+        "test/workbench-server.test.js",
+        "test/workbench-projection.test.js",
+        "test/frontend-acceptance.test.js"
+      ],
+      "acceptance_gates": [
+        "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+        "npm run check:workbench:browser-events",
+        "npm run check:closeout"
+      ],
+      "reason": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目",
+      "global_goal_id": "requirement-unknown-20260526033003",
+      "source": {
+        "requirement_id": "requirement-unknown-20260526033003",
+        "intake_channel": "workbench_frontend",
+        "surface_area": "platform_project",
+        "acceptance_criteria": "",
+        "constraints": "要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留"
+      }
+    }
+  ],
   "requirement_intake": {
     "version": "workbench-requirement-intake.v1",
-    "active_requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
-    "latest_requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
-    "submitted_count": 1,
+    "active_requirement_id": "requirement-unknown-20260526033003",
+    "latest_requirement_id": "requirement-unknown-20260526033003",
+    "submitted_count": 2,
     "open_count": 1,
     "items": [
       {
+        "id": "requirement-unknown-20260526033003",
+        "title": "前端重构",
+        "status": "submitted",
+        "submitted_at": "2026-05-26T03:30:03.063Z",
+        "project_id": "ai-control-platform",
+        "surface_area": "platform_project",
+        "surface_label": "AI Control Platform 项目",
+        "problem_statement": "为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构",
+        "constraints": "要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留",
+        "owned_files": [
+          "apps/workbench",
+          "src/workflow/requirement-intake.js",
+          "src/workflow/workbench-projection.js",
+          "src/workflow/frontend-acceptance.js",
+          "tools/workbench-server.mjs",
+          "tools/check-workbench-browser-events.mjs",
+          "tools/check-workbench-frontend-acceptance.mjs",
+          "test/requirement-intake.test.js",
+          "test/workbench-shell.test.js",
+          "test/workbench-server.test.js",
+          "test/workbench-projection.test.js",
+          "test/frontend-acceptance.test.js"
+        ],
+        "acceptance_gates": [
+          "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+          "npm run check:workbench:browser-events",
+          "npm run check:closeout"
+        ],
+        "acceptance_criteria": "",
+        "plan_review_id": "plan-review-requirement-unknown-20260526033003",
+        "summary": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目"
+      },
+      {
         "id": "requirement-intake-replay-20260525-module-update-final-01",
         "title": "“提需求”模块更新",
-        "status": "submitted",
+        "status": "completed",
         "submitted_at": "2026-05-25T15:30:00.598Z",
         "project_id": "ai-control-platform",
         "surface_area": "platform_project",
@@ -314,6 +408,63 @@
       "reviewed_at": "2026-05-25T16:10:00.000Z",
       "review_decision": "approve",
       "review_note": ""
+    },
+    "requirement-unknown-20260526033003": {
+      "version": "workbench-plan-review.v1",
+      "id": "plan-review-requirement-unknown-20260526033003",
+      "requirement_id": "requirement-unknown-20260526033003",
+      "requirement_title": "前端重构",
+      "status": "in_development",
+      "phase": "in_development",
+      "plan_id": "plan-requirement-unknown-20260526033003",
+      "assessment_summary": "目标是将 AI Control Platform 现有的原生 HTML/CSS/JS 前端整体迁移到 React + Next.js（App Router）+ Ant Design 技术栈，以提升可维护性并统一设计语言。影响范围覆盖中台所有面向用户的前端入口与工作台，属于大规模重构而非增量改造；关键不确定性包括：当前原生前端的实际入口与路由形态、与后端 API（如 workbench-server、requirement-intake 等）的耦合方式、单页应用形态在 Next.js App Router 下的承载方案、以及静态资源/发布管道是否需要同步调整。需要先做一次前端现状摸底再制定可执行的迁移切片，避免一次性大改导致中台长时间不可用。",
+      "proposed_acceptance_plan": "# 前端重构方案（原生 → Next.js App Router + Ant Design）\n\n## 目标\n- 用 React + Next.js（App Router）+ Ant Design 替换中台现有的原生 HTML/CSS/JS 前端实现。\n- 通过 Ant Design 统一基础组件与布局组件，提升 UI 一致性与可维护性。\n- 形成项目层面的 UI 约束：禁止重复手写基础组件，所有基础/布局组件必须走 antd。\n\n## 实施范围\n- 范围内：\n  - 中台所有现有面向用户的前端页面、入口 HTML、内联/外链 CSS 与 JS。\n  - 与中台前端配套的静态资源与发布脚本（如 workbench 相关入口）。\n  - 前端与现有后端服务（workbench-server、requirement-intake 流程等）的对接层（HTTP 客户端、数据契约）。\n  - 新建 Next.js 工程骨架、antd 主题与 Layout 体系、目录与代码组织约定文档。\n- 范围外：\n  - 后端 API 行为变更（仅做调用方适配，不改语义）。\n  - 非中台前端的其他项目（如 stock_dashboard）。\n  - 设计风格的大改（沿用 antd 默认 + 必要的主题变量，不引入第三套 UI 体系）。\n\n## 关键设计原则\n- 单页应用形态保留：Next.js 使用 App Router，但中台入口仍以单一应用壳承载多视图，避免回到多页/多入口形态。\n- antd 优先：Layout、Menu、Table、Form、Modal、Drawer、Typography 等一律使用 antd；遵循 antd 官方页面（Pro 风格可参考）布局与交互规范。\n- 原有 CSS 默认不保留，除非该样式承担 antd 无法表达的领域语义（需在 PR 中显式说明保留原因）。\n- 形成约束文档（如 PROJECT_RULES.md / 前端 README）：明确“禁止自造基础组件、布局走 antd Layout”。\n\n## 验收标准\n- 中台前端入口由 Next.js 应用提供服务，原生 HTML/CSS/JS 不再作为生产入口。\n- 用户可在新前端完成现有中台核心流程（至少：需求录入、工作台浏览、计划审核等已有功能的等价操作）。\n- 所有基础与布局组件来源于 antd，代码评审中无新增自造基础组件。\n- 单页 app 形态保留：浏览器地址栏路由切换不触发整页刷新，整体壳一致。\n- 项目约束已写入文档（PROJECT_RULES.md 或前端 README），并在 PR 描述中引用。\n\n## 风险与缓解\n- 一次性整体重写风险高 → 采用“骨架先行 + 按视图切片迁移”的分阶段策略，每阶段保持中台可用。\n- 前后端契约隐性依赖 → 在迁移前先盘点现有前端调用的接口清单，作为新前端的数据层基线。\n- 发布与路由形态变化可能影响线上访问 → publish/edge 配置需同步评估，必要时保留旧入口直至新前端稳定。\n- antd 与现有视觉风格差异 → 通过 antd 主题变量收敛，不引入额外 UI 库。\n\n## 门禁证据\n- 现状盘点产物：现有前端文件/路由/接口清单（提交到仓库或 docs/）。\n- 新工程构建通过：`pnpm build` 或等价 Next.js 构建命令零错误。\n- Lint/Typecheck 通过：`pnpm lint`、`pnpm typecheck`（若启用）零错误。\n- 关键流程手动验证记录：截图或步骤记录，证明核心中台流程在新前端可走通。\n- 发布验证：新前端通过既有发布通道部署，并完成 served-route 验证。",
+      "implementation_outline": [
+        "盘点现状：枚举当前中台所有原生前端入口、页面、静态资源、内联脚本，以及它们调用的后端接口，输出一份迁移清单。",
+        "建立 Next.js + antd 骨架：在仓库内新建前端工程目录（App Router），接入 antd、配置主题与全局 Layout，确认与现有后端（workbench-server 等）的本地联调方式。",
+        "沉淀前端约束文档：在 PROJECT_RULES.md 或前端 README 中写明“基础/布局组件必须使用 antd、不得自造基础组件、单页 app 形态保留、原有 CSS 默认不保留”等规则。",
+        "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。",
+        "对接数据层：抽象统一的 API 客户端与类型定义，替换原生 fetch/内联脚本的散乱调用，保证与现有后端契约一致。",
+        "清理与下线：在所有视图迁移完成后，移除原生 HTML/CSS/JS 入口与无用静态资源，更新发布脚本/边缘代理指向新前端。",
+        "发布与验证：通过现有发布通道部署新前端，完成 served-route 验证和核心流程回归。"
+      ],
+      "acceptance_gates": [
+        "现状盘点清单已产出并入库（含页面、路由、接口、静态资源列表）。",
+        "新 Next.js 工程在本地与 CI 中可成功构建（build 通过）。",
+        "Lint/Typecheck（若启用）在新前端工程中零错误。",
+        "核心中台流程在新前端中可端到端走通，并附验证记录。",
+        "antd 使用约束已写入项目文档并被 PR 引用。",
+        "原生 HTML/CSS/JS 入口已下线或明确标注为废弃，发布通道指向新前端。",
+        "完成一次真实发布并通过 served-route 验证。"
+      ],
+      "risks": [
+        "整体重写工作量大，若不做分阶段切片，存在中台长时间不可用的风险。",
+        "现有原生前端可能存在未文档化的隐式行为（如内联脚本、特殊事件处理），迁移过程中可能丢失功能，需要在盘点阶段重点识别。",
+        "Next.js App Router 的 SSR/CSR 行为与原生单页 app 不完全一致，需要在骨架阶段确认“单页 app 形态”如何承载，避免偏离用户要求。",
+        "antd 升级与主题约束一旦固化，后续若需引入非 antd 组件将面临约束冲突，需在文档中明确例外审批流程。",
+        "发布管道与边缘代理可能依赖旧入口路径，切换时需要与运维/发布脚本同步，否则可能导致线上 404 或回退失败。",
+        "本方案仅为计划，未读取现有前端源码细节，实际迁移切片粒度需在“现状盘点”阶段根据真实代码结构再细化。"
+      ],
+      "generator": {
+        "kind": "claude_plan_mode",
+        "command": "/Users/hernando_zhao/claude-proxy.sh",
+        "model": "claude-opus-4-7"
+      },
+      "generation_prompt_version": "requirement-plan-generation-prompt.v1",
+      "next_action": "开发已开始",
+      "action_status": "开发中",
+      "submitted_at": "2026-05-26T03:30:03.063Z",
+      "generated_at": "2026-05-26T03:55:06.328Z",
+      "requested_at": "2026-05-26T03:30:03.063Z",
+      "reviewed_at": "2026-05-26T04:00:36.665Z",
+      "review_decision": "approve",
+      "review_note": ""
     }
+  },
+  "restoration_note": {
+    "restored_requirement_id": "requirement-unknown-20260526033003",
+    "restored_at": "2026-05-26T07:55:48.925Z",
+    "reason": "Recovered latest frontend refactor requirement after stale cleanup removed it from current state.",
+    "source_db": "/Users/hernando_zhao/codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite.backup-20260526-150904"
   }
 }
