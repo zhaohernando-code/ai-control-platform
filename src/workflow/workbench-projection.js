@@ -113,8 +113,7 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
   }
   const requirementTitle = normalizeString(latest.title) || null;
   const planReviewRecord = (projectStatus?.plan_reviews && projectStatus.plan_reviews[latest.id]) || null;
-  const storedPhase = normalizeString(planReviewRecord?.phase) || "pending_plan_generation";
-  const phase = storedPhase === "approved" ? "in_development" : storedPhase;
+  const phase = normalizeString(planReviewRecord?.phase) || "pending_plan_generation";
   const failureReason = normalizeString(planReviewRecord?.generation_error?.message || planReviewRecord?.failure_reason);
   const reviewable = phase === "ready_for_review";
   const phaseLabelMap = {

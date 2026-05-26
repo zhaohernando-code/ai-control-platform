@@ -244,51 +244,6 @@ test("requirement plan review can be approved or returned for revision", () => {
   assert.equal(revised.plan_review.action_status, "已退回修订");
 });
 
-test("legacy approved plan review projects as development state", () => {
-  const submitted = submitRequirementToProjectStatus(workflowState().project_status, {
-    title: "修复提需求模块",
-    project_id: "ai-control-platform",
-    problem_statement: "提需求页面需要先生成方案并等待用户审核。",
-    plan_review_requested: true
-  }, {
-    created_at: "2026-05-25T08:00:00.000Z",
-    requirement_id: "requirement-plan-review-legacy"
-  });
-  const generated = applyGeneratedRequirementPlan(submitted.project_status, {
-    requirement_id: "requirement-plan-review-legacy",
-    generated_plan: {
-      assessment_summary: "先生成方案再审核。",
-      proposed_acceptance_plan: "## 验收\n审核通过后才能开发。",
-      implementation_outline: ["生成方案"],
-      acceptance_gates: ["node --test test/requirement-intake.test.js"]
-    }
-  }, {
-    created_at: "2026-05-25T08:04:00.000Z"
-  });
-  const legacyProjectStatus = {
-    ...generated.project_status,
-    plan_reviews: {
-      ...generated.project_status.plan_reviews,
-      "requirement-plan-review-legacy": {
-        ...generated.plan_review,
-        status: "approved",
-        phase: "approved",
-        next_action: "方案已通过，可进入开发",
-        action_status: "已同意进入开发"
-      }
-    }
-  };
-  const projection = createWorkbenchProjection({
-    ...workflowState(),
-    project_status: legacyProjectStatus
-  });
-
-  assert.equal(projection.project_management.plan_review.phase, "in_development");
-  assert.equal(projection.project_management.plan_review.status_label, "开发中");
-  assert.equal(projection.project_management.plan_review.action_status, "开发中");
-  assert.equal(projection.project_management.plan_review.next_action, "开发已开始");
-});
-
 test("requirement intake summary is stable without submissions", () => {
   const summary = summarizeRequirementIntake({});
 
