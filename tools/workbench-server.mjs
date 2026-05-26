@@ -745,16 +745,31 @@ function createWorkbenchLoopClient(baseUrl) {
   };
 }
 
-function contextWorkPackageRunOptions(input = {}) {
+function contextWorkPackageRequiresProviderAuthority(projection = {}) {
+  return asArray(projection?.task_dag?.dispatchable || projection?.taskDag?.dispatchable)
+    .some((node) => {
+      const action = normalizeString(node?.action);
+      const id = normalizeString(node?.id);
+      return action === "continue_requirement_intake" ||
+        action === "continue_global_goal" ||
+        id.startsWith("global-goal-");
+    });
+}
+
+function contextWorkPackageRunOptions(input = {}, projection = null) {
   const executionProfile = input.context_work_package_execution_profile ||
     input.contextWorkPackageExecutionProfile ||
     input.execution_profile ||
     input.executionProfile;
+  const executionMode = input.execution_mode || input.executionMode;
+  const shouldUseProviderDefault = !executionMode &&
+    !executionProfile &&
+    contextWorkPackageRequiresProviderAuthority(projection);
   return {
     max_package_count: input.max_package_count ?? input.maxPackageCount,
     created_at: input.created_at || input.createdAt,
-    execution_mode: input.execution_mode || input.executionMode,
-    execution_profile: executionProfile,
+    execution_mode: executionMode || (shouldUseProviderDefault ? "provider_model_routed" : undefined),
+    execution_profile: executionProfile || (shouldUseProviderDefault ? VERIFIED_PROVIDER_MULTI_AGENT_PROFILE : undefined),
     executor_profile: input.executor_profile || input.executorProfile,
     executor_kind: input.executor_kind || input.executorKind,
     adapter_profile: input.adapter_profile || input.adapterProfile,
@@ -1166,7 +1181,7 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
 
   if (action === "run_context_work_packages") {
     try {
-      const result = await client.runContextWorkPackages(selectedId, contextWorkPackageRunOptions(input));
+      const result = await client.runContextWorkPackages(selectedId, contextWorkPackageRunOptions(input, projection));
       return { status: "executed", action, result };
     } catch (error) {
       return {
@@ -1951,8 +1966,9 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
         const workflowState = readWorkflowState(item);
+        const projection = workbenchProjection(workflowState);
         const result = runContextWorkPackages(workflowState, {
-          ...contextWorkPackageRunOptions(input),
+          ...contextWorkPackageRunOptions(input, projection),
           provider_executor: contextWorkPackageProviderExecutor
         });
         if (result.status !== "pass") {
