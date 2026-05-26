@@ -40,6 +40,17 @@ function promptTaskRef(index = 0) {
   return `task-${Number(index) + 1 || 1}`;
 }
 
+function promptSafeSource(source = {}) {
+  if (!isObject(source)) return null;
+  return {
+    requirement_id: sanitizePromptText(source.requirement_id || source.requirementId),
+    plan_step_index: Number(source.plan_step_index || source.planStepIndex || 0) || null,
+    plan_step_total: Number(source.plan_step_total || source.planStepTotal || 0) || null,
+    implementation_step: sanitizePromptText(source.implementation_step || source.implementationStep || source.reason),
+    acceptance_gates: sanitizePromptArray(source.acceptance_gates || source.acceptanceGates)
+  };
+}
+
 export function promptSafeWorkflowIdentity(workflowState = {}) {
   return {
     run_id: normalizeString(workflowState?.manifest?.run_id) || null,
@@ -62,8 +73,9 @@ export function promptSafeContextPack(contextPack = {}) {
       task_ref: promptTaskRef(index),
       title: sanitizePromptText(subtask?.title || subtask?.summary || subtask?.id),
       action: sanitizePromptText(subtask?.action),
+      reason: sanitizePromptText(subtask?.reason || subtask?.source?.reason || subtask?.source?.implementation_step),
       owned_files: compactStrings(subtask?.owned_files),
-      acceptance_gates: compactStrings(subtask?.acceptance_gates),
+      acceptance_gates: compactStrings(subtask?.acceptance_gates || subtask?.source?.acceptance_gates),
       depends_on: compactStrings(subtask?.depends_on).map((_, dependencyIndex) => promptTaskRef(dependencyIndex))
     }))
   };
@@ -74,12 +86,13 @@ export function promptSafeWorkPackage(workPackage = {}, index = 0) {
     task_ref: promptTaskRef(index),
     title: sanitizePromptText(workPackage.title || workPackage.summary || workPackage.id),
     action: sanitizePromptText(workPackage.action),
-    reason: sanitizePromptText(workPackage.reason),
+    reason: sanitizePromptText(workPackage.reason || workPackage.source?.reason || workPackage.source?.implementation_step),
     owned_files: compactStrings(workPackage.owned_files),
-    acceptance_gates: compactStrings(workPackage.acceptance_gates),
+    acceptance_gates: compactStrings(workPackage.acceptance_gates || workPackage.source?.acceptance_gates),
     status: sanitizePromptText(workPackage.status),
-    prompt_metadata_note: isObject(workPackage.source) || isObject(workPackage.reviewer) || isObject(workPackage.code_review_coverage)
-      ? "Internal metadata is intentionally omitted from this provider prompt; use repository files and gates as source of truth."
+    source: promptSafeSource(workPackage.source),
+    prompt_metadata_note: isObject(workPackage.reviewer) || isObject(workPackage.code_review_coverage)
+      ? "Some internal metadata is intentionally omitted from this provider prompt; use repository files and gates as source of truth."
       : undefined
   };
 }

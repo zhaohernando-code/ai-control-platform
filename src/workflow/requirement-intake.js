@@ -466,25 +466,27 @@ export function createRequirementPlanWorkPackages(projectStatus = {}, requiremen
     ...normalizeStringList(review.owned_files || review.ownedFiles),
     ...normalizeStringList(profile.owned_files || profile.ownedFiles)
   ]);
-  const acceptanceGates = uniqueStrings([
+  const baseAcceptanceGates = uniqueStrings([
     ...normalizeStringList(requirement.acceptance_gates || requirement.acceptanceGates),
-    ...normalizeStringList(review.acceptance_gates || review.acceptanceGates),
     ...normalizeStringList(profile.acceptance_gates || profile.acceptanceGates)
   ]);
+  const reviewAcceptanceGates = normalizeStringList(review.acceptance_gates || review.acceptanceGates);
   const total = outline.length;
 
   return outline.map((step, index) => {
     const stepNumber = String(index + 1).padStart(2, "0");
     const packageId = `${id}-plan-step-${stepNumber}`;
+    const stepAcceptanceGates = uniqueStrings([
+      ...baseAcceptanceGates,
+      ...(reviewAcceptanceGates[index] ? [reviewAcceptanceGates[index]] : []),
+      `完成已审核实施步骤 ${index + 1}：${step}`
+    ]);
     return {
       id: packageId,
       title: `${title}：实施步骤 ${stepNumber} / ${total}`,
       action: "execute_requirement_plan_step",
       owned_files: ownedFiles.length > 0 ? ownedFiles : ["."],
-      acceptance_gates: [
-        ...acceptanceGates,
-        `完成已审核实施步骤 ${index + 1}：${step}`
-      ],
+      acceptance_gates: stepAcceptanceGates,
       depends_on: index === 0 ? [] : [`${id}-plan-step-${String(index).padStart(2, "0")}`],
       reason: step,
       global_goal_id: id,
@@ -496,7 +498,7 @@ export function createRequirementPlanWorkPackages(projectStatus = {}, requiremen
         plan_step_total: total,
         implementation_step: step,
         constraints: normalizeString(requirement.constraints),
-        acceptance_gates: acceptanceGates
+        acceptance_gates: stepAcceptanceGates
       }
     };
   });

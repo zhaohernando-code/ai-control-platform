@@ -634,6 +634,34 @@ test("headless child prompt minimizes high-risk routing keywords for external CL
   assert.doesNotMatch(prompt, /"Context Pack"/);
 });
 
+test("headless child prompt includes selected requirement plan step context", () => {
+  const workflowState = sourceWorkflowState();
+  workflowState.manifest.context_pack.subtasks = [
+    {
+      id: "requirement-plan-step-01",
+      title: "前端重构：实施步骤 01 / 2",
+      action: "execute_requirement_plan_step",
+      owned_files: ["."],
+      source: {
+        requirement_id: "requirement-front",
+        plan_step_index: 1,
+        plan_step_total: 2,
+        implementation_step: "盘点现有前端入口和接口调用",
+        acceptance_gates: ["现状盘点清单已产出并入库"]
+      }
+    }
+  ];
+  const workPackage = {
+    ...workflowState.manifest.context_pack.subtasks[0],
+    status: "pending"
+  };
+  const prompt = headlessChildWorkerPrompt(workflowState, workPackage);
+
+  assert.match(prompt, /盘点现有前端入口和接口调用/);
+  assert.match(prompt, /现状盘点清单已产出并入库/);
+  assert.doesNotMatch(prompt, /Internal metadata is intentionally omitted/);
+});
+
 test("headless CLI orchestrator passes configured output path into child prompt and parses file output", () => {
   const dir = mkdtempSync(join(tmpdir(), "headless-child-output-path-"));
   const outputPattern = join(dir, "child-{work_package_id}-{run_id}-{cycle_id}.json");

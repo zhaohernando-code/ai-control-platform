@@ -115,6 +115,7 @@ test("approved requirement plans split broad intake into bounded implementation 
   assert.equal(decision.next_work_packages.length, 2);
   assert.equal(decision.next_work_packages[0].id, "requirement-frontend-refactor-plan-step-01");
   assert.equal(decision.next_work_packages[0].action, "execute_requirement_plan_step");
+  assert.ok(!decision.next_work_packages[0].acceptance_gates.some((gate) => gate.includes("建立 Next.js")));
   assert.equal(decision.next_work_packages[1].depends_on[0], "requirement-frontend-refactor-plan-step-01");
   assert.equal(decision.context_pack_seed.subtasks[0].action, "execute_requirement_plan_step");
 });
