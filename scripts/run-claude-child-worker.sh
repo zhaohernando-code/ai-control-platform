@@ -107,11 +107,19 @@ const integration = {
   worker_head: process.env.WORKER_HEAD || null,
   integrated_commit: process.env.INTEGRATED_COMMIT || null
 };
+const alreadySatisfied = required &&
+  integration.status === "pass" &&
+  Boolean(integration.base_commit) &&
+  integration.integrated_commit === integration.base_commit;
 
 output.command_evidence = {
   ...(output.command_evidence || output.commandEvidence || {}),
   child_worker_integration: integration
 };
+
+if (alreadySatisfied) {
+  output.no_diff = true;
+}
 
 if (required && integration.status !== "pass") {
   output.status = "fail";
@@ -139,7 +147,10 @@ validate_child_output_before_integration() {
     return 0
   }
 
-  CHILD_OUTPUT_PATH="$CHILD_OUTPUT_PATH" node --input-type=module <<'NODE'
+  CHILD_OUTPUT_PATH="$CHILD_OUTPUT_PATH" \
+  CHILD_WORKER_AHEAD_COUNT="${CHILD_WORKER_AHEAD_COUNT:-}" \
+  CHILD_WORKER_MERGE_BLOCKING_DIRTY_STATUS="${CHILD_WORKER_MERGE_BLOCKING_DIRTY_STATUS:-}" \
+  node --input-type=module <<'NODE'
 import { readFileSync } from "node:fs";
 
 function isObject(value) {
@@ -184,6 +195,9 @@ const changedFiles = asArray(output.changed_files || output.changedFiles || outp
 const processHardening = output.process_hardening || output.processHardening || {};
 const continuationReadiness = output.continuation_readiness || output.continuationReadiness || {};
 const selfEvaluation = output.self_evaluation || output.selfEvaluation || {};
+const allowNoChangedFiles =
+  process.env.CHILD_WORKER_AHEAD_COUNT === "0" &&
+  !String(process.env.CHILD_WORKER_MERGE_BLOCKING_DIRTY_STATUS || "").trim();
 
 if (!isObject(output)) {
   issues.push("child output must be a JSON object");
@@ -194,7 +208,7 @@ if (!passToken(output.status)) {
 if (String(output.host || output.host_classification || "").trim() !== "platform_core") {
   issues.push("child output host is not platform_core");
 }
-if (changedFiles.length === 0) {
+if (changedFiles.length === 0 && !allowNoChangedFiles) {
   issues.push("child output has no changed/touched files");
 }
 if (testResults.length === 0) {
@@ -278,17 +292,18 @@ NODE
 FINAL_STATUS=$CLAUDE_STATUS
 if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPUT_PATH" ]]; then
   WORKER_HEAD="$(git -C "$EXECUTION_ROOT" rev-parse HEAD)"
+  AHEAD_COUNT="$(git -C "$EXECUTION_ROOT" rev-list --count "$BASE_COMMIT..HEAD")"
+  DIRTY_STATUS="$(git -C "$EXECUTION_ROOT" status --porcelain)"
+  MERGE_BLOCKING_DIRTY_STATUS="$(merge_blocking_dirty_status "$EXECUTION_ROOT" "$DIRTY_STATUS")"
+  PRIMARY_STATUS="$(git -C "$PRIMARY_REPO_ROOT" status --porcelain)"
+  PRIMARY_HEAD="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
+  export CHILD_WORKER_AHEAD_COUNT="$AHEAD_COUNT"
+  export CHILD_WORKER_MERGE_BLOCKING_DIRTY_STATUS="$MERGE_BLOCKING_DIRTY_STATUS"
   CHILD_OUTPUT_VALIDATION="$(validate_child_output_before_integration)"
   CHILD_MERGE_STATUS="$(printf '%s\n' "$CHILD_OUTPUT_VALIDATION" | sed -n '1p')"
   CHILD_MERGE_MESSAGE="$(printf '%s\n' "$CHILD_OUTPUT_VALIDATION" | sed -n '2,$p' | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
 
   if [[ "$CHILD_MERGE_STATUS" == "pass" ]]; then
-    AHEAD_COUNT="$(git -C "$EXECUTION_ROOT" rev-list --count "$BASE_COMMIT..HEAD")"
-    DIRTY_STATUS="$(git -C "$EXECUTION_ROOT" status --porcelain)"
-    MERGE_BLOCKING_DIRTY_STATUS="$(merge_blocking_dirty_status "$EXECUTION_ROOT" "$DIRTY_STATUS")"
-    PRIMARY_STATUS="$(git -C "$PRIMARY_REPO_ROOT" status --porcelain)"
-    PRIMARY_HEAD="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
-
     if [[ "$AHEAD_COUNT" -gt 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_STATUS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
       if git -C "$PRIMARY_REPO_ROOT" merge --ff-only "$WORKTREE_BRANCH" >&2; then
         INTEGRATED_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"

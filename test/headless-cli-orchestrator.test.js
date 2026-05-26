@@ -485,7 +485,8 @@ test("Claude child worker accepts already-satisfied package despite undeclared p
       status: "pass",
       role: CHILD_WORKER_ROLE,
       host: "platform_core",
-      changed_files: ["PROJECT_RULES.md", "test/workbench-shell.test.js"],
+      changed_files: [],
+      no_diff: true,
       test_results: [
         { command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }
       ],
@@ -519,6 +520,7 @@ test("Claude child worker accepts already-satisfied package despite undeclared p
     workerCwd = readFileSync(captureFile, "utf8").trim();
     const output = JSON.parse(readFileSync(outputPath, "utf8"));
     assert.equal(output.status, "pass");
+    assert.equal(output.no_diff, true);
     assert.equal(output.command_evidence.child_worker_integration.status, "pass");
     assert.match(output.command_evidence.child_worker_integration.message, /already satisfying/);
     assert.equal(output.command_evidence.child_worker_integration.integrated_commit, output.command_evidence.child_worker_integration.base_commit);
@@ -1444,6 +1446,36 @@ test("headless CLI orchestrator hardens no-diff child worker output before retry
   assert.equal(result.lifecycle_cleanup.after.unevaluated, 0);
   assert.equal(result.lifecycle_cleanup.after.unclosed, 0);
   assert.equal(latestEvent.type, "PoolIterationClosed");
+});
+
+test("headless CLI orchestrator accepts no-diff child output only with already-satisfied integration evidence", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    owned_files: ["."]
+  }, {
+    status: "pass",
+    role: CHILD_WORKER_ROLE,
+    host: "platform_core",
+    changed_files: [],
+    no_diff: true,
+    test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: false },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false },
+    command_evidence: {
+      exit_code: 0,
+      child_worker_integration: {
+        required: true,
+        status: "pass",
+        message: "child returned pass with no new committed delta; current mainline accepted as already satisfying the work package",
+        base_commit: "abc123",
+        integrated_commit: "abc123"
+      }
+    }
+  });
+
+  assert.equal(evaluation.status, "pass");
+  assert.equal(evaluation.issues.some((item) => item.code === "child_worker_no_diff"), false);
 });
 
 test("headless CLI orchestrator blocks wrong role before mutating workflow state", () => {

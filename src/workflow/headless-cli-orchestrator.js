@@ -248,6 +248,19 @@ function changedFileAllowedByOwnedFiles(changedFile = "", ownedFiles = []) {
   return compactStrings(ownedFiles).some((ownedFile) => pathMatchesOwnedFile(changedFile, ownedFile));
 }
 
+function childOutputAllowsNoDiff(output = {}, integrationEvidence = {}) {
+  const noDiff = output.no_diff === true || output.noDiff === true;
+  const alreadySatisfied = normalizeString(integrationEvidence.message).toLowerCase().includes("already satisfying") ||
+    normalizeString(integrationEvidence.message).toLowerCase().includes("no new committed delta");
+  const sameCommit = normalizeString(integrationEvidence.base_commit || integrationEvidence.baseCommit) &&
+    normalizeString(integrationEvidence.integrated_commit || integrationEvidence.integratedCommit) ===
+      normalizeString(integrationEvidence.base_commit || integrationEvidence.baseCommit);
+  return noDiff &&
+    integrationEvidence.required === true &&
+    integrationEvidence.status === "pass" &&
+    (alreadySatisfied || sameCommit);
+}
+
 export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {}) {
   const issues = [];
   const ownedFiles = compactStrings(workPackage.owned_files);
@@ -285,7 +298,7 @@ export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {})
   if (integrationEvidence.required === true && integrationEvidence.status !== "pass") {
     issues.push(issue("child_worker_mainline_integration_missing", "isolated child worker changes must be integrated into the primary mainline before acceptance", "child_output.command_evidence.child_worker_integration"));
   }
-  if (changedFiles.length === 0) {
+  if (changedFiles.length === 0 && !childOutputAllowsNoDiff(output, integrationEvidence)) {
     issues.push(issue("child_worker_no_diff", "child worker produced no changed files", "child_output.changed_files"));
   }
   for (const changedFile of changedFiles) {
@@ -509,6 +522,7 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     "- Do not read more than five extra files outside the task context unless you first report why.",
     "- First produce the minimum runnable diff, then explain design.",
     "- If no patch is possible within the time box, return status=fail with no_diff=true, blocker, read_files, and next_minimal_patch_position.",
+    "- If the current mainline already satisfies the selected task, return status=pass with changed_files=[], no_diff=true, passing child gates, durable state evidence, and continuation readiness.",
     "- Do not modify managed projects, legacy directories, or files outside owned_files.",
     "- Do not create, switch to, or delegate into another worktree; the current working directory is the only execution root for this bounded child task.",
     "- Do not create .claude/worktrees or run claude --worktree; return status=fail if the current execution root is unsuitable.",
@@ -521,6 +535,7 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
       role: CHILD_WORKER_ROLE,
       host: "platform_core",
       changed_files: ["owned file path"],
+      no_diff: false,
       test_results: [{ command: "focused test command", status: "pass|fail" }],
       deferred_parent_gates: ["parent-owned gate not run by child"],
       durable_state_updated: true,
