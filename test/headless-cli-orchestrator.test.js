@@ -227,6 +227,7 @@ test("headless CLI orchestrator continues existing context cycle without remater
     child_worker_outputs: [
       {
         work_package_id: "pc-mobile-workbench",
+        status: "pass",
         host: "platform_core",
         changed_files: ["apps/workbench/workbench.js"],
         test_results: [{ command: "npm run check:workbench:browser-events", status: "pass" }],
@@ -394,6 +395,11 @@ test("Claude child worker runs in an isolated worker worktree by default", () =>
   }
 });
 
+test("live workbench starts Claude child workers with output path for integration writeback", () => {
+  const script = readFileSync("scripts/start-workbench-live.sh", "utf8");
+  assert.ok(script.includes(`DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'`));
+});
+
 test("Claude role proxy allocates developer keys from the developer pool", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "claude-role-proxy-"));
   const poolDir = join(tempDir, "pools");
@@ -459,6 +465,7 @@ test("headless child worker acceptance checks host, owned files, tests, durable 
     id: "wp",
     owned_files: ["src/workflow/headless-cli-orchestrator.js"]
   }, {
+    status: "pass",
     host: "platform_core",
     changed_files: ["src/workflow/headless-cli-orchestrator.js"],
     test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
@@ -481,6 +488,7 @@ test("headless child worker acceptance allows changed files under owned director
       "docs/examples/process-hardening-current.json"
     ]
   }, {
+    status: "pass",
     host: "platform_core",
     changed_files: [
       "PROJECT_STATUS.json",
@@ -503,6 +511,7 @@ test("headless child worker acceptance allows project root owned scope", () => {
     id: "project-wide-worker",
     owned_files: ["."]
   }, {
+    status: "pass",
     host: "platform_core",
     changed_files: [
       "package.json",
@@ -525,6 +534,7 @@ test("headless child worker project root scope rejects files outside the project
     id: "project-wide-worker",
     owned_files: ["."]
   }, {
+    status: "pass",
     host: "platform_core",
     changed_files: ["../stock_dashboard/src/page.tsx", "/tmp/outside.js"],
     test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
@@ -552,6 +562,7 @@ test("headless child worker acceptance includes touched files when checking owne
       "docs/examples/process-hardening-current.json"
     ]
   }, {
+    status: "pass",
     host: "platform_core",
     touched_files: [
       "src/workflow/worker-runtime-readiness.js",
@@ -614,6 +625,45 @@ test("headless child worker acceptance rejects sibling paths outside owned direc
 
   assert.equal(evaluation.status, "fail");
   assert.ok(evaluation.issues.some((item) => item.code === "child_worker_owned_file_violation"));
+});
+
+test("headless child worker acceptance rejects failed status, failed command, and missing required integration", () => {
+  const workPackage = {
+    id: "integration-gated-package",
+    owned_files: ["src/workflow/headless-cli-orchestrator.js"]
+  };
+  const baseOutput = {
+    status: "pass",
+    role: CHILD_WORKER_ROLE,
+    host: "platform_core",
+    changed_files: ["src/workflow/headless-cli-orchestrator.js"],
+    test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: false, status: "not_required" },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+  };
+
+  const failedStatus = evaluateHeadlessChildWorkerOutput(workPackage, {
+    ...baseOutput,
+    status: "fail"
+  });
+  assert.ok(failedStatus.issues.some((item) => item.code === "child_worker_status_not_pass"));
+
+  const failedCommand = evaluateHeadlessChildWorkerOutput(workPackage, {
+    ...baseOutput,
+    command_evidence: { exit_code: 1 }
+  });
+  assert.ok(failedCommand.issues.some((item) => item.code === "child_worker_command_failed"));
+
+  const missingIntegration = evaluateHeadlessChildWorkerOutput(workPackage, {
+    ...baseOutput,
+    command_evidence: {
+      exit_code: 0,
+      child_worker_integration: { required: true, status: "fail" }
+    }
+  });
+  assert.ok(missingIntegration.issues.some((item) => item.code === "child_worker_mainline_integration_missing"));
 });
 
 test("headless CLI orchestrator can execute a real child command runner and parse structured output", () => {

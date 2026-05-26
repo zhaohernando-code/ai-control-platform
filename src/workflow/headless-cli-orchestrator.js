@@ -259,6 +259,10 @@ export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {})
   const selfEvaluation = output.self_evaluation || output.selfEvaluation || {};
   const processHardening = output.process_hardening || output.processHardening || {};
   const continuationReadiness = output.continuation_readiness || output.continuationReadiness || {};
+  const outputStatus = normalizeToken(output.status);
+  const commandEvidence = output.command_evidence || output.commandEvidence || {};
+  const commandExitCode = Number(commandEvidence.exit_code ?? commandEvidence.exitCode ?? 0);
+  const integrationEvidence = commandEvidence.child_worker_integration || commandEvidence.childWorkerIntegration || {};
 
   if (!isObject(output)) {
     return {
@@ -266,8 +270,20 @@ export function evaluateHeadlessChildWorkerOutput(workPackage = {}, output = {})
       issues: [issue("invalid_child_worker_output", "child worker output must be an object", "child_output")]
     };
   }
+  if (!["pass", "passed", "ok", "success"].includes(outputStatus)) {
+    issues.push(issue("child_worker_status_not_pass", "child worker output status must be pass", "child_output.status"));
+  }
   if (normalizeString(output.host || output.host_classification) !== "platform_core") {
     issues.push(issue("child_worker_host_boundary_missing", "child worker output must declare host=platform_core", "child_output.host"));
+  }
+  if (commandEvidence.timed_out === true || commandEvidence.timedOut === true) {
+    issues.push(issue("child_worker_command_timed_out", "child worker command timed out before acceptable completion", "child_output.command_evidence.timed_out"));
+  }
+  if (Number.isFinite(commandExitCode) && commandExitCode !== 0) {
+    issues.push(issue("child_worker_command_failed", "child worker command must exit 0 before acceptance", "child_output.command_evidence.exit_code"));
+  }
+  if (integrationEvidence.required === true && integrationEvidence.status !== "pass") {
+    issues.push(issue("child_worker_mainline_integration_missing", "isolated child worker changes must be integrated into the primary mainline before acceptance", "child_output.command_evidence.child_worker_integration"));
   }
   if (changedFiles.length === 0) {
     issues.push(issue("child_worker_no_diff", "child worker produced no changed files", "child_output.changed_files"));
@@ -455,6 +471,7 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     "- Do not modify managed projects, legacy directories, or files outside owned_files.",
     "- Do not create, switch to, or delegate into another worktree; the current working directory is the only execution root for this bounded child task.",
     "- Do not create .claude/worktrees or run claude --worktree; return status=fail if the current execution root is unsuitable.",
+    "- If you are running inside an isolated worker worktree, commit the bounded changes on the current worker branch before returning status=pass; the parent runner owns mainline integration.",
     "",
     "Required JSON shape:",
     JSON.stringify({

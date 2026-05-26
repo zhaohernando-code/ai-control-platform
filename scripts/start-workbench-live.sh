@@ -11,7 +11,7 @@ EVENTS_PATH="${AI_CONTROL_WORKBENCH_EVENTS_PATH:-tmp/workbench-live-events.json}
 PROJECT_STATUS="${AI_CONTROL_WORKBENCH_PROJECT_STATUS:-PROJECT_STATUS.json}"
 STATE_DB="${AI_CONTROL_WORKBENCH_STATE_DB:-$HOME/codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite}"
 NODE_BIN="${AI_CONTROL_WORKBENCH_NODE:-}"
-DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}"]'
+DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'
 DEFAULT_CHILD_WORKER_OUTPUT_PATH='tmp/workbench-child-workers/{run_id}-{cycle_id}-{work_package_id}.json'
 
 export AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND="${AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND:-$REPO_ROOT/scripts/run-claude-child-worker.sh}"
