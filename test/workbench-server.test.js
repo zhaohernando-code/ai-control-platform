@@ -285,10 +285,11 @@ test("workbench server returns latest projection", async () => {
   });
 });
 
-test("workbench server CLI can start with isolated history and snapshot roots", async () => {
+test("workbench server CLI can seed SQLite from isolated history and snapshot roots", async () => {
   const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-server-cli-isolated-"));
   const snapshotsRoot = join(dir, "snapshots");
   const eventsPath = join(dir, "operator-events.json");
+  const stateDbPath = join(dir, "workbench-state.sqlite");
   const inputPath = join(snapshotsRoot, "input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const workflowState = currentSessionWithoutRequirementPlanReview();
@@ -313,7 +314,9 @@ test("workbench server CLI can start with isolated history and snapshot roots", 
     "--snapshots-root",
     snapshotsRoot,
     "--events-path",
-    eventsPath
+    eventsPath,
+    "--state-db",
+    stateDbPath
   ], {
     cwd: process.cwd(),
     env: process.env,
