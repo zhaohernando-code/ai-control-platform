@@ -67,7 +67,7 @@ function generatedRequirementPlan(overrides = {}) {
 }
 
 async function withServer(fn, options = {}) {
-  const server = createWorkbenchServer(options);
+  const server = createWorkbenchServer({ allowFixtureFileState: true, ...options });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const { port } = server.address();
@@ -3416,6 +3416,7 @@ test("workbench server CLI honors isolated history snapshots and events paths", 
   const historyPath = join(dir, "projection-history.json");
   const snapshotsRoot = join(dir, "snapshots");
   const eventsPath = join(dir, "operator-events.json");
+  const stateDbPath = join(dir, "workbench-state.sqlite");
   const defaultHistoryBefore = readFileSync("docs/examples/projection-history.json", "utf8");
   const defaultEventsBefore = readFileSync("docs/examples/operator-events.json", "utf8");
 
@@ -3442,7 +3443,9 @@ test("workbench server CLI honors isolated history snapshots and events paths", 
     "--snapshots-root",
     snapshotsRoot,
     "--events-path",
-    eventsPath
+    eventsPath,
+    "--state-db",
+    stateDbPath
   ], {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"]
@@ -3480,13 +3483,15 @@ test("workbench server CLI honors isolated history snapshots and events paths", 
         label: "CLI isolated snapshot"
       })
     });
-    const isolatedEvents = JSON.parse(readFileSync(eventsPath, "utf8"));
-    const isolatedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
+    const isolatedEvents = (await request(`${baseUrl}/api/workbench/events`)).json();
+    const isolatedHistory = (await request(`${baseUrl}/api/workbench/projections`)).json();
 
     assert.equal(eventResponse.status, 201);
     assert.equal(snapshotResponse.status, 201);
     assert.equal(isolatedEvents.events.length, 1);
     assert.equal(isolatedHistory.latest, "cli-isolated-snapshot");
+    assert.equal(JSON.parse(readFileSync(eventsPath, "utf8")).events.length, 0);
+    assert.equal(JSON.parse(readFileSync(historyPath, "utf8")).latest, "cli-isolated");
     assert.equal(readFileSync("docs/examples/projection-history.json", "utf8"), defaultHistoryBefore);
     assert.equal(readFileSync("docs/examples/operator-events.json", "utf8"), defaultEventsBefore);
   } finally {

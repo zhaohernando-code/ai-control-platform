@@ -9,6 +9,7 @@ HISTORY_PATH="${AI_CONTROL_WORKBENCH_HISTORY_PATH:-docs/examples/projection-hist
 SNAPSHOTS_ROOT="${AI_CONTROL_WORKBENCH_SNAPSHOTS_ROOT:-docs/examples}"
 EVENTS_PATH="${AI_CONTROL_WORKBENCH_EVENTS_PATH:-tmp/workbench-live-events.json}"
 PROJECT_STATUS="${AI_CONTROL_WORKBENCH_PROJECT_STATUS:-PROJECT_STATUS.json}"
+STATE_DB="${AI_CONTROL_WORKBENCH_STATE_DB:-$HOME/codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite}"
 NODE_BIN="${AI_CONTROL_WORKBENCH_NODE:-}"
 DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}"]'
 DEFAULT_CHILD_WORKER_OUTPUT_PATH='tmp/workbench-child-workers/{run_id}-{cycle_id}-{work_package_id}.json'
@@ -34,10 +35,12 @@ if [[ -z "$NODE_BIN" ]]; then
 fi
 
 cd "$REPO_ROOT"
+mkdir -p "$(dirname "$STATE_DB")"
 exec "$NODE_BIN" tools/run-with-node18.mjs tools/workbench-server.mjs \
   --host "$HOST" \
   --port "$PORT" \
   --history-path "$HISTORY_PATH" \
   --snapshots-root "$SNAPSHOTS_ROOT" \
   --events-path "$EVENTS_PATH" \
-  --project-status "$PROJECT_STATUS"
+  --project-status "$PROJECT_STATUS" \
+  --state-db "$STATE_DB"

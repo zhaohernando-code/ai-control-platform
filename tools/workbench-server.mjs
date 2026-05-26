@@ -63,6 +63,11 @@ import {
   submitRequirementToProjectStatus,
   updateRequirementPlanReview
 } from "../src/workflow/requirement-intake.js";
+import {
+  createSqliteWorkbenchStateStore,
+  isSqliteSnapshotPath,
+  sqliteSnapshotIdFromInputPath
+} from "../src/workflow/workbench-state-store.js";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -70,6 +75,7 @@ const defaultEventsPath = resolve(root, "docs/examples/operator-events.json");
 const defaultProjectStatusPath = resolve(root, "PROJECT_STATUS.json");
 const examplesRoot = resolve(root, "docs/examples");
 const defaultSnapshotsRoot = resolve(root, "tmp/workbench-snapshots");
+const defaultStateDbPath = resolve(process.env.HOME || "/Users/hernando_zhao", "codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite");
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -91,9 +97,25 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function projectionInputWithProjectStatus(input = {}, projectStatusPath = null) {
-  if (!projectStatusPath) return input;
-  const projectStatus = readJson(projectStatusPath);
+function readProjectStatus(projectStatusPath = null, stateStore = null) {
+  if (stateStore) return stateStore.readProjectStatus();
+  return projectStatusPath ? readJson(projectStatusPath) : null;
+}
+
+function writeJson(path, value) {
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+  return path;
+}
+
+function writeProjectStatusState(projectStatusPath = null, projectStatus = {}, stateStore = null) {
+  if (stateStore) return stateStore.writeProjectStatus(projectStatus);
+  if (!projectStatusPath) return null;
+  return writeJson(projectStatusPath, projectStatus);
+}
+
+function projectionInputWithProjectStatus(input = {}, projectStatusPath = null, stateStore = null) {
+  const projectStatus = readProjectStatus(projectStatusPath, stateStore);
+  if (!projectStatus) return input;
   return {
     ...input,
     project_status: projectStatus,
@@ -123,7 +145,23 @@ function historyItemPath(itemPath, field, allowedRoots = [examplesRoot, defaultS
   return filePath;
 }
 
-function projectionById(id = null, history = readJson(historyPath), allowedRoots = [examplesRoot, defaultSnapshotsRoot], projectStatusPath = null) {
+function readWorkflowStateFromItem(item = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], stateStore = null) {
+  if (stateStore && isSqliteSnapshotPath(item.input_path)) {
+    return stateStore.readWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path));
+  }
+  return readJson(historyItemPath(item.input_path, "input_path", allowedRoots));
+}
+
+function writeWorkflowStateToItem(item = {}, workflowState = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], stateStore = null) {
+  if (stateStore && isSqliteSnapshotPath(item.input_path)) {
+    return stateStore.writeWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path), workflowState, item);
+  }
+  const inputPath = historyItemPath(item.input_path, "input_path", allowedRoots);
+  writeJson(inputPath, workflowState);
+  return inputPath;
+}
+
+function projectionById(id = null, history = readJson(historyPath), allowedRoots = [examplesRoot, defaultSnapshotsRoot], projectStatusPath = null, stateStore = null) {
   const selectedId = id || history.latest;
   const item = history.items.find((entry) => entry.id === selectedId);
 
@@ -137,7 +175,7 @@ function projectionById(id = null, history = readJson(historyPath), allowedRoots
     history,
     item,
     projection: item.input_path
-      ? createWorkbenchProjection(projectionInputWithProjectStatus(readJson(historyItemPath(item.input_path, "input_path", allowedRoots)), projectStatusPath))
+      ? createWorkbenchProjection(projectionInputWithProjectStatus(readWorkflowStateFromItem(item, allowedRoots, stateStore), projectStatusPath, stateStore))
       : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))
   };
 }
@@ -369,10 +407,13 @@ async function runRequirementAutoAdvance({
   req,
   selectedId,
   input,
-  inputPath,
-  serverHistoryPath,
+  item,
+  readWorkflowState,
+  writeWorkflowState,
+  readServerHistory,
   allowedHistoryRoots,
   projectStatusPath,
+  stateStore,
   workbenchProjection
 }) {
   if (!requirementAutoAdvanceEnabled(input)) {
@@ -380,7 +421,7 @@ async function runRequirementAutoAdvance({
       status: "disabled",
       result: null,
       artifact: null,
-      projection: workbenchProjection(readJson(inputPath))
+      projection: workbenchProjection(readWorkflowState(item))
     };
   }
 
@@ -391,7 +432,7 @@ async function runRequirementAutoAdvance({
   const loopArtifact = createSchedulerLoopRunArtifact(loopInput, loopResult, {
     created_at: input.created_at || input.createdAt
   });
-  const latestWorkflowState = readJson(inputPath);
+  const latestWorkflowState = readWorkflowState(item);
   const recorded = recordAutonomousSchedulerLoopRunArtifact(latestWorkflowState, loopArtifact, {
     created_at: input.created_at || input.createdAt
   });
@@ -405,11 +446,11 @@ async function runRequirementAutoAdvance({
     };
   }
 
-  writeFileSync(inputPath, `${JSON.stringify({ ...latestWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
-  const history = readJson(serverHistoryPath);
+  writeWorkflowState(item, { ...latestWorkflowState, ...recorded.workflow_state });
+  const history = readServerHistory();
   let projection = workbenchProjection(recorded.workflow_state);
   try {
-    projection = projectionById(history.latest, history, allowedHistoryRoots, projectStatusPath).projection;
+    projection = projectionById(history.latest, history, allowedHistoryRoots, projectStatusPath, stateStore).projection;
   } catch {
     projection = workbenchProjection(recorded.workflow_state);
   }
@@ -505,14 +546,14 @@ function generatedContinuationInputIssues(generated = {}, prepared = {}) {
   return issues;
 }
 
-function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], projectStatusPath = null) {
+function projectionHistoryWithReadiness(history = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], projectStatusPath = null, stateStore = null) {
   return {
     ...history,
     items: asArray(history.items).map((item) => {
       if (!item?.input_path) return item;
       try {
-        const workflowState = readJson(historyItemPath(item.input_path, "input_path", allowedRoots));
-        const projection = createWorkbenchProjection(projectionInputWithProjectStatus(workflowState, projectStatusPath));
+        const workflowState = readWorkflowStateFromItem(item, allowedRoots, stateStore);
+        const projection = createWorkbenchProjection(projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore));
         return {
           ...item,
           scheduler_dispatch: {
@@ -937,24 +978,19 @@ function schedulerPlanOptionsFromRequest(req, item, selectedId, input = {}) {
   };
 }
 
-function readEvents(eventsPath) {
-  return readJson(eventsPath);
+function readEvents(eventsPath, stateStore = null) {
+  return stateStore ? stateStore.readEvents() : readJson(eventsPath);
 }
 
-function appendEvent(eventsPath, event) {
-  const ledger = readEvents(eventsPath);
+function appendEvent(eventsPath, event, stateStore = null) {
+  const ledger = readEvents(eventsPath, stateStore);
   const nextLedger = {
     version: ledger.version || "operator-events.v1",
     events: [...(Array.isArray(ledger.events) ? ledger.events : []), event]
   };
-  writeFileSync(eventsPath, `${JSON.stringify(nextLedger, null, 2)}\n`);
+  if (stateStore) stateStore.writeEvents(nextLedger);
+  else writeJson(eventsPath, nextLedger);
   return nextLedger;
-}
-
-function writeProjectStatus(path, projectStatus) {
-  if (!path) return null;
-  writeFileSync(path, `${JSON.stringify(projectStatus, null, 2)}\n`);
-  return path;
 }
 
 function workflowStateWithProjectStatus(workflowState = {}, projectStatus = {}) {
@@ -1208,6 +1244,24 @@ export function createWorkbenchServer(options = {}) {
     : resolve(options.projectStatusPath || defaultProjectStatusPath);
   const snapshotsRoot = resolve(options.snapshotsRoot || defaultSnapshotsRoot);
   const allowedHistoryRoots = [examplesRoot, snapshotsRoot];
+  const stateDbPath = normalizeString(options.stateDbPath || options.state_db || options.stateDb);
+  const allowFixtureFileState = options.allowFixtureFileState === true;
+  if (!stateDbPath && !options.stateStore && !allowFixtureFileState) {
+    throw new Error("Workbench live state requires SQLite: pass stateDbPath or --state-db");
+  }
+  const stateStore = options.stateStore || (stateDbPath ? createSqliteWorkbenchStateStore({
+      dbPath: stateDbPath,
+      seedRoot: root,
+      seedHistoryPath: serverHistoryPath,
+      seedProjectStatusPath: projectStatusPath,
+      seedEventsPath: eventsPath
+    }) : null);
+  const readServerHistory = () => stateStore ? stateStore.readHistory() : readJson(serverHistoryPath);
+  const readWorkflowState = (item) => readWorkflowStateFromItem(item, allowedHistoryRoots, stateStore);
+  const writeWorkflowState = (item, workflowState) => writeWorkflowStateToItem(item, workflowState, allowedHistoryRoots, stateStore);
+  const publishSnapshot = (input, publishOptions = {}) => stateStore
+    ? stateStore.publishSnapshot(input)
+    : publishWorkbenchSnapshot(input, publishOptions);
   const realReviewerExecutor = options.realReviewerExecutor;
   const requirementPlanGenerator = typeof options.requirementPlanGenerator === "function"
     ? options.requirementPlanGenerator
@@ -1220,7 +1274,7 @@ export function createWorkbenchServer(options = {}) {
       ? options.context_work_package_provider_executor
       : configuredHeadlessChildProviderExecutor(options);
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
-    projectionInputWithProjectStatus(workflowState, projectStatusPath)
+    projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore)
   );
 
   return createServer(async (req, res) => {
@@ -1240,26 +1294,26 @@ export function createWorkbenchServer(options = {}) {
       url.pathname = projectMountRoutePathname(url.pathname);
 
       if (url.pathname === "/api/workbench/projection") {
-        const { projection } = projectionById(url.searchParams.get("id"), readJson(serverHistoryPath), allowedHistoryRoots, projectStatusPath);
+        const { projection } = projectionById(url.searchParams.get("id"), readServerHistory(), allowedHistoryRoots, projectStatusPath, stateStore);
         jsonResponse(res, 200, projection);
         return;
       }
 
       if (url.pathname === "/api/workbench/projections") {
-        const history = readJson(serverHistoryPath);
-        jsonResponse(res, 200, projectionHistoryWithReadiness(history, allowedHistoryRoots, projectStatusPath));
+        const history = readServerHistory();
+        jsonResponse(res, 200, projectionHistoryWithReadiness(history, allowedHistoryRoots, projectStatusPath, stateStore));
         return;
       }
 
       if (url.pathname === "/api/workbench/snapshot" && req.method === "GET") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
           jsonResponse(res, 404, { error: `snapshot input not found: ${selectedId}` });
           return;
         }
-        jsonResponse(res, 200, readJson(historyItemPath(item.input_path, "input_path", allowedHistoryRoots)));
+        jsonResponse(res, 200, readWorkflowState(item));
         return;
       }
 
@@ -1277,7 +1331,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid workflow state snapshot", issues });
           return;
         }
-        const result = publishWorkbenchSnapshot(input, {
+        const result = publishSnapshot(input, {
           root,
           historyPath: serverHistoryPath,
           snapshotsRoot
@@ -1291,7 +1345,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/reviewer-provider-health" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1307,9 +1361,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const result = recordReviewerProviderHealthFact(workflowState, {
           request: workflowState.reviewer_gate?.request || workflowState.reviewerGate?.request || workflowState.reviewer_gate || workflowState.reviewerGate,
           smoke_status: input.smoke_status || input.smokeStatus || input.provider_smoke_status,
@@ -1321,7 +1373,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -1332,7 +1384,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/reviewer-shard-result" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1348,9 +1400,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const result = recordReviewerShardResult(workflowState, {
           shard_id: input.shard_id || input.shardId,
           status: input.status,
@@ -1375,7 +1425,7 @@ export function createWorkbenchServer(options = {}) {
           nextState = aggregate.workflow_state;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...nextState }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...nextState });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -1387,7 +1437,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/agent-lifecycle-pool" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1403,9 +1453,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const result = (input.cleanup_latest_pool || input.cleanupLatestPool)
           ? cleanupAgentLifecyclePool(workflowState, {
             created_at: input.created_at || input.createdAt,
@@ -1426,7 +1474,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
         jsonResponse(res, 201, {
           status: result.status === "blocked" ? "blocked" : "created",
           item,
@@ -1440,7 +1488,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/workbench-browser-events-run" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1456,9 +1504,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const result = recordWorkbenchBrowserEventsRunArtifact(
           workflowState,
           input.artifact || input.run_artifact || input.runArtifact || input,
@@ -1472,7 +1518,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -1483,7 +1529,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/reviewer-shard-run" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1499,9 +1545,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         let executorSetup;
         try {
           executorSetup = reviewerShardExecutorFromInput(input, { realReviewerExecutor, workflowState });
@@ -1512,7 +1556,7 @@ export function createWorkbenchServer(options = {}) {
               : "reviewer shard executor setup failed",
             issues: error.issues || [{ code: "reviewer_shard_executor_setup_failed", message: error.message, path: "reviewer_mock_findings_json" }],
             policy: error.policy || null,
-            projection: workbenchProjection(readJson(inputPath))
+            projection: workbenchProjection(workflowState)
           });
           return;
         }
@@ -1530,7 +1574,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -1548,7 +1592,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/project-status-continuation" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1564,10 +1608,8 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
-        const projectStatus = projectStatusPath ? readJson(projectStatusPath) : workflowState.project_status;
+        const workflowState = readWorkflowState(item);
+        const projectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const prepared = prepareContinuationFromProjectStatus(projectStatus, { workflow_state: workflowState });
         const recorded = recordProjectStatusContinuationPrepared(workflowState, prepared, {
           created_at: input.created_at || input.createdAt
@@ -1577,7 +1619,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...recorded.workflow_state });
         const statusCode = prepared.status === "ready" ? 201 : 409;
         jsonResponse(res, statusCode, {
           status: prepared.status === "ready" ? "created" : "blocked",
@@ -1590,7 +1632,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/requirements" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1606,10 +1648,8 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
-        const currentProjectStatus = projectStatusPath ? readJson(projectStatusPath) : workflowState.project_status;
+        const workflowState = readWorkflowState(item);
+        const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const submitted = submitRequirementToProjectStatus(currentProjectStatus || {}, input, {
           created_at: input.created_at || input.createdAt,
           requirement_id: input.requirement_id || input.requirementId
@@ -1627,8 +1667,8 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeProjectStatus(projectStatusPath, submitted.project_status);
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...submittedRecorded.workflow_state }, null, 2)}\n`);
+        writeProjectStatusState(projectStatusPath, submitted.project_status, stateStore);
+        writeWorkflowState(item, { ...workflowState, ...submittedRecorded.workflow_state });
 
         const planGeneration = await generateRequirementPlanIfRequested(submitted, input, {
           requirementPlanGenerator
@@ -1661,8 +1701,8 @@ export function createWorkbenchServer(options = {}) {
           submittedRecorded.workflow_state,
           effectiveSubmission.project_status
         );
-        writeProjectStatus(projectStatusPath, effectiveSubmission.project_status);
-        writeFileSync(inputPath, `${JSON.stringify(effectiveWorkflowState, null, 2)}\n`);
+        writeProjectStatusState(projectStatusPath, effectiveSubmission.project_status, stateStore);
+        writeWorkflowState(item, effectiveWorkflowState);
         const projection = workbenchProjection(effectiveWorkflowState);
         const planReviewPhase = effectiveSubmission.plan_review?.phase;
         const planReviewPending = planReviewPhase === "ready_for_review" &&
@@ -1698,10 +1738,13 @@ export function createWorkbenchServer(options = {}) {
             req,
             selectedId,
             input,
-            inputPath,
-            serverHistoryPath,
+            item,
+            readWorkflowState,
+            writeWorkflowState,
+            readServerHistory,
             allowedHistoryRoots,
             projectStatusPath,
+            stateStore,
             workbenchProjection
           });
         jsonResponse(res, 201, {
@@ -1723,7 +1766,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/plan-reviews" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1739,10 +1782,8 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
-        const currentProjectStatus = projectStatusPath ? readJson(projectStatusPath) : workflowState.project_status;
+        const workflowState = readWorkflowState(item);
+        const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const updated = updateRequirementPlanReview(currentProjectStatus || {}, input, {
           created_at: input.created_at || input.createdAt
         });
@@ -1756,8 +1797,8 @@ export function createWorkbenchServer(options = {}) {
           project_status: updated.project_status,
           global_goals: Array.isArray(updated.project_status.global_goals) ? updated.project_status.global_goals : workflowState.global_goals
         };
-        writeProjectStatus(projectStatusPath, updated.project_status);
-        writeFileSync(inputPath, `${JSON.stringify(nextWorkflowState, null, 2)}\n`);
+        writeProjectStatusState(projectStatusPath, updated.project_status, stateStore);
+        writeWorkflowState(item, nextWorkflowState);
         const projection = workbenchProjection(nextWorkflowState);
         const shouldAutoAdvanceAfterApproval = normalizeString(input.action).toLowerCase() === "approve" &&
           requirementAutoAdvanceEnabled(input);
@@ -1769,10 +1810,13 @@ export function createWorkbenchServer(options = {}) {
               ...input,
               auto_advance_after_plan_review: true
             },
-            inputPath,
-            serverHistoryPath,
+            item,
+            readWorkflowState,
+            writeWorkflowState,
+            readServerHistory,
             allowedHistoryRoots,
             projectStatusPath,
+            stateStore,
             workbenchProjection
           })
           : {
@@ -1793,7 +1837,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/context-pack-cycle" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1809,9 +1853,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const materialized = materializeContextPackCycleFromWorkflowState(workflowState, {
           cycle_id: input.cycle_id || input.cycleId,
           created_at: input.created_at || input.createdAt
@@ -1828,7 +1870,7 @@ export function createWorkbenchServer(options = {}) {
 
         const snapshotId = normalizeString(input.snapshot_id || input.snapshotId) ||
           generatedContextPackSnapshotId(selectedId);
-        const published = publishWorkbenchSnapshot({
+        const published = publishSnapshot({
           id: snapshotId,
           label: input.label || `Context pack cycle from ${selectedId}`,
           input: materialized.workflow_state,
@@ -1844,7 +1886,7 @@ export function createWorkbenchServer(options = {}) {
         }
 
         if (materialized.source_record?.status === "pass") {
-          writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...materialized.source_record.workflow_state }, null, 2)}\n`);
+          writeWorkflowState(item, { ...workflowState, ...materialized.source_record.workflow_state });
         }
 
         jsonResponse(res, 201, {
@@ -1867,7 +1909,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/context-work-packages-run" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1883,9 +1925,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const result = runContextWorkPackages(workflowState, {
           ...contextWorkPackageRunOptions(input),
           provider_executor: contextWorkPackageProviderExecutor
@@ -1910,7 +1950,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -1924,7 +1964,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/scheduler-dispatch-plan" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1940,9 +1980,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const plan = createSchedulerDispatchPlan(
           schedulerPlanInputFromWorkflowState(workflowState, input),
           schedulerPlanOptionsFromRequest(req, item, selectedId, input)
@@ -1961,7 +1999,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/scheduler-dispatch" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -1983,8 +2021,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
         const controlInput = normalizedControl.input;
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const plan = createSchedulerDispatchPlan(
           schedulerPlanInputFromWorkflowState(workflowState, controlInput),
           schedulerPlanOptionsFromRequest(req, item, selectedId, controlInput)
@@ -2003,7 +2040,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "scheduler dispatch policy record failed", issues: policyRecorded.issues });
           return;
         }
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...policyRecorded.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...policyRecorded.workflow_state });
 
         if (policy.status !== "pass") {
           jsonResponse(res, 400, {
@@ -2076,7 +2113,7 @@ export function createWorkbenchServer(options = {}) {
           nextWorkflowState = continuationRecorded.workflow_state;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...nextWorkflowState }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...nextWorkflowState });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -2092,7 +2129,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/scheduler-next-cycle" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -2108,9 +2145,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const latestRun = latestSchedulerDispatchRun(workflowState);
         if (!latestRun.metadata) {
           jsonResponse(res, 400, { error: "scheduler dispatch run artifact not found" });
@@ -2185,7 +2220,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const published = publishWorkbenchSnapshot({
+        const published = publishSnapshot({
           id: snapshotId,
           label: input.label || `Next cycle from ${selectedId}`,
           input: generatedInput.workflow_state,
@@ -2200,7 +2235,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...enqueued.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...enqueued.workflow_state });
 
         jsonResponse(res, 201, {
           status: "queued",
@@ -2216,7 +2251,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/autonomous-scheduler-loop" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -2256,9 +2291,7 @@ export function createWorkbenchServer(options = {}) {
         const loopArtifact = createSchedulerLoopRunArtifact(loopInput, loopResult, {
           created_at: input.created_at || input.createdAt
         });
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const latestWorkflowState = readJson(inputPath);
+        const latestWorkflowState = readWorkflowState(item);
         const recorded = recordAutonomousSchedulerLoopRunArtifact(latestWorkflowState, loopArtifact, {
           created_at: input.created_at || input.createdAt
         });
@@ -2266,7 +2299,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "autonomous scheduler loop record failed", issues: recorded.issues });
           return;
         }
-        writeFileSync(inputPath, `${JSON.stringify({ ...latestWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...latestWorkflowState, ...recorded.workflow_state });
 
         jsonResponse(res, loopResult.status === "pass" ? 201 : 400, {
           status: loopResult.status === "pass" ? "created" : "failed",
@@ -2279,7 +2312,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/autonomous-scheduler-loop-resume" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -2296,8 +2329,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const sourcePath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const sourceWorkflowState = readJson(sourcePath);
+        const sourceWorkflowState = readWorkflowState(item);
         const registry = buildSchedulerLoopRunRegistry(sourceWorkflowState);
         const recovery = evaluateSchedulerLoopRecovery(registry);
         const sourceProjection = workbenchProjection(sourceWorkflowState);
@@ -2312,7 +2344,7 @@ export function createWorkbenchServer(options = {}) {
             created_at: input.created_at || input.createdAt
           });
           if (blockedAttempt.status === "pass") {
-            writeFileSync(sourcePath, `${JSON.stringify({ ...sourceWorkflowState, ...blockedAttempt.workflow_state }, null, 2)}\n`);
+            writeWorkflowState(item, { ...sourceWorkflowState, ...blockedAttempt.workflow_state });
           }
           jsonResponse(res, 409, {
             error: "autonomous scheduler loop is not resumable",
@@ -2339,7 +2371,7 @@ export function createWorkbenchServer(options = {}) {
             created_at: input.created_at || input.createdAt
           });
           if (blockedAttempt.status === "pass") {
-            writeFileSync(sourcePath, `${JSON.stringify({ ...sourceWorkflowState, ...blockedAttempt.workflow_state }, null, 2)}\n`);
+            writeWorkflowState(item, { ...sourceWorkflowState, ...blockedAttempt.workflow_state });
           }
           jsonResponse(res, 400, {
             error: `resume workflow state input not found: ${targetId}`,
@@ -2375,8 +2407,7 @@ export function createWorkbenchServer(options = {}) {
           created_at: input.created_at || input.createdAt
         });
 
-        const targetPath = historyItemPath(targetItem.input_path, "input_path", allowedHistoryRoots);
-        const targetWorkflowState = readJson(targetPath);
+        const targetWorkflowState = readWorkflowState(targetItem);
         const recorded = recordAutonomousSchedulerLoopRunArtifact(targetWorkflowState, loopArtifact, {
           created_at: input.created_at || input.createdAt
         });
@@ -2384,7 +2415,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "autonomous scheduler loop resume record failed", issues: recorded.issues });
           return;
         }
-        writeFileSync(targetPath, `${JSON.stringify({ ...targetWorkflowState, ...recorded.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(targetItem, { ...targetWorkflowState, ...recorded.workflow_state });
 
         const resumeAttempt = recordSchedulerLoopResumeAttempt(sourceWorkflowState, {
           status: loopResult.status === "pass" ? "pass" : "fail",
@@ -2403,7 +2434,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "scheduler loop resume attempt record failed", issues: resumeAttempt.issues });
           return;
         }
-        writeFileSync(sourcePath, `${JSON.stringify({ ...sourceWorkflowState, ...resumeAttempt.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...sourceWorkflowState, ...resumeAttempt.workflow_state });
 
         jsonResponse(res, loopResult.status === "pass" ? 201 : 400, {
           status: loopResult.status === "pass" ? "created" : "failed",
@@ -2420,7 +2451,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/next-action" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -2436,9 +2467,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const projection = workbenchProjection(workflowState);
         const executed = await executeProjectedNextAction({
           req,
@@ -2457,7 +2486,7 @@ export function createWorkbenchServer(options = {}) {
           });
           return;
         }
-        const updatedWorkflowState = readJson(inputPath);
+        const updatedWorkflowState = readWorkflowState(item);
         const updatedProjection = workbenchProjection(updatedWorkflowState);
 
         jsonResponse(res, 201, {
@@ -2473,7 +2502,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/scheduler-dispatch-run" && req.method === "POST") {
-        const history = readJson(serverHistoryPath);
+        const history = readServerHistory();
         const selectedId = url.searchParams.get("id") || history.latest;
         const item = history.items.find((entry) => entry.id === selectedId);
         if (!item?.input_path) {
@@ -2495,9 +2524,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid scheduler dispatch run artifact", issues });
           return;
         }
-
-        const inputPath = historyItemPath(item.input_path, "input_path", allowedHistoryRoots);
-        const workflowState = readJson(inputPath);
+        const workflowState = readWorkflowState(item);
         const result = recordSchedulerDispatchRunArtifact(
           workflowState,
           schedulerDispatchRunArtifactFromInput(input),
@@ -2508,7 +2535,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...result.workflow_state }, null, 2)}\n`);
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
         jsonResponse(res, 201, {
           status: "created",
           item,
@@ -2519,7 +2546,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/events" && req.method === "GET") {
-        jsonResponse(res, 200, readEvents(eventsPath));
+        jsonResponse(res, 200, readEvents(eventsPath, stateStore));
         return;
       }
 
@@ -2538,7 +2565,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
         const event = normalizeEvent(input, url.searchParams.get("projection_id"));
-        const ledger = appendEvent(eventsPath, event);
+        const ledger = appendEvent(eventsPath, event, stateStore);
         jsonResponse(res, 201, { status: "created", event, count: ledger.events.length });
         return;
       }
@@ -2629,7 +2656,8 @@ function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process
     historyPath: optionValue("--history-path"),
     snapshotsRoot: optionValue("--snapshots-root"),
     eventsPath: optionValue("--events-path"),
-    projectStatusPath: optionValue("--project-status")
+    projectStatusPath: optionValue("--project-status"),
+    stateDbPath: optionValue("--state-db") || process.env.AI_CONTROL_WORKBENCH_STATE_DB || defaultStateDbPath
   };
 }
 
@@ -2639,13 +2667,15 @@ export function startWorkbenchServer({
   historyPath: configuredHistoryPath,
   snapshotsRoot: configuredSnapshotsRoot,
   eventsPath: configuredEventsPath,
-  projectStatusPath
+  projectStatusPath,
+  stateDbPath = defaultStateDbPath
 } = {}) {
   const server = createWorkbenchServer({
     historyPath: configuredHistoryPath,
     snapshotsRoot: configuredSnapshotsRoot,
     eventsPath: configuredEventsPath,
-    projectStatusPath
+    projectStatusPath,
+    stateDbPath
   });
   const listenPort = normalizeCliPort(port);
   server.listen(listenPort, host);
@@ -2655,9 +2685,9 @@ export function startWorkbenchServer({
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
-      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>]",
+      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>]",
       "",
-      "Starts the local workbench service. Paths are resolved from the platform repo root."
+      "Starts the local workbench service. Paths are resolved from the platform repo root. When --state-db is set, live workbench state is stored in SQLite instead of tracked JSON state files."
     ].join("\n"));
     process.exit(0);
   }
