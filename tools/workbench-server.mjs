@@ -146,15 +146,21 @@ function historyItemPath(itemPath, field, allowedRoots = [examplesRoot, defaultS
 }
 
 function readWorkflowStateFromItem(item = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], stateStore = null) {
-  if (stateStore && isSqliteSnapshotPath(item.input_path)) {
-    return stateStore.readWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path));
+  if (stateStore) {
+    if (isSqliteSnapshotPath(item.input_path)) {
+      return stateStore.readWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path));
+    }
+    return requireSqliteWorkflowSnapshot();
   }
   return readJson(historyItemPath(item.input_path, "input_path", allowedRoots));
 }
 
 function writeWorkflowStateToItem(item = {}, workflowState = {}, allowedRoots = [examplesRoot, defaultSnapshotsRoot], stateStore = null) {
-  if (stateStore && isSqliteSnapshotPath(item.input_path)) {
-    return stateStore.writeWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path), workflowState, item);
+  if (stateStore) {
+    if (isSqliteSnapshotPath(item.input_path)) {
+      return stateStore.writeWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path), workflowState, item);
+    }
+    return requireSqliteWorkflowSnapshot();
   }
   const inputPath = historyItemPath(item.input_path, "input_path", allowedRoots);
   writeJson(inputPath, workflowState);
@@ -176,7 +182,9 @@ function projectionById(id = null, history = readJson(historyPath), allowedRoots
     item,
     projection: item.input_path
       ? createWorkbenchProjection(projectionInputWithProjectStatus(readWorkflowStateFromItem(item, allowedRoots, stateStore), projectStatusPath, stateStore))
-      : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))
+      : stateStore
+        ? requireSqliteWorkflowSnapshot()
+        : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))
   };
 }
 
@@ -190,6 +198,12 @@ function normalizeString(value) {
 
 function safeSnapshotIdPart(value) {
   return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "snapshot";
+}
+
+function requireSqliteWorkflowSnapshot() {
+  const error = new Error("SQLite workbench state requires workflow snapshots");
+  error.code = "WORKFLOW_SNAPSHOT_REQUIRED";
+  throw error;
 }
 
 function generatedContextPackSnapshotId(selectedId) {
@@ -2588,7 +2602,7 @@ export function createWorkbenchServer(options = {}) {
         return;
       }
 
-      if (error.code === "INVALID_HISTORY_PATH") {
+      if (error.code === "INVALID_HISTORY_PATH" || error.code === "WORKFLOW_SNAPSHOT_REQUIRED") {
         jsonResponse(res, 400, { error: error.message });
         return;
       }

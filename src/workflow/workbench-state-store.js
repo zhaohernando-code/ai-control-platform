@@ -166,21 +166,27 @@ ON CONFLICT(id) DO UPDATE SET
   const seedWorkflowSnapshotsFromHistory = (history, seedRoot) => {
     if (!seedRoot) return history;
     const items = Array.isArray(history.items) ? history.items : [];
-    const rewrittenItems = items.map((item) => {
-      if (!item?.input_path || isSqliteSnapshotPath(item.input_path)) return item;
+    const rewrittenItems = [];
+    for (const item of items) {
+      if (!item?.input_path) continue;
+      if (isSqliteSnapshotPath(item.input_path)) {
+        rewrittenItems.push(item);
+        continue;
+      }
       const sourcePath = resolve(seedRoot, item.input_path);
-      if (!existsSync(sourcePath)) return item;
+      if (!existsSync(sourcePath)) continue;
       const workflowState = readJsonFile(sourcePath);
       const nextItem = {
         ...item,
         input_path: sqliteSnapshotInputPath(item.id)
       };
       writeWorkflowSnapshot(item.id, workflowState, nextItem, item.created_at || nowIso());
-      return nextItem;
-    });
+      rewrittenItems.push(nextItem);
+    }
+    const latestStillExists = rewrittenItems.some((item) => item.id === history.latest);
     return {
       version: history.version || "projection-history.v1",
-      latest: history.latest || rewrittenItems[0]?.id || null,
+      latest: latestStillExists ? history.latest : rewrittenItems[0]?.id || null,
       items: rewrittenItems
     };
   };

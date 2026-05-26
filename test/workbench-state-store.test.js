@@ -64,15 +64,25 @@ test("sqlite workbench state store seeds tracked fixtures into database snapshot
   writeFileSync(inputPath, `${JSON.stringify(workflowState, null, 2)}\n`);
   writeFileSync(historyPath, `${JSON.stringify({
     version: "projection-history.v1",
-    latest: "seed",
-    items: [{
-      id: "seed",
-      label: "Seed",
-      input_path: relative(seedRoot, inputPath),
-      projection_path: null,
-      created_at: "2026-05-26T00:00:00.000Z",
-      status: "pass"
-    }]
+    latest: "legacy-projection",
+    items: [
+      {
+        id: "legacy-projection",
+        label: "Legacy projection",
+        input_path: null,
+        projection_path: "docs/examples/bootstrap-workbench-projection.json",
+        created_at: "2026-05-25T00:00:00.000Z",
+        status: "pass"
+      },
+      {
+        id: "seed",
+        label: "Seed",
+        input_path: relative(seedRoot, inputPath),
+        projection_path: null,
+        created_at: "2026-05-26T00:00:00.000Z",
+        status: "pass"
+      }
+    ]
   }, null, 2)}\n`);
   writeFileSync(projectStatusPath, `${JSON.stringify(projectStatus, null, 2)}\n`);
   writeFileSync(eventsPath, `${JSON.stringify(events, null, 2)}\n`);
@@ -91,6 +101,7 @@ test("sqlite workbench state store seeds tracked fixtures into database snapshot
 
   assert.equal(existsSync(store.dbPath), true);
   assert.equal(history.latest, "seed");
+  assert.deepEqual(history.items.map((item) => item.id), ["seed"]);
   assert.equal(isSqliteSnapshotPath(history.items[0].input_path), true);
   assert.equal(store.readWorkflowSnapshot("seed").manifest.run_id, workflowState.manifest.run_id);
 
@@ -186,6 +197,43 @@ test("workbench server state-db mode keeps live writes out of seeded json files"
     assert.equal(readFileSync(projectStatusPath, "utf8"), originals.projectStatus);
     assert.equal(readFileSync(eventsPath, "utf8"), originals.events);
     assert.equal(readFileSync(inputPath, "utf8"), originals.input);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("workbench server state-db mode rejects projection-only history fallback", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-state-no-fallback-"));
+  const store = createSqliteWorkbenchStateStore({
+    dbPath: join(dir, "workbench-state.sqlite")
+  });
+  store.writeHistory({
+    version: "projection-history.v1",
+    latest: "legacy",
+    items: [{
+      id: "legacy",
+      label: "Legacy projection",
+      input_path: null,
+      projection_path: "docs/examples/bootstrap-workbench-projection.json",
+      created_at: "2026-05-25T00:00:00.000Z",
+      status: "pass"
+    }]
+  });
+
+  const server = createWorkbenchServer({
+    stateStore: store,
+    projectStatusPath: null
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const { port } = server.address();
+
+  try {
+    const response = await request(`http://127.0.0.1:${port}/api/workbench/projection?id=legacy`);
+    assert.equal(response.status, 400);
+    assert.match(response.json().error, /requires workflow snapshots/);
   } finally {
     server.close();
     await once(server, "close");
