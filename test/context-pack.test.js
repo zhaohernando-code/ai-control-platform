@@ -169,6 +169,8 @@ test("work package action and source metadata are preserved for scheduler retry 
         title: "Retry timed-out agent worker",
         action: "retry_agent_worker",
         owned_files: ["src/workflow/context-work-package-runner.js"],
+        acceptance_gates: ["node --test test/context-pack.test.js"],
+        reason: "Retry worker that timed out",
         source: {
           pool_id: "pool-main-child",
           worker_id: "child-1",
@@ -180,6 +182,8 @@ test("work package action and source metadata are preserved for scheduler retry 
   }));
 
   assert.equal(workPackages[0].action, "retry_agent_worker");
+  assert.deepEqual(workPackages[0].acceptance_gates, ["node --test test/context-pack.test.js"]);
+  assert.equal(workPackages[0].reason, "Retry worker that timed out");
   assert.equal(workPackages[0].source.pool_id, "pool-main-child");
   assert.equal(workPackages[0].source.worker_id, "child-1");
   assert.equal(workPackages[0].source.retry_worker.worker_id, "child-1");

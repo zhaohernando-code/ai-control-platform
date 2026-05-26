@@ -2116,6 +2116,8 @@ export function createWorkbenchServer(options = {}) {
             item,
             phase: result.phase,
             fixed_development_mode_gate: result.fixed_development_mode_gate || result.gate_result || null,
+            work_package_execution_governance: result.work_package_execution_governance ||
+              (result.phase === "work_package_execution_governance" ? result.gate_result : null),
             execution_plan: result.execution_plan || null,
             package_results: result.package_results || [],
             executor_provenance: result.executor_provenance || null,

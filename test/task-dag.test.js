@@ -11,7 +11,7 @@ import {
 test("task DAG dispatches nodes in dependency order", () => {
   const dag = buildTaskDag([
     { id: "design", status: "done" },
-    { id: "runtime", depends_on: ["design"], status: "pending" },
+    { id: "runtime", depends_on: ["design"], status: "pending", acceptance_gates: ["node --test test/runtime.test.js"] },
     { id: "tests", depends_on: ["runtime"], status: "pending" },
     { id: "docs", depends_on: ["design"], status: "blocked" }
   ]);
@@ -21,6 +21,7 @@ test("task DAG dispatches nodes in dependency order", () => {
     getDispatchableNodes(dag).map((node) => node.id),
     ["runtime"]
   );
+  assert.deepEqual(getDispatchableNodes(dag)[0].acceptance_gates, ["node --test test/runtime.test.js"]);
 
   const nextDag = buildTaskDag(dag.nodes.map((node) => (node.id === "runtime" ? { ...node, status: "done" } : node)));
 

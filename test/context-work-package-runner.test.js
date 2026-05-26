@@ -357,6 +357,7 @@ test("context work package runner splits materialized broad frontend view migrat
   });
 
   assert.equal(result.status, "pass");
+  assert.equal(result.artifact.metadata.work_package_execution_governance.status, "pass");
   assert.equal(result.executed_work_packages[0].id, "requirement-frontend-refactor-plan-step-04-workbench-home");
   assert.equal(
     result.workflow_state.manifest.work_packages
@@ -375,6 +376,68 @@ test("context work package runner splits materialized broad frontend view migrat
   assert.ok(!result.workflow_state.manifest.work_packages.some((workPackage) => {
     return workPackage.id === "requirement-frontend-refactor-plan-step-04";
   }));
+});
+
+test("context work package runner blocks broad unsliced requirement plan steps before child execution", () => {
+  const contextPack = {
+    requirement_summary: "前端重构",
+    host: "platform_core",
+    target_project_id: "ai-control-platform",
+    non_goals: ["Do not modify managed projects"],
+    forbidden_actions: ["Do not skip gates"],
+    owned_files: ["."],
+    acceptance_gates: ["node --test test/context-work-package-runner.test.js"],
+    rollback_conditions: ["frontend migration drifts"],
+    subtasks: [
+      {
+        id: "requirement-frontend-refactor-plan-step-broad",
+        title: "前端重构：整体迁移所有前端入口",
+        action: "execute_requirement_plan_step",
+        owned_files: ["."],
+        acceptance_gates: ["node --test test/frontend-acceptance.test.js"],
+        reason: "整体迁移所有前端代码到 React + Next.js + antd。",
+        source: {
+          requirement_id: "requirement-frontend-refactor",
+          plan_step_index: 4,
+          implementation_step: "整体迁移所有前端代码到 React + Next.js + antd。"
+        }
+      }
+    ]
+  };
+  const manifest = createRunManifest({
+    run_id: "run-broad-governance",
+    cycle_id: "cycle-broad-governance",
+    goal: contextPack.requirement_summary,
+    context_pack: contextPack,
+    events: [],
+    artifacts: [],
+    gate_results: [],
+    review_findings: [],
+    recovery_attempts: [],
+    created_at: "2026-05-26T15:00:00.000Z"
+  });
+  const workflowState = {
+    manifest,
+    artifact_ledger: {
+      run_id: manifest.run_id,
+      cycle_id: manifest.cycle_id,
+      artifacts: []
+    },
+    task_dag: manifest.work_packages
+  };
+
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-26T15:01:00.000Z"
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "work_package_execution_governance");
+  assert.equal(result.work_package_execution_governance.status, "fail");
+  assert.ok(result.issues.some((issue) => {
+    return issue.code === "requirement_plan_step_requires_manager_decomposition";
+  }));
+  assert.equal(result.allows_work_package_completion, false);
 });
 
 test("context work package runner can complete already-satisfied packages before provider dispatch", () => {

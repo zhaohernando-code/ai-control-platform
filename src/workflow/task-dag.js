@@ -73,6 +73,7 @@ function normalizeNode(workPackage, index, options = {}) {
     depends_on: dependenciesFor(workPackage),
     status: normalizeStatus(workPackage?.status || workPackage?.state || workPackage?.result || workPackage?.outcome, fallbackStatus),
     owned_files: compactStrings(workPackage?.owned_files),
+    acceptance_gates: compactStrings(workPackage?.acceptance_gates || workPackage?.acceptanceGates),
     action: normalizeToken(workPackage?.action) || null,
     blocked_reasons: asArray(workPackage?.blocked_reasons),
     source: workPackage?.source || null

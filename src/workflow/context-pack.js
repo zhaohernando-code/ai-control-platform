@@ -282,7 +282,9 @@ export function createWorkPackages(contextPack) {
       action: normalizeString(subtask?.action),
       global_goal_id: globalGoalIdFrom(subtask) || null,
       owned_files: ownedFiles,
+      acceptance_gates: compactStrings(subtask?.acceptance_gates || subtask?.acceptanceGates),
       depends_on: dependsOn,
+      reason: normalizeString(subtask?.reason),
       source: subtask?.source && typeof subtask.source === "object" && !Array.isArray(subtask.source)
         ? subtask.source
         : null,

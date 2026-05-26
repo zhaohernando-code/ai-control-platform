@@ -8,6 +8,7 @@ import { evaluateFixedDevelopmentModeGate } from "./fixed-development-mode-gate.
 import { normalizeRequirementPlanWorkPackagesGranularity } from "./requirement-intake.js";
 import { appendRunEvent, validateRunManifest } from "./run-manifest.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
+import { evaluateWorkPackageExecutionGovernance } from "./work-package-execution-governance.js";
 
 export const CONTEXT_WORK_PACKAGES_RUN_VERSION = "context-work-packages-run.v1";
 
@@ -199,6 +200,9 @@ function runArtifact(workflowState = {}, selected = [], options = {}) {
         normalizeString(options.executor_kind || options.executorKind) ||
         "local_bounded",
       fixed_development_mode_gate: options.fixed_development_mode_gate || options.fixedDevelopmentModeGate || null,
+      work_package_execution_governance: options.work_package_execution_governance ||
+        options.workPackageExecutionGovernance ||
+        null,
       executed_count: selected.length,
       executed_work_package_ids: selected.map((node) => node.id),
       executed_work_packages: selected.map((node) => ({
@@ -500,12 +504,37 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     };
   }
 
+  const executionGovernanceGate = evaluateWorkPackageExecutionGovernance({
+    workflow_state: normalizedWorkflowState,
+    selected_work_packages: selected
+  });
+  if (executionGovernanceGate.status !== "pass") {
+    return {
+      status: "blocked",
+      phase: "work_package_execution_governance",
+      gate_result: executionGovernanceGate,
+      issues: executionGovernanceGate.issues,
+      dispatchable_count: dispatchable.length,
+      selected_work_package_ids: selected.map((node) => node.id),
+      fixed_development_mode_gate: fixedDevelopmentModeGate,
+      work_package_execution_governance: executionGovernanceGate,
+      allows_work_package_completion: false,
+      completion_authority: {
+        allows_work_package_completion: false,
+        authority: "work_package_execution_governance",
+        evidence_kind: "pre_dispatch_gate",
+        reason: "selected work packages must be concrete and verifiable before child/provider execution"
+      }
+    };
+  }
+
   const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
   let executedNodes = selected;
   let executionOptions = {
     ...options,
     created_at: createdAt,
-    fixed_development_mode_gate: fixedDevelopmentModeGate
+    fixed_development_mode_gate: fixedDevelopmentModeGate,
+    work_package_execution_governance: executionGovernanceGate
   };
   let eventMessage = "context work packages executed by bounded local runner";
   const alreadySatisfiedEvaluator = alreadySatisfiedEvaluatorFrom(options);
