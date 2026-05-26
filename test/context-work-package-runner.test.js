@@ -305,6 +305,20 @@ test("context work package runner splits materialized broad frontend view migrat
           constraints: "当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。",
           implementation_step: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。"
         }
+      },
+      {
+        id: "requirement-frontend-refactor-plan-step-05",
+        title: "前端重构：实施步骤 05 / 7",
+        action: "execute_requirement_plan_step",
+        owned_files: ["apps/workbench"],
+        acceptance_gates: ["node --test test/frontend-acceptance.test.js"],
+        depends_on: ["requirement-frontend-refactor-plan-step-04"],
+        reason: "补齐新前端交互",
+        source: {
+          requirement_id: "requirement-frontend-refactor",
+          plan_step_index: 5,
+          plan_step_total: 7
+        }
       }
     ]
   };
@@ -353,6 +367,10 @@ test("context work package runner splits materialized broad frontend view migrat
   assert.ok(result.workflow_state.manifest.work_packages.some((workPackage) => {
     return workPackage.id === "requirement-frontend-refactor-plan-step-04-requirement-intake" &&
       workPackage.depends_on[0] === "requirement-frontend-refactor-plan-step-04-workbench-home";
+  }));
+  assert.ok(result.workflow_state.manifest.work_packages.some((workPackage) => {
+    return workPackage.id === "requirement-frontend-refactor-plan-step-05" &&
+      workPackage.depends_on[0] === "requirement-frontend-refactor-plan-step-04-plan-review";
   }));
   assert.ok(!result.workflow_state.manifest.work_packages.some((workPackage) => {
     return workPackage.id === "requirement-frontend-refactor-plan-step-04";

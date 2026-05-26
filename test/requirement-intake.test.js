@@ -6,6 +6,7 @@ import {
   createRequirementPlanPrompt,
   markRequirementPlanGenerationFailed,
   normalizeRequirementPlanWorkPackageGranularity,
+  normalizeRequirementPlanWorkPackagesGranularity,
   parseRequirementPlanGenerationOutput,
   recordRequirementIntakeSubmitted,
   submitRequirementToProjectStatus,
@@ -295,6 +296,36 @@ test("frontend view migration plan step is split into bounded executable slices"
   assert.equal(packages[0].source.parent_work_package_id, "requirement-frontend-refactor-plan-step-04");
   assert.equal(packages[2].source.plan_step_slice, "plan-review");
   assert.ok(packages[1].acceptance_gates.some((gate) => gate.includes("需求录入流程")));
+});
+
+test("frontend view migration split rewrites downstream dependencies to the last slice", () => {
+  const packages = normalizeRequirementPlanWorkPackagesGranularity([
+    {
+      id: "requirement-frontend-refactor-plan-step-04",
+      title: "前端重构：实施步骤 04 / 7",
+      action: "execute_requirement_plan_step",
+      owned_files: ["."],
+      reason: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。",
+      source: {
+        requirement_id: "requirement-frontend-refactor",
+        plan_step_index: 4,
+        constraints: "react+next.js(app模式) + antd 重构"
+      }
+    },
+    {
+      id: "requirement-frontend-refactor-plan-step-05",
+      title: "前端重构：实施步骤 05 / 7",
+      action: "execute_requirement_plan_step",
+      depends_on: ["requirement-frontend-refactor-plan-step-04"],
+      owned_files: ["apps/workbench"],
+      reason: "补齐交互"
+    }
+  ]);
+
+  assert.equal(packages.at(-1).id, "requirement-frontend-refactor-plan-step-05");
+  assert.deepEqual(packages.at(-1).depends_on, [
+    "requirement-frontend-refactor-plan-step-04-plan-review"
+  ]);
 });
 
 test("requirement intake summary is stable without submissions", () => {

@@ -306,6 +306,37 @@ export function normalizeRequirementPlanWorkPackageGranularity(workPackage = {})
   });
 }
 
+function workPackageId(workPackage = {}) {
+  return normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId);
+}
+
+export function normalizeRequirementPlanWorkPackagesGranularity(workPackages = []) {
+  const replacementDependencies = new Map();
+  const normalizedPackages = [];
+
+  asArray(workPackages).forEach((workPackage) => {
+    const originalId = workPackageId(workPackage);
+    const packages = normalizeRequirementPlanWorkPackageGranularity(workPackage);
+    normalizedPackages.push(...packages);
+    if (originalId && packages.length > 1) {
+      replacementDependencies.set(originalId, workPackageId(packages.at(-1)));
+    }
+  });
+
+  if (replacementDependencies.size === 0) return normalizedPackages;
+
+  return normalizedPackages.map((workPackage) => {
+    const dependencies = normalizeStringList(workPackage.depends_on || workPackage.dependencies);
+    if (dependencies.length === 0) return workPackage;
+    return {
+      ...workPackage,
+      depends_on: uniqueStrings(dependencies.map((dependency) => {
+        return replacementDependencies.get(dependency) || dependency;
+      }))
+    };
+  });
+}
+
 export function createRequirementPlanPrompt(requirement = {}) {
   return [
     "# Requirement Plan Generation",
@@ -614,7 +645,7 @@ export function createRequirementPlanWorkPackages(projectStatus = {}, requiremen
         acceptance_gates: stepAcceptanceGates
       }
     };
-    const normalizedPackages = normalizeRequirementPlanWorkPackageGranularity(workPackage);
+    const normalizedPackages = normalizeRequirementPlanWorkPackagesGranularity([workPackage]);
     packages.push(...normalizedPackages);
     previousDependencyIds = normalizedPackages.length > 0
       ? [normalizeString(normalizedPackages.at(-1).id)]

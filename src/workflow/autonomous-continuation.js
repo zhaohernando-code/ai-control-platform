@@ -11,7 +11,7 @@ import { createSelfGovernanceReport } from "./self-governance.js";
 import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
 import {
   createRequirementPlanWorkPackages,
-  normalizeRequirementPlanWorkPackageGranularity
+  normalizeRequirementPlanWorkPackagesGranularity
 } from "./requirement-intake.js";
 
 const CONTINUE = "continue";
@@ -140,9 +140,7 @@ function nextWorkPackagesFrom(input) {
 }
 
 function normalizeRequirementPlanWorkPackages(workPackages = []) {
-  return asArray(workPackages).flatMap((workPackage) => {
-    return normalizeRequirementPlanWorkPackageGranularity(workPackage);
-  });
+  return normalizeRequirementPlanWorkPackagesGranularity(workPackages);
 }
 
 function completedWorkPackageIds(input = {}) {

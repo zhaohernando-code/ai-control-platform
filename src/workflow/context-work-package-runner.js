@@ -5,7 +5,7 @@ import {
   isProviderModelRoutedExecutionRequested
 } from "./context-work-package-execution-adapter.js";
 import { evaluateFixedDevelopmentModeGate } from "./fixed-development-mode-gate.js";
-import { normalizeRequirementPlanWorkPackageGranularity } from "./requirement-intake.js";
+import { normalizeRequirementPlanWorkPackagesGranularity } from "./requirement-intake.js";
 import { appendRunEvent, validateRunManifest } from "./run-manifest.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 
@@ -76,9 +76,7 @@ function normalizeWorkflowStateWorkPackageGranularity(workflowState = {}) {
   const sourcePackages = asArray(workflowState.manifest?.work_packages).length > 0
     ? workflowState.manifest.work_packages
     : asArray(workflowState.task_dag || workflowState.taskDag);
-  const normalizedPackages = sourcePackages.flatMap((workPackage) => {
-    return normalizeRequirementPlanWorkPackageGranularity(workPackage);
-  });
+  const normalizedPackages = normalizeRequirementPlanWorkPackagesGranularity(sourcePackages);
 
   if (sameWorkPackages(sourcePackages, normalizedPackages)) return workflowState;
 
