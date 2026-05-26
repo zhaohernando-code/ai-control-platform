@@ -266,6 +266,55 @@ test("context work package runner executes dispatchable packages and updates wor
   assert.notEqual(projection.next_action_readout.action, "cleanup_agent_lifecycle_pool");
 });
 
+test("context work package runner can complete already-satisfied packages before provider dispatch", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-22T04:02:00.000Z",
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    already_satisfied_evaluator: ({ selected_work_packages: selectedWorkPackages }) => ({
+      status: "pass",
+      phase: "mainline_already_satisfied_preflight",
+      allows_work_package_completion: true,
+      completion_authority: {
+        allows_work_package_completion: true,
+        authority: "mainline_already_satisfied_preflight",
+        evidence_kind: "focused_tests_and_mainline_commit",
+        reason: "current mainline already satisfies the package"
+      },
+      executor_provenance: {
+        executor_kind: "mainline_already_satisfied_preflight",
+        execution_mode: "provider_model_routed",
+        execution_profile: "mainline_already_satisfied_preflight"
+      },
+      package_results: selectedWorkPackages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "already_satisfied_by_mainline",
+        allows_work_package_completion: true,
+        completion_authority: {
+          allows_work_package_completion: true,
+          authority: "mainline_already_satisfied_preflight",
+          evidence_kind: "focused_tests_and_mainline_commit",
+          reason: "current mainline already satisfies the package"
+        },
+        completion_evidence: { kind: "mainline_already_satisfied_preflight" }
+      }))
+    }),
+    provider_executor: () => {
+      throw new Error("provider should not run after already-satisfied preflight");
+    }
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.phase, "context_work_packages_run");
+  assert.equal(result.executed_count, 1);
+  assert.equal(result.artifact.metadata.package_results[0].result, "already_satisfied_by_mainline");
+  assert.equal(result.artifact.metadata.executor_provenance.executor_kind, "mainline_already_satisfied_preflight");
+  assert.equal(result.workflow_state.manifest.work_packages.find((item) => item.id === "runtime").status, "completed");
+});
+
 test("context work package runner blocks local bounded global-goal completion without child authority", () => {
   const workflowState = workflowStateWithGlobalGoalPackage();
 

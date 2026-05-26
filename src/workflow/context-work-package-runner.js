@@ -137,6 +137,15 @@ export function completionAuthorizedExecutionNodes(selected = [], packageResults
   return selected.filter((node) => authorizedIds.has(node.id));
 }
 
+function alreadySatisfiedEvaluatorFrom(options = {}) {
+  return [
+    options.already_satisfied_evaluator,
+    options.alreadySatisfiedEvaluator,
+    options.mainline_already_satisfied_evaluator,
+    options.mainlineAlreadySatisfiedEvaluator
+  ].find((candidate) => typeof candidate === "function") || null;
+}
+
 function runArtifact(workflowState = {}, selected = [], options = {}) {
   const runId = normalizeString(workflowState?.manifest?.run_id);
   const cycleId = normalizeString(workflowState?.manifest?.cycle_id);
@@ -470,8 +479,92 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     fixed_development_mode_gate: fixedDevelopmentModeGate
   };
   let eventMessage = "context work packages executed by bounded local runner";
+  const alreadySatisfiedEvaluator = alreadySatisfiedEvaluatorFrom(options);
 
-  if (isProviderModelRoutedExecutionRequested(options)) {
+  if (alreadySatisfiedEvaluator) {
+    const alreadySatisfiedResult = alreadySatisfiedEvaluator({
+      workflow_state: workflowState,
+      selected_work_packages: selected,
+      options: {
+        ...options,
+        created_at: createdAt
+      }
+    });
+    if (alreadySatisfiedResult?.status === "fail" || alreadySatisfiedResult?.status === "blocked") {
+      return {
+        status: "blocked",
+        phase: alreadySatisfiedResult.phase || "already_satisfied_preflight",
+        issues: alreadySatisfiedResult.issues || [],
+        dispatchable_count: dispatchable.length,
+        selected_work_package_ids: selected.map((node) => node.id),
+        fixed_development_mode_gate: fixedDevelopmentModeGate,
+        package_results: alreadySatisfiedResult.package_results || [],
+        executor_provenance: alreadySatisfiedResult.executor_provenance || null,
+        allows_work_package_completion: false,
+        completion_authority: alreadySatisfiedResult.completion_authority || null
+      };
+    }
+    if (alreadySatisfiedResult?.status === "pass") {
+      if (!adapterResultAllowsWorkPackageCompletion(alreadySatisfiedResult)) {
+        return {
+          status: "blocked",
+          phase: alreadySatisfiedResult.phase || "already_satisfied_preflight",
+          issues: asArray(alreadySatisfiedResult.issues).length > 0
+            ? alreadySatisfiedResult.issues
+            : [
+              issue(
+                "already_satisfied_preflight_lacks_completion_authority",
+                "already-satisfied preflight cannot complete work packages without explicit completion authority",
+                "completion_authority"
+              )
+            ],
+          dispatchable_count: dispatchable.length,
+          selected_work_package_ids: selected.map((node) => node.id),
+          fixed_development_mode_gate: fixedDevelopmentModeGate,
+          package_results: alreadySatisfiedResult.package_results || [],
+          executor_provenance: alreadySatisfiedResult.executor_provenance || null,
+          allows_work_package_completion: false,
+          completion_authority: alreadySatisfiedResult.completion_authority || null
+        };
+      }
+      executedNodes = completionAuthorizedExecutionNodes(selected, alreadySatisfiedResult.package_results, alreadySatisfiedResult);
+      if (executedNodes.length === 0) {
+        return {
+          status: "blocked",
+          phase: alreadySatisfiedResult.phase || "already_satisfied_preflight",
+          issues: [
+            issue(
+              "already_satisfied_preflight_no_authorized_packages",
+              "already-satisfied preflight returned no pass package results with completion authority",
+              "package_results"
+            )
+          ],
+          dispatchable_count: dispatchable.length,
+          selected_work_package_ids: selected.map((node) => node.id),
+          fixed_development_mode_gate: fixedDevelopmentModeGate,
+          package_results: alreadySatisfiedResult.package_results || [],
+          executor_provenance: alreadySatisfiedResult.executor_provenance || null,
+          allows_work_package_completion: true,
+          completion_authority: alreadySatisfiedResult.completion_authority || null
+        };
+      }
+      executionOptions = {
+        ...executionOptions,
+        executor_kind: alreadySatisfiedResult.executor_provenance?.executor_kind,
+        execution_mode: alreadySatisfiedResult.executor_provenance?.execution_mode,
+        execution_profile: alreadySatisfiedResult.executor_provenance?.execution_profile,
+        package_results: alreadySatisfiedResult.package_results,
+        executor_provenance: alreadySatisfiedResult.executor_provenance,
+        completion_authority: alreadySatisfiedResult.completion_authority,
+        model_routing: alreadySatisfiedResult.execution_plan?.model_routing || null
+      };
+      eventMessage = "context work packages accepted as already satisfied by mainline evidence";
+    }
+  }
+
+  if (executedNodes.length === selected.length && eventMessage === "context work packages accepted as already satisfied by mainline evidence") {
+    // Skip provider/model execution: completion authority came from the deterministic mainline preflight.
+  } else if (isProviderModelRoutedExecutionRequested(options)) {
     const adapterExecutor = typeof options.adapter_executor === "function"
       ? options.adapter_executor
       : typeof options.adapterExecutor === "function"
