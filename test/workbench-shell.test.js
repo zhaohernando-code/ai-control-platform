@@ -583,3 +583,40 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(readme, /WORKBENCH_API_BASE/);
   assert.match(readme, /npm run build/);
 });
+
+test("project rules codify the antd + next.js single-page-app frontend constraints (step 03/7)", () => {
+  // Step 03/7 of requirement-unknown-20260526033003 sediments the frontend
+  // refactor constraints into the project-level rules so future agents cannot
+  // silently drop or contradict them. The full clause stays in
+  // apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md; PROJECT_RULES.md must
+  // expose at least the high-level invariants and link to the durable doc.
+  const rules = read("PROJECT_RULES.md");
+
+  // Section anchor + pointer to the durable constraint document.
+  assert.match(rules, /Antd \+ React \+ Next\.js App Router/);
+  assert.match(rules, /apps\/workbench\/FRONTEND_REFACTOR_CONSTRAINTS\.md/);
+
+  // Mandatory stack lock-in (antd + React + Next.js App Router).
+  assert.match(rules, /Ant Design/);
+  assert.match(rules, /antd/);
+  assert.match(rules, /React/);
+  assert.match(rules, /Next\.js/);
+  assert.match(rules, /App Router/);
+
+  // The four invariants explicitly named in the requirement acceptance gate.
+  assert.match(rules, /不得自造基础组件|禁止自造基础组件|不允许自造基础组件/);
+  assert.match(rules, /布局组件强制走 antd/);
+  assert.match(rules, /单页 app 形态/);
+  assert.match(rules, /原有 CSS 默认不保留/);
+
+  // Forbid the silent introduction of a second base UI framework.
+  assert.match(rules, /@mui\/material/);
+  assert.match(rules, /@chakra-ui\/react/);
+  assert.match(rules, /shadcn-ui/);
+
+  // Gate mapping so future refactors cannot weaken the acceptance pipeline.
+  assert.match(rules, /workbench-shell\.test\.js/);
+  assert.match(rules, /check:workbench:browser-events/);
+  assert.match(rules, /check:workbench:frontend-acceptance/);
+  assert.match(rules, /check:closeout/);
+});

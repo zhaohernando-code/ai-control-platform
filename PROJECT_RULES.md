@@ -18,3 +18,17 @@
 - 当前 watchdog 只能作为历史样本和临时观察输入，不能作为 Recovery Engine 底座。遇到自愈、恢复、错误卡死处理相关任务时，按独立 Recovery Engine 重新建模。
 - 平台 UI 的目标形态是成熟 Ops Workbench，不是任务卡片集合。新增页面或字段前必须确认它服务于总览、任务流、agent 池、风险、人工决策、发布/验收证据中的哪一类。
 - 重要决策写入 `DECISIONS.md`，可复用流程经验写入 `PROCESS.md`，当前状态写入 `PROJECT_STATUS.json`。
+
+## 前端栈与组件约束（Antd + React + Next.js App Router）
+
+适用范围：本仓库下所有面向用户的中台前端代码，当前承载于 `apps/workbench/`。
+完整条款见 `apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md`；本节为项目级硬约束的入口，任何前端切片必须满足以下不变量，违反时合入前置回归门禁会失败。
+
+- 技术栈固定：UI 框架必须使用 [Ant Design](https://ant.design/)（antd）作为唯一基础与布局组件库；应用框架必须使用 [React](https://react.dev/) + [Next.js](https://nextjs.org/) 的 App Router（`app/` 目录模式）。
+- 不得自造基础组件：按钮、输入框、表格、表单、模态、抽屉、分页、菜单、Tab、消息提示、图标容器等基础控件必须直接使用 antd 提供的组件，不允许自行用裸 HTML/CSS 重写等价能力。
+- 布局组件强制走 antd：页面骨架（`Layout` / `Sider` / `Header` / `Content` / `Footer`）、栅格（`Row` / `Col`）、间距（`Space`）、卡片（`Card`）等布局元素必须使用 antd；不允许用裸 `div` + 自定义 CSS 重新实现等价能力。
+- 遵循 antd 官方页面的设计规范：包含但不限于 Pro Components 的页面骨架、栅格断点、间距比例、颜色 token、阴影层级、表单校验态展示。
+- 维持单页 app 形态：浏览器地址栏路由切换不触发整页刷新，整体壳保持稳定的 `Layout` + 路由切换结构；不允许退化为多入口多页站点。
+- 原有 CSS 默认不保留：除非该样式承担 antd 无法表达的领域语义，否则必须移除；保留时须在 PR 描述中显式说明保留原因并在代码注释中记录。
+- 禁止引入第二套基础组件 / 设计体系（如 `@mui/material`、`@chakra-ui/react`、`shadcn-ui` 等）；如需特定领域可视化（例如图表）才允许在 antd 之外引入专用库，并需在 PR 中说明理由。
+- 任何前端切片合入后，`node --test test/workbench-shell.test.js`、`npm run check:workbench:browser-events`、`npm run check:workbench:frontend-acceptance`、`npm run check:closeout` 必须仍能通过；不允许为了换栈临时下调这些门禁。
