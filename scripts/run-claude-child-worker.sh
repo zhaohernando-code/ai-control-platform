@@ -224,6 +224,57 @@ console.log(issues.length ? issues.join("; ") : "child output is eligible for ma
 NODE
 }
 
+merge_blocking_dirty_status() {
+  local repo_root="$1"
+  local raw_status="$2"
+  [[ -n "$raw_status" ]] || return 0
+
+  CHILD_OUTPUT_PATH="$CHILD_OUTPUT_PATH" \
+  RAW_GIT_STATUS="$raw_status" \
+  node --input-type=module <<'NODE'
+import { existsSync, readFileSync } from "node:fs";
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizePath(value = "") {
+  return String(value || "").trim().replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+function statusPath(line = "") {
+  const path = line.slice(3).trim();
+  const renameParts = path.split(" -> ");
+  return normalizePath(renameParts.at(-1) || path);
+}
+
+const outputPath = process.env.CHILD_OUTPUT_PATH || "";
+let declaredFiles = new Set();
+if (outputPath && existsSync(outputPath)) {
+  try {
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    declaredFiles = new Set([
+      ...asArray(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles),
+      ...asArray(output.touched_files || output.touchedFiles)
+    ].map(normalizePath).filter(Boolean));
+  } catch {
+    declaredFiles = new Set();
+  }
+}
+
+const allowedPackageManagerSideEffects = new Set(["package-lock.json"]);
+const blocking = String(process.env.RAW_GIT_STATUS || "")
+  .split(/\r?\n/)
+  .filter(Boolean)
+  .filter((line) => {
+    const path = statusPath(line);
+    return !(allowedPackageManagerSideEffects.has(path) && !declaredFiles.has(path));
+  });
+
+console.log(blocking.join("\n"));
+NODE
+}
+
 FINAL_STATUS=$CLAUDE_STATUS
 if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPUT_PATH" ]]; then
   WORKER_HEAD="$(git -C "$EXECUTION_ROOT" rev-parse HEAD)"
@@ -234,10 +285,11 @@ if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPU
   if [[ "$CHILD_MERGE_STATUS" == "pass" ]]; then
     AHEAD_COUNT="$(git -C "$EXECUTION_ROOT" rev-list --count "$BASE_COMMIT..HEAD")"
     DIRTY_STATUS="$(git -C "$EXECUTION_ROOT" status --porcelain)"
+    MERGE_BLOCKING_DIRTY_STATUS="$(merge_blocking_dirty_status "$EXECUTION_ROOT" "$DIRTY_STATUS")"
     PRIMARY_STATUS="$(git -C "$PRIMARY_REPO_ROOT" status --porcelain)"
     PRIMARY_HEAD="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
 
-    if [[ "$AHEAD_COUNT" -gt 0 && -z "$DIRTY_STATUS" && -z "$PRIMARY_STATUS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
+    if [[ "$AHEAD_COUNT" -gt 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_STATUS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
       if git -C "$PRIMARY_REPO_ROOT" merge --ff-only "$WORKTREE_BRANCH" >&2; then
         INTEGRATED_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
         update_child_output_integration "pass" "isolated worker branch fast-forwarded into primary mainline" "$WORKER_HEAD" "$INTEGRATED_COMMIT"
@@ -245,12 +297,11 @@ if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPU
         FINAL_STATUS=1
         update_child_output_integration "fail" "failed to fast-forward isolated worker branch into primary mainline" "$WORKER_HEAD" ""
       fi
-    elif [[ "$AHEAD_COUNT" -eq 0 && -z "$DIRTY_STATUS" ]]; then
-      FINAL_STATUS=1
-      update_child_output_integration "fail" "child returned pass but isolated worker branch has no committed mainline delta" "$WORKER_HEAD" ""
+    elif [[ "$AHEAD_COUNT" -eq 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_STATUS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
+      update_child_output_integration "pass" "child returned pass with no new committed delta; current mainline accepted as already satisfying the work package" "$WORKER_HEAD" "$PRIMARY_HEAD"
     else
       FINAL_STATUS=1
-      update_child_output_integration "fail" "isolated worker result is not mergeable: ahead_count=$AHEAD_COUNT dirty_worker=$([[ -n "$DIRTY_STATUS" ]] && printf yes || printf no) dirty_primary=$([[ -n "$PRIMARY_STATUS" ]] && printf yes || printf no) primary_head_matches_base=$([[ "$PRIMARY_HEAD" == "$BASE_COMMIT" ]] && printf yes || printf no)" "$WORKER_HEAD" ""
+      update_child_output_integration "fail" "isolated worker result is not mergeable: ahead_count=$AHEAD_COUNT dirty_worker=$([[ -n "$MERGE_BLOCKING_DIRTY_STATUS" ]] && printf yes || printf no) dirty_primary=$([[ -n "$PRIMARY_STATUS" ]] && printf yes || printf no) primary_head_matches_base=$([[ "$PRIMARY_HEAD" == "$BASE_COMMIT" ]] && printf yes || printf no)" "$WORKER_HEAD" ""
     fi
   else
     FINAL_STATUS=1

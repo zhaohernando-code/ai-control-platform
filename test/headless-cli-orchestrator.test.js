@@ -463,6 +463,76 @@ test("Claude child worker blocks mainline integration when child test results fa
   }
 });
 
+test("Claude child worker accepts already-satisfied package despite undeclared package-lock side effect", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-no-delta-"));
+  const workerRoot = join(tempDir, "worker-workspaces");
+  const promptFile = join(tempDir, "prompt.md");
+  const outputPath = join(tempDir, "child-output.json");
+  const captureFile = join(tempDir, "worker-cwd.txt");
+  const fakeProxy = join(tempDir, "claude-proxy.sh");
+  writeFileSync(promptFile, "Return JSON.");
+  writeFileSync(fakeProxy, [
+    "#!/usr/bin/env bash",
+    "pwd > \"$CAPTURE_CWD\"",
+    "node --input-type=module <<'NODE'",
+    "import { readFileSync, writeFileSync } from 'node:fs';",
+    "const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));",
+    "lock.packages[''].engines = { node: '>=18', npm: '>=9' };",
+    "writeFileSync('package-lock.json', `${JSON.stringify(lock, null, 2)}\\n`);",
+    "NODE",
+    "cat > \"$TEST_CHILD_OUTPUT\" <<'JSON'",
+    JSON.stringify({
+      status: "pass",
+      role: CHILD_WORKER_ROLE,
+      host: "platform_core",
+      changed_files: ["PROJECT_RULES.md", "test/workbench-shell.test.js"],
+      test_results: [
+        { command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }
+      ],
+      deferred_parent_gates: ["npm run check:closeout"],
+      durable_state_updated: true,
+      process_hardening: { required: false, status: "not_required" },
+      continuation_readiness: { ready: true },
+      self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+    }),
+    "JSON",
+    "cat \"$TEST_CHILD_OUTPUT\""
+  ].join("\n"));
+  chmodSync(fakeProxy, 0o755);
+
+  let workerCwd = "";
+  try {
+    const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile, outputPath], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
+        AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
+        AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT: workerRoot,
+        CAPTURE_CWD: captureFile,
+        TEST_CHILD_OUTPUT: outputPath
+      }
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    workerCwd = readFileSync(captureFile, "utf8").trim();
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    assert.equal(output.status, "pass");
+    assert.equal(output.command_evidence.child_worker_integration.status, "pass");
+    assert.match(output.command_evidence.child_worker_integration.message, /already satisfying/);
+    assert.equal(output.command_evidence.child_worker_integration.integrated_commit, output.command_evidence.child_worker_integration.base_commit);
+  } finally {
+    if (workerCwd) {
+      const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {
+        encoding: "utf8"
+      }).stdout.trim();
+      spawnSync("git", ["worktree", "remove", "--force", workerCwd], { encoding: "utf8" });
+      if (branch) spawnSync("git", ["branch", "-D", branch], { encoding: "utf8" });
+    }
+  }
+});
+
 test("live workbench starts Claude child workers with output path for integration writeback", () => {
   const script = readFileSync("scripts/start-workbench-live.sh", "utf8");
   assert.ok(script.includes(`DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'`));
