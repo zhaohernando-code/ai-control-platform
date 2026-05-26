@@ -433,3 +433,153 @@ test("workbench controls do not show success when operator event persistence fai
   assert.match(script, /button\.dataset\.eventState = "recorded"/);
   assert.match(script, /catch \{[\s\S]*button\.dataset\.eventState = "failed";[\s\S]*return;[\s\S]*\}/);
 });
+
+test("next.js + antd skeleton is durable: package, config, layout, providers, theme, entry, api client are present", () => {
+  // Step 02/7 of the requirement-unknown-20260526033003 frontend refactor:
+  // a Next.js (App Router) + Ant Design skeleton must exist under
+  // `apps/workbench/`. This test fixes the skeleton's shape so subsequent
+  // slices cannot silently drop the antd-only baseline or break SPA form.
+
+  // 1. Package manifest must select Next.js App Router + antd + React 18 + TS.
+  const pkg = JSON.parse(read("apps/workbench/package.json"));
+  assert.equal(pkg.private, true);
+  assert.ok(pkg.scripts && pkg.scripts.build && pkg.scripts.dev,
+    "next dev / build scripts must be present");
+  assert.match(pkg.scripts.build, /next build/);
+  assert.match(pkg.scripts.dev, /next dev/);
+  assert.ok(pkg.dependencies, "dependencies must be declared");
+  for (const dep of [
+    "next",
+    "react",
+    "react-dom",
+    "antd",
+    "@ant-design/icons",
+    "@ant-design/nextjs-registry"
+  ]) {
+    assert.ok(pkg.dependencies[dep], `missing required dependency: ${dep}`);
+  }
+  assert.ok(
+    pkg.devDependencies && pkg.devDependencies.typescript,
+    "typescript must be a devDependency"
+  );
+  // Forbid a second base UI framework slipping in.
+  const allDeps = {
+    ...(pkg.dependencies || {}),
+    ...(pkg.devDependencies || {})
+  };
+  for (const banned of [
+    "@mui/material",
+    "@chakra-ui/react",
+    "shadcn-ui",
+    "@shadcn/ui"
+  ]) {
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(allDeps, banned),
+      false,
+      `forbidden second UI framework dependency: ${banned}`
+    );
+  }
+
+  // 2. Next.js config + TS config exist and stay declarative.
+  const nextConfig = read("apps/workbench/next.config.mjs");
+  assert.match(nextConfig, /reactStrictMode/);
+  assert.match(nextConfig, /WORKBENCH_API_BASE/);
+  // antd v5 在 App Router 下需要 transpilePackages，否则 build 时
+  // server components 客户端清单会丢失 barrel optimized 子模块。
+  assert.match(nextConfig, /transpilePackages/);
+  assert.match(nextConfig, /"antd"/);
+  assert.match(nextConfig, /"@ant-design\/icons"/);
+  const tsConfig = JSON.parse(read("apps/workbench/tsconfig.json"));
+  assert.equal(tsConfig.compilerOptions.strict, true);
+  assert.equal(tsConfig.compilerOptions.jsx, "preserve");
+  assert.ok(tsConfig.compilerOptions.paths && tsConfig.compilerOptions.paths["@/*"],
+    "tsconfig must expose '@/*' path alias");
+
+  // 3. App Router root layout uses antd via AppProviders + WorkbenchShell.
+  const layout = read("apps/workbench/app/layout.tsx");
+  assert.match(layout, /AppProviders/);
+  assert.match(layout, /WorkbenchShell/);
+  assert.match(layout, /<html lang="zh-CN">/);
+
+  // 4. Providers wire ConfigProvider + AntdRegistry + AntdApp.
+  const providers = read("apps/workbench/app/providers.tsx");
+  assert.match(providers, /"use client";/);
+  assert.match(providers, /@ant-design\/nextjs-registry/);
+  assert.match(providers, /antd\/locale\/zh_CN/);
+  assert.match(providers, /ConfigProvider/);
+  assert.match(providers, /AntdRegistry/);
+
+  // 5. Shell is built from antd Layout / Sider / Header / Menu (no naked
+  //    divs trying to re-implement layout primitives).
+  const shell = read("apps/workbench/app/shell.tsx");
+  assert.match(shell, /"use client";/);
+  assert.match(shell, /from "antd"/);
+  assert.match(shell, /Layout/);
+  assert.match(shell, /Sider/);
+  assert.match(shell, /Header/);
+  assert.match(shell, /Content/);
+  assert.match(shell, /Menu/);
+  assert.match(shell, /usePathname/);
+  assert.match(shell, /useRouter/);
+  // The SPA tabs from FRONTEND_MIGRATION_INVENTORY.md must survive here.
+  for (const key of [
+    "overview",
+    "requirements",
+    "projects",
+    "flow",
+    "agents",
+    "risks",
+    "governance",
+    "runs"
+  ]) {
+    assert.match(shell, new RegExp(`key: "${key}"`));
+  }
+
+  // 6. Theme tokens centralised in app/theme.ts (no per-component hard-coding).
+  const themeFile = read("apps/workbench/app/theme.ts");
+  assert.match(themeFile, /ThemeConfig/);
+  assert.match(themeFile, /colorPrimary/);
+  assert.match(themeFile, /Layout:/);
+
+  // 7. Entry page uses antd components only (no naked div / inline css spree).
+  const page = read("apps/workbench/app/page.tsx");
+  assert.match(page, /from "antd"/);
+  assert.match(page, /Card/);
+  assert.match(page, /Descriptions/);
+  assert.match(page, /WORKBENCH_API_ENDPOINTS/);
+  // Loading / error / 404 boundaries also via antd.
+  assert.match(read("apps/workbench/app/loading.tsx"), /Skeleton/);
+  assert.match(read("apps/workbench/app/error.tsx"), /Result/);
+  assert.match(read("apps/workbench/app/not-found.tsx"), /Result/);
+
+  // 8. API client base + endpoint surface stays in sync with the inventory.
+  const api = read("apps/workbench/lib/api/index.ts");
+  assert.match(api, /WORKBENCH_API_BASE/);
+  assert.match(api, /WORKBENCH_API_ENDPOINTS/);
+  assert.match(api, /fetchWorkbenchJson/);
+  for (const path of [
+    "/api/workbench/projection",
+    "/api/workbench/projections",
+    "/api/workbench/events",
+    "/api/workbench/requirements",
+    "/api/workbench/plan-reviews",
+    "/api/workbench/scheduler-dispatch",
+    "/api/workbench/autonomous-scheduler-loop"
+  ]) {
+    assert.match(api, new RegExp(path.replace(/[/-]/g, (c) => `\\${c}`)));
+  }
+  const projectionApi = read("apps/workbench/lib/api/projection.ts");
+  assert.match(projectionApi, /fetchCurrentProjection/);
+  assert.match(projectionApi, /fetchProjectionHistory/);
+
+  // 9. Readme documents the local interop matrix between workbench-server
+  //    (4180) and the new Next.js skeleton (4181) so future agents do not
+  //    duplicate backend semantics in the new frontend.
+  const readme = read("apps/workbench/README.md");
+  assert.match(readme, /Next\.js \(App Router\) \+ Ant Design/);
+  assert.match(readme, /workbench-server\.mjs/);
+  assert.match(readme, /4180/);
+  assert.match(readme, /4181/);
+  assert.match(readme, /WORKBENCH_API_BASE/);
+  assert.match(readme, /npm run build/);
+});

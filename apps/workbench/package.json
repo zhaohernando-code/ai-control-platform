@@ -1,0 +1,29 @@
+{
+  "name": "@ai-control-platform/workbench-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js + Ant Design skeleton for the AI Control Platform workbench (App Router).",
+  "scripts": {
+    "dev": "next dev -p 4181",
+    "build": "next build",
+    "start": "next start -p 4181",
+    "lint": "next lint"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.5.1",
+    "@ant-design/nextjs-registry": "^1.0.2",
+    "antd": "^5.21.0",
+    "next": "^14.2.13",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.6.2"
+  }
+}
