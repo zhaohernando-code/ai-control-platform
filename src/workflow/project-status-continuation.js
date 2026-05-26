@@ -55,6 +55,8 @@ function normalizeProjectStatus(projectStatus = {}) {
     next_step: normalizeString(projectStatus.next_step),
     next_work_packages: asArray(projectStatus.next_work_packages || projectStatus.nextWorkPackages),
     global_goals: asArray(projectStatus.global_goals),
+    requirement_intake: isObject(projectStatus.requirement_intake) ? projectStatus.requirement_intake : null,
+    plan_reviews: isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {},
     linked_docs: asArray(projectStatus.linked_docs)
   };
 }

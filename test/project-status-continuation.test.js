@@ -48,6 +48,42 @@ test("project status continuation is ready while global goals are pending", () =
   assert.equal(result.decision.next_work_packages[0].global_goal_id, "platform-foundation");
 });
 
+test("project status continuation preserves approved requirement plans for work package splitting", () => {
+  const result = prepareContinuationFromProjectStatus(projectStatus({
+    next_step: "",
+    requirement_intake: {
+      items: [
+        {
+          id: "requirement-frontend-refactor",
+          title: "前端重构",
+          status: "submitted",
+          owned_files: ["."]
+        }
+      ]
+    },
+    plan_reviews: {
+      "requirement-frontend-refactor": {
+        phase: "in_development",
+        implementation_outline: ["盘点现状", "建立 Next.js + antd 骨架"],
+        acceptance_gates: ["Next.js build passes"]
+      }
+    },
+    next_work_packages: [
+      {
+        id: "requirement-frontend-refactor-intake",
+        action: "continue_requirement_intake",
+        global_goal_id: "requirement-frontend-refactor",
+        owned_files: ["."]
+      }
+    ]
+  }));
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.decision.next_work_packages.length, 2);
+  assert.equal(result.decision.next_work_packages[0].action, "execute_requirement_plan_step");
+  assert.equal(result.decision.context_pack_seed.subtasks[0].id, "requirement-frontend-refactor-plan-step-01");
+});
+
 test("project status continuation completes only when configured goals are complete", () => {
   const result = prepareContinuationFromProjectStatus(projectStatus({
     next_step: "",
