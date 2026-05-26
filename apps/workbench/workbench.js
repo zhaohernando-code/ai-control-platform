@@ -1093,17 +1093,19 @@ qsa("[data-plan-review-action]").forEach((button) => {
 
     button.dataset.eventState = "pending";
     button.disabled = true;
-    if (status) status.textContent = action === "approve" ? "正在确认方案" : "正在退回方案";
+    if (status) status.textContent = action === "approve" ? "正在确认方案并进入开发" : "正在退回方案";
 
     try {
       const result = await source.updatePlanReview({
         projection_id: currentProjectionId,
         requirement_id: requirementId,
         action,
+        auto_advance_after_plan_review: action === "approve",
+        auto_advance_max_iterations: action === "approve" ? 3 : undefined,
         created_at: new Date().toISOString()
       });
       button.dataset.eventState = "recorded";
-      if (status) status.textContent = action === "approve" ? "已同意进入开发" : "已退回修订";
+      if (status) status.textContent = action === "approve" ? "已进入开发" : "已退回修订";
       if (result.projection) {
         currentProjection = result.projection;
         renderProjection(result.projection);
