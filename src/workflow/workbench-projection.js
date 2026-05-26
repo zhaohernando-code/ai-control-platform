@@ -253,6 +253,18 @@ function summarizeManifest(manifest) {
   };
 }
 
+function reviewerGateForManifest(reviewerGate = {}, manifest = {}) {
+  const request = reviewerGate?.request || reviewerGate || {};
+  const requestRunId = normalizeString(request.run_id || request.runId);
+  const requestCycleId = normalizeString(request.cycle_id || request.cycleId);
+  const manifestRunId = normalizeString(manifest?.run_id || manifest?.runId);
+  const manifestCycleId = normalizeString(manifest?.cycle_id || manifest?.cycleId);
+
+  if (requestRunId && manifestRunId && requestRunId !== manifestRunId) return {};
+  if (requestCycleId && manifestCycleId && requestCycleId !== manifestCycleId) return {};
+  return reviewerGate || {};
+}
+
 function summarizeOperatorEvents(application = null, ledger = null) {
   if (!ledger) {
     return {
@@ -1135,8 +1147,7 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
     if (
       globalGoals.status === "complete" &&
       Number(globalGoals.pending || 0) === 0 &&
-      Number(taskDag.dispatchable?.length || 0) === 0 &&
-      !normalizeString(projectStatus.next_step || projectStatus.nextStep)
+      Number(taskDag.dispatchable?.length || 0) === 0
     ) {
       return {
         status: "complete",
@@ -1484,8 +1495,7 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
     }
     if (
       globalGoals.status === "complete" &&
-      Number(globalGoals.pending || 0) === 0 &&
-      !normalizeString(projectStatus.next_step || projectStatus.nextStep)
+      Number(globalGoals.pending || 0) === 0
     ) {
       return {
         status: "complete",
@@ -1602,7 +1612,7 @@ export function createWorkbenchProjection(input = {}) {
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
   const operationsTimeline = summarizeOperationsTimeline(manifest, artifactLedger);
   const modelSummary = summarizeModelRouting(modelPlan);
-  const reviewerSummary = summarizeReviewerGate(reviewerGate);
+  const reviewerSummary = summarizeReviewerGate(reviewerGateForManifest(reviewerGate, manifest));
   const dagSummary = summarizeDag(dagInput);
   const projectManagementBase = summarizeProjectManagement(input, {
     dagSummary,
