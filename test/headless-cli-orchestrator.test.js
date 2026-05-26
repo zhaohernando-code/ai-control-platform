@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
@@ -384,6 +384,74 @@ test("Claude child worker runs in an isolated worker worktree by default", () =>
     const addDirIndex = captured.indexOf("--add-dir");
     assert.ok(addDirIndex >= 0);
     assert.equal(captured[addDirIndex + 1], workerCwd);
+  } finally {
+    if (workerCwd) {
+      const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {
+        encoding: "utf8"
+      }).stdout.trim();
+      spawnSync("git", ["worktree", "remove", "--force", workerCwd], { encoding: "utf8" });
+      if (branch) spawnSync("git", ["branch", "-D", branch], { encoding: "utf8" });
+    }
+  }
+});
+
+test("Claude child worker blocks mainline integration when child test results failed", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-failed-tests-"));
+  const workerRoot = join(tempDir, "worker-workspaces");
+  const promptFile = join(tempDir, "prompt.md");
+  const outputPath = join(tempDir, "child-output.json");
+  const captureFile = join(tempDir, "worker-cwd.txt");
+  const fakeProxy = join(tempDir, "claude-proxy.sh");
+  const sentinelFile = "child-worker-integration-sentinel.txt";
+  writeFileSync(promptFile, "Return JSON.");
+  writeFileSync(fakeProxy, [
+    "#!/usr/bin/env bash",
+    "pwd > \"$CAPTURE_CWD\"",
+    `printf 'should not merge\\n' > ${sentinelFile}`,
+    `git add ${sentinelFile}`,
+    "git -c user.name='AI Control Test' -c user.email='ai-control-test@example.local' commit -m 'test failed child output' >/dev/null",
+    "cat > \"$TEST_CHILD_OUTPUT\" <<'JSON'",
+    JSON.stringify({
+      status: "pass",
+      role: CHILD_WORKER_ROLE,
+      host: "platform_core",
+      changed_files: [sentinelFile],
+      test_results: [
+        { command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" },
+        { command: "npm run check:closeout", status: "fail" }
+      ],
+      durable_state_updated: true,
+      process_hardening: { required: false, status: "not_required" },
+      continuation_readiness: { ready: true },
+      self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
+    }),
+    "JSON",
+    "cat \"$TEST_CHILD_OUTPUT\""
+  ].join("\n"));
+  chmodSync(fakeProxy, 0o755);
+
+  let workerCwd = "";
+  try {
+    const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile, outputPath], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
+        AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
+        AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT: workerRoot,
+        CAPTURE_CWD: captureFile,
+        TEST_CHILD_OUTPUT: outputPath
+      }
+    });
+
+    assert.equal(result.status, 1, result.stderr);
+    workerCwd = readFileSync(captureFile, "utf8").trim();
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    assert.equal(output.status, "fail");
+    assert.match(output.blocker, /child output test failed: npm run check:closeout/);
+    assert.equal(output.command_evidence.child_worker_integration.status, "fail");
+    assert.equal(existsSync(sentinelFile), false);
   } finally {
     if (workerCwd) {
       const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {

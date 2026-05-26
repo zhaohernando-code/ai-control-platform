@@ -133,25 +133,105 @@ writeFileSync(path, `${JSON.stringify(output, null, 2)}\n`);
 NODE
 }
 
+validate_child_output_before_integration() {
+  [[ -n "$CHILD_OUTPUT_PATH" && -f "$CHILD_OUTPUT_PATH" ]] || {
+    printf '%s\n%s\n' "fail" "child output JSON is missing; mainline integration skipped"
+    return 0
+  }
+
+  CHILD_OUTPUT_PATH="$CHILD_OUTPUT_PATH" node --input-type=module <<'NODE'
+import { readFileSync } from "node:fs";
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeToken(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function passToken(value) {
+  return ["pass", "passed", "ok", "success"].includes(normalizeToken(value));
+}
+
+function durableStatePass(output) {
+  return output.durable_state_updated === true ||
+    output.workflow_state_updated === true ||
+    isObject(output.durable_state) ||
+    isObject(output.workflow_state);
+}
+
+const path = process.env.CHILD_OUTPUT_PATH;
+let output;
+try {
+  output = JSON.parse(readFileSync(path, "utf8"));
+} catch (error) {
+  console.log("fail");
+  console.log(`child output JSON cannot be parsed: ${error.message}`);
+  process.exit(0);
+}
+
+const issues = [];
+const testResults = asArray(output.test_results || output.testResults);
+const changedFiles = asArray(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles)
+  .concat(asArray(output.touched_files || output.touchedFiles))
+  .map((entry) => String(entry || "").trim())
+  .filter(Boolean);
+const processHardening = output.process_hardening || output.processHardening || {};
+const continuationReadiness = output.continuation_readiness || output.continuationReadiness || {};
+const selfEvaluation = output.self_evaluation || output.selfEvaluation || {};
+
+if (!isObject(output)) {
+  issues.push("child output must be a JSON object");
+}
+if (!passToken(output.status)) {
+  issues.push("child output status is not pass");
+}
+if (String(output.host || output.host_classification || "").trim() !== "platform_core") {
+  issues.push("child output host is not platform_core");
+}
+if (changedFiles.length === 0) {
+  issues.push("child output has no changed/touched files");
+}
+if (testResults.length === 0) {
+  issues.push("child output has no test results");
+}
+for (const [index, testResult] of testResults.entries()) {
+  if (!passToken(testResult?.status || testResult?.result)) {
+    const command = String(testResult?.command || `test_results[${index}]`).trim();
+    issues.push(`child output test failed: ${command}`);
+  }
+}
+if (!durableStatePass(output)) {
+  issues.push("child output has no durable state evidence");
+}
+if (processHardening.required === true && processHardening.status !== "completed") {
+  issues.push("child output process hardening is incomplete");
+}
+if (continuationReadiness.ready !== true) {
+  issues.push("child output continuation readiness is not true");
+}
+if (selfEvaluation.aligned !== true || selfEvaluation.drifted === true) {
+  issues.push("child output self evaluation is not aligned");
+}
+
+console.log(issues.length ? "fail" : "pass");
+console.log(issues.length ? issues.join("; ") : "child output is eligible for mainline integration");
+NODE
+}
+
 FINAL_STATUS=$CLAUDE_STATUS
 if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPUT_PATH" ]]; then
   WORKER_HEAD="$(git -C "$EXECUTION_ROOT" rev-parse HEAD)"
-  CHILD_STATUS="$(CHILD_OUTPUT_PATH="$CHILD_OUTPUT_PATH" node --input-type=module <<'NODE'
-import { existsSync, readFileSync } from "node:fs";
-const path = process.env.CHILD_OUTPUT_PATH;
-if (!path || !existsSync(path)) {
-  console.log("");
-  process.exit(0);
-}
-try {
-  const parsed = JSON.parse(readFileSync(path, "utf8"));
-  console.log(String(parsed.status || "").toLowerCase());
-} catch {
-  console.log("");
-}
-NODE
-)"
-  if [[ "$CHILD_STATUS" == "pass" ]]; then
+  CHILD_OUTPUT_VALIDATION="$(validate_child_output_before_integration)"
+  CHILD_MERGE_STATUS="$(printf '%s\n' "$CHILD_OUTPUT_VALIDATION" | sed -n '1p')"
+  CHILD_MERGE_MESSAGE="$(printf '%s\n' "$CHILD_OUTPUT_VALIDATION" | sed -n '2,$p' | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+
+  if [[ "$CHILD_MERGE_STATUS" == "pass" ]]; then
     AHEAD_COUNT="$(git -C "$EXECUTION_ROOT" rev-list --count "$BASE_COMMIT..HEAD")"
     DIRTY_STATUS="$(git -C "$EXECUTION_ROOT" status --porcelain)"
     PRIMARY_STATUS="$(git -C "$PRIMARY_REPO_ROOT" status --porcelain)"
@@ -173,7 +253,8 @@ NODE
       update_child_output_integration "fail" "isolated worker result is not mergeable: ahead_count=$AHEAD_COUNT dirty_worker=$([[ -n "$DIRTY_STATUS" ]] && printf yes || printf no) dirty_primary=$([[ -n "$PRIMARY_STATUS" ]] && printf yes || printf no) primary_head_matches_base=$([[ "$PRIMARY_HEAD" == "$BASE_COMMIT" ]] && printf yes || printf no)" "$WORKER_HEAD" ""
     fi
   else
-    update_child_output_integration "skipped" "child output status is not pass; mainline integration skipped" "$WORKER_HEAD" ""
+    FINAL_STATUS=1
+    update_child_output_integration "fail" "$CHILD_MERGE_MESSAGE" "$WORKER_HEAD" ""
   fi
 fi
 
