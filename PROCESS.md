@@ -28,6 +28,8 @@
 ## Gate 与持续执行
 
 - **不合格先改流程/gate**：发现 P0/P1、假成功、状态未持久化、宿主越界、owned files 越界或 continuation 断裂时，先新增或更新 invariant、gate、schema、测试、fixture 或 projection，再重跑实现。
+- **小修走轻量收口，避免工具链过载**：文案、样式、单点 UI 渲染、只读投影展示这类低风险改动，默认只读相关文件、跑定点测试、做一次真实 served-route 验证并确认 `main`/`origin/main` 一致；不要自动加载大型 frontend/browser skill、扫全仓 artifacts、或直接跑完整 closeout。只有改动调度、权限、发布、状态写入、跨模块契约、自动化门禁或用户明确要求全量验收时，才升级到完整 closeout。
+- **搜索和验收必须先限界**：默认排除 `tmp/`、`.claude/`、`coverage/`、大体积 replay/workbench input artifact；需要查历史 artifact 时先定位文件名或时间窗口，再查内容。浏览器验证优先使用项目现有 Node18/Playwright 包装器；Browser skill 只在用户明确要求或需要 in-app 交互时加载。
 - **完成定义包含继续能力和全局不跑偏**：单个子任务测试通过不代表平台完成。只要存在 `PROJECT_STATUS.next_step`、pending global goals、可执行 work package 或 workbench next action，就必须生成 continuation seed 或明确阻塞原因，并复核当前工作仍服务 ai-control-platform 的全局目标。
 - **Process hardening 是合入前条件**：阻塞级 reviewer finding 必须有 invariant、enforcement target、regression test、verification 和 completed 状态；缺任一项不能合入实现。
 - **治理 skill 编排是必经门禁**：closeout 必须验证当前治理编排 artifact；该 artifact 要覆盖适用审计维度、真实代码/运行证据、缺陷修复调度、证据缺口和用户决策包。不得把治理 orchestrator 只当人工提示或可选试跑。
