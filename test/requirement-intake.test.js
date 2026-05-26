@@ -5,6 +5,7 @@ import {
   applyGeneratedRequirementPlan,
   createRequirementPlanPrompt,
   markRequirementPlanGenerationFailed,
+  normalizeRequirementPlanWorkPackageGranularity,
   parseRequirementPlanGenerationOutput,
   recordRequirementIntakeSubmitted,
   submitRequirementToProjectStatus,
@@ -264,6 +265,36 @@ test("requirement plan review can be approved or returned for revision", () => {
   assert.equal(revised.status, "pass");
   assert.equal(revised.plan_review.phase, "revising");
   assert.equal(revised.plan_review.action_status, "已退回修订");
+});
+
+test("frontend view migration plan step is split into bounded executable slices", () => {
+  const packages = normalizeRequirementPlanWorkPackageGranularity({
+    id: "requirement-frontend-refactor-plan-step-04",
+    title: "前端重构：实施步骤 04 / 7",
+    action: "execute_requirement_plan_step",
+    owned_files: ["."],
+    acceptance_gates: ["npm run check:workbench:browser-events"],
+    depends_on: ["requirement-frontend-refactor-plan-step-03"],
+    reason: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。",
+    source: {
+      requirement_id: "requirement-frontend-refactor",
+      plan_step_index: 4,
+      plan_step_total: 7,
+      constraints: "当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。",
+      implementation_step: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。"
+    }
+  });
+
+  assert.deepEqual(packages.map((workPackage) => workPackage.id), [
+    "requirement-frontend-refactor-plan-step-04-workbench-home",
+    "requirement-frontend-refactor-plan-step-04-requirement-intake",
+    "requirement-frontend-refactor-plan-step-04-plan-review"
+  ]);
+  assert.deepEqual(packages[0].depends_on, ["requirement-frontend-refactor-plan-step-03"]);
+  assert.deepEqual(packages[1].depends_on, ["requirement-frontend-refactor-plan-step-04-workbench-home"]);
+  assert.equal(packages[0].source.parent_work_package_id, "requirement-frontend-refactor-plan-step-04");
+  assert.equal(packages[2].source.plan_step_slice, "plan-review");
+  assert.ok(packages[1].acceptance_gates.some((gate) => gate.includes("需求录入流程")));
 });
 
 test("requirement intake summary is stable without submissions", () => {

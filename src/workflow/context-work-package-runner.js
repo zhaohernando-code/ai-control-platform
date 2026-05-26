@@ -5,6 +5,7 @@ import {
   isProviderModelRoutedExecutionRequested
 } from "./context-work-package-execution-adapter.js";
 import { evaluateFixedDevelopmentModeGate } from "./fixed-development-mode-gate.js";
+import { normalizeRequirementPlanWorkPackageGranularity } from "./requirement-intake.js";
 import { appendRunEvent, validateRunManifest } from "./run-manifest.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 
@@ -59,6 +60,35 @@ function runnableNodes(workflowState = {}, options = {}) {
     dag,
     dispatchable,
     selected: dispatchable.slice(0, Math.max(1, maxPackageCount))
+  };
+}
+
+function workPackageId(workPackage = {}) {
+  return normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId);
+}
+
+function sameWorkPackages(left = [], right = []) {
+  if (left.length !== right.length) return false;
+  return left.every((workPackage, index) => workPackageId(workPackage) === workPackageId(right[index]));
+}
+
+function normalizeWorkflowStateWorkPackageGranularity(workflowState = {}) {
+  const sourcePackages = asArray(workflowState.manifest?.work_packages).length > 0
+    ? workflowState.manifest.work_packages
+    : asArray(workflowState.task_dag || workflowState.taskDag);
+  const normalizedPackages = sourcePackages.flatMap((workPackage) => {
+    return normalizeRequirementPlanWorkPackageGranularity(workPackage);
+  });
+
+  if (sameWorkPackages(sourcePackages, normalizedPackages)) return workflowState;
+
+  return {
+    ...workflowState,
+    manifest: {
+      ...workflowState.manifest,
+      work_packages: normalizedPackages
+    },
+    task_dag: normalizedPackages
   };
 }
 
@@ -438,7 +468,8 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     };
   }
 
-  const { dag, dispatchable, selected } = runnableNodes(workflowState, options);
+  const normalizedWorkflowState = normalizeWorkflowStateWorkPackageGranularity(workflowState);
+  const { dag, dispatchable, selected } = runnableNodes(normalizedWorkflowState, options);
   if (dag.status !== "pass") {
     return {
       status: "fail",
@@ -457,7 +488,7 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
   }
 
   const fixedDevelopmentModeGate = evaluateFixedDevelopmentModeGate({
-    manifest: workflowState.manifest,
+    manifest: normalizedWorkflowState.manifest,
     selected_work_packages: selected
   });
   if (fixedDevelopmentModeGate.status !== "pass") {
@@ -483,7 +514,7 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
 
   if (alreadySatisfiedEvaluator) {
     const alreadySatisfiedResult = alreadySatisfiedEvaluator({
-      workflow_state: workflowState,
+      workflow_state: normalizedWorkflowState,
       selected_work_packages: selected,
       options: {
         ...options,
@@ -570,7 +601,7 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
       : typeof options.adapterExecutor === "function"
         ? options.adapterExecutor
         : executeContextWorkPackagesWithAdapter;
-    const adapterResult = adapterExecutor(workflowState, selected, {
+    const adapterResult = adapterExecutor(normalizedWorkflowState, selected, {
       ...options,
       created_at: createdAt
     });
@@ -694,10 +725,10 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     }
   }
 
-  const artifact = runArtifact(workflowState, executedNodes, executionOptions);
-  const nextWorkPackages = updateWorkPackages(workflowState, executedNodes, { ...options, created_at: createdAt });
+  const artifact = runArtifact(normalizedWorkflowState, executedNodes, executionOptions);
+  const nextWorkPackages = updateWorkPackages(normalizedWorkflowState, executedNodes, { ...options, created_at: createdAt });
   const manifestWithPackages = {
-    ...workflowState.manifest,
+    ...normalizedWorkflowState.manifest,
     work_packages: nextWorkPackages,
     gate_results: [
       ...asArray(workflowState.manifest?.gate_results),

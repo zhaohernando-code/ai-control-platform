@@ -9,7 +9,10 @@ import {
 } from "./frontend-acceptance.js";
 import { createSelfGovernanceReport } from "./self-governance.js";
 import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
-import { createRequirementPlanWorkPackages } from "./requirement-intake.js";
+import {
+  createRequirementPlanWorkPackages,
+  normalizeRequirementPlanWorkPackageGranularity
+} from "./requirement-intake.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -127,13 +130,19 @@ function nextWorkPackagesFrom(input) {
     ...codeReviewCoveragePackages
   ];
   const expandedDirectPackages = filterCompletedWorkPackages(
-    expandRequirementPlanWorkPackages(input, directPackages),
+    normalizeRequirementPlanWorkPackages(expandRequirementPlanWorkPackages(input, directPackages)),
     input
   );
   if (expandedDirectPackages.length > 0) {
     return dedupeWorkPackages(expandedDirectPackages);
   }
   return dedupeWorkPackages(globalGoalCompletion.next_work_packages);
+}
+
+function normalizeRequirementPlanWorkPackages(workPackages = []) {
+  return asArray(workPackages).flatMap((workPackage) => {
+    return normalizeRequirementPlanWorkPackageGranularity(workPackage);
+  });
 }
 
 function completedWorkPackageIds(input = {}) {

@@ -176,6 +176,43 @@ test("approved requirement plan continuation removes dependencies already comple
   assert.equal(decision.context_pack_seed.subtasks[0].source.implementation_step, "建立 Next.js + antd 骨架");
 });
 
+test("existing broad frontend view migration packages are split before dispatch", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "" }),
+    run_evaluation: {
+      status: "rerun",
+      next_work_packages: [
+        {
+          id: "requirement-frontend-refactor-plan-step-04",
+          title: "前端重构：实施步骤 04 / 7",
+          action: "execute_requirement_plan_step",
+          owned_files: ["."],
+          acceptance_gates: ["npm run check:workbench:browser-events"],
+          depends_on: ["requirement-frontend-refactor-plan-step-03"],
+          reason: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。",
+          source: {
+            requirement_id: "requirement-frontend-refactor",
+            plan_step_index: 4,
+            plan_step_total: 7,
+            constraints: "当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。",
+            implementation_step: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。"
+          }
+        }
+      ]
+    }
+  });
+
+  assert.equal(decision.action, RERUN);
+  assert.deepEqual(decision.next_work_packages.map((workPackage) => workPackage.id), [
+    "requirement-frontend-refactor-plan-step-04-workbench-home",
+    "requirement-frontend-refactor-plan-step-04-requirement-intake",
+    "requirement-frontend-refactor-plan-step-04-plan-review"
+  ]);
+  assert.deepEqual(decision.next_work_packages[0].depends_on, ["requirement-frontend-refactor-plan-step-03"]);
+  assert.deepEqual(decision.next_work_packages[1].depends_on, ["requirement-frontend-refactor-plan-step-04-workbench-home"]);
+  assert.equal(decision.context_pack_seed.subtasks[0].source.plan_step_slice, "workbench-home");
+});
+
 test("current reviewer aggregate fixture advances after provider health follow-up packages", () => {
   const workflowState = readJson("docs/examples/current-session-workbench-input.json");
   const decision = decideContinuation({

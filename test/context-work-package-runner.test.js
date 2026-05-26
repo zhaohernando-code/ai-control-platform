@@ -266,6 +266,99 @@ test("context work package runner executes dispatchable packages and updates wor
   assert.notEqual(projection.next_action_readout.action, "cleanup_agent_lifecycle_pool");
 });
 
+test("context work package runner splits materialized broad frontend view migration before execution", () => {
+  const contextPack = {
+    requirement_summary: "前端重构",
+    host: "platform_core",
+    target_project_id: "ai-control-platform",
+    non_goals: ["Do not modify managed projects"],
+    forbidden_actions: ["Do not skip gates"],
+    owned_files: ["."],
+    acceptance_gates: ["npm run check:workbench:browser-events"],
+    rollback_conditions: ["frontend migration drifts"],
+    subtasks: [
+      {
+        id: "requirement-frontend-refactor-plan-step-03",
+        title: "前端重构：实施步骤 03 / 7",
+        action: "execute_requirement_plan_step",
+        owned_files: ["PROJECT_RULES.md"],
+        acceptance_gates: ["node --test test/workbench-shell.test.js"],
+        reason: "固化 antd + Next.js 约束",
+        source: {
+          requirement_id: "requirement-frontend-refactor",
+          plan_step_index: 3,
+          plan_step_total: 7
+        }
+      },
+      {
+        id: "requirement-frontend-refactor-plan-step-04",
+        title: "前端重构：实施步骤 04 / 7",
+        action: "execute_requirement_plan_step",
+        owned_files: ["."],
+        acceptance_gates: ["npm run check:workbench:browser-events"],
+        depends_on: ["requirement-frontend-refactor-plan-step-03"],
+        reason: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。",
+        source: {
+          requirement_id: "requirement-frontend-refactor",
+          plan_step_index: 4,
+          plan_step_total: 7,
+          constraints: "当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。",
+          implementation_step: "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。"
+        }
+      }
+    ]
+  };
+  const manifest = createRunManifest({
+    run_id: "run-frontend-slice",
+    cycle_id: "cycle-frontend-slice",
+    goal: contextPack.requirement_summary,
+    context_pack: contextPack,
+    events: [],
+    artifacts: [],
+    gate_results: [],
+    review_findings: [],
+    recovery_attempts: [],
+    created_at: "2026-05-26T14:00:00.000Z"
+  });
+  const workflowState = {
+    manifest: {
+      ...manifest,
+      work_packages: manifest.work_packages.map((workPackage) => workPackage.id === "requirement-frontend-refactor-plan-step-03"
+        ? { ...workPackage, status: "completed", result: "pass" }
+        : workPackage)
+    },
+    artifact_ledger: {
+      run_id: manifest.run_id,
+      cycle_id: manifest.cycle_id,
+      artifacts: []
+    },
+    task_dag: manifest.work_packages.map((workPackage) => workPackage.id === "requirement-frontend-refactor-plan-step-03"
+      ? { ...workPackage, status: "completed", result: "pass" }
+      : workPackage)
+  };
+
+  const result = runContextWorkPackages(workflowState, {
+    max_package_count: 1,
+    created_at: "2026-05-26T14:01:00.000Z"
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_work_packages[0].id, "requirement-frontend-refactor-plan-step-04-workbench-home");
+  assert.equal(
+    result.workflow_state.manifest.work_packages
+      .find((workPackage) => workPackage.id === "requirement-frontend-refactor-plan-step-04-workbench-home")
+      .status,
+    "completed"
+  );
+  assert.ok(result.workflow_state.manifest.work_packages.some((workPackage) => {
+    return workPackage.id === "requirement-frontend-refactor-plan-step-04-requirement-intake" &&
+      workPackage.depends_on[0] === "requirement-frontend-refactor-plan-step-04-workbench-home";
+  }));
+  assert.ok(!result.workflow_state.manifest.work_packages.some((workPackage) => {
+    return workPackage.id === "requirement-frontend-refactor-plan-step-04";
+  }));
+});
+
 test("context work package runner can complete already-satisfied packages before provider dispatch", () => {
   const workflowState = workflowStateWithContextCycle();
   const result = runContextWorkPackages(workflowState, {
