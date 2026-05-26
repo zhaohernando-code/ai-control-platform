@@ -189,18 +189,33 @@ function defaultRequirementPlanGenerator(input = {}) {
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS ||
       180000
   );
+  const childPath = [
+    process.env.PATH,
+    "/Users/hernando_zhao/.local/bin",
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin"
+  ].filter(Boolean).join(":");
 
   return async ({ requirement }) => {
     const prompt = createRequirementPlanPrompt(requirement);
     const result = spawnSync(script, ["-m", model, "-p", prompt], {
       cwd: root,
       encoding: "utf8",
-      timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000
+      timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
+      env: {
+        ...process.env,
+        HOME: process.env.HOME || "/Users/hernando_zhao",
+        PATH: childPath
+      }
     });
+    const stdout = result.stdout || "";
+    const stderr = result.stderr || result.error?.message || "";
     return {
-      status: result.status === 0 && !result.error ? "pass" : "fail",
-      stdout: result.stdout || "",
-      stderr: result.stderr || result.error?.message || "",
+      status: result.status === 0 && !result.error && normalizeString(stdout) ? "pass" : "fail",
+      stdout,
+      stderr,
       generator: {
         kind: "claude_plan_mode",
         command: script,
