@@ -17,9 +17,12 @@ import {
   runHeadlessCliMainOrchestrator,
   runHeadlessCliMainOrchestratorLoop
 } from "../src/workflow/headless-cli-orchestrator.js";
+import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
 import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 async function withWorkbenchServer(fn, options = {}) {
+  const stateDbPath = options.stateDbPath || join(mkdtempSync(join(tmpdir(), "headless-workbench-state-")), "workbench-state.sqlite");
+  const serverOptions = { ...options, stateDbPath };
   const script = [
     "import { createWorkbenchServer } from './tools/workbench-server.mjs';",
     "const options = JSON.parse(process.argv[1] || '{}');",
@@ -30,7 +33,7 @@ async function withWorkbenchServer(fn, options = {}) {
     "  console.log(`http://127.0.0.1:${address.port}`);",
     "});"
   ].join("\n");
-  const child = spawn(process.execPath, ["--input-type=module", "-e", script, JSON.stringify(options)], {
+  const child = spawn(process.execPath, ["--input-type=module", "-e", script, JSON.stringify(serverOptions)], {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -51,7 +54,7 @@ async function withWorkbenchServer(fn, options = {}) {
   });
 
   try {
-    await fn(baseUrl);
+    await fn(baseUrl, serverOptions);
   } finally {
     if (child.exitCode === null) {
       child.kill();
@@ -1173,7 +1176,7 @@ test("run-headless-cli-orchestrator CLI executes projected action through local 
     ]
   }, null, 2)}\n`);
 
-  await withWorkbenchServer(async (baseUrl) => {
+  await withWorkbenchServer(async (baseUrl, serverOptions) => {
     const result = spawnSync(process.execPath, [
       "tools/run-headless-cli-orchestrator.mjs",
       "--project-status",
@@ -1212,7 +1215,8 @@ test("run-headless-cli-orchestrator CLI executes projected action through local 
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(readFileSync(outputPath, "utf8"));
     const workflowOutput = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
-    const serviceState = JSON.parse(readFileSync(serviceInputPath, "utf8"));
+    const serviceState = createSqliteWorkbenchStateStore({ dbPath: serverOptions.stateDbPath })
+      .readWorkflowSnapshot("headless-service-source");
     const progressEvent = workflowOutput.manifest.events.find((event) => event.type === "headless_projected_action_progress");
 
     assert.equal(output.status, "pass");
@@ -1256,7 +1260,7 @@ test("run-headless-cli-orchestrator CLI passes reviewer controls to projected se
     ]
   }, null, 2)}\n`);
 
-  await withWorkbenchServer(async (baseUrl) => {
+  await withWorkbenchServer(async (baseUrl, serverOptions) => {
     const result = spawnSync(process.execPath, [
       "tools/run-headless-cli-orchestrator.mjs",
       "--project-status",
@@ -1301,7 +1305,8 @@ test("run-headless-cli-orchestrator CLI passes reviewer controls to projected se
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(readFileSync(outputPath, "utf8"));
     const workflowOutput = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
-    const serviceState = JSON.parse(readFileSync(serviceInputPath, "utf8"));
+    const serviceState = createSqliteWorkbenchStateStore({ dbPath: serverOptions.stateDbPath })
+      .readWorkflowSnapshot("headless-service-reviewer");
     const progressEvent = workflowOutput.manifest.events.find((event) => event.type === "headless_projected_action_progress");
     const shardEvent = serviceState.manifest.events.find((event) => event.type === "reviewer_shard_result");
 
@@ -1348,7 +1353,7 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
     ]
   }, null, 2)}\n`);
 
-  await withWorkbenchServer(async (baseUrl) => {
+  await withWorkbenchServer(async (baseUrl, serverOptions) => {
     const result = spawnSync(process.execPath, [
       "tools/run-headless-cli-orchestrator.mjs",
       "--project-status",
@@ -1391,7 +1396,8 @@ test("run-headless-cli-orchestrator CLI continues after reviewer aggregate throu
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(readFileSync(outputPath, "utf8"));
     const workflowOutput = JSON.parse(readFileSync(workflowOutputPath, "utf8"));
-    const serviceState = JSON.parse(readFileSync(serviceInputPath, "utf8"));
+    const serviceState = createSqliteWorkbenchStateStore({ dbPath: serverOptions.stateDbPath })
+      .readWorkflowSnapshot("headless-service-reviewer-aggregate");
     const progressActions = workflowOutput.manifest.events
       .filter((event) => event.type === "headless_projected_action_progress")
       .map((event) => event.metadata.action);
@@ -1445,7 +1451,7 @@ test("run-headless-cli-orchestrator CLI follows service next projection into con
     ]
   }, null, 2)}\n`);
 
-  await withWorkbenchServer(async (baseUrl) => {
+  await withWorkbenchServer(async (baseUrl, serverOptions) => {
     const result = spawnSync(process.execPath, [
       "tools/run-headless-cli-orchestrator.mjs",
       "--project-status",
@@ -1489,10 +1495,11 @@ test("run-headless-cli-orchestrator CLI follows service next projection into con
 
     assert.equal(result.status, 0, result.stderr);
     const output = JSON.parse(readFileSync(outputPath, "utf8"));
-    const serviceHistory = JSON.parse(readFileSync(serviceHistoryPath, "utf8"));
+    const store = createSqliteWorkbenchStateStore({ dbPath: serverOptions.stateDbPath });
+    const serviceHistory = store.readHistory();
     const nextItem = serviceHistory.items.find((item) => item.id.startsWith("context-pack-cycle-headless-service-projection-cursor-"));
     assert.ok(nextItem, "context pack cycle snapshot must be published into service history");
-    const nextState = JSON.parse(readFileSync(join(process.cwd(), nextItem.input_path), "utf8"));
+    const nextState = store.readWorkflowSnapshot(nextItem.id);
     const nextEventTypes = nextState.manifest.events.map((event) => event.type);
 
     assert.equal(output.status, "pass");

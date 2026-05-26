@@ -980,9 +980,20 @@ function schedulerPlanInputFromWorkflowState(workflowState, input = {}) {
   };
 }
 
-function schedulerPlanOptionsFromRequest(req, item, selectedId, input = {}) {
+function materializeSchedulerWorkflowInput(selectedId, workflowState) {
+  const inputPath = `tmp/workbench-scheduler-inputs/${safeSnapshotIdPart(selectedId)}-${Date.now()}.json`;
+  const absolutePath = resolve(root, inputPath);
+  mkdirSync(dirname(absolutePath), { recursive: true });
+  writeJson(absolutePath, workflowState);
+  return inputPath;
+}
+
+function schedulerPlanOptionsFromRequest(req, item, selectedId, input = {}, workflowState = null) {
+  const workflowStateInputPath = isSqliteSnapshotPath(item.input_path)
+    ? materializeSchedulerWorkflowInput(selectedId, workflowState)
+    : item.input_path;
   return {
-    workflow_state_input_path: item.input_path,
+    workflow_state_input_path: workflowStateInputPath,
     workbench_writeback_mode: "service",
     workbench_base_url: workbenchBaseUrlFromRequest(req),
     projection_id: selectedId,
@@ -1997,7 +2008,7 @@ export function createWorkbenchServer(options = {}) {
         const workflowState = readWorkflowState(item);
         const plan = createSchedulerDispatchPlan(
           schedulerPlanInputFromWorkflowState(workflowState, input),
-          schedulerPlanOptionsFromRequest(req, item, selectedId, input)
+          schedulerPlanOptionsFromRequest(req, item, selectedId, input, workflowState)
         );
         if (plan.status !== "pass") {
           jsonResponse(res, 400, { error: "scheduler dispatch plan failed", issues: plan.issues });
@@ -2038,7 +2049,7 @@ export function createWorkbenchServer(options = {}) {
         const workflowState = readWorkflowState(item);
         const plan = createSchedulerDispatchPlan(
           schedulerPlanInputFromWorkflowState(workflowState, controlInput),
-          schedulerPlanOptionsFromRequest(req, item, selectedId, controlInput)
+          schedulerPlanOptionsFromRequest(req, item, selectedId, controlInput, workflowState)
         );
         if (plan.status !== "pass") {
           jsonResponse(res, 400, { error: "scheduler dispatch plan failed", issues: plan.issues });

@@ -16,15 +16,18 @@ import {
   schedulerLoopInput,
   validateSchedulerLoopRunArtifact
 } from "../src/workflow/autonomous-scheduler-loop.js";
+import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
 import { createWorkbenchServer } from "../tools/workbench-server.mjs";
 import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 async function withServer(options, fn) {
-  const server = createWorkbenchServer(options);
+  const stateDbPath = options.stateDbPath || join(mkdtempSync(join(tmpdir(), "ai-control-platform-workbench-state-")), "workbench-state.sqlite");
+  const serverOptions = { ...options, stateDbPath };
+  const server = createWorkbenchServer(serverOptions);
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   try {
-    await fn(`http://127.0.0.1:${server.address().port}`);
+    await fn(`http://127.0.0.1:${server.address().port}`, serverOptions);
   } finally {
     server.close();
     await once(server, "close");
@@ -739,7 +742,7 @@ test("run-autonomous-scheduler-loop CLI can drive one workbench service cycle", 
     ]
   }, null, 2));
 
-  await withServer({ historyPath, snapshotsRoot }, async (baseUrl) => {
+  await withServer({ historyPath, snapshotsRoot }, async (baseUrl, serverOptions) => {
     const result = await runNode([
       "tools/run-with-node18.mjs",
       "tools/run-autonomous-scheduler-loop.mjs",
@@ -756,8 +759,10 @@ test("run-autonomous-scheduler-loop CLI can drive one workbench service cycle", 
     ]);
     const summary = JSON.parse(result.stdout);
     const artifact = JSON.parse(readFileSync(outputPath, "utf8"));
-    const history = JSON.parse(readFileSync(historyPath, "utf8"));
-    const state = JSON.parse(readFileSync(inputPath, "utf8"));
+    const store = createSqliteWorkbenchStateStore({ dbPath: serverOptions.stateDbPath });
+    const history = store.readHistory();
+    const state = store.readWorkflowSnapshot(history.latest);
+    const eventTypes = history.items.flatMap((item) => store.readWorkflowSnapshot(item.id).manifest.events.map((event) => event.type));
 
     assert.equal(result.status, 0, result.stderr || result.stdout);
     assert.equal(summary.status, "pass");
@@ -766,6 +771,7 @@ test("run-autonomous-scheduler-loop CLI can drive one workbench service cycle", 
     assert.equal(artifact.result.iterations.length, 1);
     assert.equal(artifact.result.iterations[0].status, "queued");
     assert.equal(history.latest, "loop-service-loop-service-01");
-    assert.equal(state.manifest.events.at(-1).type, "scheduler_next_cycle_enqueue");
+    assert.equal(state.manifest.run_id, workflowState.manifest.run_id);
+    assert.ok(eventTypes.includes("scheduler_next_cycle_enqueue"));
   });
 });
