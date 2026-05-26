@@ -5,7 +5,8 @@ import { dirname, resolve } from "node:path";
 import {
   createAutonomousLoopRunArtifact,
   prepareAutonomousContinuationFromLoopArtifact,
-  runAutonomousCloseoutLoop
+  runAutonomousCloseoutLoop,
+  runAutonomousContinuationCycle
 } from "../src/workflow/autonomous-orchestrator.js";
 import { publishWorkbenchSnapshot } from "../src/workflow/workbench-snapshots.js";
 import { localOutputPathIssues, platformRootIssues } from "../src/workflow/closeout-runner.js";
@@ -24,7 +25,9 @@ function usage() {
     "  --history-path <path>",
     "  --snapshots-root <path>",
     "  --output <path>       Write replayable input/output envelope JSON",
-    "  --resume-from <path>  Validate replay artifact and emit scheduler continuation input"
+    "  --resume-from <path>  Validate replay artifact and emit scheduler continuation input",
+    "  --cycle               Chain iterations automatically when next_decision.should_continue is true",
+    "  --max-iterations <n>  Maximum iterations when --cycle is used (default 5, hard cap 25)"
   ].join("\n");
 }
 
@@ -123,26 +126,58 @@ if (inputPath && resumePath) {
   printResult(publishResumeWorkflowState(resume, args));
 } else {
   const input = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
-  const result = await runAutonomousCloseoutLoop(input, {
+  const cycleMode = args.includes("--cycle");
+  const orchestratorOptions = {
     root: process.cwd(),
     historyPath: valueAfter("--history-path", args) || undefined,
     snapshotsRoot: valueAfter("--snapshots-root", args) || undefined
-  });
-  const artifact = createAutonomousLoopRunArtifact(input, result);
-  const outputPath = valueAfter("--output", args);
+  };
 
-  if (outputPath) {
-    const resolvedOutputPath = resolve(outputPath);
-    mkdirSync(dirname(resolvedOutputPath), { recursive: true });
-    writeFileSync(resolvedOutputPath, `${JSON.stringify(artifact, null, 2)}\n`);
-  }
+  if (cycleMode) {
+    const maxIterationsArg = valueAfter("--max-iterations", args);
+    const cycle = await runAutonomousContinuationCycle(input, {
+      ...orchestratorOptions,
+      max_iterations: maxIterationsArg ? Number.parseInt(maxIterationsArg, 10) : undefined
+    });
+    const summary = {
+      status: cycle.status,
+      stop_reason: cycle.stop_reason,
+      total_iterations: cycle.total_iterations,
+      max_iterations: cycle.max_iterations,
+      iterations: cycle.iterations,
+      last_phase: cycle.last_result?.phase || null,
+      last_next_should_continue: cycle.last_result?.next_decision?.should_continue ?? null
+    };
+    const outputPath = valueAfter("--output", args);
+    if (outputPath && cycle.last_result) {
+      const artifact = createAutonomousLoopRunArtifact(input, cycle.last_result);
+      const resolvedOutputPath = resolve(outputPath);
+      mkdirSync(dirname(resolvedOutputPath), { recursive: true });
+      writeFileSync(resolvedOutputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+      summary.output = outputPath;
+    }
+    console.log(JSON.stringify(summary, null, 2));
+    if (cycle.status !== "pass") {
+      process.exitCode = 1;
+    }
+  } else {
+    const result = await runAutonomousCloseoutLoop(input, orchestratorOptions);
+    const artifact = createAutonomousLoopRunArtifact(input, result);
+    const outputPath = valueAfter("--output", args);
 
-  console.log(JSON.stringify(outputPath ? {
-    status: artifact.status,
-    phase: artifact.phase,
-    output: outputPath
-  } : result, null, 2));
-  if (result.status !== "pass") {
-    process.exitCode = 1;
+    if (outputPath) {
+      const resolvedOutputPath = resolve(outputPath);
+      mkdirSync(dirname(resolvedOutputPath), { recursive: true });
+      writeFileSync(resolvedOutputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+    }
+
+    console.log(JSON.stringify(outputPath ? {
+      status: artifact.status,
+      phase: artifact.phase,
+      output: outputPath
+    } : result, null, 2));
+    if (result.status !== "pass") {
+      process.exitCode = 1;
+    }
   }
 }

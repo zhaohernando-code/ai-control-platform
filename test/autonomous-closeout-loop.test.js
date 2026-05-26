@@ -7,9 +7,12 @@ import test from "node:test";
 import { decideContinuation } from "../src/workflow/autonomous-continuation.js";
 import {
   createAutonomousLoopRunArtifact,
+  DEFAULT_MAX_CONTINUATION_ITERATIONS,
+  MAX_CONTINUATION_ITERATIONS_HARD_CAP,
   prepareAutonomousContinuationFromLoopArtifact,
   recordReplayValidationBlocker,
   runAutonomousCloseoutLoop,
+  runAutonomousContinuationCycle,
   validateAutonomousLoopRunArtifact
 } from "../src/workflow/autonomous-orchestrator.js";
 import { runCloseoutPlan } from "../src/workflow/closeout-runner.js";
@@ -119,6 +122,77 @@ test("runAutonomousCloseoutLoop executes the reusable closeout orchestration", a
   assert.equal(result.projection.closeout.status, "pass");
   assert.equal(result.next_decision.should_continue, true);
   assert.equal(result.next_decision.snapshot_publish_plan.action, "publish_workbench_snapshot");
+});
+
+test("runAutonomousContinuationCycle chains iterations until the cap and reports stop_reason", async () => {
+  const workflowState = readJson("docs/examples/current-session-workbench-input.json");
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/continuation-cycle-"));
+  const historyPath = join(dir, "projection-history.json");
+  const snapshotsRoot = join(process.cwd(), "tmp/continuation-cycle-snapshots");
+  writeFileSync(historyPath, JSON.stringify({ version: "projection-history.v1", latest: null, items: [] }));
+
+  const cycle = await runAutonomousContinuationCycle({
+    project_status: projectStatus("Publish closeout evidence and continue."),
+    run_evaluation: { status: "pass" },
+    workflow_state: workflowState
+  }, {
+    root: process.cwd(),
+    historyPath,
+    snapshotsRoot,
+    max_iterations: 2,
+    created_at: "2026-05-27T10:00:00.000Z"
+  });
+
+  assert.equal(cycle.status, "pass");
+  assert.equal(cycle.max_iterations, 2);
+  assert.equal(cycle.total_iterations, 2);
+  assert.equal(cycle.iterations.length, 2);
+  assert.equal(cycle.iterations[0].iteration, 1);
+  assert.equal(cycle.iterations[0].status, "pass");
+  assert.equal(cycle.iterations[0].next_should_continue, true);
+  assert.equal(cycle.iterations[1].iteration, 2);
+  assert.equal(cycle.stop_reason, "max_iterations_reached");
+  assert.equal(cycle.phase, "max_iterations_reached");
+  assert.equal(cycle.last_result.status, "pass");
+  assert.equal(cycle.last_result.phase, "next_continuation");
+});
+
+test("runAutonomousContinuationCycle rejects invalid input fast", async () => {
+  const cycle = await runAutonomousContinuationCycle(null);
+  assert.equal(cycle.status, "fail");
+  assert.equal(cycle.stop_reason, "invalid_input");
+  assert.equal(cycle.total_iterations, 0);
+  assert.deepEqual(cycle.iterations, []);
+  assert.equal(cycle.issues[0].code, "invalid_autonomous_cycle_input");
+});
+
+test("runAutonomousContinuationCycle stops when the first iteration fails continuation", async () => {
+  const cycle = await runAutonomousContinuationCycle({}, {
+    root: process.cwd(),
+    max_iterations: 3,
+    created_at: "2026-05-27T10:01:00.000Z"
+  });
+
+  assert.equal(cycle.status, "fail");
+  assert.equal(cycle.stop_reason, "iteration_failed");
+  assert.equal(cycle.phase, "iteration_failed");
+  assert.equal(cycle.total_iterations, 1);
+  assert.equal(cycle.iterations[0].status, "fail");
+});
+
+test("runAutonomousContinuationCycle normalizes max_iterations and exposes the cap constants", async () => {
+  assert.equal(DEFAULT_MAX_CONTINUATION_ITERATIONS, 5);
+  assert.equal(MAX_CONTINUATION_ITERATIONS_HARD_CAP, 25);
+
+  const cycleZero = await runAutonomousContinuationCycle({}, { max_iterations: 0 });
+  assert.equal(cycleZero.max_iterations, DEFAULT_MAX_CONTINUATION_ITERATIONS);
+
+  const cycleNegative = await runAutonomousContinuationCycle({}, { max_iterations: -3 });
+  assert.equal(cycleNegative.max_iterations, DEFAULT_MAX_CONTINUATION_ITERATIONS);
+
+  const cycleHuge = await runAutonomousContinuationCycle({}, { max_iterations: 9999 });
+  assert.equal(cycleHuge.max_iterations, MAX_CONTINUATION_ITERATIONS_HARD_CAP);
 });
 
 test("createAutonomousLoopRunArtifact stores replayable input and output", async () => {

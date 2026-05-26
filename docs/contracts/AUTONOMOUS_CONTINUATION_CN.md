@@ -202,6 +202,18 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - 工作台非 dry-run 入口必须使用命名 profile，不允许前端拼散落的授权字段。当前允许的最小 profile 是 `approved_mock_non_dry_run`：零外部 reviewer 调用、mocked provider cost、最多三步、执行前仍写 policy decision。
 - Scheduler dispatch 生成的输出路径必须自给自足：runner CLI 要创建输出目录；snapshot publisher 在受控路径内可以初始化缺失的 projection history，避免长任务因为空目录停住。
 - 非 dry-run scheduler dispatch artifact 必须记录每个成功 step 的声明输出摘要。`run-autonomous-closeout-loop` 输出摘要必须包含 next continuation status/action/work package count；projection 和 PC/mobile 工作台必须展示这些字段，作为是否继续下一轮的机器可读依据。
+
+## 自动续跑（runAutonomousContinuationCycle）
+
+为了消除"closeout 写完 artifact 后必须手动触发 `prepare:scheduler-dispatch-continuation` 与 `run:scheduler-dispatch`"的循环缺口，autonomous-orchestrator 暴露 `runAutonomousContinuationCycle(input, options)`：
+
+- 在 `runAutonomousCloseoutLoop` 返回 `next_decision.should_continue === true` 且 `status === "pass"` 时，使用 `continuationInputFromProjection(input, closeout.workflow_state, projection)` 直接构造下一轮 input 并继续调用。
+- 受 `options.max_iterations` 约束（默认 5，硬上限 25）。非法值或缺省回退到默认，超出硬上限被截断。
+- 提供机器可读 `stop_reason`：`max_iterations_reached`、`no_continuation_required`、`iteration_failed`、`missing_projection_state`、`invalid_input`。
+- 每一轮迭代仍走完整 `runAutonomousCloseoutLoop` 路径，复用既有的 closeout、projection、artifact ledger 与 manifest 写入逻辑；没有引入旁路。
+- CLI 入口：`npm run run:autonomous-continuation-cycle -- --input <loop-input.json> [--max-iterations <n>]`。`--cycle` flag 等价。`--output` 仍会在最后一轮写入 `autonomous-closeout-loop-run.v1` envelope。
+
+这把"是否继续下一轮"的判断收敛到单进程内，调度链不再依赖人工接力。Scheduler dispatch / scheduler-dispatch-continuation 路径仍然保留，用于多机器与跨 session 的可恢复回放，但单 session 内同样可达终止条件。
 - Scheduler dispatch 产出的下一轮 continuation input 必须通过 `prepare:scheduler-dispatch-continuation` 或等价 adapter 生成。该 adapter 只能读取 `scheduler-dispatch-run.v1` 中声明的 closeout loop artifact 路径，并必须复用 autonomous closeout loop replay validator；blocked 时不得生成 continuation input。
 - `run-scheduler-dispatch-plan` 可以通过 `--continuation-output` 在同一次执行中生成下一轮 continuation input。该输出仍必须走 scheduler dispatch continuation adapter；adapter blocked 时整个 runner 必须失败。
 - Scheduler dispatch plan 必须携带 `continuation_output` 文件目标；非 dry-run runner 在没有显式 CLI flag 时使用 plan 内目标，dry-run 不生成 continuation input。

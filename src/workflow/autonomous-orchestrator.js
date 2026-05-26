@@ -466,11 +466,80 @@ async function runAutonomousCloseoutLoop(input = {}, options = {}) {
   };
 }
 
+const DEFAULT_MAX_CONTINUATION_ITERATIONS = 5;
+const MAX_CONTINUATION_ITERATIONS_HARD_CAP = 25;
+
+function normalizeMaxIterations(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MAX_CONTINUATION_ITERATIONS;
+  if (parsed > MAX_CONTINUATION_ITERATIONS_HARD_CAP) return MAX_CONTINUATION_ITERATIONS_HARD_CAP;
+  return parsed;
+}
+
+async function runAutonomousContinuationCycle(input = {}, options = {}) {
+  if (!isObject(input)) {
+    return {
+      status: "fail",
+      phase: "input",
+      stop_reason: "invalid_input",
+      iterations: [],
+      total_iterations: 0,
+      last_result: null,
+      issues: [issue("invalid_autonomous_cycle_input", "autonomous cycle input must be an object", "")]
+    };
+  }
+
+  const maxIterations = normalizeMaxIterations(options.max_iterations ?? options.maxIterations);
+  const iterations = [];
+  let currentInput = input;
+  let lastResult = null;
+  let stopReason = "max_iterations_reached";
+
+  for (let i = 0; i < maxIterations; i += 1) {
+    const result = await runAutonomousCloseoutLoop(currentInput, options);
+    iterations.push({
+      iteration: i + 1,
+      status: result.status,
+      phase: result.phase,
+      next_should_continue: result?.next_decision?.should_continue ?? null
+    });
+    lastResult = result;
+
+    if (result.status !== "pass") {
+      stopReason = "iteration_failed";
+      break;
+    }
+    if (!result.next_decision?.should_continue) {
+      stopReason = "no_continuation_required";
+      break;
+    }
+    if (!isObject(result.closeout?.workflow_state) || !isObject(result.projection)) {
+      stopReason = "missing_projection_state";
+      break;
+    }
+    currentInput = continuationInputFromProjection(currentInput, result.closeout.workflow_state, result.projection);
+  }
+
+  return {
+    status: lastResult?.status === "pass" ? "pass" : "fail",
+    phase: stopReason,
+    stop_reason: stopReason,
+    iterations,
+    total_iterations: iterations.length,
+    max_iterations: maxIterations,
+    last_result: lastResult,
+    issues: stopReason === "iteration_failed" ? (lastResult?.issues || []) : []
+  };
+}
+
 export {
   AUTONOMOUS_LOOP_ARTIFACT_VERSION,
+  DEFAULT_MAX_CONTINUATION_ITERATIONS,
+  MAX_CONTINUATION_ITERATIONS_HARD_CAP,
   createAutonomousLoopRunArtifact,
   prepareAutonomousContinuationFromLoopArtifact,
   recordReplayValidationBlocker,
   runAutonomousCloseoutLoop,
+  runAutonomousContinuationCycle,
   validateAutonomousLoopRunArtifact
 };
