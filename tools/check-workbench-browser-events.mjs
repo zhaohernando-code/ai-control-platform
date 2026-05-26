@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { chromium } from "playwright";
 
 import { createWorkbenchServer } from "./workbench-server.mjs";
+import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 
 const WORKBENCH_BROWSER_EVENTS_RUN_VERSION = "workbench-browser-events-run.v1";
@@ -229,6 +230,7 @@ async function withWorkbenchServer(fn, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-ui-events-"));
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-browser-snapshots-"));
   const eventsPath = join(dir, "operator-events.json");
+  const stateDbPath = join(dir, "workbench-state.sqlite");
   const projectStatusPath = Object.hasOwn(options, "projectStatusPath")
     ? options.projectStatusPath
     : (typeof options.projectStatusFactory === "function" ? options.projectStatusFactory(dir) : undefined);
@@ -260,6 +262,7 @@ async function withWorkbenchServer(fn, options = {}) {
     eventsPath,
     historyPath,
     snapshotsRoot,
+    stateDbPath,
     projectStatusPath,
     realReviewerExecutor: options.realReviewerExecutor
   });
@@ -267,7 +270,7 @@ async function withWorkbenchServer(fn, options = {}) {
   await once(server, "listening");
 
   try {
-    await fn({ port: server.address().port, eventsPath, inputPath, historyPath });
+    await fn({ port: server.address().port, eventsPath, inputPath, historyPath, stateDbPath });
   } finally {
     server.close();
     await once(server, "close");
@@ -289,12 +292,15 @@ async function recordRunArtifactToTempWorkflow(artifact) {
   return result;
 }
 
-function readLedger(eventsPath) {
+function readLedger(eventsPath, stateDbPath = "") {
+  if (stateDbPath) {
+    return createSqliteWorkbenchStateStore({ dbPath: stateDbPath }).readEvents();
+  }
   return JSON.parse(readFileSync(eventsPath, "utf8"));
 }
 
 async function verifySuccessfulClick(browser) {
-  await withWorkbenchServer(async ({ port, eventsPath }) => {
+  await withWorkbenchServer(async ({ port, eventsPath, stateDbPath }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.goto(
       `http://127.0.0.1:${port}/apps/workbench/desktop.html?projection=/api/workbench/projection&history=/api/workbench/projections`,
@@ -314,7 +320,7 @@ async function verifySuccessfulClick(browser) {
     const schedulerDispatchSteps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
     await page.close();
 
-    const ledger = readLedger(eventsPath);
+    const ledger = readLedger(eventsPath, stateDbPath);
     assert(ledger.events.length === 1, "successful click must persist exactly one operator event");
     assert(ledger.events[0].action === "validate", "successful click must persist validate action");
     assert(ledger.events[0].run_id, "successful click must persist run_id");
@@ -342,7 +348,7 @@ async function verifySuccessfulClick(browser) {
 }
 
 async function verifyFailedClickDoesNotShowSuccess(browser) {
-  await withWorkbenchServer(async ({ port, eventsPath }) => {
+  await withWorkbenchServer(async ({ port, eventsPath, stateDbPath }) => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.route("**/api/workbench/events", async (route) => {
       if (route.request().method() === "POST") {
@@ -365,7 +371,7 @@ async function verifyFailedClickDoesNotShowSuccess(browser) {
     const buttonText = await page.textContent('[data-action="validate"]');
     await page.close();
 
-    const ledger = readLedger(eventsPath);
+    const ledger = readLedger(eventsPath, stateDbPath);
     assert(ledger.events.length === 0, "failed click must not persist an operator event");
     assert(!buttonText.includes("已校验"), "failed click must not show validation success");
 
