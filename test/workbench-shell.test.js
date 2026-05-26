@@ -109,6 +109,10 @@ test("workbench shell has separate desktop and mobile entries", () => {
   assert.match(mobile, /data-bind="plan_review_status"/);
   assert.match(desktop, /data-bind="plan_review_phase"/);
   assert.match(mobile, /data-bind="plan_review_phase"/);
+  assert.match(desktop, /class="plan-review-copy[^"]*" data-bind="plan_review_acceptance_plan"/);
+  assert.match(mobile, /class="plan-review-copy[^"]*" data-bind="plan_review_acceptance_plan"/);
+  assert.doesNotMatch(desktop, /<strong data-bind="plan_review_acceptance_plan"/);
+  assert.doesNotMatch(mobile, /<strong data-bind="plan_review_acceptance_plan"/);
   assert.match(desktop, /方案评估与审核/);
   assert.match(mobile, /方案评估与审核/);
   assert.match(desktop, /需求 -> 拆解 -> 子任务 -> Review -> 发布 -> Live 验证 -> 验收/);

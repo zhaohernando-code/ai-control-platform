@@ -693,12 +693,55 @@ h2 {
 .resume-grid strong,
 .scheduler-grid strong,
 .provider-grid strong,
-.mobile-review strong {
+.mobile-review strong,
+.plan-review-copy {
   display: block;
   margin-top: 5px;
   font-size: 15px;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.plan-review-copy {
+  color: var(--text);
+  font-weight: 500;
+  white-space: normal;
+}
+
+.plan-review-document {
+  max-width: 920px;
+}
+
+.plan-review-copy h3,
+.plan-review-copy h4 {
+  margin: 14px 0 6px;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 750;
+}
+
+.plan-review-copy h3:first-child,
+.plan-review-copy h4:first-child {
+  margin-top: 0;
+}
+
+.plan-review-copy p {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.plan-review-copy ul,
+.plan-review-copy ol {
+  margin: 0 0 10px 18px;
+  padding: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.plan-review-copy li + li {
+  margin-top: 5px;
 }
 
 .mobile-shell {

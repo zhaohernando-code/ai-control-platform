@@ -90,8 +90,8 @@
           <details class="control-drawer">
             <summary>方案与验收详情</summary>
             <div class="mobile-review diagnostic-grid">
-              <div><span>评估摘要</span><strong data-bind="plan_review_assessment">等待大模型生成评估摘要</strong></div>
-              <div><span>建议验收方案</span><strong data-bind="plan_review_acceptance_plan">等待大模型生成验收方案</strong></div>
+              <div><span>评估摘要</span><div class="plan-review-copy" data-bind="plan_review_assessment">等待大模型生成评估摘要</div></div>
+              <div><span>建议验收方案</span><div class="plan-review-copy plan-review-document" data-bind="plan_review_acceptance_plan">等待大模型生成验收方案</div></div>
             </div>
             <div class="requirement-actions">
               <button type="button" data-plan-review-action="approve" disabled>同意进入开发</button>

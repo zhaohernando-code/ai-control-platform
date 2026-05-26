@@ -224,6 +224,90 @@ function setText(name, value) {
   });
 }
 
+function appendPlanParagraph(target, lines) {
+  const textContent = lines.join(" ").replace(/\s+/g, " ").trim();
+  if (!textContent) return;
+  const paragraph = document.createElement("p");
+  paragraph.textContent = textContent;
+  target.append(paragraph);
+}
+
+function appendPlanList(target, items, ordered = false) {
+  if (items.length === 0) return;
+  const list = document.createElement(ordered ? "ol" : "ul");
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.append(li);
+  }
+  target.append(list);
+}
+
+function renderPlanMarkdown(node, value) {
+  const rendered = displayText(value);
+  const lines = rendered.split(/\r?\n/);
+  const fragment = document.createDocumentFragment();
+  let paragraphLines = [];
+  let listItems = [];
+  let orderedItems = [];
+
+  const flush = () => {
+    appendPlanParagraph(fragment, paragraphLines);
+    paragraphLines = [];
+    appendPlanList(fragment, orderedItems, true);
+    orderedItems = [];
+    appendPlanList(fragment, listItems, false);
+    listItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flush();
+      continue;
+    }
+    const heading = /^(#{1,4})\s+(.+)$/.exec(line);
+    if (heading) {
+      flush();
+      const level = Math.min(4, Math.max(3, heading[1].length + 2));
+      const nodeName = `h${level}`;
+      const title = document.createElement(nodeName);
+      title.textContent = heading[2].trim();
+      fragment.append(title);
+      continue;
+    }
+    const bullet = /^[-*]\s+(.+)$/.exec(line);
+    if (bullet) {
+      appendPlanParagraph(fragment, paragraphLines);
+      paragraphLines = [];
+      appendPlanList(fragment, orderedItems, true);
+      orderedItems = [];
+      listItems.push(bullet[1].trim());
+      continue;
+    }
+    const ordered = /^\d+[.)]\s+(.+)$/.exec(line);
+    if (ordered) {
+      appendPlanParagraph(fragment, paragraphLines);
+      paragraphLines = [];
+      appendPlanList(fragment, listItems, false);
+      listItems = [];
+      orderedItems.push(ordered[1].trim());
+      continue;
+    }
+    flush();
+    paragraphLines.push(line.replace(/^#+\s*/, ""));
+  }
+  flush();
+
+  node.replaceChildren(fragment);
+}
+
+function setPlanReviewText(name, value) {
+  qsa(`[data-bind="${name}"]`).forEach((node) => {
+    renderPlanMarkdown(node, value);
+  });
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -639,8 +723,8 @@ function renderPlanReview(projectManagement) {
   setText("plan_review_phase", planReview.phase_label || planReview.phase);
   setText("plan_review_plan_id", planReview.plan_id);
   setText("plan_review_next_action", planReview.next_action);
-  setText("plan_review_assessment", planReview.assessment_summary);
-  setText("plan_review_acceptance_plan", planReview.proposed_acceptance_plan);
+  setPlanReviewText("plan_review_assessment", planReview.assessment_summary);
+  setPlanReviewText("plan_review_acceptance_plan", planReview.proposed_acceptance_plan);
 
   const buttons = qsa("[data-plan-review-action]");
   const reviewable = Boolean(planReview.reviewable);
