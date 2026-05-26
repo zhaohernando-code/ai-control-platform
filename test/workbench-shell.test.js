@@ -333,6 +333,98 @@ test("frontend refactor constraints document is durable and codifies antd + next
   assert.doesNotMatch(constraints, /shadcn|chakra|MUI/i);
 });
 
+test("frontend migration inventory baseline is durable and enumerates entries, views, assets, scripts, and APIs", () => {
+  const inventory = read("apps/workbench/FRONTEND_MIGRATION_INVENTORY.md");
+
+  // Step 1 framing
+  assert.match(inventory, /Frontend Migration Inventory/);
+  assert.match(inventory, /Step 1/);
+  assert.match(inventory, /requirement-unknown-20260526033003/);
+  assert.match(inventory, /FRONTEND_REFACTOR_CONSTRAINTS\.md/);
+
+  // 1. Native entries
+  assert.match(inventory, /apps\/workbench\/desktop\.html/);
+  assert.match(inventory, /apps\/workbench\/mobile\.html/);
+  assert.match(inventory, /\/projects\/ai-control-platform/);
+
+  // 2. SPA tabs (must keep single-page-app form)
+  for (const tab of [
+    "overview",
+    "requirements",
+    "projects",
+    "flow",
+    "agents",
+    "risks",
+    "governance",
+    "runs"
+  ]) {
+    assert.match(inventory, new RegExp(`\\b${tab}\\b`));
+  }
+
+  // 3. Static resources
+  assert.match(inventory, /apps\/workbench\/styles\.css/);
+  assert.match(inventory, /apps\/workbench\/favicon\.svg/);
+
+  // 4. Application scripts (no inline scripts allowed)
+  assert.match(inventory, /apps\/workbench\/workbench\.js/);
+  assert.match(inventory, /apps\/workbench\/projection-source\.js/);
+
+  // 5. Backend API surface that the new Next.js client must keep calling
+  for (const path of [
+    "/api/workbench/projection",
+    "/api/workbench/projections",
+    "/api/workbench/events",
+    "/api/workbench/snapshots",
+    "/api/workbench/requirements",
+    "/api/workbench/plan-reviews",
+    "/api/workbench/reviewer-provider-health",
+    "/api/workbench/reviewer-shard-result",
+    "/api/workbench/agent-lifecycle-pool",
+    "/api/workbench/next-action",
+    "/api/workbench/scheduler-dispatch",
+    "/api/workbench/scheduler-dispatch-plan",
+    "/api/workbench/scheduler-dispatch-run",
+    "/api/workbench/scheduler-next-cycle",
+    "/api/workbench/autonomous-scheduler-loop",
+    "/api/workbench/autonomous-scheduler-loop-resume",
+    "/api/workbench/project-status-continuation",
+    "/api/workbench/context-pack-cycle",
+    "/api/workbench/context-work-packages-run",
+    "/api/workbench/reviewer-shard-run",
+    "/api/workbench/workbench-browser-events-run"
+  ]) {
+    assert.match(inventory, new RegExp(path.replace(/[/-]/g, (c) => `\\${c}`)));
+  }
+
+  // 6. Data binding contract (must survive antd migration)
+  for (const key of [
+    "data-bind",
+    "data-list",
+    "data-workbench-tab",
+    "data-requirement-form",
+    "data-requirement-submit",
+    "data-plan-review-action",
+    "data-scheduler-dispatch",
+    "data-autonomous-scheduler-loop",
+    "data-workbench-next-action",
+    "data-provider-health",
+    "data-history-select"
+  ]) {
+    assert.match(inventory, new RegExp(key));
+  }
+
+  // 7. Migration slice ordering + rollback evidence
+  assert.match(inventory, /迁移清单/);
+  assert.match(inventory, /回退/);
+  assert.match(inventory, /check:workbench:browser-events/);
+  assert.match(inventory, /check:workbench:frontend-acceptance/);
+  assert.match(inventory, /check:closeout/);
+  assert.match(inventory, /served-route/);
+
+  // Forbidden drift: do not silently allow a second base component library
+  assert.doesNotMatch(inventory, /shadcn|chakra|\bMUI\b/i);
+});
+
 test("workbench controls do not show success when operator event persistence fails", () => {
   const script = read("apps/workbench/workbench.js");
 

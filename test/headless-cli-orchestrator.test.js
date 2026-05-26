@@ -326,6 +326,7 @@ test("Claude child worker runs in bare mode without workflow hook inheritance", 
       ...process.env,
       AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
       AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
+      AI_CONTROL_WORKBENCH_CHILD_WORKER_USE_WORKTREE: "0",
       CAPTURE_ARGS: captureFile
     }
   });
@@ -342,6 +343,55 @@ test("Claude child worker runs in bare mode without workflow hook inheritance", 
   assert.ok(args.includes("--tools"));
   assert.ok(args.includes("default"));
   assert.ok(args.includes("--add-dir"));
+});
+
+test("Claude child worker runs in an isolated worker worktree by default", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-worktree-"));
+  const workerRoot = join(tempDir, "worker-workspaces");
+  const promptFile = join(tempDir, "prompt.md");
+  const captureFile = join(tempDir, "capture.txt");
+  const fakeProxy = join(tempDir, "claude-proxy.sh");
+  writeFileSync(promptFile, "Return JSON.");
+  writeFileSync(fakeProxy, [
+    "#!/usr/bin/env bash",
+    "{",
+    "  pwd",
+    "  printf '%s\\n' \"$@\"",
+    "} > \"$CAPTURE_ARGS\"",
+    "printf '{\"status\":\"pass\"}\\n'"
+  ].join("\n"));
+  chmodSync(fakeProxy, 0o755);
+
+  let workerCwd = "";
+  try {
+    const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
+        AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
+        AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT: workerRoot,
+        CAPTURE_ARGS: captureFile
+      }
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    const captured = readFileSync(captureFile, "utf8").trim().split("\n");
+    workerCwd = captured[0];
+    assert.ok(workerCwd.startsWith(join(workerRoot, "ai-control-platform")));
+    const addDirIndex = captured.indexOf("--add-dir");
+    assert.ok(addDirIndex >= 0);
+    assert.equal(captured[addDirIndex + 1], workerCwd);
+  } finally {
+    if (workerCwd) {
+      const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {
+        encoding: "utf8"
+      }).stdout.trim();
+      spawnSync("git", ["worktree", "remove", "--force", workerCwd], { encoding: "utf8" });
+      if (branch) spawnSync("git", ["branch", "-D", branch], { encoding: "utf8" });
+    }
+  }
 });
 
 test("Claude role proxy allocates developer keys from the developer pool", () => {

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { decideContinuation } from "./autonomous-continuation.js";
@@ -526,12 +526,12 @@ function childWorkerRunnerFrom(options = {}) {
   const template = commandTemplateFrom(options);
   if (!template) return null;
   return ({ prompt_file: promptFile, work_package: workPackage, workflow_state: workflowState, timeout_ms: timeoutMs, output_path: outputPath }) => {
-    const resolvedOutputPath = normalizeString(outputPath) ||
-      childWorkerCommandOutputPath(workPackage, {
+    const resolvedOutputPath = resolvedChildWorkerOutputPath(outputPath) ||
+      resolvedChildWorkerOutputPath(childWorkerCommandOutputPath(workPackage, {
         ...options,
         run_id: workflowState?.manifest?.run_id,
         cycle_id: workflowState?.manifest?.cycle_id
-      }) ||
+      })) ||
       "";
     const args = template.args.map((arg) => arg
       .replaceAll("{prompt_file}", promptFile)
@@ -566,6 +566,12 @@ function childWorkerCommandOutputPath(workPackage = {}, options = {}) {
     .replaceAll("{work_package_id}", safeIdPart(workPackage.id))
     .replaceAll("{run_id}", safeIdPart(options.run_id || options.runId || "run"))
     .replaceAll("{cycle_id}", safeIdPart(options.cycle_id || options.cycleId || "cycle"));
+}
+
+function resolvedChildWorkerOutputPath(outputPath) {
+  const normalized = normalizeString(outputPath);
+  if (!normalized) return null;
+  return isAbsolute(normalized) ? normalized : resolve(normalized);
 }
 
 function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile = "", outputPath = null) {
@@ -630,11 +636,11 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
 
   const tempDir = mkdtempSync(join(tmpdir(), "headless-child-worker-"));
   const promptFile = join(tempDir, "bounded-implementation-task.md");
-  const outputPath = childWorkerCommandOutputPath(workPackage, {
+  const outputPath = resolvedChildWorkerOutputPath(childWorkerCommandOutputPath(workPackage, {
     ...options,
     run_id: workflowState?.manifest?.run_id,
     cycle_id: workflowState?.manifest?.cycle_id
-  });
+  }));
   if (outputPath) mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(promptFile, headlessChildWorkerPrompt(workflowState, workPackage, {
     ...options,
