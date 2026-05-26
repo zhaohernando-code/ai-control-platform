@@ -314,6 +314,7 @@ async function withFixtureWorkbenchServer(fn) {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-frontend-acceptance-"));
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-frontend-acceptance-"));
   const eventsPath = join(dir, "operator-events.json");
+  const stateDbPath = join(dir, "workbench-state.sqlite");
   const inputPath = join(snapshotsRoot, "current-session-workbench-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
   writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
@@ -336,6 +337,7 @@ async function withFixtureWorkbenchServer(fn) {
     eventsPath,
     historyPath,
     snapshotsRoot,
+    stateDbPath,
     projectStatusPath: "PROJECT_STATUS.json"
   });
   let port;
@@ -369,7 +371,9 @@ async function withFixtureWorkbenchServer(fn) {
 }
 
 async function withLatestWorkbenchServer(fn) {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-frontend-acceptance-latest-"));
   const server = createWorkbenchServer({
+    stateDbPath: join(dir, "workbench-state.sqlite"),
     projectStatusPath: "PROJECT_STATUS.json"
   });
   const targetInfo = latestTargetInfo();

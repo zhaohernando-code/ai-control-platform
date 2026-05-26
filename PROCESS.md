@@ -44,6 +44,7 @@
 ## Workbench 与公开挂载
 
 - **Workbench 只消费 projection**：PC 和 mobile 工作台应以 Workbench Projection 作为一屏状态输入。任务、模型、reviewer、artifact 和 DAG 状态先汇总成 projection，再进入 UI。
+- **Workbench 运行态只写 SQLite**：`PROJECT_STATUS.json`、`docs/examples/*workbench-input.json`、`projection-history.json` 和 `operator-events.json` 只能作为种子、fixture 或离线证据；本地服务、检查脚本和公开挂载必须通过 SQLite state store 写入运行态，防止主线因状态更新变脏。旧文件态只允许在显式 fixture 测试中作为兼容边界被验证。
 - **公开挂载要同时测入口和 API 前缀**：挂到 `/projects/<id>/` 的工具必须验证 entry redirect、static shell 和 mounted API prefix；不要只测 root-local 端口。
 - **agent auth 与 bare public 要分层**：根域保护下，裸请求的登录跳转和 agent auth header 的通过是两种不同证据。需要公开读 allowlist 时必须显式列出 `GET`/`HEAD` 的入口、静态 shell 和只读 projection API，不要扩大到事件、mutation、snapshot 或通用 `/projects/*`。
 

@@ -133,6 +133,7 @@ export async function runSchedulerDispatchWritebackCheck() {
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/scheduler-dispatch-writeback-"));
   const inputPath = join(snapshotsRoot, "scheduler-writeback-input.json");
   const historyPath = join(snapshotsRoot, "projection-history.json");
+  const stateDbPath = join(snapshotsRoot, "workbench-state.sqlite");
   const planPath = join(snapshotsRoot, "scheduler-writeback-plan.json");
   const outputPath = join(snapshotsRoot, "scheduler-writeback-run.json");
   const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
@@ -153,7 +154,7 @@ export async function runSchedulerDispatchWritebackCheck() {
     ]
   }, null, 2));
 
-  await withWorkbenchServer({ historyPath, snapshotsRoot }, async (baseUrl) => {
+  await withWorkbenchServer({ historyPath, snapshotsRoot, stateDbPath }, async (baseUrl) => {
     const plan = createSchedulerDispatchPlan({
       project_status: {
         project: "ai-control-platform",

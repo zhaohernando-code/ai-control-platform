@@ -43,6 +43,7 @@ export function runCloseoutChecks() {
   run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
   run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
   run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
+  run("workbench state boundary", ["tools/check-workbench-state-boundary.mjs"]);
   run("audit skill trial", ["tools/check-audit-skill-trial-run.mjs", process.env[AUDIT_SKILL_TRIAL_RUN_ENV] || DEFAULT_AUDIT_SKILL_TRIAL_RUN_PATH]);
   run("mainline release readiness", ["tools/check-mainline-release-readiness.mjs", "--project-status", "PROJECT_STATUS.json"]);
   const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
