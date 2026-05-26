@@ -44,33 +44,6 @@
   "blockers": [],
   "global_goals": [
     {
-      "id": "requirement-unknown-20260526033003",
-      "title": "前端重构",
-      "status": "in_progress",
-      "next_step": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目",
-      "owned_files": [
-        "apps/workbench",
-        "src/workflow/requirement-intake.js",
-        "src/workflow/workbench-projection.js",
-        "src/workflow/frontend-acceptance.js",
-        "tools/workbench-server.mjs",
-        "tools/check-workbench-browser-events.mjs",
-        "tools/check-workbench-frontend-acceptance.mjs",
-        "test/requirement-intake.test.js",
-        "test/workbench-shell.test.js",
-        "test/workbench-server.test.js",
-        "test/workbench-projection.test.js",
-        "test/frontend-acceptance.test.js"
-      ],
-      "acceptance_gates": [
-        "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
-        "npm run check:workbench:browser-events",
-        "npm run check:closeout"
-      ],
-      "source": "workbench_requirement_intake",
-      "submitted_at": "2026-05-26T03:30:03.063Z"
-    },
-    {
       "id": "requirement-intake-replay-20260525-module-update-final-01",
       "title": "“提需求”模块更新",
       "status": "in_progress",
@@ -148,7 +121,7 @@
       "completed": true
     }
   ],
-  "next_step": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目",
+  "next_step": "需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案：\n1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务”\n2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端\n3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框\n4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里\n5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上\n6. “提交到流程”改为“提交”\n2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。\n3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。\n4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目",
   "linked_docs": [
     {
       "path": "/Users/hernando_zhao/codex/projects/ai-control-platform/PROJECT_PLAN.md",
@@ -280,81 +253,14 @@
     "auth_redirect_detected": false,
     "secret_policy": "Only request metadata and a short visible body text sample are stored; no cookies, tokens, authorization headers, session values, or secret values are stored."
   },
-  "next_work_packages": [
-    {
-      "id": "requirement-unknown-20260526033003-intake",
-      "title": "处理需求：前端重构",
-      "action": "continue_requirement_intake",
-      "owned_files": [
-        "apps/workbench",
-        "src/workflow/requirement-intake.js",
-        "src/workflow/workbench-projection.js",
-        "src/workflow/frontend-acceptance.js",
-        "tools/workbench-server.mjs",
-        "tools/check-workbench-browser-events.mjs",
-        "tools/check-workbench-frontend-acceptance.mjs",
-        "test/requirement-intake.test.js",
-        "test/workbench-shell.test.js",
-        "test/workbench-server.test.js",
-        "test/workbench-projection.test.js",
-        "test/frontend-acceptance.test.js"
-      ],
-      "acceptance_gates": [
-        "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
-        "npm run check:workbench:browser-events",
-        "npm run check:closeout"
-      ],
-      "reason": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目",
-      "global_goal_id": "requirement-unknown-20260526033003",
-      "source": {
-        "requirement_id": "requirement-unknown-20260526033003",
-        "intake_channel": "workbench_frontend",
-        "surface_area": "platform_project",
-        "acceptance_criteria": "",
-        "constraints": "要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留"
-      }
-    }
-  ],
+  "next_work_packages": [],
   "requirement_intake": {
     "version": "workbench-requirement-intake.v1",
-    "active_requirement_id": "requirement-unknown-20260526033003",
-    "latest_requirement_id": "requirement-unknown-20260526033003",
-    "submitted_count": 2,
-    "open_count": 2,
+    "active_requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
+    "latest_requirement_id": "requirement-intake-replay-20260525-module-update-final-01",
+    "submitted_count": 1,
+    "open_count": 1,
     "items": [
-      {
-        "id": "requirement-unknown-20260526033003",
-        "title": "前端重构",
-        "status": "submitted",
-        "submitted_at": "2026-05-26T03:30:03.063Z",
-        "project_id": "ai-control-platform",
-        "surface_area": "platform_project",
-        "surface_label": "AI Control Platform 项目",
-        "problem_statement": "为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构",
-        "constraints": "要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留",
-        "owned_files": [
-          "apps/workbench",
-          "src/workflow/requirement-intake.js",
-          "src/workflow/workbench-projection.js",
-          "src/workflow/frontend-acceptance.js",
-          "tools/workbench-server.mjs",
-          "tools/check-workbench-browser-events.mjs",
-          "tools/check-workbench-frontend-acceptance.mjs",
-          "test/requirement-intake.test.js",
-          "test/workbench-shell.test.js",
-          "test/workbench-server.test.js",
-          "test/workbench-projection.test.js",
-          "test/frontend-acceptance.test.js"
-        ],
-        "acceptance_gates": [
-          "node --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
-          "npm run check:workbench:browser-events",
-          "npm run check:closeout"
-        ],
-        "acceptance_criteria": "",
-        "plan_review_id": "plan-review-requirement-unknown-20260526033003",
-        "summary": "需求：前端重构。现状与目标：为了提升界面可维护性, 不要继续使用原生css js html实现\n当前中台的所有前端代码，都用antd作为ui框架、react+next.js(app模式) 作为项目框架进行重构。约束：要求：\n- 不重复写基础组件，所有的基础组件和布局组件（重要！）都需要用antd。而且也需要遵循antd官方页面的一些的设计规范\n- 维持当前“单页app”的形态，不要偏移\n- 使用antd组件需要固化下来形成当前项目约束\n- 原有的css如无特殊必要不保留。范围：AI Control Platform 项目"
-      },
       {
         "id": "requirement-intake-replay-20260525-module-update-final-01",
         "title": "“提需求”模块更新",
@@ -408,56 +314,6 @@
       "reviewed_at": "2026-05-25T16:10:00.000Z",
       "review_decision": "approve",
       "review_note": ""
-    },
-    "requirement-unknown-20260526033003": {
-      "version": "workbench-plan-review.v1",
-      "id": "plan-review-requirement-unknown-20260526033003",
-      "requirement_id": "requirement-unknown-20260526033003",
-      "requirement_title": "前端重构",
-      "status": "ready_for_review",
-      "phase": "ready_for_review",
-      "plan_id": "plan-requirement-unknown-20260526033003",
-      "assessment_summary": "目标是将 AI Control Platform 现有的原生 HTML/CSS/JS 前端整体迁移到 React + Next.js（App Router）+ Ant Design 技术栈，以提升可维护性并统一设计语言。影响范围覆盖中台所有面向用户的前端入口与工作台，属于大规模重构而非增量改造；关键不确定性包括：当前原生前端的实际入口与路由形态、与后端 API（如 workbench-server、requirement-intake 等）的耦合方式、单页应用形态在 Next.js App Router 下的承载方案、以及静态资源/发布管道是否需要同步调整。需要先做一次前端现状摸底再制定可执行的迁移切片，避免一次性大改导致中台长时间不可用。",
-      "proposed_acceptance_plan": "# 前端重构方案（原生 → Next.js App Router + Ant Design）\n\n## 目标\n- 用 React + Next.js（App Router）+ Ant Design 替换中台现有的原生 HTML/CSS/JS 前端实现。\n- 通过 Ant Design 统一基础组件与布局组件，提升 UI 一致性与可维护性。\n- 形成项目层面的 UI 约束：禁止重复手写基础组件，所有基础/布局组件必须走 antd。\n\n## 实施范围\n- 范围内：\n  - 中台所有现有面向用户的前端页面、入口 HTML、内联/外链 CSS 与 JS。\n  - 与中台前端配套的静态资源与发布脚本（如 workbench 相关入口）。\n  - 前端与现有后端服务（workbench-server、requirement-intake 流程等）的对接层（HTTP 客户端、数据契约）。\n  - 新建 Next.js 工程骨架、antd 主题与 Layout 体系、目录与代码组织约定文档。\n- 范围外：\n  - 后端 API 行为变更（仅做调用方适配，不改语义）。\n  - 非中台前端的其他项目（如 stock_dashboard）。\n  - 设计风格的大改（沿用 antd 默认 + 必要的主题变量，不引入第三套 UI 体系）。\n\n## 关键设计原则\n- 单页应用形态保留：Next.js 使用 App Router，但中台入口仍以单一应用壳承载多视图，避免回到多页/多入口形态。\n- antd 优先：Layout、Menu、Table、Form、Modal、Drawer、Typography 等一律使用 antd；遵循 antd 官方页面（Pro 风格可参考）布局与交互规范。\n- 原有 CSS 默认不保留，除非该样式承担 antd 无法表达的领域语义（需在 PR 中显式说明保留原因）。\n- 形成约束文档（如 PROJECT_RULES.md / 前端 README）：明确“禁止自造基础组件、布局走 antd Layout”。\n\n## 验收标准\n- 中台前端入口由 Next.js 应用提供服务，原生 HTML/CSS/JS 不再作为生产入口。\n- 用户可在新前端完成现有中台核心流程（至少：需求录入、工作台浏览、计划审核等已有功能的等价操作）。\n- 所有基础与布局组件来源于 antd，代码评审中无新增自造基础组件。\n- 单页 app 形态保留：浏览器地址栏路由切换不触发整页刷新，整体壳一致。\n- 项目约束已写入文档（PROJECT_RULES.md 或前端 README），并在 PR 描述中引用。\n\n## 风险与缓解\n- 一次性整体重写风险高 → 采用“骨架先行 + 按视图切片迁移”的分阶段策略，每阶段保持中台可用。\n- 前后端契约隐性依赖 → 在迁移前先盘点现有前端调用的接口清单，作为新前端的数据层基线。\n- 发布与路由形态变化可能影响线上访问 → publish/edge 配置需同步评估，必要时保留旧入口直至新前端稳定。\n- antd 与现有视觉风格差异 → 通过 antd 主题变量收敛，不引入额外 UI 库。\n\n## 门禁证据\n- 现状盘点产物：现有前端文件/路由/接口清单（提交到仓库或 docs/）。\n- 新工程构建通过：`pnpm build` 或等价 Next.js 构建命令零错误。\n- Lint/Typecheck 通过：`pnpm lint`、`pnpm typecheck`（若启用）零错误。\n- 关键流程手动验证记录：截图或步骤记录，证明核心中台流程在新前端可走通。\n- 发布验证：新前端通过既有发布通道部署，并完成 served-route 验证。",
-      "implementation_outline": [
-        "盘点现状：枚举当前中台所有原生前端入口、页面、静态资源、内联脚本，以及它们调用的后端接口，输出一份迁移清单。",
-        "建立 Next.js + antd 骨架：在仓库内新建前端工程目录（App Router），接入 antd、配置主题与全局 Layout，确认与现有后端（workbench-server 等）的本地联调方式。",
-        "沉淀前端约束文档：在 PROJECT_RULES.md 或前端 README 中写明“基础/布局组件必须使用 antd、不得自造基础组件、单页 app 形态保留、原有 CSS 默认不保留”等规则。",
-        "按视图切片迁移：优先迁移高频核心视图（如工作台主页、需求录入、计划审核），每个切片以独立 PR 落地，并保持旧入口可回退。",
-        "对接数据层：抽象统一的 API 客户端与类型定义，替换原生 fetch/内联脚本的散乱调用，保证与现有后端契约一致。",
-        "清理与下线：在所有视图迁移完成后，移除原生 HTML/CSS/JS 入口与无用静态资源，更新发布脚本/边缘代理指向新前端。",
-        "发布与验证：通过现有发布通道部署新前端，完成 served-route 验证和核心流程回归。"
-      ],
-      "acceptance_gates": [
-        "现状盘点清单已产出并入库（含页面、路由、接口、静态资源列表）。",
-        "新 Next.js 工程在本地与 CI 中可成功构建（build 通过）。",
-        "Lint/Typecheck（若启用）在新前端工程中零错误。",
-        "核心中台流程在新前端中可端到端走通，并附验证记录。",
-        "antd 使用约束已写入项目文档并被 PR 引用。",
-        "原生 HTML/CSS/JS 入口已下线或明确标注为废弃，发布通道指向新前端。",
-        "完成一次真实发布并通过 served-route 验证。"
-      ],
-      "risks": [
-        "整体重写工作量大，若不做分阶段切片，存在中台长时间不可用的风险。",
-        "现有原生前端可能存在未文档化的隐式行为（如内联脚本、特殊事件处理），迁移过程中可能丢失功能，需要在盘点阶段重点识别。",
-        "Next.js App Router 的 SSR/CSR 行为与原生单页 app 不完全一致，需要在骨架阶段确认“单页 app 形态”如何承载，避免偏离用户要求。",
-        "antd 升级与主题约束一旦固化，后续若需引入非 antd 组件将面临约束冲突，需在文档中明确例外审批流程。",
-        "发布管道与边缘代理可能依赖旧入口路径，切换时需要与运维/发布脚本同步，否则可能导致线上 404 或回退失败。",
-        "本方案仅为计划，未读取现有前端源码细节，实际迁移切片粒度需在“现状盘点”阶段根据真实代码结构再细化。"
-      ],
-      "generator": {
-        "kind": "claude_plan_mode",
-        "command": "/Users/hernando_zhao/claude-proxy.sh",
-        "model": "claude-opus-4-7"
-      },
-      "generation_prompt_version": "requirement-plan-generation-prompt.v1",
-      "next_action": "等待用户审核方案",
-      "action_status": "等待你确认方案",
-      "submitted_at": "2026-05-26T03:30:03.063Z",
-      "generated_at": "2026-05-26T03:55:06.328Z",
-      "requested_at": "2026-05-26T03:30:03.063Z",
-      "reviewed_at": null,
-      "review_decision": null
     }
   }
 }
