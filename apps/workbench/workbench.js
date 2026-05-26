@@ -954,6 +954,8 @@ qsa("[data-requirement-form]").forEach((form) => {
       problem_statement: problemStatement,
       constraints: text(data.get("constraints"), ""),
       plan_review_requested: true,
+      generate_plan: true,
+      plan_generation_mode: "model",
       created_at: new Date().toISOString()
     };
 
@@ -962,15 +964,19 @@ qsa("[data-requirement-form]").forEach((form) => {
       submitButton.textContent = "提交中";
       submitButton.disabled = true;
     }
-    if (status) status.textContent = "正在写入 PROJECT_STATUS 和工作流事实";
+    if (status) status.textContent = "正在生成方案并写入流程事实";
 
     try {
       const result = await source.submitRequirement(input);
       if (submitButton) {
         submitButton.dataset.eventState = "recorded";
-        submitButton.textContent = "已提交，等待方案审核";
+        submitButton.textContent = result.plan_generation?.status === "pass" ? "已生成方案，等待审核" : "已提交，等待方案生成";
       }
-      if (status) status.textContent = "已生成流程输入，等待方案评估审核";
+      if (status) {
+        status.textContent = result.plan_generation?.status === "pass"
+          ? "已生成方案，等待你审核"
+          : "已写入流程，等待大模型生成方案";
+      }
       form.reset();
       if (result.projection) {
         currentProjection = result.projection;

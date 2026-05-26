@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { createServer, request as httpRequest } from "node:http";
+import { spawnSync } from "node:child_process";
 import { dirname, extname, isAbsolute, normalize, relative, resolve } from "node:path";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
 import { publishWorkbenchSnapshot, snapshotIssues } from "../src/workflow/workbench-snapshots.js";
@@ -54,6 +55,9 @@ import { runContextWorkPackages } from "../src/workflow/context-work-package-run
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { createHeadlessProviderExecutor } from "../src/workflow/headless-cli-orchestrator.js";
 import {
+  applyGeneratedRequirementPlan,
+  createRequirementPlanPrompt,
+  parseRequirementPlanGenerationOutput,
   recordRequirementIntakeSubmitted,
   submitRequirementToProjectStatus,
   updateRequirementPlanReview
@@ -155,6 +159,137 @@ function generatedContextPackSnapshotId(selectedId) {
 
 function requirementAutoAdvanceEnabled(input = {}) {
   return input.auto_advance !== false && input.autoAdvance !== false;
+}
+
+function requirementPlanGenerationRequested(input = {}) {
+  return input.generate_plan === true ||
+    input.generatePlan === true ||
+    input.plan_generation_mode === "model" ||
+    input.planGenerationMode === "model" ||
+    Boolean(input.generated_plan || input.generatedPlan);
+}
+
+function defaultRequirementPlanGenerator(input = {}) {
+  const script = normalizeString(
+    input.requirement_plan_command ||
+      input.requirementPlanCommand ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND ||
+      "/Users/hernando_zhao/claude-proxy.sh"
+  );
+  if (!script || !existsSync(script)) return null;
+  const model = normalizeString(
+    input.requirement_plan_model ||
+      input.requirementPlanModel ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_MODEL ||
+      "claude-opus-4-7"
+  );
+  const timeoutMs = Number(
+    input.requirement_plan_timeout_ms ||
+      input.requirementPlanTimeoutMs ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS ||
+      180000
+  );
+
+  return async ({ requirement }) => {
+    const prompt = createRequirementPlanPrompt(requirement);
+    const result = spawnSync(script, ["-m", model, "-p", prompt], {
+      cwd: root,
+      encoding: "utf8",
+      timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000
+    });
+    return {
+      status: result.status === 0 && !result.error ? "pass" : "fail",
+      stdout: result.stdout || "",
+      stderr: result.stderr || result.error?.message || "",
+      generator: {
+        kind: "claude_plan_mode",
+        command: script,
+        model,
+        exit_code: result.status ?? null,
+        timed_out: result.error?.code === "ETIMEDOUT"
+      }
+    };
+  };
+}
+
+async function generateRequirementPlanIfRequested(submitted = {}, input = {}, options = {}) {
+  if (!requirementPlanGenerationRequested(input)) {
+    return {
+      status: "not_requested",
+      submission: submitted,
+      issues: []
+    };
+  }
+
+  const directPlan = input.generated_plan || input.generatedPlan;
+  if (directPlan) {
+    const applied = applyGeneratedRequirementPlan(submitted.project_status, {
+      requirement_id: submitted.requirement.id,
+      generated_plan: directPlan,
+      generator: input.generator || { kind: "provided_generated_plan" }
+    }, {
+      created_at: input.created_at || input.createdAt
+    });
+    return {
+      status: applied.status === "pass" ? "pass" : "fail",
+      submission: applied.status === "pass"
+        ? { ...submitted, plan_review: applied.plan_review, project_status: applied.project_status }
+        : submitted,
+      issues: applied.issues || []
+    };
+  }
+
+  const generator = options.requirementPlanGenerator || defaultRequirementPlanGenerator(input);
+  if (typeof generator !== "function") {
+    return {
+      status: "fail",
+      submission: submitted,
+      issues: [{ code: "requirement_plan_generator_unavailable", message: "model plan generator is not configured", path: "requirement_plan_generator" }]
+    };
+  }
+
+  const generation = await generator({
+    requirement: submitted.requirement,
+    prompt: createRequirementPlanPrompt(submitted.requirement)
+  });
+  if (generation?.status !== "pass") {
+    return {
+      status: "fail",
+      submission: submitted,
+      issues: [{
+        code: "requirement_plan_generation_failed",
+        message: "model plan generation failed",
+        path: "plan_generation",
+        stderr: normalizeString(generation?.stderr)
+      }]
+    };
+  }
+
+  const parsed = generation.generated_plan || generation.generatedPlan
+    ? parseRequirementPlanGenerationOutput(submitted.requirement, generation.generated_plan || generation.generatedPlan)
+    : parseRequirementPlanGenerationOutput(submitted.requirement, generation.stdout);
+  if (parsed.status !== "pass") {
+    return {
+      status: "fail",
+      submission: submitted,
+      issues: parsed.issues
+    };
+  }
+
+  const applied = applyGeneratedRequirementPlan(submitted.project_status, {
+    requirement_id: submitted.requirement.id,
+    generated_plan: parsed,
+    generator: generation.generator || generation.provenance || { kind: "model_plan_generator" }
+  }, {
+    created_at: input.created_at || input.createdAt
+  });
+  return {
+    status: applied.status === "pass" ? "pass" : "fail",
+    submission: applied.status === "pass"
+      ? { ...submitted, plan_review: applied.plan_review, project_status: applied.project_status }
+      : submitted,
+    issues: applied.issues || []
+  };
 }
 
 function requirementAutoAdvanceAllowedAfterPlanReview(input = {}) {
@@ -1014,6 +1149,11 @@ export function createWorkbenchServer(options = {}) {
   const snapshotsRoot = resolve(options.snapshotsRoot || defaultSnapshotsRoot);
   const allowedHistoryRoots = [examplesRoot, snapshotsRoot];
   const realReviewerExecutor = options.realReviewerExecutor;
+  const requirementPlanGenerator = typeof options.requirementPlanGenerator === "function"
+    ? options.requirementPlanGenerator
+    : typeof options.requirement_plan_generator === "function"
+      ? options.requirement_plan_generator
+      : null;
   const contextWorkPackageProviderExecutor = typeof options.contextWorkPackageProviderExecutor === "function"
     ? options.contextWorkPackageProviderExecutor
     : typeof options.context_work_package_provider_executor === "function"
@@ -1419,13 +1559,16 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        let effectiveSubmission = submitted;
+        const planGeneration = await generateRequirementPlanIfRequested(submitted, input, {
+          requirementPlanGenerator
+        });
+        let effectiveSubmission = planGeneration.submission;
         if (
-          submitted.plan_review?.phase === "ready_for_review" &&
+          effectiveSubmission.plan_review?.phase === "ready_for_review" &&
           requirementAutoAdvanceAllowedAfterPlanReview(input)
         ) {
-          const approved = updateRequirementPlanReview(submitted.project_status, {
-            requirement_id: submitted.requirement.id,
+          const approved = updateRequirementPlanReview(effectiveSubmission.project_status, {
+            requirement_id: effectiveSubmission.requirement.id,
             action: "approve",
             note: "auto advance was explicitly allowed for an already-approved plan review",
             created_at: input.created_at || input.createdAt
@@ -1437,7 +1580,7 @@ export function createWorkbenchServer(options = {}) {
             return;
           }
           effectiveSubmission = {
-            ...submitted,
+            ...effectiveSubmission,
             plan_review: approved.plan_review,
             project_status: approved.project_status
           };
@@ -1454,8 +1597,10 @@ export function createWorkbenchServer(options = {}) {
         writeProjectStatus(projectStatusPath, effectiveSubmission.project_status);
         writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
         const projection = workbenchProjection(recorded.workflow_state);
-        const planReviewPending = effectiveSubmission.plan_review?.phase === "ready_for_review" &&
+        const planReviewPhase = effectiveSubmission.plan_review?.phase;
+        const planReviewPending = planReviewPhase === "ready_for_review" &&
           !requirementAutoAdvanceAllowedAfterPlanReview(input);
+        const planGenerationPending = planReviewPhase === "pending_plan_generation";
         const auto_advance = planReviewPending
           ? {
             status: "waiting_for_plan_review",
@@ -1464,6 +1609,14 @@ export function createWorkbenchServer(options = {}) {
             projection,
             reason: "requirement plan review must be approved before automatic development can continue"
           }
+          : planGenerationPending
+            ? {
+              status: "waiting_for_plan_generation",
+              result: null,
+              artifact: null,
+              projection,
+              reason: "requirement plan must be generated by a model before review or development can continue"
+            }
           : await runRequirementAutoAdvance({
             req,
             selectedId,
@@ -1479,6 +1632,10 @@ export function createWorkbenchServer(options = {}) {
           item,
           requirement: effectiveSubmission.requirement,
           plan_review: effectiveSubmission.plan_review,
+          plan_generation: {
+            status: planGeneration.status,
+            issues: planGeneration.issues || []
+          },
           artifact: recorded.artifact,
           next_action_readout: auto_advance.projection?.next_action_readout || projection.next_action_readout,
           projection: auto_advance.projection || projection,

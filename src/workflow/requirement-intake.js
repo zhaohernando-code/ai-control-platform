@@ -2,6 +2,7 @@ import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
 
 export const WORKBENCH_REQUIREMENT_INTAKE_VERSION = "workbench-requirement-intake.v1";
+export const REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION = "requirement-plan-generation-prompt.v1";
 
 const DEFAULT_PROJECT_ID = "ai-control-platform";
 const DEFAULT_SURFACE_AREA = "workbench_frontend";
@@ -171,44 +172,196 @@ function requirementSummary(input = {}, profile = {}) {
   return parts.join("。");
 }
 
-function generatedAcceptancePlan(requirement = {}) {
-  const problem = normalizeString(requirement.problem_statement);
-  const constraints = normalizeString(requirement.constraints);
+function jsonCandidate(text) {
+  const value = normalizeString(text);
+  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) return fenced[1].trim();
+  const objectStart = value.indexOf("{");
+  const objectEnd = value.lastIndexOf("}");
+  if (objectStart !== -1 && objectEnd > objectStart) return value.slice(objectStart, objectEnd + 1);
+  return "";
+}
+
+function normalizeStringList(value) {
+  return compactStrings(value).slice(0, 12);
+}
+
+export function createRequirementPlanPrompt(requirement = {}) {
   return [
-    "由平台根据需求生成验收方案：",
-    `1. 需求目标已落地：${problem || requirement.title}`,
-    "2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。",
-    "3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。",
-    constraints ? `4. 约束已验证：${constraints}` : "4. 无额外约束遗漏。"
+    "# Requirement Plan Generation",
+    "",
+    "你处于计划生成模式。只生成方案，不写代码，不修改文件，不声称已经实现。",
+    "请基于用户需求生成可审核的中台任务方案。不要复制粘贴用户原话作为方案；需要抽象目标、范围、验收标准、风险和门禁证据。",
+    "必须只返回一个 JSON object，不要包裹解释性文字。",
+    "",
+    "输入需求：",
+    JSON.stringify({
+      id: requirement.id || null,
+      title: requirement.title || null,
+      project_id: requirement.project_id || null,
+      surface_area: requirement.surface_area || null,
+      surface_label: requirement.surface_label || null,
+      problem_statement: requirement.problem_statement || null,
+      constraints: requirement.constraints || null
+    }, null, 2),
+    "",
+    "输出 JSON schema：",
+    JSON.stringify({
+      assessment_summary: "一段中文评估摘要，说明目标、影响范围和关键不确定性",
+      proposed_acceptance_plan: "面向用户审核的中文 Markdown 方案，包含目标、实施范围、验收标准、风险、门禁证据",
+      implementation_outline: ["可执行步骤 1", "可执行步骤 2"],
+      acceptance_gates: ["需要运行或验证的门禁"],
+      risks: ["需要用户知道的风险或假设"]
+    }, null, 2)
   ].join("\n");
 }
 
-function planReviewIdFrom(requirementId = "") {
-  return `plan-review-${safeIdPart(requirementId)}`;
+function generatedPlanFromOutput(value) {
+  if (isObject(value)) return value;
+  const candidate = jsonCandidate(value);
+  if (!candidate) return null;
+  try {
+    const parsed = JSON.parse(candidate);
+    return isObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
-function createPlanReview(requirement = {}, createdAt = "") {
+export function evaluateGeneratedRequirementPlan(requirement = {}, generatedPlan = {}) {
+  const issues = [];
+  const assessment = normalizeString(generatedPlan.assessment_summary || generatedPlan.assessmentSummary);
+  const plan = normalizeString(generatedPlan.proposed_acceptance_plan || generatedPlan.proposedAcceptancePlan);
+  const implementationOutline = normalizeStringList(generatedPlan.implementation_outline || generatedPlan.implementationOutline);
+  const acceptanceGates = normalizeStringList(generatedPlan.acceptance_gates || generatedPlan.acceptanceGates);
+  const risks = normalizeStringList(generatedPlan.risks);
+  const problem = normalizeString(requirement.problem_statement);
+
+  if (!assessment) {
+    issues.push(issue("missing_generated_assessment_summary", "generated plan must include assessment_summary", "assessment_summary"));
+  }
+  if (!plan) {
+    issues.push(issue("missing_generated_acceptance_plan", "generated plan must include proposed_acceptance_plan", "proposed_acceptance_plan"));
+  }
+  if (implementationOutline.length === 0) {
+    issues.push(issue("missing_generated_implementation_outline", "generated plan must include implementation_outline", "implementation_outline"));
+  }
+  if (acceptanceGates.length === 0) {
+    issues.push(issue("missing_generated_acceptance_gates", "generated plan must include acceptance_gates", "acceptance_gates"));
+  }
+  if (problem && plan === problem) {
+    issues.push(issue("generated_plan_copies_problem_statement", "generated plan must not be a verbatim copy of problem_statement", "proposed_acceptance_plan"));
+  }
+
+  return {
+    status: issues.length ? "fail" : "pass",
+    assessment_summary: assessment,
+    proposed_acceptance_plan: plan,
+    implementation_outline: implementationOutline,
+    acceptance_gates: acceptanceGates,
+    risks,
+    issues
+  };
+}
+
+export function parseRequirementPlanGenerationOutput(requirement = {}, output = "") {
+  const parsed = generatedPlanFromOutput(output);
+  if (!parsed) {
+    return {
+      status: "fail",
+      issues: [issue("invalid_requirement_plan_generation_output", "plan generator must return a JSON object", "output")]
+    };
+  }
+  return evaluateGeneratedRequirementPlan(requirement, parsed);
+}
+
+function pendingPlanReview(requirement = {}, createdAt = "") {
   const generatedAt = normalizeString(createdAt) || new Date().toISOString();
   return {
     version: PLAN_REVIEW_VERSION,
     id: planReviewIdFrom(requirement.id),
     requirement_id: requirement.id,
     requirement_title: requirement.title,
-    status: "ready_for_review",
-    phase: "ready_for_review",
-    plan_id: `plan-${safeIdPart(requirement.id)}`,
-    assessment_summary: [
-      `需求「${requirement.title}」需要先完成方案评估。`,
-      "平台已基于现状、目标和约束生成初始实施范围；用户确认后再进入开发执行。"
-    ].join(" "),
-    proposed_acceptance_plan: generatedAcceptancePlan(requirement),
-    next_action: "等待用户审核方案",
-    action_status: "等待你确认方案",
+    status: "pending_plan_generation",
+    phase: "pending_plan_generation",
+    plan_id: null,
+    assessment_summary: null,
+    proposed_acceptance_plan: null,
+    implementation_outline: [],
+    acceptance_gates: [],
+    risks: [],
+    generator: null,
+    generation_prompt_version: REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION,
+    next_action: "等待大模型生成方案",
+    action_status: "等待方案生成",
     submitted_at: requirement.submitted_at,
-    generated_at: generatedAt,
+    generated_at: null,
+    requested_at: generatedAt,
     reviewed_at: null,
     review_decision: null
   };
+}
+
+export function applyGeneratedRequirementPlan(projectStatus = {}, input = {}, options = {}) {
+  const requirementId = normalizeString(input.requirement_id || input.requirementId);
+  const existingReviews = isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {};
+  const review = requirementId ? existingReviews[requirementId] : null;
+  const requirement = asArray(projectStatus?.requirement_intake?.items).find((item) => normalizeString(item?.id) === requirementId) || {};
+  if (!review) {
+    return {
+      status: "fail",
+      issues: [issue("plan_review_not_found", "plan review not found for requirement", "requirement_id")]
+    };
+  }
+
+  const generatedPlan = input.generated_plan || input.generatedPlan || input.plan || input;
+  const validation = evaluateGeneratedRequirementPlan(requirement, generatedPlan);
+  if (validation.status !== "pass") {
+    return {
+      status: "fail",
+      issues: validation.issues
+    };
+  }
+
+  const generatedAt = normalizeString(options.created_at || options.createdAt || input.created_at || input.createdAt) ||
+    new Date().toISOString();
+  const nextReview = {
+    ...review,
+    status: "ready_for_review",
+    phase: "ready_for_review",
+    plan_id: normalizeString(review.plan_id) || `plan-${safeIdPart(requirementId)}`,
+    assessment_summary: validation.assessment_summary,
+    proposed_acceptance_plan: validation.proposed_acceptance_plan,
+    implementation_outline: validation.implementation_outline,
+    acceptance_gates: validation.acceptance_gates,
+    risks: validation.risks,
+    generator: input.generator || input.provenance || options.generator || null,
+    generated_at: generatedAt,
+    next_action: "等待用户审核方案",
+    action_status: "等待你确认方案"
+  };
+  const nextProjectStatus = {
+    ...projectStatus,
+    updated_at: generatedAt,
+    plan_reviews: {
+      ...existingReviews,
+      [requirementId]: nextReview
+    }
+  };
+
+  return {
+    status: "pass",
+    plan_review: nextReview,
+    project_status: nextProjectStatus
+  };
+}
+
+function createPlanReview(requirement = {}, createdAt = "") {
+  return pendingPlanReview(requirement, createdAt);
+}
+
+function planReviewIdFrom(requirementId = "") {
+  return `plan-review-${safeIdPart(requirementId)}`;
 }
 
 function nextWorkPackage(requirement = {}, profile = {}) {
@@ -322,11 +475,9 @@ export function submitRequirementToProjectStatus(projectStatus = {}, input = {},
   const planReview = createPlanReview(baseRequirement, createdAt);
   const requirement = {
     ...baseRequirement,
-    acceptance_criteria: normalizeString(input.acceptance_criteria || input.acceptanceCriteria) ||
-      planReview.proposed_acceptance_plan,
+    acceptance_criteria: normalizeString(input.acceptance_criteria || input.acceptanceCriteria),
     plan_review_id: planReview.id
   };
-  planReview.proposed_acceptance_plan = requirement.acceptance_criteria;
   requirement.summary = requirementSummary(requirement, profile);
 
   const existingItems = normalizeRequirementItems(projectStatus?.requirement_intake?.items);
@@ -392,6 +543,12 @@ export function updateRequirementPlanReview(projectStatus = {}, input = {}, opti
     return {
       status: "fail",
       issues: [issue("invalid_plan_review_action", "action must be approve or revise", "action")]
+    };
+  }
+  if (action === "approve" && normalizeString(review.phase) !== "ready_for_review") {
+    return {
+      status: "fail",
+      issues: [issue("plan_review_not_ready", "plan review must be generated before approval", "plan_reviews")]
     };
   }
 

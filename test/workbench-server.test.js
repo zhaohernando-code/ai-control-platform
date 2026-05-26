@@ -55,6 +55,17 @@ function currentSessionWithoutSchedulerLoop() {
   return workflowState;
 }
 
+function generatedRequirementPlan(overrides = {}) {
+  return {
+    assessment_summary: "模型评估认为该需求需要先完成方案审核，再进入受控开发。",
+    proposed_acceptance_plan: "## 目标\n形成可审核方案。\n## 验收\n方案通过前不自动开发；通过后进入受控任务执行。",
+    implementation_outline: ["生成方案", "等待审核", "审核通过后派发"],
+    acceptance_gates: ["node --test test/workbench-server.test.js"],
+    risks: ["模型方案必须结构化保存"],
+    ...overrides
+  };
+}
+
 async function withServer(fn, options = {}) {
   const server = createWorkbenchServer(options);
   server.listen(0, "127.0.0.1");
@@ -714,6 +725,7 @@ test("workbench server accepts frontend requirements into autonomous continuatio
         problem_statement: "看板提需求页面需要改成新建任务，并由后端生成方案等待用户审核，不只是前端展示。",
         constraints: "不能绕过自动开发、验收和门禁流程。",
         plan_review_requested: true,
+        generate_plan: true,
         created_at: "2026-05-25T09:00:00.000Z",
         requirement_id: "requirement-from-workbench"
       })
@@ -737,12 +749,21 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
     assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("apps/workbench"));
     assert.ok(savedProjectStatus.next_work_packages[0].owned_files.includes("tools/workbench-server.mjs"));
-    assert.match(savedProjectStatus.next_work_packages[0].source.acceptance_criteria, /由平台根据需求生成验收方案/);
+    assert.match(savedProjectStatus.plan_reviews["requirement-from-workbench"].proposed_acceptance_plan, /形成可审核方案/);
     assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
     assert.equal(savedWorkflowState.project_status.next_work_packages[0].action, "continue_requirement_intake");
     assert.equal(savedWorkflowState.manifest.events.some((event) => event.type === "context_work_packages_run"), false);
     assert.equal(savedWorkflowState.manifest.events.at(-1).type, "requirement_intake_submitted");
-  }, { historyPath, snapshotsRoot, projectStatusPath });
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath,
+    requirementPlanGenerator: async () => ({
+      status: "pass",
+      generated_plan: generatedRequirementPlan(),
+      generator: { kind: "test_plan_model" }
+    })
+  });
 });
 
 test("workbench server records plan review decisions", async () => {
@@ -782,6 +803,7 @@ test("workbench server records plan review decisions", async () => {
         project_id: "ai-control-platform",
         problem_statement: "提需求页面需要先生成方案并等待用户审核。",
         plan_review_requested: true,
+        generated_plan: generatedRequirementPlan(),
         auto_advance: false,
         created_at: "2026-05-25T09:00:00.000Z",
         requirement_id: "requirement-plan-review-server"
@@ -849,6 +871,7 @@ test("workbench server completes requirement intake only with verified provider 
         problem_statement: "需求提交后的实现包必须由具备完成权限的执行器完成。",
         acceptance_criteria: "配置 verified provider executor 时，auto advance 可以完成 context work package。",
         constraints: "不能让 local bounded runner 写 completed。",
+        generated_plan: generatedRequirementPlan(),
         auto_advance_after_plan_review: true,
         created_at: "2026-05-25T09:30:00.000Z",
         requirement_id: "requirement-provider-authorized"
@@ -960,6 +983,7 @@ console.log(JSON.stringify({
         problem_statement: "需求提交后的实现包必须由受控子进程完成。",
         acceptance_criteria: "配置 child command 时，auto advance 可以完成 context work package。",
         constraints: "不能让 local bounded runner 写 completed。",
+        generated_plan: generatedRequirementPlan(),
         auto_advance_after_plan_review: true,
         created_at: "2026-05-25T09:45:00.000Z",
         requirement_id: "requirement-child-command-authorized"
