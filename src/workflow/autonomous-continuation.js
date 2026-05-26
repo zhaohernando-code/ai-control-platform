@@ -151,7 +151,19 @@ function completedWorkPackageIds(input = {}) {
 function filterCompletedWorkPackages(workPackages = [], input = {}) {
   const completedIds = completedWorkPackageIds(input);
   if (completedIds.size === 0) return workPackages;
-  return asArray(workPackages).filter((workPackage) => !completedIds.has(workPackageId(workPackage)));
+  return asArray(workPackages)
+    .filter((workPackage) => !completedIds.has(workPackageId(workPackage)))
+    .map((workPackage) => {
+      const dependsOn = compactStrings(workPackage.depends_on || workPackage.dependencies)
+        .filter((dependencyId) => !completedIds.has(dependencyId));
+      if (dependsOn.length === compactStrings(workPackage.depends_on || workPackage.dependencies).length) {
+        return workPackage;
+      }
+      return {
+        ...workPackage,
+        depends_on: dependsOn
+      };
+    });
 }
 
 function requirementIdForWorkPackage(workPackage = {}) {
@@ -570,6 +582,7 @@ function createContextPackSeed(input, action) {
       owned_files: compactStrings(workPackage.owned_files || workPackage.ownedFiles),
       depends_on: compactStrings(workPackage.depends_on || workPackage.dependencies),
       source: {
+        ...(isObject(workPackage.source) ? workPackage.source : {}),
         global_goal_id: normalizeString(workPackage.global_goal_id || workPackage.globalGoalId),
         pool_id: normalizeString(workPackage.pool_id || workPackage.poolId),
         worker_id: normalizeString(workPackage.worker_id || workPackage.workerId),
