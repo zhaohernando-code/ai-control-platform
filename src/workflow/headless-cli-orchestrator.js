@@ -400,8 +400,27 @@ export function parseHeadlessChildWorkerOutput(raw = {}) {
   return parseJsonCandidate(raw) || null;
 }
 
+function selectedChildAcceptanceGates(workPackage = {}, contextPack = {}, options = {}) {
+  const packageGates = compactStrings(workPackage.acceptance_gates || workPackage.acceptanceGates);
+  const sourceGates = compactStrings(workPackage.source?.acceptance_gates || workPackage.source?.acceptanceGates);
+  const optionGates = compactStrings(options.acceptance_gates || options.acceptanceGates);
+  const contextGates = compactStrings(contextPack.acceptance_gates || contextPack.acceptanceGates);
+  const focused = [...new Set([...packageGates, ...sourceGates])];
+  return focused.length > 0 ? focused : [...new Set([...optionGates, ...contextGates])];
+}
+
+function promptSafeFocusedContextPack(contextPack = {}, workPackage = {}, acceptanceGates = []) {
+  const safeContextPack = promptSafeContextPack(contextPack);
+  return {
+    ...safeContextPack,
+    acceptance_gates: acceptanceGates,
+    subtasks: [promptSafeWorkPackage(workPackage)]
+  };
+}
+
 export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
   const contextPack = workflowState?.manifest?.context_pack || {};
+  const acceptanceGates = selectedChildAcceptanceGates(workPackage, contextPack, options);
   const outputPath = normalizeString(options.child_worker_output_path_resolved || options.childWorkerOutputPathResolved) ||
     childWorkerCommandOutputPath(workPackage, {
       ...options,
@@ -457,13 +476,13 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     JSON.stringify(promptSafeWorkflowIdentity(workflowState), null, 2),
     "",
     "Task context:",
-    JSON.stringify(promptSafeContextPack(contextPack), null, 2),
+    JSON.stringify(promptSafeFocusedContextPack(contextPack, workPackage, acceptanceGates), null, 2),
     "",
     "Selected task:",
     JSON.stringify(promptSafeWorkPackage(workPackage), null, 2),
     "",
     "Acceptance gates:",
-    JSON.stringify(compactStrings(options.acceptance_gates || contextPack.acceptance_gates), null, 2),
+    JSON.stringify(acceptanceGates, null, 2),
     ...outputPathInstructions
   ].join("\n");
 }

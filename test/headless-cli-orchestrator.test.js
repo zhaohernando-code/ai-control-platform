@@ -699,7 +699,24 @@ test("headless child prompt includes selected requirement plan step context", ()
         implementation_step: "盘点现有前端入口和接口调用",
         acceptance_gates: ["现状盘点清单已产出并入库"]
       }
+    },
+    {
+      id: "requirement-plan-step-02",
+      title: "前端重构：实施步骤 02 / 2",
+      action: "execute_requirement_plan_step",
+      owned_files: ["."],
+      source: {
+        requirement_id: "requirement-front",
+        plan_step_index: 2,
+        plan_step_total: 2,
+        implementation_step: "建立后续页面迁移",
+        acceptance_gates: ["后续页面迁移通过"]
+      }
     }
+  ];
+  workflowState.manifest.context_pack.acceptance_gates = [
+    "现状盘点清单已产出并入库",
+    "后续页面迁移通过"
   ];
   const workPackage = {
     ...workflowState.manifest.context_pack.subtasks[0],
@@ -709,6 +726,8 @@ test("headless child prompt includes selected requirement plan step context", ()
 
   assert.match(prompt, /盘点现有前端入口和接口调用/);
   assert.match(prompt, /现状盘点清单已产出并入库/);
+  assert.doesNotMatch(prompt, /建立后续页面迁移/);
+  assert.doesNotMatch(prompt, /后续页面迁移通过/);
   assert.doesNotMatch(prompt, /Internal metadata is intentionally omitted/);
 });
 
