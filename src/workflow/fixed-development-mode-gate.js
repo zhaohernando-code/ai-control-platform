@@ -34,6 +34,16 @@ function forbiddenManagedProjectPath(path) {
   return MANAGED_PROJECT_PATH_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
+function outsideTargetProjectPath(path) {
+  const normalized = normalizeString(path).replaceAll("\\", "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return !normalized ||
+    normalized.startsWith("/") ||
+    normalized === ".." ||
+    normalized.startsWith("../") ||
+    normalized.includes("/../") ||
+    normalized.endsWith("/..");
+}
+
 function pushManagedProjectOwnedFileIssues(issues, ownedFiles, options = {}) {
   compactStrings(ownedFiles).forEach((ownedFile, ownedFileIndex) => {
     if (!forbiddenManagedProjectPath(ownedFile)) return;
@@ -41,6 +51,19 @@ function pushManagedProjectOwnedFileIssues(issues, ownedFiles, options = {}) {
       issue(
         options.code,
         `${options.label} owned_files must not point at managed project path ${ownedFile}`,
+        `${options.path}[${ownedFileIndex}]`
+      )
+    );
+  });
+}
+
+function pushOwnedFileBoundaryIssues(issues, ownedFiles, options = {}) {
+  compactStrings(ownedFiles).forEach((ownedFile, ownedFileIndex) => {
+    if (!outsideTargetProjectPath(ownedFile)) return;
+    issues.push(
+      issue(
+        options.code,
+        `${options.label} owned_files must stay inside the ai-control-platform project: ${ownedFile}`,
         `${options.path}[${ownedFileIndex}]`
       )
     );
@@ -87,6 +110,11 @@ export function evaluateFixedDevelopmentModeGate(input = {}) {
     label: "Context Pack root",
     path: "manifest.context_pack.owned_files"
   });
+  pushOwnedFileBoundaryIssues(issues, contextPack.owned_files, {
+    code: "fixed_mode_context_owned_file_outside_project",
+    label: "Context Pack root",
+    path: "manifest.context_pack.owned_files"
+  });
 
   if (asArray(contextPack.subtasks).length === 0 && asArray(manifest.work_packages).length === 0) {
     issues.push(
@@ -101,6 +129,11 @@ export function evaluateFixedDevelopmentModeGate(input = {}) {
     const id = selectedId(subtask, index);
     pushManagedProjectOwnedFileIssues(issues, subtask?.owned_files, {
       code: "fixed_mode_subtask_managed_project_owned_file",
+      label: `${id} subtask`,
+      path: `manifest.context_pack.subtasks[${index}].owned_files`
+    });
+    pushOwnedFileBoundaryIssues(issues, subtask?.owned_files, {
+      code: "fixed_mode_subtask_owned_file_outside_project",
       label: `${id} subtask`,
       path: `manifest.context_pack.subtasks[${index}].owned_files`
     });
@@ -124,6 +157,11 @@ export function evaluateFixedDevelopmentModeGate(input = {}) {
 
     pushManagedProjectOwnedFileIssues(issues, ownedFiles, {
       code: "fixed_mode_managed_project_owned_file",
+      label: id,
+      path: `${basePath}.owned_files`
+    });
+    pushOwnedFileBoundaryIssues(issues, ownedFiles, {
+      code: "fixed_mode_owned_file_outside_project",
       label: id,
       path: `${basePath}.owned_files`
     });

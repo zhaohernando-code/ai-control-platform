@@ -405,6 +405,49 @@ test("headless child worker acceptance allows changed files under owned director
   assert.equal(evaluation.issues.length, 0);
 });
 
+test("headless child worker acceptance allows project root owned scope", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    id: "project-wide-worker",
+    owned_files: ["."]
+  }, {
+    host: "platform_core",
+    changed_files: [
+      "package.json",
+      "apps/workbench/web/app/page.tsx",
+      "test/workbench-web-skeleton.test.js"
+    ],
+    test_results: [{ command: "node --test test/workbench-web-skeleton.test.js", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: false },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false }
+  });
+
+  assert.equal(evaluation.status, "pass");
+  assert.equal(evaluation.issues.length, 0);
+});
+
+test("headless child worker project root scope rejects files outside the project", () => {
+  const evaluation = evaluateHeadlessChildWorkerOutput({
+    id: "project-wide-worker",
+    owned_files: ["."]
+  }, {
+    host: "platform_core",
+    changed_files: ["../stock_dashboard/src/page.tsx", "/tmp/outside.js"],
+    test_results: [{ command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }],
+    durable_state_updated: true,
+    process_hardening: { required: false },
+    continuation_readiness: { ready: true },
+    self_evaluation: { aligned: true, drifted: false }
+  });
+
+  assert.equal(evaluation.status, "fail");
+  assert.equal(
+    evaluation.issues.filter((item) => item.code === "child_worker_owned_file_violation").length,
+    2
+  );
+});
+
 test("headless child worker acceptance includes touched files when checking owned scope", () => {
   const evaluation = evaluateHeadlessChildWorkerOutput({
     id: "worker-runtime-readiness-gate",

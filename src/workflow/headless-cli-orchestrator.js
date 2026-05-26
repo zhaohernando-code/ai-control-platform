@@ -238,6 +238,9 @@ function durableStatePass(output = {}) {
 function pathMatchesOwnedFile(changedFile = "", ownedFile = "") {
   const changed = normalizeString(changedFile).replace(/\\/g, "/").replace(/^\.\/+/, "");
   const owned = normalizeString(ownedFile).replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  if ((owned === "." || owned === "") && changed && !changed.startsWith("../") && !changed.startsWith("/")) {
+    return true;
+  }
   return Boolean(changed && owned && (changed === owned || changed.startsWith(`${owned}/`)));
 }
 

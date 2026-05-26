@@ -292,6 +292,47 @@ test("workbench files avoid legacy and managed project references", () => {
   assert.doesNotMatch(combined, /stock_dashboard|legacy\/|local-control-server|dashboard-ui/);
 });
 
+test("frontend refactor constraints document is durable and codifies antd + next.js single-page app rules", () => {
+  const constraints = read("apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md");
+
+  // Stack constraints
+  assert.match(constraints, /Ant Design/);
+  assert.match(constraints, /antd/);
+  assert.match(constraints, /React/);
+  assert.match(constraints, /Next\.js/);
+  assert.match(constraints, /App Router/);
+
+  // Component / layout rules
+  assert.match(constraints, /禁止自造基础组件/);
+  assert.match(constraints, /布局组件强制走 antd/);
+  assert.match(constraints, /Layout/);
+  assert.match(constraints, /Sider/);
+  assert.match(constraints, /单页 app 形态必须保留/);
+  assert.match(constraints, /原有 CSS 默认不保留/);
+
+  // Project structure anchors
+  assert.match(constraints, /apps\/workbench\/app\//);
+  assert.match(constraints, /apps\/workbench\/lib\/api\//);
+
+  // Inventory anchors (so the migration baseline cannot silently drift)
+  assert.match(constraints, /apps\/workbench\/desktop\.html/);
+  assert.match(constraints, /apps\/workbench\/mobile\.html/);
+  assert.match(constraints, /apps\/workbench\/workbench\.js/);
+  assert.match(constraints, /apps\/workbench\/projection-source\.js/);
+  assert.match(constraints, /apps\/workbench\/styles\.css/);
+  assert.match(constraints, /\/api\/workbench\/projection/);
+  assert.match(constraints, /\/api\/workbench\/events/);
+  assert.match(constraints, /\/api\/workbench\/requirements/);
+
+  // Gate mapping (so future refactors cannot weaken acceptance gates)
+  assert.match(constraints, /check:workbench:browser-events/);
+  assert.match(constraints, /check:workbench:frontend-acceptance/);
+  assert.match(constraints, /check:closeout/);
+
+  // Forbidden second UI framework
+  assert.doesNotMatch(constraints, /shadcn|chakra|MUI/i);
+});
+
 test("workbench controls do not show success when operator event persistence fails", () => {
   const script = read("apps/workbench/workbench.js");
 

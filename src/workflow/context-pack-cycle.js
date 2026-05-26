@@ -85,6 +85,20 @@ function completedGlobalGoalIdsFrom(workflowState = {}) {
     .filter(Boolean));
 }
 
+function openRequirementGoalIdsFromProjectStatus(projectStatus = {}) {
+  const planReviews = isObject(projectStatus?.plan_reviews) ? projectStatus.plan_reviews : {};
+  const completeStatuses = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed", "shipped"]);
+  return new Set(asArray(projectStatus?.requirement_intake?.items)
+    .filter((item) => {
+      const id = normalizeString(item?.id);
+      if (!id) return false;
+      const itemStatus = normalizeString(item?.status || "submitted").toLowerCase();
+      const reviewPhase = normalizeString(planReviews[id]?.phase || planReviews[id]?.status).toLowerCase();
+      return !completeStatuses.has(itemStatus) && !completeStatuses.has(reviewPhase);
+    })
+    .map((item) => normalizeString(item.id)));
+}
+
 function projectStatusWithCompletedGlobalGoals(sourceWorkflowState = {}) {
   const projectStatus = sourceWorkflowState.project_status || sourceWorkflowState.projectStatus || null;
   if (!isObject(projectStatus)) return null;
@@ -96,6 +110,7 @@ function projectStatusWithCompletedGlobalGoals(sourceWorkflowState = {}) {
     ...projectStatus,
     global_goals: asArray(projectStatus.global_goals || projectStatus.globalGoals).map((goal) => {
       const id = normalizeString(goal?.id || goal?.goal_id || goal?.key);
+      if (openRequirementGoalIdsFromProjectStatus(projectStatus).has(id)) return goal;
       if (!completedIds.has(id)) return goal;
       return {
         ...goal,

@@ -403,6 +403,25 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
 
   const manifestValidation = validateRunManifest(workflowState.manifest);
   if (manifestValidation.status !== "pass") {
+    const fixedDevelopmentModeGate = evaluateFixedDevelopmentModeGate({
+      manifest: workflowState.manifest,
+      selected_work_packages: asArray(workflowState.manifest?.work_packages)
+    });
+    if (fixedDevelopmentModeGate.status !== "pass") {
+      return {
+        status: "blocked",
+        phase: "fixed_development_mode_gate",
+        gate_result: fixedDevelopmentModeGate,
+        issues: [
+          ...fixedDevelopmentModeGate.issues,
+          ...manifestValidation.issues
+        ],
+        dispatchable_count: 0,
+        selected_work_package_ids: asArray(workflowState.manifest?.work_packages)
+          .map((node) => normalizeString(node?.id))
+          .filter(Boolean)
+      };
+    }
     return {
       status: "fail",
       phase: "manifest_validation",

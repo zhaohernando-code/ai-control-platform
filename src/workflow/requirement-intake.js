@@ -121,6 +121,16 @@ function uniqueStrings(value) {
   return [...new Set(compactStrings(value))];
 }
 
+function withProjectWideOwnedFiles(profile = {}) {
+  return {
+    ...profile,
+    owned_files: uniqueStrings([
+      ".",
+      ...asArray(profile.owned_files),
+    ])
+  };
+}
+
 function issue(code, message, path) {
   return { code, message, path };
 }
@@ -143,13 +153,13 @@ function isProjectLevelRequirement(input = {}) {
 
 function requirementProfile(input = {}) {
   if (typeof input === "string") {
-    return SURFACE_PROFILES[normalizeString(input)] || SURFACE_PROFILES[DEFAULT_SURFACE_AREA];
+    return withProjectWideOwnedFiles(SURFACE_PROFILES[normalizeString(input)] || SURFACE_PROFILES[DEFAULT_SURFACE_AREA]);
   }
-  if (isProjectLevelRequirement(input)) {
-    return SURFACE_PROFILES.platform_project;
-  }
-  return SURFACE_PROFILES[normalizeString(input.surface_area || input.surfaceArea) || DEFAULT_SURFACE_AREA] ||
-    SURFACE_PROFILES[DEFAULT_SURFACE_AREA];
+  const baseProfile = isProjectLevelRequirement(input)
+    ? SURFACE_PROFILES.platform_project
+    : SURFACE_PROFILES[normalizeString(input.surface_area || input.surfaceArea) || DEFAULT_SURFACE_AREA] ||
+      SURFACE_PROFILES[DEFAULT_SURFACE_AREA];
+  return withProjectWideOwnedFiles(baseProfile);
 }
 
 function requirementIdFrom(title, createdAt) {

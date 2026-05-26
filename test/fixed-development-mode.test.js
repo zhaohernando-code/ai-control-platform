@@ -135,6 +135,40 @@ test("fixed development mode runtime gate evaluates dispatch inputs", () => {
   assert.ok(fail.issues.some((item) => item.code === "fixed_mode_managed_project_owned_file"));
 });
 
+test("fixed development mode permits project root scope but rejects project escape paths", () => {
+  const pass = evaluateFixedDevelopmentModeGate({
+    manifest: {
+      context_pack: {
+        host: "platform_core",
+        target_project_id: "ai-control-platform",
+        owned_files: ["."],
+        subtasks: [{ id: "runtime", owned_files: ["."] }]
+      },
+      work_packages: []
+    },
+    selected_work_packages: [{ id: "runtime", owned_files: ["."] }]
+  });
+
+  assert.equal(pass.status, "pass");
+
+  const fail = evaluateFixedDevelopmentModeGate({
+    manifest: {
+      context_pack: {
+        host: "platform_core",
+        target_project_id: "ai-control-platform",
+        owned_files: ["."],
+        subtasks: [{ id: "runtime", owned_files: ["../outside.js"] }]
+      },
+      work_packages: []
+    },
+    selected_work_packages: [{ id: "runtime", owned_files: ["/tmp/outside.js"] }]
+  });
+
+  assert.equal(fail.status, "fail");
+  assert.ok(fail.issues.some((item) => item.code === "fixed_mode_subtask_owned_file_outside_project"));
+  assert.ok(fail.issues.some((item) => item.code === "fixed_mode_owned_file_outside_project"));
+});
+
 test("fixed development mode runtime gate checks all declared owned file sources", () => {
   const result = evaluateFixedDevelopmentModeGate({
     manifest: {

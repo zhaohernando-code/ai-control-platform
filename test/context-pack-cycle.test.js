@@ -90,6 +90,50 @@ test("context pack cycle carries project status for global goal completion acros
   assert.equal(result.workflow_state.manifest.work_packages[0].id, "global-goal-context-cycle");
 });
 
+test("context pack cycle does not complete an open requirement goal from a finished intake package alone", () => {
+  const source = sourceWithProjectStatusContinuation();
+  source.project_status = {
+    project: "ai-control-platform",
+    requirement_intake: {
+      items: [
+        {
+          id: "requirement-frontend-refactor",
+          title: "前端重构",
+          status: "submitted"
+        }
+      ]
+    },
+    plan_reviews: {
+      "requirement-frontend-refactor": {
+        phase: "in_development"
+      }
+    },
+    global_goals: [
+      {
+        id: "requirement-frontend-refactor",
+        title: "前端重构",
+        status: "in_progress"
+      }
+    ]
+  };
+  source.manifest.work_packages = [
+    {
+      id: "requirement-frontend-refactor-intake",
+      global_goal_id: "requirement-frontend-refactor",
+      status: "completed"
+    }
+  ];
+
+  const result = materializeContextPackCycleFromWorkflowState(source, {
+    cycle_id: "cycle-context-pack-open-requirement",
+    created_at: "2026-05-24T05:26:00.000Z"
+  });
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.workflow_state.project_status.global_goals[0].status, "in_progress");
+  assert.equal(result.workflow_state.global_goals[0].status, "in_progress");
+});
+
 test("context pack cycle blocks without a project status continuation fact", () => {
   const result = materializeContextPackCycleFromWorkflowState(sourceWorkflowState());
 

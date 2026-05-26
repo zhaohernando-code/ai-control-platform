@@ -51,6 +51,61 @@ test("context pack passes with required fields and dispatchable work packages", 
   );
 });
 
+test("context pack project root owned file authorizes project-relative subtasks", () => {
+  const contextPack = validContextPack({
+    owned_files: ["."],
+    subtasks: [
+      {
+        id: "package-scope",
+        title: "Package scope",
+        owned_files: ["package.json", "apps/workbench/web/app/page.tsx"]
+      }
+    ]
+  });
+  const validation = validateContextPack(contextPack);
+  const workPackages = createWorkPackages(contextPack);
+
+  assert.equal(validation.status, "pass");
+  assert.equal(workPackages[0].dispatch_allowed, true);
+  assert.deepEqual(workPackages[0].owned_files, ["package.json", "apps/workbench/web/app/page.tsx"]);
+});
+
+test("context pack project root owned file still rejects paths outside the project", () => {
+  const contextPack = validContextPack({
+    owned_files: ["."],
+    subtasks: [
+      {
+        id: "escape",
+        title: "Escape scope",
+        owned_files: ["../stock_dashboard/src/page.tsx", "/tmp/outside.js"]
+      }
+    ]
+  });
+  const validation = validateContextPack(contextPack);
+  const workPackages = createWorkPackages(contextPack);
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((item) => item.code === "subtask_owned_file_outside_project"));
+  assert.equal(workPackages[0].dispatch_allowed, false);
+  assert.ok(workPackages[0].blocked_reasons.some((item) => item.code === "owned_file_outside_project"));
+});
+
+test("context pack rejects root owned files outside the project", () => {
+  const validation = validateContextPack(validContextPack({
+    owned_files: ["../stock_dashboard/src/page.tsx"],
+    subtasks: [
+      {
+        id: "escape",
+        title: "Escape scope",
+        owned_files: ["../stock_dashboard/src/page.tsx"]
+      }
+    ]
+  }));
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((item) => item.code === "owned_file_outside_project"));
+});
+
 test("context pack fails when required fields are missing", () => {
   const contextPack = validContextPack();
   delete contextPack.non_goals;

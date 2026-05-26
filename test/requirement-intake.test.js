@@ -124,6 +124,26 @@ test("requirement plan review is populated only from model plan output", () => {
   assert.equal(applied.plan_review.generator.kind, "test_model_plan");
 });
 
+test("requirement work packages authorize project-wide files by default", () => {
+  const submitted = submitRequirementToProjectStatus(workflowState().project_status, {
+    title: "前端重构",
+    project_id: "ai-control-platform",
+    problem_statement: "当前中台前端从原生 HTML/CSS/JS 迁移到 React + Next.js App Router + Ant Design。",
+    constraints: "所有基础组件和布局组件必须用 antd，原有 CSS 默认不保留。",
+    plan_review_requested: true
+  }, {
+    created_at: "2026-05-26T03:30:03.063Z",
+    requirement_id: "requirement-frontend-framework-migration"
+  });
+  const workPackage = submitted.project_status.next_work_packages[0];
+
+  assert.equal(submitted.status, "pass");
+  assert.ok(workPackage.owned_files.includes("."));
+  assert.ok(submitted.project_status.global_goals[0].owned_files.includes("."));
+  assert.ok(workPackage.owned_files.includes("apps/workbench"));
+  assert.ok(workPackage.owned_files.includes("tools/workbench-server.mjs"));
+});
+
 test("requirement plan generator output cannot be a verbatim problem copy", () => {
   const submitted = submitRequirementToProjectStatus(workflowState().project_status, {
     title: "修复提需求模块",

@@ -43,6 +43,28 @@ function goalSources(input = {}) {
   ];
 }
 
+function projectStatusFrom(input = {}) {
+  return input?.project_status ||
+    input?.projectStatus ||
+    input?.workflow_state?.project_status ||
+    input?.workflowState?.project_status ||
+    {};
+}
+
+function openRequirementGoalIdsFromProjectStatus(projectStatus = {}) {
+  const items = asArray(projectStatus?.requirement_intake?.items);
+  const planReviews = isObject(projectStatus?.plan_reviews) ? projectStatus.plan_reviews : {};
+  return new Set(items
+    .filter((item) => {
+      const id = normalizeString(item?.id);
+      if (!id) return false;
+      const itemStatus = normalizeToken(item?.status || "submitted");
+      const reviewPhase = normalizeToken(planReviews[id]?.phase || planReviews[id]?.status);
+      return !COMPLETE_STATUSES.has(itemStatus) && !COMPLETE_STATUSES.has(reviewPhase);
+    })
+    .map((item) => normalizeString(item.id)));
+}
+
 function normalizeGoal(goal, index) {
   if (!isObject(goal)) {
     return {
@@ -83,9 +105,11 @@ function globalGoalsFrom(input = {}) {
   if (!source) return { goals: [], issues: [] };
 
   const completedGoalIds = completedGlobalGoalIdsFromWorkflowState(input);
+  const openRequirementGoalIds = openRequirementGoalIdsFromProjectStatus(projectStatusFrom(input));
   const normalized = source.map((goal, index) => normalizeGoal(goal, index));
   return {
     goals: normalized.map((entry) => entry.goal).filter(Boolean).map((goal) => {
+      if (openRequirementGoalIds.has(goal.id)) return goal;
       if (!completedGoalIds.has(goal.id)) return goal;
       return {
         ...goal,

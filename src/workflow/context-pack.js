@@ -36,6 +36,27 @@ function compactStrings(value) {
   return asArray(value).map(normalizeString).filter(Boolean);
 }
 
+function projectWideOwnedFile(value = "") {
+  const normalized = normalizeString(value).replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+  return normalized === "." || normalized === "";
+}
+
+function projectRelativeOwnedFile(value = "") {
+  const normalized = normalizeString(value).replace(/\\/g, "/").replace(/^\.\/+/, "");
+  const withoutTrailingSlash = normalized.replace(/\/+$/, "");
+  return Boolean(withoutTrailingSlash) &&
+    !withoutTrailingSlash.startsWith("/") &&
+    withoutTrailingSlash !== ".." &&
+    !withoutTrailingSlash.startsWith("../") &&
+    !withoutTrailingSlash.includes("/../") &&
+    !withoutTrailingSlash.endsWith("/..");
+}
+
+function ownedFileInScope(ownedFile = "", rootOwnedFiles = new Set()) {
+  if (rootOwnedFiles.has(ownedFile)) return true;
+  return [...rootOwnedFiles].some(projectWideOwnedFile);
+}
+
 function globalGoalIdFrom(value = {}) {
   return normalizeString(value.global_goal_id || value.globalGoalId || value.source?.global_goal_id || value.source?.globalGoalId);
 }
@@ -109,6 +130,19 @@ function validateHostBoundary(contextPack, issues) {
   }
 }
 
+function validateRootOwnedFiles(contextPack, issues) {
+  compactStrings(contextPack.owned_files).forEach((ownedFile, index) => {
+    if (projectRelativeOwnedFile(ownedFile)) return;
+    issues.push(
+      issue(
+        "owned_file_outside_project",
+        `${ownedFile} must stay inside the target project`,
+        `owned_files[${index}]`
+      )
+    );
+  });
+}
+
 function validateSubtasks(contextPack, issues) {
   const rootOwnedFiles = new Set(compactStrings(contextPack.owned_files));
   const seenIds = new Set();
@@ -135,7 +169,17 @@ function validateSubtasks(contextPack, issues) {
     }
 
     for (const ownedFile of ownedFiles) {
-      if (!rootOwnedFiles.has(ownedFile)) {
+      if (!projectRelativeOwnedFile(ownedFile)) {
+        issues.push(
+          issue(
+            "subtask_owned_file_outside_project",
+            `${ownedFile} must stay inside the target project`,
+            `${path}.owned_files`
+          )
+        );
+        continue;
+      }
+      if (!ownedFileInScope(ownedFile, rootOwnedFiles)) {
         issues.push(
           issue(
             "subtask_owned_file_out_of_scope",
@@ -176,6 +220,7 @@ export function validateContextPack(contextPack) {
   validateRequiredFields(contextPack, issues);
   validateHostShape(contextPack, issues);
   const hostBoundary = validateHostBoundary(contextPack, issues);
+  validateRootOwnedFiles(contextPack, issues);
   validateSubtasks(contextPack, issues);
 
   return {
@@ -207,7 +252,14 @@ export function createWorkPackages(contextPack) {
     }
 
     for (const ownedFile of ownedFiles) {
-      if (!rootOwnedFiles.has(ownedFile)) {
+      if (!projectRelativeOwnedFile(ownedFile)) {
+        blockedReasons.push({
+          code: "owned_file_outside_project",
+          message: `${ownedFile} must stay inside the target project`
+        });
+        continue;
+      }
+      if (!ownedFileInScope(ownedFile, rootOwnedFiles)) {
         blockedReasons.push({
           code: "owned_file_out_of_scope",
           message: `${ownedFile} is not listed in context pack owned_files`
