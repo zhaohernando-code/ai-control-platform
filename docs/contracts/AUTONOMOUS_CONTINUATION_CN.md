@@ -214,6 +214,18 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 - CLI 入口：`npm run run:autonomous-continuation-cycle -- --input <loop-input.json> [--max-iterations <n>]`。`--cycle` flag 等价。`--output` 仍会在最后一轮写入 `autonomous-closeout-loop-run.v1` envelope。
 
 这把"是否继续下一轮"的判断收敛到单进程内，调度链不再依赖人工接力。Scheduler dispatch / scheduler-dispatch-continuation 路径仍然保留，用于多机器与跨 session 的可恢复回放，但单 session 内同样可达终止条件。
+
+## Reviewer Provider Smoke 强制止损
+
+为了避免 reviewer 超时 → 写入 `recovery_status: "needs_smoke_check"` → 调度器生成新的 `provider_smoke_check` work package → smoke 检查无法回写 → 再次写入 `needs_smoke_check` 的无限循环，`reviewerProviderWorkPackagesFrom` 现在做强制止损：
+
+- 统计 `workflow_state.manifest.events` 中尾部连续的 `reviewer_provider_health` 事件里 `recovery_status === "needs_smoke_check"` 的数量。
+- 达到 `REVIEWER_SMOKE_STALL_THRESHOLD`（当前 2 次）时，认为同一 run_id 内 smoke check 卡住。
+- 此时停止生成 `reviewer-provider-provider-smoke-check` work package，同时在 `blockersFrom` 注入 `id: "reviewer_provider_smoke_stalled"`、`category: "recovery_exhausted"`、`requires_human: true` 的 blocker。
+- `decideContinuation` 通过 `hasHumanBlocker` 检测该 category，把 action 切换为 `STOP_FOR_HUMAN`，禁止 continuation。
+- 任一非 needs_smoke_check 的 `reviewer_provider_health` 事件出现，计数自动重置——只有真正连续重复才触发止损。
+
+Projection 与工作台无需特殊处理：blocker 自然出现在 projection.blockers，原有 STOP_FOR_HUMAN 渲染路径同步显示原因。
 - Scheduler dispatch 产出的下一轮 continuation input 必须通过 `prepare:scheduler-dispatch-continuation` 或等价 adapter 生成。该 adapter 只能读取 `scheduler-dispatch-run.v1` 中声明的 closeout loop artifact 路径，并必须复用 autonomous closeout loop replay validator；blocked 时不得生成 continuation input。
 - `run-scheduler-dispatch-plan` 可以通过 `--continuation-output` 在同一次执行中生成下一轮 continuation input。该输出仍必须走 scheduler dispatch continuation adapter；adapter blocked 时整个 runner 必须失败。
 - Scheduler dispatch plan 必须携带 `continuation_output` 文件目标；非 dry-run runner 在没有显式 CLI flag 时使用 plan 内目标，dry-run 不生成 continuation input。

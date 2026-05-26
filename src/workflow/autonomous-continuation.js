@@ -62,6 +62,19 @@ function statusOf(value) {
   return normalizeToken(value?.status || value?.decision || value?.action || value);
 }
 
+function reviewerSmokeStallBlockers(input) {
+  const stall = reviewerProviderSmokeStall(input);
+  if (!stall.stalled) return [];
+  return [{
+    id: "reviewer_provider_smoke_stalled",
+    category: "recovery_exhausted",
+    message: stall.reason,
+    requires_human: true,
+    smoke_check_count: stall.smoke_check_count,
+    threshold: REVIEWER_SMOKE_STALL_THRESHOLD
+  }];
+}
+
 function blockersFrom(input) {
   const runEvaluation = runEvaluationFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
@@ -75,7 +88,8 @@ function blockersFrom(input) {
       category: "global_goal_blocked",
       message: `${goal.title} is blocked`,
       requires_human: true
-    }))
+    })),
+    ...reviewerSmokeStallBlockers(input)
   ].filter(Boolean);
 }
 
@@ -363,7 +377,47 @@ function providerHealthOwnedFiles(action) {
   return ["src/workflow/llm-reviewer-gate.js", "src/workflow/reviewer-provider-health.js"];
 }
 
+const REVIEWER_SMOKE_STALL_THRESHOLD = 2;
+
+function reviewerProviderHealthEvents(input = {}) {
+  return asArray(input?.workflow_state?.manifest?.events)
+    .filter((event) => event?.type === "reviewer_provider_health");
+}
+
+function isNeedsSmokeCheckEvent(event = {}) {
+  const meta = event?.metadata || {};
+  if (normalizeToken(meta.recovery_status) === "needs_smoke_check") return true;
+  const actions = asArray(meta.scheduled_actions || meta.scheduledActions);
+  return actions.length === 1 && normalizeToken(actions[0]) === "provider_smoke_check";
+}
+
+function reviewerProviderSmokeStall(input = {}) {
+  const events = reviewerProviderHealthEvents(input);
+  if (events.length === 0) {
+    return { stalled: false, smoke_check_count: 0, reason: null };
+  }
+  let trailing = 0;
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    if (isNeedsSmokeCheckEvent(events[i])) {
+      trailing += 1;
+    } else {
+      break;
+    }
+  }
+  if (trailing < REVIEWER_SMOKE_STALL_THRESHOLD) {
+    return { stalled: false, smoke_check_count: trailing, reason: null };
+  }
+  return {
+    stalled: true,
+    smoke_check_count: trailing,
+    reason: `reviewer provider smoke check generated ${trailing} consecutive times without resolution; stop scheduling reviewer work until a human resolves provider health`
+  };
+}
+
 function reviewerProviderWorkPackagesFrom(input = {}) {
+  const stall = reviewerProviderSmokeStall(input);
+  if (stall.stalled) return [];
+
   const health = latestReviewerProviderHealth(input);
   const splitPlan = latestReviewerScopeSplit(input);
   const hasConcreteSplitShards = asArray(splitPlan?.shards).length > 0 && splitPlan?.status !== "fail";
@@ -751,4 +805,4 @@ export function assertShouldContinue(input = {}) {
   return decision;
 }
 
-export { COMPLETE, CONTINUE, RERUN, ROLLBACK, STOP_FOR_HUMAN };
+export { COMPLETE, CONTINUE, RERUN, ROLLBACK, STOP_FOR_HUMAN, REVIEWER_SMOKE_STALL_THRESHOLD, reviewerProviderSmokeStall };
