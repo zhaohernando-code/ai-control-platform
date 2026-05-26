@@ -215,6 +215,21 @@ decideContinuation -> runCloseoutPlan -> createWorkbenchProjection -> decideCont
 
 这把"是否继续下一轮"的判断收敛到单进程内，调度链不再依赖人工接力。Scheduler dispatch / scheduler-dispatch-continuation 路径仍然保留，用于多机器与跨 session 的可恢复回放，但单 session 内同样可达终止条件。
 
+## Scheduler Loop 策略降级（runSchedulerLoopDriverWithFallback）
+
+`projected_next_action` 策略依赖 workbench server 可达且 projection 中存在合法 `next_action_readout`。当 LaunchAgent 未运行、projection 过期或网络不可达时，原本的 `runSchedulerLoopDriver` 会以 `phase: "execution"` 失败，整个调度链停滞。
+
+为允许在合适场景下自动恢复，新增 `runSchedulerLoopDriverWithFallback(input, options)`：
+
+- 必须 opt-in：`input.allow_strategy_fallback === true` 时才尝试降级；缺省维持现有严格行为。
+- 仅当请求策略是 `projected_next_action` 且失败 phase 是连接性错误（`execution`）时考虑降级。
+- `execution_profile === "approved_bounded_real_reviewer"` 时绝不降级——该 profile 在 schedulerLoopInput 中已强制 projected_next_action，反向兜底没有意义。
+- 降级前必须确认 client 支持完整的 dispatch-chain 方法（`loadHistory`、`createSchedulerDispatchPlan`、`runSchedulerDispatch`、`enqueueSchedulerNextCycle`），缺一不可。
+- 降级时把请求改为 `execution_strategy: "scheduler_dispatch_chain"` 后重跑 `runSchedulerLoopDriver`，在结果上挂 `fallback: { attempted, from_strategy, to_strategy, reason, primary_status, primary_phase }`，同时保留 `primary_result` 便于审计。
+- artifact creator 已经把 `result.fallback` 写入 `autonomous-scheduler-loop-run.v1`，校验逻辑兼容缺省 null。
+
+projection 与工作台无需特殊改造：降级路径走原 dispatch-chain 流程，所有 fact、artifact ledger、manifest 写入与既有路径一致。
+
 ## Reviewer Provider Smoke 强制止损
 
 为了避免 reviewer 超时 → 写入 `recovery_status: "needs_smoke_check"` → 调度器生成新的 `provider_smoke_check` work package → smoke 检查无法回写 → 再次写入 `needs_smoke_check` 的无限循环，`reviewerProviderWorkPackagesFrom` 现在做强制止损：

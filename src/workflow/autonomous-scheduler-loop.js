@@ -387,6 +387,66 @@ export async function runSchedulerLoopDriver(input = {}, options = {}) {
   }
 }
 
+function dispatchChainClientReady(client = {}) {
+  return ["loadHistory", "createSchedulerDispatchPlan", "runSchedulerDispatch", "enqueueSchedulerNextCycle"]
+    .every((method) => typeof client[method] === "function");
+}
+
+function isConnectivityFailurePhase(result = {}) {
+  return result?.status === "fail" && result?.phase === "execution";
+}
+
+export async function runSchedulerLoopDriverWithFallback(input = {}, options = {}) {
+  const allowFallback = Boolean(input.allow_strategy_fallback || input.allowStrategyFallback);
+  const requestedStrategy = normalizeString(input.execution_strategy || input.executionStrategy || "scheduler_dispatch_chain");
+  const profile = normalizeString(input.execution_profile || input.executionProfile || "approved_mock_non_dry_run");
+
+  const primary = await runSchedulerLoopDriver(input, options);
+  if (!allowFallback) return primary;
+  if (requestedStrategy !== "projected_next_action") return primary;
+  if (profile === APPROVED_BOUNDED_REAL_REVIEWER_PROFILE) {
+    return {
+      ...primary,
+      fallback: {
+        attempted: false,
+        from_strategy: requestedStrategy,
+        to_strategy: "scheduler_dispatch_chain",
+        reason: "approved_bounded_real_reviewer profile forbids dispatch-chain fallback"
+      }
+    };
+  }
+  if (!isConnectivityFailurePhase(primary)) return primary;
+  if (!dispatchChainClientReady(options.client || {})) {
+    return {
+      ...primary,
+      fallback: {
+        attempted: false,
+        from_strategy: requestedStrategy,
+        to_strategy: "scheduler_dispatch_chain",
+        reason: "scheduler dispatch-chain client methods unavailable; cannot fall back"
+      }
+    };
+  }
+
+  const fallbackInput = { ...input, execution_strategy: "scheduler_dispatch_chain" };
+  delete fallbackInput.executionStrategy;
+  const primaryReason = primary.issues?.[0]?.message || primary.issues?.[0]?.code || "projected_next_action execution failed";
+  const fallback = await runSchedulerLoopDriver(fallbackInput, options);
+
+  return {
+    ...fallback,
+    primary_result: primary,
+    fallback: {
+      attempted: true,
+      from_strategy: requestedStrategy,
+      to_strategy: "scheduler_dispatch_chain",
+      reason: `projected_next_action unavailable; fell back to scheduler_dispatch_chain (${primaryReason})`,
+      primary_phase: primary.phase,
+      primary_status: primary.status
+    }
+  };
+}
+
 export function createSchedulerLoopRunArtifact(input = {}, result = {}, options = {}) {
   return {
     version: AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION,
@@ -404,7 +464,8 @@ export function createSchedulerLoopRunArtifact(input = {}, result = {}, options 
       status: result.status || "fail",
       phase: result.phase || null,
       issues: result.issues || [],
-      iterations: result.iterations || []
+      iterations: result.iterations || [],
+      fallback: result.fallback || null
     }
   };
 }
