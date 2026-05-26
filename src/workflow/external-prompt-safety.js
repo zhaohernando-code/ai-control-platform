@@ -42,13 +42,17 @@ function promptTaskRef(index = 0) {
 
 function promptSafeSource(source = {}) {
   if (!isObject(source)) return null;
-  return {
+  const safe = {
     requirement_id: sanitizePromptText(source.requirement_id || source.requirementId),
     plan_step_index: Number(source.plan_step_index || source.planStepIndex || 0) || null,
     plan_step_total: Number(source.plan_step_total || source.planStepTotal || 0) || null,
     implementation_step: sanitizePromptText(source.implementation_step || source.implementationStep || source.reason),
     acceptance_gates: sanitizePromptArray(source.acceptance_gates || source.acceptanceGates)
   };
+  if (!safe.requirement_id && !safe.plan_step_index && !safe.plan_step_total && !safe.implementation_step && safe.acceptance_gates.length === 0) {
+    return null;
+  }
+  return safe;
 }
 
 export function promptSafeWorkflowIdentity(workflowState = {}) {
@@ -82,6 +86,7 @@ export function promptSafeContextPack(contextPack = {}) {
 }
 
 export function promptSafeWorkPackage(workPackage = {}, index = 0) {
+  const safeSource = promptSafeSource(workPackage.source);
   return {
     task_ref: promptTaskRef(index),
     title: sanitizePromptText(workPackage.title || workPackage.summary || workPackage.id),
@@ -90,9 +95,9 @@ export function promptSafeWorkPackage(workPackage = {}, index = 0) {
     owned_files: compactStrings(workPackage.owned_files),
     acceptance_gates: compactStrings(workPackage.acceptance_gates || workPackage.source?.acceptance_gates),
     status: sanitizePromptText(workPackage.status),
-    source: promptSafeSource(workPackage.source),
-    prompt_metadata_note: isObject(workPackage.reviewer) || isObject(workPackage.code_review_coverage)
-      ? "Some internal metadata is intentionally omitted from this provider prompt; use repository files and gates as source of truth."
+    source: safeSource || undefined,
+    prompt_metadata_note: (isObject(workPackage.source) && !safeSource) || isObject(workPackage.reviewer) || isObject(workPackage.code_review_coverage)
+      ? "Internal metadata is intentionally omitted from this provider prompt; use repository files and gates as source of truth."
       : undefined
   };
 }
