@@ -279,12 +279,14 @@ async function withWorkbenchServer(fn, options = {}) {
 
 async function recordRunArtifactToTempWorkflow(artifact) {
   let result = null;
-  await withWorkbenchServer(async ({ port, inputPath }) => {
+  await withWorkbenchServer(async ({ port, inputPath, stateDbPath }) => {
     result = await postRunArtifactToWorkbench(artifact, {
       baseUrl: `http://127.0.0.1:${port}`,
       projectionId: "current-session"
     });
-    const workflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+    const workflowState = stateDbPath
+      ? createSqliteWorkbenchStateStore({ dbPath: stateDbPath }).readWorkflowSnapshot("current-session")
+      : JSON.parse(readFileSync(inputPath, "utf8"));
     const latestEvent = workflowState.manifest.events.at(-1);
     assert(latestEvent?.type === "workbench_browser_events_run", "browser events API writeback must persist manifest event");
     assert(workflowState.artifact_ledger.artifacts.at(-1)?.metadata?.version === WORKBENCH_BROWSER_EVENTS_RUN_VERSION, "browser events API writeback must persist ledger artifact");
