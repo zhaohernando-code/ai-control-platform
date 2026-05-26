@@ -248,10 +248,23 @@ async function generateRequirementPlanIfRequested(submitted = {}, input = {}, op
     };
   }
 
-  const generation = await generator({
-    requirement: submitted.requirement,
-    prompt: createRequirementPlanPrompt(submitted.requirement)
-  });
+  let generation;
+  try {
+    generation = await generator({
+      requirement: submitted.requirement,
+      prompt: createRequirementPlanPrompt(submitted.requirement)
+    });
+  } catch (error) {
+    return {
+      status: "fail",
+      submission: submitted,
+      issues: [{
+        code: "requirement_plan_generation_failed",
+        message: error?.message || "model plan generation failed",
+        path: "plan_generation"
+      }]
+    };
+  }
   if (generation?.status !== "pass") {
     return {
       status: "fail",
@@ -903,6 +916,14 @@ function writeProjectStatus(path, projectStatus) {
   if (!path) return null;
   writeFileSync(path, `${JSON.stringify(projectStatus, null, 2)}\n`);
   return path;
+}
+
+function workflowStateWithProjectStatus(workflowState = {}, projectStatus = {}) {
+  return {
+    ...workflowState,
+    project_status: projectStatus,
+    global_goals: asArray(projectStatus.global_goals)
+  };
 }
 
 const SUPPORTED_NEXT_ACTIONS = new Set([
@@ -1559,6 +1580,17 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
+        const submittedRecorded = recordRequirementIntakeSubmitted(workflowState, submitted, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (submittedRecorded.status !== "pass") {
+          jsonResponse(res, 400, { error: "requirement intake record failed", issues: submittedRecorded.issues });
+          return;
+        }
+
+        writeProjectStatus(projectStatusPath, submitted.project_status);
+        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...submittedRecorded.workflow_state }, null, 2)}\n`);
+
         const planGeneration = await generateRequirementPlanIfRequested(submitted, input, {
           requirementPlanGenerator
         });
@@ -1586,17 +1618,13 @@ export function createWorkbenchServer(options = {}) {
           };
         }
 
-        const recorded = recordRequirementIntakeSubmitted(workflowState, effectiveSubmission, {
-          created_at: input.created_at || input.createdAt
-        });
-        if (recorded.status !== "pass") {
-          jsonResponse(res, 400, { error: "requirement intake record failed", issues: recorded.issues });
-          return;
-        }
-
+        const effectiveWorkflowState = workflowStateWithProjectStatus(
+          submittedRecorded.workflow_state,
+          effectiveSubmission.project_status
+        );
         writeProjectStatus(projectStatusPath, effectiveSubmission.project_status);
-        writeFileSync(inputPath, `${JSON.stringify({ ...workflowState, ...recorded.workflow_state }, null, 2)}\n`);
-        const projection = workbenchProjection(recorded.workflow_state);
+        writeFileSync(inputPath, `${JSON.stringify(effectiveWorkflowState, null, 2)}\n`);
+        const projection = workbenchProjection(effectiveWorkflowState);
         const planReviewPhase = effectiveSubmission.plan_review?.phase;
         const planReviewPending = planReviewPhase === "ready_for_review" &&
           !requirementAutoAdvanceAllowedAfterPlanReview(input);
@@ -1636,7 +1664,7 @@ export function createWorkbenchServer(options = {}) {
             status: planGeneration.status,
             issues: planGeneration.issues || []
           },
-          artifact: recorded.artifact,
+          artifact: submittedRecorded.artifact,
           next_action_readout: auto_advance.projection?.next_action_readout || projection.next_action_readout,
           projection: auto_advance.projection || projection,
           submitted_projection: projection,

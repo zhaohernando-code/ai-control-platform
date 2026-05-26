@@ -766,6 +766,82 @@ test("workbench server accepts frontend requirements into autonomous continuatio
   });
 });
 
+test("workbench server persists frontend requirement before model plan generation", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-pending-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "requirement-pending-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = currentSessionWithoutRequirementPlanReview();
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "requirement-pending",
+    items: [
+      {
+        id: "requirement-pending",
+        label: "Requirement pending",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  let observedPendingWrite = false;
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-pending`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "前端重构",
+        project_id: "ai-control-platform",
+        surface_area: "workbench_frontend",
+        problem_statement: "基于 PC 和移动端视觉稿重构 Ops Workbench 首页。",
+        plan_review_requested: true,
+        generate_plan: true,
+        created_at: "2026-05-25T10:00:00.000Z",
+        requirement_id: "requirement-frontend-refactor"
+      })
+    });
+    const payload = response.json();
+    const savedProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+    const savedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+
+    assert.equal(response.status, 201);
+    assert.equal(observedPendingWrite, true);
+    assert.equal(payload.plan_generation.status, "fail");
+    assert.equal(payload.plan_review.phase, "pending_plan_generation");
+    assert.equal(payload.projection.project_management.plan_review.requirement_id, "requirement-frontend-refactor");
+    assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-frontend-refactor");
+    assert.equal(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].phase, "pending_plan_generation");
+    assert.equal(savedWorkflowState.project_status.requirement_intake.latest_requirement_id, "requirement-frontend-refactor");
+    assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath,
+    requirementPlanGenerator: async () => {
+      const pendingProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+      const pendingWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+      observedPendingWrite =
+        pendingProjectStatus.requirement_intake.latest_requirement_id === "requirement-frontend-refactor" &&
+        pendingProjectStatus.plan_reviews["requirement-frontend-refactor"].phase === "pending_plan_generation" &&
+        pendingWorkflowState.project_status.requirement_intake.latest_requirement_id === "requirement-frontend-refactor";
+      return {
+        status: "fail",
+        stderr: "simulated model timeout"
+      };
+    }
+  });
+});
+
 test("workbench server records plan review decisions", async () => {
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-plan-review-"));
   const historyPath = join(snapshotsRoot, "projection-history.json");
