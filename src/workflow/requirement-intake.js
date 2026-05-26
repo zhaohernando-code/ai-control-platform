@@ -451,6 +451,57 @@ function nextWorkPackage(requirement = {}, profile = {}) {
   };
 }
 
+export function createRequirementPlanWorkPackages(projectStatus = {}, requirementId = "", profile = {}) {
+  const id = normalizeString(requirementId);
+  const planReviews = isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {};
+  const review = id ? planReviews[id] : null;
+  const requirement = asArray(projectStatus?.requirement_intake?.items)
+    .find((item) => normalizeString(item?.id) === id) || {};
+  const outline = normalizeStringList(review?.implementation_outline || review?.implementationOutline);
+  if (!id || !review || outline.length === 0) return [];
+
+  const title = normalizeString(requirement.title || review.requirement_title || id);
+  const ownedFiles = uniqueStrings([
+    ...normalizeStringList(requirement.owned_files || requirement.ownedFiles),
+    ...normalizeStringList(review.owned_files || review.ownedFiles),
+    ...normalizeStringList(profile.owned_files || profile.ownedFiles)
+  ]);
+  const acceptanceGates = uniqueStrings([
+    ...normalizeStringList(requirement.acceptance_gates || requirement.acceptanceGates),
+    ...normalizeStringList(review.acceptance_gates || review.acceptanceGates),
+    ...normalizeStringList(profile.acceptance_gates || profile.acceptanceGates)
+  ]);
+  const total = outline.length;
+
+  return outline.map((step, index) => {
+    const stepNumber = String(index + 1).padStart(2, "0");
+    const packageId = `${id}-plan-step-${stepNumber}`;
+    return {
+      id: packageId,
+      title: `${title}：实施步骤 ${stepNumber} / ${total}`,
+      action: "execute_requirement_plan_step",
+      owned_files: ownedFiles.length > 0 ? ownedFiles : ["."],
+      acceptance_gates: [
+        ...acceptanceGates,
+        `完成已审核实施步骤 ${index + 1}：${step}`
+      ],
+      depends_on: index === 0 ? [] : [`${id}-plan-step-${String(index).padStart(2, "0")}`],
+      reason: step,
+      global_goal_id: id,
+      source: {
+        requirement_id: id,
+        plan_review_id: normalizeString(review.id),
+        plan_id: normalizeString(review.plan_id),
+        plan_step_index: index + 1,
+        plan_step_total: total,
+        implementation_step: step,
+        constraints: normalizeString(requirement.constraints),
+        acceptance_gates: acceptanceGates
+      }
+    };
+  });
+}
+
 function nextArtifactId(workflowState = {}, requirementId = "") {
   const prefix = `requirement-intake-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}-${safeIdPart(requirementId)}`;
   const used = new Set([
@@ -633,17 +684,36 @@ export function updateRequirementPlanReview(projectStatus = {}, input = {}, opti
     next_action: approved ? "开发已开始" : "方案已退回，等待修订后重新审核",
     action_status: approved ? "开发中" : "已退回修订"
   };
+  const nextProjectStatusBase = {
+    ...projectStatus,
+    updated_at: reviewedAt,
+    plan_reviews: {
+      ...existingReviews,
+      [requirementId]: nextReview
+    }
+  };
+  const nextPlanWorkPackages = approved
+    ? createRequirementPlanWorkPackages(nextProjectStatusBase, requirementId)
+    : asArray(projectStatus.next_work_packages || projectStatus.nextWorkPackages);
+  const nextGlobalGoals = approved && nextPlanWorkPackages.length > 0
+    ? asArray(projectStatus.global_goals || projectStatus.globalGoals).map((goal) => {
+      const goalId = normalizeString(goal?.id || goal?.goal_id || goal?.key);
+      if (goalId !== requirementId) return goal;
+      return {
+        ...goal,
+        status: "in_progress",
+        next_work_packages: nextPlanWorkPackages
+      };
+    })
+    : asArray(projectStatus.global_goals || projectStatus.globalGoals);
 
   return {
     status: "pass",
     plan_review: nextReview,
     project_status: {
-      ...projectStatus,
-      updated_at: reviewedAt,
-      plan_reviews: {
-        ...existingReviews,
-        [requirementId]: nextReview
-      }
+      ...nextProjectStatusBase,
+      ...(approved && nextPlanWorkPackages.length > 0 ? { next_work_packages: nextPlanWorkPackages } : {}),
+      ...(approved && nextGlobalGoals.length > 0 ? { global_goals: nextGlobalGoals } : {})
     }
   };
 }

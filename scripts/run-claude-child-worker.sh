@@ -8,9 +8,10 @@ if [[ -z "$PROMPT_FILE" || ! -f "$PROMPT_FILE" ]]; then
   exit 64
 fi
 
-CLAUDE_PROXY="${AI_CONTROL_WORKBENCH_CLAUDE_PROXY:-$HOME/claude-proxy.sh}"
-CLAUDE_MODEL="${AI_CONTROL_WORKBENCH_CLAUDE_MODEL:-claude-opus-4-7}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLAUDE_PROXY="${AI_CONTROL_WORKBENCH_CLAUDE_PROXY:-$REPO_ROOT/scripts/claude-role-proxy.sh}"
+CLAUDE_MODEL="${AI_CONTROL_WORKBENCH_CLAUDE_MODEL:-claude-opus-4-7}"
+CLAUDE_ROLE="${AI_CONTROL_WORKBENCH_CLAUDE_ROLE:-developer}"
 export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/v22.16.0/bin:/Applications/Codex.app/Contents/Resources:$PATH"
 
 if [[ ! -x "$CLAUDE_PROXY" ]]; then
@@ -24,6 +25,7 @@ done
 
 exec "$CLAUDE_PROXY" \
   -m "$CLAUDE_MODEL" \
+  --role "$CLAUDE_ROLE" \
   --bare \
   --permission-mode bypassPermissions \
   --no-session-persistence \

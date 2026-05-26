@@ -985,7 +985,7 @@ test("workbench server starts development automatically after plan review approv
     assert.equal(payload.auto_advance.status, "created");
     assert.equal(payload.auto_advance.result.status, "pass");
     assert.ok(payload.auto_advance.result.iterations.some((iteration) => iteration.projected_action === "run_context_work_packages"));
-    assert.notEqual(payload.projection.next_action_readout.action, "run_context_work_packages");
+    assert.equal(payload.projection.next_action_readout.action, "run_context_work_packages");
     assert.ok(eventTypes.includes("context_work_packages_run"));
     assert.equal(latestWorkflowState.manifest.work_packages[0].status, "completed");
     assert.equal(contextRunArtifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
@@ -1082,8 +1082,8 @@ test("workbench server completes requirement intake only with verified provider 
     assert.equal(payload.auto_advance.status, "created");
     assert.equal(payload.auto_advance.result.status, "pass");
     assert.equal(payload.auto_advance.result.phase, "iteration_limit_reached");
-    assert.equal(payload.projection.next_action_readout.action, "prepare_project_status_continuation");
-    assert.equal(latestWorkflowState.manifest.work_packages[0].action, "continue_requirement_intake");
+    assert.equal(payload.projection.next_action_readout.action, "run_context_work_packages");
+    assert.equal(latestWorkflowState.manifest.work_packages[0].action, "execute_requirement_plan_step");
     assert.equal(latestWorkflowState.manifest.work_packages[0].status, "completed");
     assert.equal(contextRunArtifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
     assert.equal(contextRunArtifact.metadata.completion_authority.allows_work_package_completion, true);

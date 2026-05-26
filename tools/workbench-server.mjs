@@ -236,6 +236,12 @@ function defaultRequirementPlanGenerator(input = {}) {
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_MODEL ||
       "claude-opus-4-7"
   );
+  const role = normalizeString(
+    input.requirement_plan_role ||
+      input.requirementPlanRole ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_ROLE ||
+      "manager"
+  );
   const timeoutMs = Number(
     input.requirement_plan_timeout_ms ||
       input.requirementPlanTimeoutMs ||
@@ -253,7 +259,7 @@ function defaultRequirementPlanGenerator(input = {}) {
 
   return async ({ requirement }) => {
     const prompt = createRequirementPlanPrompt(requirement);
-    const result = spawnSync(script, ["-m", model, "-p", prompt], {
+    const result = spawnSync(script, ["-m", model, "--role", role, "-p", prompt], {
       cwd: root,
       encoding: "utf8",
       timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
@@ -272,6 +278,7 @@ function defaultRequirementPlanGenerator(input = {}) {
       generator: {
         kind: "claude_plan_mode",
         command: script,
+        role,
         model,
         exit_code: result.status ?? null,
         timed_out: result.error?.code === "ETIMEDOUT"
@@ -751,6 +758,7 @@ function contextWorkPackageRequiresProviderAuthority(projection = {}) {
       const action = normalizeString(node?.action);
       const id = normalizeString(node?.id);
       return action === "continue_requirement_intake" ||
+        action === "execute_requirement_plan_step" ||
         action === "continue_global_goal" ||
         id.startsWith("global-goal-");
     });

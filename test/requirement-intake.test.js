@@ -259,6 +259,8 @@ test("requirement plan review can be approved or returned for revision", () => {
   assert.equal(approved.status, "pass");
   assert.equal(approved.plan_review.phase, "in_development");
   assert.equal(approved.plan_review.action_status, "开发中");
+  assert.equal(approved.project_status.next_work_packages[0].action, "execute_requirement_plan_step");
+  assert.equal(approved.project_status.next_work_packages[0].source.plan_step_index, 1);
   assert.equal(revised.status, "pass");
   assert.equal(revised.plan_review.phase, "revising");
   assert.equal(revised.plan_review.action_status, "已退回修订");

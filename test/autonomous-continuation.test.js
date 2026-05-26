@@ -75,6 +75,50 @@ test("reruns when autonomous run returns recoverable next work packages", () => 
   assert.equal(decision.context_pack_seed.subtasks[0].id, "rerun-reviewer");
 });
 
+test("approved requirement plans split broad intake into bounded implementation steps", () => {
+  const decision = decideContinuation({
+    project_status: projectStatus({
+      next_step: "",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-frontend-refactor",
+            title: "前端重构",
+            status: "submitted",
+            owned_files: ["."],
+            acceptance_gates: ["npm run check:closeout"]
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-frontend-refactor": {
+          phase: "in_development",
+          id: "plan-review-requirement-frontend-refactor",
+          plan_id: "plan-requirement-frontend-refactor",
+          implementation_outline: ["盘点现状", "建立 Next.js + antd 骨架"],
+          acceptance_gates: ["Next.js build passes"]
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-frontend-refactor-intake",
+          action: "continue_requirement_intake",
+          global_goal_id: "requirement-frontend-refactor",
+          owned_files: ["."]
+        }
+      ]
+    }),
+    run_evaluation: { status: "pass", next_work_packages: [] }
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.equal(decision.next_work_packages.length, 2);
+  assert.equal(decision.next_work_packages[0].id, "requirement-frontend-refactor-plan-step-01");
+  assert.equal(decision.next_work_packages[0].action, "execute_requirement_plan_step");
+  assert.equal(decision.next_work_packages[1].depends_on[0], "requirement-frontend-refactor-plan-step-01");
+  assert.equal(decision.context_pack_seed.subtasks[0].action, "execute_requirement_plan_step");
+});
+
 test("current reviewer aggregate fixture advances after provider health follow-up packages", () => {
   const workflowState = readJson("docs/examples/current-session-workbench-input.json");
   const decision = decideContinuation({

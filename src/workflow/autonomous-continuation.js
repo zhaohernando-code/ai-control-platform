@@ -9,6 +9,7 @@ import {
 } from "./frontend-acceptance.js";
 import { createSelfGovernanceReport } from "./self-governance.js";
 import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
+import { createRequirementPlanWorkPackages } from "./requirement-intake.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -36,6 +37,10 @@ function normalizeString(value) {
 
 function normalizeToken(value) {
   return normalizeString(value).toLowerCase();
+}
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function compactStrings(value) {
@@ -121,10 +126,58 @@ function nextWorkPackagesFrom(input) {
     ...selfGovernancePackages,
     ...codeReviewCoveragePackages
   ];
-  if (directPackages.length > 0) {
-    return dedupeWorkPackages(directPackages);
+  const expandedDirectPackages = filterCompletedWorkPackages(
+    expandRequirementPlanWorkPackages(input, directPackages),
+    input
+  );
+  if (expandedDirectPackages.length > 0) {
+    return dedupeWorkPackages(expandedDirectPackages);
   }
   return dedupeWorkPackages(globalGoalCompletion.next_work_packages);
+}
+
+function completedWorkPackageIds(input = {}) {
+  const workflowState = workflowStateFrom(input) || input;
+  const completeStatuses = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed"]);
+  return new Set([
+    ...asArray(workflowState?.manifest?.work_packages),
+    ...asArray(workflowState?.task_dag || workflowState?.taskDag)
+  ]
+    .filter((workPackage) => completeStatuses.has(normalizeToken(workPackage?.status || workPackage?.result)))
+    .map((workPackage) => workPackageId(workPackage))
+    .filter(Boolean));
+}
+
+function filterCompletedWorkPackages(workPackages = [], input = {}) {
+  const completedIds = completedWorkPackageIds(input);
+  if (completedIds.size === 0) return workPackages;
+  return asArray(workPackages).filter((workPackage) => !completedIds.has(workPackageId(workPackage)));
+}
+
+function requirementIdForWorkPackage(workPackage = {}) {
+  return normalizeString(
+    workPackage.source?.requirement_id ||
+      workPackage.source?.requirementId ||
+      workPackage.global_goal_id ||
+      workPackage.globalGoalId
+  );
+}
+
+function approvedPlanReviewFor(projectStatus = {}, requirementId = "") {
+  const review = isObject(projectStatus?.plan_reviews) ? projectStatus.plan_reviews[requirementId] : null;
+  const phase = normalizeToken(review?.phase || review?.status);
+  return phase === "in_development" ? review : null;
+}
+
+function expandRequirementPlanWorkPackages(input = {}, workPackages = []) {
+  const status = projectStatus(input);
+  return asArray(workPackages).flatMap((workPackage) => {
+    if (normalizeString(workPackage?.action) !== "continue_requirement_intake") return [workPackage];
+    const requirementId = requirementIdForWorkPackage(workPackage);
+    if (!approvedPlanReviewFor(status, requirementId)) return [workPackage];
+    const planPackages = createRequirementPlanWorkPackages(status, requirementId, workPackage);
+    return planPackages.length > 0 ? planPackages : [workPackage];
+  });
 }
 
 function workPackageId(workPackage = {}, fallback = "") {

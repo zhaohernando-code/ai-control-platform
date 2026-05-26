@@ -333,6 +333,8 @@ test("Claude child worker runs in bare mode without workflow hook inheritance", 
   assert.equal(result.status, 0);
   const args = readFileSync(captureFile, "utf8").trim().split("\n");
   assert.deepEqual(args.slice(0, 2), ["-m", "claude-haiku-4-5-20251001"]);
+  assert.ok(args.includes("--role"));
+  assert.ok(args.includes("developer"));
   assert.ok(args.includes("--bare"));
   assert.ok(args.includes("--permission-mode"));
   assert.ok(args.includes("bypassPermissions"));
@@ -340,6 +342,47 @@ test("Claude child worker runs in bare mode without workflow hook inheritance", 
   assert.ok(args.includes("--tools"));
   assert.ok(args.includes("default"));
   assert.ok(args.includes("--add-dir"));
+});
+
+test("Claude role proxy allocates developer keys from the developer pool", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "claude-role-proxy-"));
+  const poolDir = join(tempDir, "pools");
+  const stateDir = join(tempDir, "state");
+  const binDir = join(tempDir, "bin");
+  const captureFile = join(tempDir, "env.json");
+  mkdirSync(poolDir, { recursive: true });
+  mkdirSync(stateDir, { recursive: true });
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(join(poolDir, "manager.keys"), "manager-key\n");
+  writeFileSync(join(poolDir, "developer.keys"), "developer-key\n");
+  writeFileSync(join(binDir, "claude"), [
+    "#!/usr/bin/env bash",
+    "{",
+    "  printf '%s\\n' \"$ANTHROPIC_API_KEY\"",
+    "  printf '%s\\n' \"$ANTHROPIC_MODEL\"",
+    "  printf '%s\\n' \"$@\"",
+    "} > \"$CAPTURE_ENV\"",
+    "printf '{\"status\":\"pass\"}\\n'"
+  ].join("\n"));
+  chmodSync(join(binDir, "claude"), 0o755);
+
+  const result = spawnSync("bash", ["scripts/claude-role-proxy.sh", "--role", "developer", "-m", "claude-sonnet-4-6", "-p", "hello"], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: `${binDir}:${process.env.PATH}`,
+      AI_CONTROL_WORKBENCH_CLAUDE_KEY_POOL_DIR: poolDir,
+      AI_CONTROL_WORKBENCH_CLAUDE_KEY_STATE_DIR: stateDir,
+      CAPTURE_ENV: captureFile
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const captured = readFileSync(captureFile, "utf8").trim().split("\n");
+  assert.equal(captured[0], "developer-key");
+  assert.equal(captured[1], "claude-sonnet-4-6");
+  assert.ok(captured.includes("-p"));
 });
 
 test("headless CLI orchestrator blocks implicit mock child worker completion", () => {
