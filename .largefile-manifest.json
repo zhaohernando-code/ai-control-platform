@@ -1,0 +1,150 @@
+{
+  "threshold": 500,
+  "reviewed_at": "2026-05-28",
+  "files": {
+    "apps/workbench/styles.css": {
+      "lines": 963,
+      "reason": "Legacy workbench CSS: static shell layout, responsive rules, and state styling remain coupled until the Next.js workbench migration fully replaces the static shell.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "apps/workbench/workbench.js": {
+      "lines": 1289,
+      "reason": "Legacy static workbench shell: projection rendering, event controls, and mobile/desktop compatibility are kept together while Next.js routes are still being accepted.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "legacy/root-workflow-guard/agent-workflow-guard.js": {
+      "lines": 529,
+      "reason": "Archived root workflow guard migration input. It is not a default runtime module and should not grow except for migration quarantine fixes.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/agent-lifecycle-pool.js": {
+      "lines": 663,
+      "reason": "Agent lifecycle pool domain module: records lifecycle facts, cleanup policy, and projection inputs across one state contract.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/autonomous-continuation.js": {
+      "lines": 838,
+      "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/autonomous-orchestrator.js": {
+      "lines": 656,
+      "reason": "Autonomous orchestrator composition: wires scheduling, provider invocation, and durable run outputs through one bounded orchestration entry.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/autonomous-scheduler-loop.js": {
+      "lines": 865,
+      "reason": "Scheduler loop contract implementation: loop execution, recovery, projection reuse, and artifact validation are still tightly coupled.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/context-work-package-execution-adapter.js": {
+      "lines": 727,
+      "reason": "Context work package execution adapter: maps execution profiles, provider transport, and structured worker outputs.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/context-work-package-runner.js": {
+      "lines": 819,
+      "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, and result normalization share one flow.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/frontend-acceptance.js": {
+      "lines": 801,
+      "reason": "Frontend acceptance validator: browser evidence schema, layout/content checks, console errors, and live-route constraints are one acceptance surface.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/headless-cli-orchestrator.js": {
+      "lines": 2000,
+      "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/live-route-acceptance.js": {
+      "lines": 602,
+      "reason": "Live route acceptance: validates public route evidence, auth redirect state, freshness, and durable status integration.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/requirement-intake.js": {
+      "lines": 1017,
+      "reason": "Requirement intake pipeline: extracts structured requirements, recovery state, and workbench-ready artifacts from one evolving contract.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "src/workflow/workbench-projection.js": {
+      "lines": 2050,
+      "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/autonomous-continuation.test.js": {
+      "lines": 1357,
+      "reason": "Autonomous continuation regression suite shares fixtures for next-action, recovery, reviewer, and work package dispatch behavior.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/autonomous-scheduler-loop.test.js": {
+      "lines": 877,
+      "reason": "Scheduler loop tests share replay, recovery, and continuation fixtures for the same loop contract.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/context-work-package-provider-executor.test.js": {
+      "lines": 722,
+      "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, and error paths.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/context-work-package-runner.test.js": {
+      "lines": 903,
+      "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/frontend-acceptance.test.js": {
+      "lines": 1589,
+      "reason": "Frontend acceptance tests cover content, layout, console, mounted route, favicon, and live-route false-pass regressions over shared artifacts.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/headless-cli-orchestrator.test.js": {
+      "lines": 2042,
+      "reason": "Headless CLI orchestrator tests share worker-result, owned-file, no-diff, and continuation acceptance fixtures.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/workbench-projection-source.test.js": {
+      "lines": 584,
+      "reason": "Projection source tests share fixture coverage for dynamic and static workbench projection inputs.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/workbench-projection.test.js": {
+      "lines": 2576,
+      "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/workbench-server.test.js": {
+      "lines": 3701,
+      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "test/workbench-shell.test.js": {
+      "lines": 751,
+      "reason": "Workbench shell tests cover desktop/mobile shell invariants and mounted entry compatibility across shared fixtures.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-28"
+    }
+  }
+}

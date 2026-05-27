@@ -13,6 +13,7 @@
 - `run_context_work_packages` 还必须通过 work-package-execution-governance gate：需求实现类 work package 必须保留依赖和 source 元数据，并提供结构化 `source.execution_governance`。硬门禁只根据 `granularity`、`decomposition.required/status/evidence`、`verification.status/gate_count` 等结构化字段判定；自然语言步骤说明不得作为执行阻断依据。
 - 多模型协同必须经过 model routing plan、reviewer gate 和 durable findings/artifacts；禁止把某个模型或临时 skill 固定成绕过流程的默认实现者。
 - 最终 closeout 必须经过治理 skill 编排 artifact、远端 `origin/main` 一致性和用户可见入口证据；本地干净或单次测试通过不能单独代表合入发布完成。
+- 本项目必须纳入共享源码规模治理：首次 checkout 或发现 hook 未触发时运行 `npm run install:git-hooks` / `scripts/install-git-hooks.sh`，确保 `core.hooksPath=../../.githooks`。超过 500 行的 `.js/.ts/.tsx/.py/.css` 文件必须记录在 `.largefile-manifest.json`，新增或继续增长时优先拆分；manifest 只记录当前仍需治理的真实文件，不作为永久豁免。
 - 前端相关任务默认同时覆盖 PC Web 与手机尺寸；手机端可以独立信息架构，不得默认压缩 PC 页面。
 - 用户可见功能完成前必须有真实渲染或服务验收；只通过源码或静态文档不算完成。
 - Ops Workbench、任务 DAG、调度锁、事件源状态、Recovery Engine、LLM reviewer、CI/CD 门禁、周期体检和快速定位 skill 都是平台基座能力；开发前必须先明确领域模型、状态真值、契约、失败恢复、测试边界和操作员可观测面。

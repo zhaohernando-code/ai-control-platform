@@ -52,6 +52,7 @@
 
 ## Git 与执行角色
 
+- **源码规模治理接入共享 hook**：新中台和被纳管项目使用同一套 `../../.githooks/pre-commit` 500 行门禁。新增 checkout 要运行 `scripts/install-git-hooks.sh`；`.largefile-manifest.json` 只记录当前超线且仍需治理的文件，明显过大的平台核心文件应标为 `planned_refactor`，后续增长必须先拆分而不是扩大豁免。
 - **主线必须保持干净**：`main` 只承载已验收结果；发现 primary worktree 在 `main` 且有未提交修改时，先切到隔离分支或 worktree，再继续派发/验收。
 - **收口必须证明远端主线一致**：最终 closeout 不能只证明本地测试通过；必须确认本地 `main` 干净、HEAD 与 `origin/main` 一致，并且用户可见入口或发布入口有通过证据。
 - **child worker 必须使用隔离 worktree**：分支名不是宿主边界。`child_worker` 只能在 primary worktree 之外的 worker worktree 中累积 diff；`main_orchestrator`/integration closeout 才能在受控集成路径验收。
