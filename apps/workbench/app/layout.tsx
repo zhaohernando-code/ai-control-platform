@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import "./globals.css";
+
 import { AppProviders } from "./providers";
 import { WorkbenchShell } from "./shell";
 

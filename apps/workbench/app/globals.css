@@ -1,0 +1,27 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * 全局基线样式 — Next.js + Ant Design 工作台
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 本文件仅包含 antd ConfigProvider / theme tokens 无法覆盖的浏览器基线样式。
+ * 所有组件样式（颜色、圆角、间距、阴影、排版等）必须通过 antd token 或组件
+ * props 表达，不得在此扩写。
+ *
+ * 规则：
+ *   - 禁止新增组件/布局/视觉样式（走 antd theme 或组件 props）
+ *   - 禁止引入第二套变量体系（tailwind、custom properties 等）
+ *   - 禁止覆盖 antd 内置 token（在 apps/workbench/app/theme.ts 中统一管理）
+ *   - 旧入口 styles.css 保留为灰度回退，不在此合并
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 浏览器统一基线（antd 不提供） ── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

@@ -1,3 +1,36 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LEGACY FALLBACK CSS — 仅服务于旧 HTML/JS 回退入口
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 迁移状态：已完成替换（步骤 06/9）
+ *
+ * 此文件中的所有样式均已被 antd 替代底替代（参见
+ * apps/workbench/app/theme.ts 的 workbenchTheme 与所有 *.tsx 中使用的
+ * antd 基础/布局组件）。
+ *
+ * 保留原因（强制灰度回退约束）：
+ *   apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md 第 20 行：
+ *   "在 standalone 产物完成 served-route 验证前，必须保留旧入口
+ *    … styles.css 作为回退路径"
+ *
+ * 生命周期：
+ *   - 步骤 01-05：资产盘点 → 选型确认 → Next.js 骨架 → Hooks → 总览页
+ *   - 步骤 06（当前）：标注此文件为旧入口遗留，禁止新增样式
+ *   - 步骤 09（目标）：served-route 验证通过后整体移除本文件
+ *
+ * 规则：
+ *   - 本文件不得新增样式。所有新视图的样式必须来自 antd theme token
+ *     或组件 props。
+ *   - 如果旧入口 desktop.html / mobile.html 需要新 UI，应将其迁移到
+ *     Next.js 对应路由（apps/workbench/app/**），而非在此文件中扩写。
+ *   - 灰度完成后，本文件与 desktop.html / mobile.html / workbench.js /
+ *     projection-source.js 一并移除。
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ── 旧入口回退样式（以下全部样式均已被 antd 替代） ── */
+
 :root {
   --bg: #f4f7fb;
   --surface: #ffffff;
