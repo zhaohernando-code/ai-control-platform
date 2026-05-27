@@ -24,6 +24,7 @@
 
 适用范围：本仓库下所有面向用户的中台前端代码，当前承载于 `apps/workbench/`。
 完整条款见 `apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md`；本节为项目级硬约束的入口，任何前端切片必须满足以下不变量，违反时合入前置回归门禁会失败。
+本节是 requirement-unknown-20260527043146 计划步骤 08 / 9 的 durable rule；任何放宽 antd、React 或 Next.js App Router 约束的变更，必须新增 `DECISIONS.md` 记录并同步上述 constraints 文档。
 
 - 技术栈固定：UI 框架必须使用 [Ant Design](https://ant.design/)（antd）作为唯一基础与布局组件库；应用框架必须使用 [React](https://react.dev/) + [Next.js](https://nextjs.org/) 的 App Router（`app/` 目录模式）。
 - 不得自造基础组件：按钮、输入框、表格、表单、模态、抽屉、分页、菜单、Tab、消息提示、图标容器等基础控件必须直接使用 antd 提供的组件，不允许自行用裸 HTML/CSS 重写等价能力。

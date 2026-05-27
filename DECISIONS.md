@@ -1,5 +1,14 @@
 # DECISIONS
 
+[2026-05-27T20:59:00+08:00] Codify workbench frontend stack as a hard project rule (requirement-unknown-20260527043146, plan step 08 / 9):
+对应需求 "前端重构" 的计划步骤 08 / 9 "在 PROJECT_RULES.md 增订 antd 强制使用与设计规范条款，在 DECISIONS.md 留档技术选型"，将 `PROJECT_RULES.md#前端栈与组件约束antd--react--nextjs-app-router` 作为前端实现的项目级硬约束入口。
+
+决策：
+- `apps/workbench/` 的用户可见前端固定使用 antd 作为唯一基础与布局组件库，React + Next.js App Router 作为应用框架。
+- 基础控件和布局能力必须优先使用 antd 官方组件与 token，不允许用裸 HTML/CSS/JS 重新实现等价组件。
+- 原生 CSS 仅能保留 antd 无法表达的领域语义样式；保留原因必须在代码或 PR 说明中可审计。
+- 任何放宽本约束、引入第二套基础组件体系或改变 App Router 形态的变更，都必须新增 `DECISIONS.md` 条目并同步 `apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md`。
+
 [2026-05-27T04:31:46+08:00] Frontend refactor key selections (requirement-unknown-20260527043146, plan step 02 / 9):
 对应需求 "前端重构" 的计划步骤 02 / 9 "与用户确认关键选型"，将四项关键技术选择固化为项目级 durable 决策，避免后续切片以"重新讨论"为由静默回退。完整条款见 `apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md#关键选型确认step-029-of-requirement-unknown-20260527043146`，本条目用于审计与变更追溯。
 
