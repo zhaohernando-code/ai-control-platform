@@ -747,6 +747,9 @@ test("workbench server accepts frontend requirements into autonomous continuatio
     assert.equal(payload.auto_advance.status, "waiting_for_plan_review");
     assert.equal(payload.auto_advance.result, null);
     assert.equal(payload.projection.next_action_readout.action, "review_requirement_plan");
+    assert.equal(payload.projection.project_management.task_items[0].task_id, "requirement-from-workbench");
+    assert.equal(payload.projection.project_management.task_items[0].status, "pending_review");
+    assert.equal(payload.projection.project_management.task_items[0].reviewable, true);
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-from-workbench");
     assert.equal(savedProjectStatus.plan_reviews["requirement-from-workbench"].phase, "ready_for_review");
     assert.equal(savedProjectStatus.next_work_packages[0].action, "continue_requirement_intake");
@@ -913,6 +916,8 @@ test("workbench server records plan review decisions", async () => {
     assert.equal(payload.plan_review.phase, "in_development");
     assert.equal(payload.projection.project_management.plan_review.phase, "in_development");
     assert.equal(payload.projection.project_management.plan_review.action_status, "开发中");
+    assert.equal(payload.projection.project_management.task_items[0].status, "running");
+    assert.equal(payload.projection.project_management.task_items[0].phase_label, "开发执行");
     assert.equal(savedProjectStatus.plan_reviews["requirement-plan-review-server"].phase, "in_development");
     assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-plan-review-server"].phase, "in_development");
   }, { historyPath, snapshotsRoot, projectStatusPath });

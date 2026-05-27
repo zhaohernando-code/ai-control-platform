@@ -175,6 +175,135 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
   };
 }
 
+function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "") {
+  const id = normalizeString(requirementId);
+  if (!id) return [];
+  const directPackages = asArray(projectStatus.next_work_packages || projectStatus.nextWorkPackages);
+  const goalPackages = asArray(projectStatus.global_goals || projectStatus.globalGoals)
+    .flatMap((goal) => asArray(goal?.next_work_packages || goal?.nextWorkPackages));
+  const seen = new Set();
+  return [...directPackages, ...goalPackages]
+    .filter((workPackage) => {
+      const sourceRequirementId = normalizeString(workPackage?.source?.requirement_id || workPackage?.source?.requirementId);
+      const globalGoalId = normalizeString(workPackage?.global_goal_id || workPackage?.globalGoalId);
+      return sourceRequirementId === id || globalGoalId === id;
+    })
+    .filter((workPackage) => {
+      const packageId = normalizeString(workPackage?.id || workPackage?.work_package_id || workPackage?.workPackageId);
+      if (!packageId || seen.has(packageId)) return false;
+      seen.add(packageId);
+      return true;
+    })
+    .map((workPackage) => ({
+      id: normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId),
+      title: normalizeString(workPackage.title),
+      action: normalizeString(workPackage.action),
+      status: normalizeString(workPackage.status) || "pending",
+      depends_on: asArray(workPackage.depends_on || workPackage.dependsOn).map(normalizeString).filter(Boolean),
+      acceptance_gates: asArray(workPackage.acceptance_gates || workPackage.acceptanceGates).map(normalizeString).filter(Boolean),
+      source: workPackage.source || {}
+    }));
+}
+
+function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}) {
+  const normalizedPhase = normalizeString(phase) || "pending_plan_generation";
+  const requirementStatus = normalizeString(requirement.status).toLowerCase();
+  const failureText = normalizeString(
+    review?.generation_error?.message ||
+      review?.generation_error?.stderr ||
+      review?.failure_reason
+  );
+  const timedOut = /timeout|timed\s*out|超时/i.test(failureText);
+  if (["completed", "complete", "accepted", "closed"].includes(requirementStatus)) {
+    return {
+      status: "completed",
+      status_label: "完成",
+      phase: normalizedPhase,
+      phase_label: "验收完成",
+      location_label: "完成归档"
+    };
+  }
+  if (normalizedPhase === "ready_for_review") {
+    return {
+      status: "pending_review",
+      status_label: "待审视",
+      phase: normalizedPhase,
+      phase_label: "计划审视",
+      location_label: "人工决策"
+    };
+  }
+  if (normalizedPhase === "in_development") {
+    return {
+      status: "running",
+      status_label: "运行中",
+      phase: normalizedPhase,
+      phase_label: "开发执行",
+      location_label: "执行队列"
+    };
+  }
+  if (normalizedPhase === "revising") {
+    return {
+      status: "revising",
+      status_label: "待修订",
+      phase: normalizedPhase,
+      phase_label: "方案修订",
+      location_label: "方案回写"
+    };
+  }
+  if (normalizedPhase === "plan_generation_failed") {
+    return {
+      status: timedOut ? "timeout" : "failed",
+      status_label: timedOut ? "超时" : "失败",
+      phase: normalizedPhase,
+      phase_label: timedOut ? "计划生成超时" : "计划生成失败",
+      location_label: "计划生成"
+    };
+  }
+  return {
+    status: "running",
+    status_label: "运行中",
+    phase: normalizedPhase,
+    phase_label: "计划生成中",
+    location_label: "计划生成"
+  };
+}
+
+function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) {
+  const planReviews = projectStatus?.plan_reviews && typeof projectStatus.plan_reviews === "object"
+    ? projectStatus.plan_reviews
+    : {};
+  return asArray(requirementIntake.items).map((requirement) => {
+    const requirementId = normalizeString(requirement.id);
+    const review = planReviews[requirementId] || {};
+    const status = taskStatusForPlanPhase(review.phase, review, requirement);
+    return {
+      task_id: requirementId,
+      title: normalizeString(requirement.title) || requirementId,
+      project_id: normalizeString(requirement.project_id || requirement.projectId) || "ai-control-platform",
+      project_name: "AI Control Platform",
+      status: status.status,
+      status_label: status.status_label,
+      phase: status.phase,
+      phase_label: status.phase_label,
+      location_label: status.location_label,
+      submitted_at: normalizeString(requirement.submitted_at || requirement.created_at),
+      updated_at: normalizeString(review.reviewed_at || review.generated_at || review.created_at || requirement.submitted_at),
+      summary: normalizeString(requirement.summary),
+      problem_statement: normalizeString(requirement.problem_statement || requirement.problemStatement),
+      constraints: normalizeString(requirement.constraints),
+      reviewable: status.phase === "ready_for_review",
+      failure_reason: normalizeString(review?.generation_error?.message || review?.failure_reason) || null,
+      plan_review: {
+        ...(review || {}),
+        requirement_id: requirementId,
+        requirement_title: normalizeString(requirement.title) || normalizeString(review.requirement_title),
+        reviewable: status.phase === "ready_for_review"
+      },
+      work_packages: taskWorkPackagesForRequirement(projectStatus, requirementId)
+    };
+  });
+}
+
 function summarizeProjectManagement(input = {}, summaries = {}) {
   const projectStatus = input.project_status || input.projectStatus || {};
   const dagSummary = summaries.dagSummary || {};
@@ -185,6 +314,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const nextActionReadout = summaries.nextActionReadout || {};
   const requirementIntake = summarizeRequirementIntake(projectStatus);
   const planReview = summarizePlanReview(projectStatus, requirementIntake);
+  const taskItems = taskItemsFromProjectStatus(projectStatus, requirementIntake);
   const taskFlow = taskFlowFromDag(dagSummary);
   const latestRequirement = requirementIntake.latest || null;
   const currentTask = normalizeString(
@@ -197,8 +327,10 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   ) || "等待下一步任务";
   const activeTasks = Math.max(
     Number(dagSummary.total || 0) - Number(dagSummary.by_status?.done || dagSummary.by_status?.completed || 0),
-    asArray(dagSummary.dispatchable).length
+    asArray(dagSummary.dispatchable).length,
+    taskItems.filter((item) => !["completed", "failed", "timeout"].includes(normalizeString(item.status))).length
   );
+  const humanDecisions = taskItems.filter((item) => item.reviewable).length;
   const progress = Number(globalGoalCompletion.total || 0) > 0
     ? Math.round((Number(globalGoalCompletion.completed || 0) / Number(globalGoalCompletion.total || 1)) * 100)
     : 0;
@@ -216,7 +348,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
       normalizeString(schedulerDispatch.status) === "fail" ? "调度派发未通过" : null,
       Number(globalGoalCompletion.blocked || 0) > 0 ? "总目标存在阻塞" : null
     ].filter(Boolean),
-    human_decisions: 0,
+    human_decisions: humanDecisions,
     latest_run_projection_id: input.projection_id || input.projectionId || null,
     task_flow: taskFlow
   };
@@ -226,12 +358,13 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
     source: "project_status_and_workflow_projection",
     projects_total: 1,
     active_projects: project.status === "completed" ? 0 : 1,
-    tasks_total: Number(dagSummary.total || manifestSummary.work_package_count || 0),
+    tasks_total: Math.max(Number(dagSummary.total || manifestSummary.work_package_count || 0), taskItems.length),
     active_tasks: activeTasks,
     released_services: 0,
-    human_decisions: 0,
+    human_decisions: humanDecisions,
     projects: [project],
     active_work: [project],
+    task_items: taskItems,
     task_flow: taskFlow,
     requirement_intake: requirementIntake,
     plan_review: planReview,
@@ -1855,6 +1988,7 @@ export function createMobileWorkbenchProjection(input = {}) {
       active_tasks: projection.project_management.active_tasks,
       human_decisions: projection.project_management.human_decisions,
       projects: projection.project_management.projects.slice(0, 5),
+      task_items: projection.project_management.task_items.slice(0, 12),
       task_flow: projection.project_management.task_flow
     },
     resume_health: {

@@ -253,7 +253,9 @@ test("requirement plan review can be approved or returned for revision", () => {
   });
   const revised = updateRequirementPlanReview(generated.project_status, {
     requirement_id: "requirement-plan-review",
-    action: "revise"
+    action: "revise",
+    feedback_categories: ["acceptance_incomplete", "implementation_order"],
+    note: "补充验收边界后再执行"
   }, {
     created_at: "2026-05-25T08:06:00.000Z"
   });
@@ -269,6 +271,8 @@ test("requirement plan review can be approved or returned for revision", () => {
   assert.equal(revised.status, "pass");
   assert.equal(revised.plan_review.phase, "revising");
   assert.equal(revised.plan_review.action_status, "已退回修订");
+  assert.deepEqual(revised.plan_review.feedback_categories, ["acceptance_incomplete", "implementation_order"]);
+  assert.equal(revised.plan_review.review_feedback.note, "补充验收边界后再执行");
 });
 
 test("frontend view migration plan step is split into bounded executable slices", () => {

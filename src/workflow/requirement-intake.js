@@ -719,21 +719,25 @@ function nextArtifactId(workflowState = {}, requirementId = "") {
 function normalizeRequirementItems(value) {
   return asArray(value)
     .filter(isObject)
-    .map((item) => ({
-      ...item,
-      id: normalizeString(item.id),
-      title: normalizeString(item.title),
-      status: normalizeString(item.status) || "submitted",
-      summary: normalizeString(item.summary),
-      submitted_at: normalizeString(item.submitted_at || item.created_at),
-      surface_area: normalizeString(item.surface_area || item.surfaceArea),
-      surface_label: normalizeString(item.surface_label || item.surfaceLabel),
-      problem_statement: normalizeString(item.problem_statement || item.problemStatement),
-      acceptance_criteria: normalizeString(item.acceptance_criteria || item.acceptanceCriteria),
-      constraints: normalizeString(item.constraints),
-      owned_files: compactStrings(item.owned_files || item.ownedFiles),
-      acceptance_gates: compactStrings(item.acceptance_gates || item.acceptanceGates)
-    }))
+    .map((item) => {
+      const projectId = normalizeString(item.project_id || item.projectId);
+      return {
+        ...item,
+        id: normalizeString(item.id),
+        title: normalizeString(item.title),
+        status: normalizeString(item.status) || "submitted",
+        ...(projectId ? { project_id: projectId } : {}),
+        summary: normalizeString(item.summary),
+        submitted_at: normalizeString(item.submitted_at || item.created_at),
+        surface_area: normalizeString(item.surface_area || item.surfaceArea),
+        surface_label: normalizeString(item.surface_label || item.surfaceLabel),
+        problem_statement: normalizeString(item.problem_statement || item.problemStatement),
+        acceptance_criteria: normalizeString(item.acceptance_criteria || item.acceptanceCriteria),
+        constraints: normalizeString(item.constraints),
+        owned_files: compactStrings(item.owned_files || item.ownedFiles),
+        acceptance_gates: compactStrings(item.acceptance_gates || item.acceptanceGates)
+      };
+    })
     .filter((item) => item.id && item.title);
 }
 
@@ -871,13 +875,21 @@ export function updateRequirementPlanReview(projectStatus = {}, input = {}, opti
   const reviewedAt = normalizeString(options.created_at || options.createdAt || input.created_at || input.createdAt) ||
     new Date().toISOString();
   const approved = action === "approve";
+  const feedbackCategories = uniqueStrings(input.feedback_categories || input.feedbackCategories);
+  const reviewNote = normalizeString(input.note);
   const nextReview = {
     ...review,
     status: approved ? "in_development" : "revising",
     phase: approved ? "in_development" : "revising",
     reviewed_at: reviewedAt,
     review_decision: action,
-    review_note: normalizeString(input.note),
+    review_note: reviewNote,
+    feedback_categories: feedbackCategories,
+    review_feedback: approved ? null : {
+      categories: feedbackCategories,
+      note: reviewNote,
+      submitted_at: reviewedAt
+    },
     next_action: approved ? "开发已开始" : "方案已退回，等待修订后重新审核",
     action_status: approved ? "开发中" : "已退回修订"
   };

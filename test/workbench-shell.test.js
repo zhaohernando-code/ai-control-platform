@@ -727,6 +727,24 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(flowDetail, /App Router dynamic route/);
   assert.match(flowDetail, /useRouter/);
   assert.match(flowDetail, /Descriptions/);
+  assert.match(flowDetail, /PlanReviewDrawer/);
+  assert.match(flowDetail, /findTaskById/);
+  assert.match(flowDetail, /返回任务流/);
+
+  const requirements = read("apps/workbench/app/requirements/page.tsx");
+  assert.match(requirements, /submitRequirement/);
+  assert.match(requirements, /plan_review_requested:\s*true/);
+  assert.match(requirements, /plan_generation_mode:\s*"model"/);
+  assert.match(requirements, /router\.push\(`\/flow\/\$\{encodeURIComponent\(taskId\)\}`\)/);
+  assert.doesNotMatch(requirements, /desktop\.html|mobile\.html|占位页/);
+
+  const flow = read("apps/workbench/app/flow/page.tsx");
+  assert.match(flow, /Table/);
+  assert.match(flow, /Segmented/);
+  assert.match(flow, /taskItemsFromProjection/);
+  assert.match(flow, /计划审视/);
+  assert.match(flow, /taskDetailHref/);
+  assert.doesNotMatch(flow, /\/flow\?task=/);
 });
 
 test("project rules codify the antd + next.js single-page-app frontend constraints (step 03/7)", () => {

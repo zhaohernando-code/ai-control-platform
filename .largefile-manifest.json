@@ -75,13 +75,13 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/requirement-intake.js": {
-      "lines": 1017,
+      "lines": 1029,
       "reason": "Requirement intake pipeline: extracts structured requirements, recovery state, and workbench-ready artifacts from one evolving contract.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2050,
+      "lines": 2184,
       "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -129,7 +129,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 2576,
+      "lines": 2634,
       "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -141,7 +141,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-shell.test.js": {
-      "lines": 767,
+      "lines": 785,
       "reason": "Workbench shell tests cover desktop/mobile shell invariants and mounted entry compatibility across shared fixtures.",
       "status": "accepted",
       "reviewed_at": "2026-05-28"

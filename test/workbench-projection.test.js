@@ -135,6 +135,7 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.project_management.projects[0].phase, "持续开发");
   assert.equal(projection.project_management.projects[0].owner_agent, "main_orchestrator");
   assert.equal(projection.project_management.task_flow.map((step) => step.label).join(" -> "), "需求 -> 拆解 -> 子任务 -> Review -> 发布 -> Live 验证 -> 验收");
+  assert.deepEqual(projection.project_management.task_items, []);
   assert.equal(projection.project_management.design_alignment.homepage_primary_surface, "project_management");
   assert.equal(projection.one_screen.counters.projects_total, 1);
   assert.equal(projection.one_screen.counters.active_projects, 1);
@@ -155,6 +156,63 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.global_goal_completion.status, "not_configured");
   assert.equal(projection.one_screen.counters.global_goals_pending, 0);
   assert.equal(projection.one_screen.counters.operation_events, 0);
+});
+
+test("workbench projection exposes task flow items for submitted requirements", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      updated_at: "2026-05-28T02:30:00.000Z",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-task-flow",
+            title: "接入任务流",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "新建任务后应进入任务流审视。",
+            constraints: "使用 Next 动态路由。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-task-flow": {
+          id: "plan-review-requirement-task-flow",
+          phase: "ready_for_review",
+          generated_at: "2026-05-28T02:05:00.000Z",
+          assessment_summary: "需要先审视计划。",
+          proposed_acceptance_plan: "任务流显示并可审视。",
+          implementation_outline: ["接列表", "接详情"],
+          acceptance_gates: ["npm run check:closeout"]
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-task-flow-plan-step-01",
+          title: "接入任务流：实施步骤 01 / 2",
+          action: "execute_requirement_plan_step",
+          global_goal_id: "requirement-task-flow",
+          source: { requirement_id: "requirement-task-flow" }
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.task_id, "requirement-task-flow");
+  assert.equal(task.title, "接入任务流");
+  assert.equal(task.status, "pending_review");
+  assert.equal(task.status_label, "待审视");
+  assert.equal(task.phase_label, "计划审视");
+  assert.equal(task.location_label, "人工决策");
+  assert.equal(task.reviewable, true);
+  assert.equal(task.plan_review.assessment_summary, "需要先审视计划。");
+  assert.equal(task.work_packages[0].id, "requirement-task-flow-plan-step-01");
+  assert.equal(projection.project_management.human_decisions, 1);
+  assert.equal(projection.one_screen.counters.human_decisions, 1);
+  assert.equal(projection.one_screen.counters.tasks_total, 2);
 });
 
 test("workbench projection exposes governance audit repair as an automation next action", () => {
