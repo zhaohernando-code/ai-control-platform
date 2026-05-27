@@ -440,10 +440,29 @@ function selectedChildAcceptanceGates(workPackage = {}, contextPack = {}, option
 
 function isParentOwnedAcceptanceGate(gate = "") {
   const normalized = normalizeString(gate).toLowerCase();
-  return normalized === "npm run check:closeout" ||
+  if (
+    normalized === "npm run check:closeout" ||
     normalized.includes("check-closeout.mjs") ||
     normalized.includes("mainline release readiness") ||
-    normalized.includes("mainline-release-readiness");
+    normalized.includes("mainline-release-readiness")
+  ) {
+    return true;
+  }
+  // Human/manual gates and live-environment verifications are not executable
+  // by an isolated headless worker. They must be deferred to the parent
+  // orchestrator (or human operator) so the worker does not self-evaluate as
+  // failed just because it cannot run a manual checklist.
+  const raw = normalizeString(gate);
+  if (/真实浏览器|verify\s+技能|verify技能|live\s+route|手动|人工|人工走查/i.test(raw)) {
+    return true;
+  }
+  // Free-form 中文 statements that describe an outcome the worker cannot
+  // self-assert (e.g. "现状盘点清单经用户/评审确认" or "完成已审核实施步骤 N：…")
+  // are also parent/operator-owned.
+  if (/经用户.*确认|经评审.*确认|用户\/评审|完成已审核实施步骤/.test(raw)) {
+    return true;
+  }
+  return false;
 }
 
 function splitChildAcceptanceGates(gates = []) {
