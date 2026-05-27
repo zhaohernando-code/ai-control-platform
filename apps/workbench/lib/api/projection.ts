@@ -26,10 +26,42 @@ export interface ProjectionHistoryResponse {
   latest?: string | null;
 }
 
+/**
+ * Snapshot（projection-ready workflow state）响应类型。
+ */
+export interface SnapshotResponse {
+  snapshot_id?: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Events 账本单条事件。
+ */
+export interface WorkbenchEvent {
+  id?: string;
+  type?: string;
+  timestamp?: string;
+  [key: string]: unknown;
+}
+
+export interface EventsResponse {
+  events?: WorkbenchEvent[];
+  count?: number;
+}
+
 export function fetchCurrentProjection(): Promise<ProjectionResponse> {
   return fetchWorkbenchJson<ProjectionResponse>("/api/workbench/projection");
 }
 
 export function fetchProjectionHistory(): Promise<ProjectionHistoryResponse> {
   return fetchWorkbenchJson<ProjectionHistoryResponse>("/api/workbench/projections");
+}
+
+export function fetchSnapshot(id: string): Promise<SnapshotResponse> {
+  return fetchWorkbenchJson<SnapshotResponse>(`/api/workbench/snapshot?id=${encodeURIComponent(id)}`);
+}
+
+export function fetchEvents(): Promise<EventsResponse> {
+  return fetchWorkbenchJson<EventsResponse>("/api/workbench/events");
 }
