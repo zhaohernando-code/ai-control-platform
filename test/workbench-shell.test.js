@@ -584,6 +584,76 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(readme, /npm run build/);
 });
 
+test("step 04/9: SSE/projection/snapshot React hooks infrastructure is durable", () => {
+  // Step 04/9 of the frontend refactor: global infrastructure hooks for
+  // useProjection, useProjectionHistory, useSnapshot, useWorkbenchSse, useWorkbenchEvents.
+  // These wrap the lib/api layer and must remain present for future slices.
+
+  // 1. Hooks barrel index must export all required hooks.
+  const hooksIndex = read("apps/workbench/lib/hooks/index.ts");
+  assert.match(hooksIndex, /useProjection/);
+  assert.match(hooksIndex, /useProjectionHistory/);
+  assert.match(hooksIndex, /useSnapshot/);
+  assert.match(hooksIndex, /useWorkbenchSse/);
+  assert.match(hooksIndex, /useWorkbenchEvents/);
+
+  // 2. useProjection hook file exists with fetchCurrentProjection wrapping.
+  const useProj = read("apps/workbench/lib/hooks/useProjection.ts");
+  assert.match(useProj, /"use client";/);
+  assert.match(useProj, /useProjection/);
+  assert.match(useProj, /useProjectionHistory/);
+  assert.match(useProj, /fetchCurrentProjection/);
+  assert.match(useProj, /fetchProjectionHistory/);
+  assert.match(useProj, /pollIntervalMs/);
+  assert.match(useProj, /useRef/);
+  assert.match(useProj, /useState/);
+  assert.match(useProj, /useCallback/);
+  assert.match(useProj, /useEffect/);
+
+  // 3. useSnapshot hook wraps fetchSnapshot.
+  const useSnap = read("apps/workbench/lib/hooks/useSnapshot.ts");
+  assert.match(useSnap, /"use client";/);
+  assert.match(useSnap, /useSnapshot/);
+  assert.match(useSnap, /fetchSnapshot/);
+
+  // 4. useWorkbenchSse hook supports projection + events polling.
+  const useSse = read("apps/workbench/lib/hooks/useWorkbenchSse.ts");
+  assert.match(useSse, /"use client";/);
+  assert.match(useSse, /useWorkbenchSse/);
+  assert.match(useSse, /useWorkbenchEvents/);
+  assert.match(useSse, /connectionState/);
+  assert.match(useSse, /reconnect/);
+  assert.match(useSse, /pollIntervalMs/);
+  assert.match(useSse, /fetchCurrentProjection/);
+  assert.match(useSse, /fetchEvents/);
+
+  // 5. API layer includes snapshot and events fetch beside projection.
+  const projApi = read("apps/workbench/lib/api/projection.ts");
+  assert.match(projApi, /fetchSnapshot/);
+  assert.match(projApi, /fetchEvents/);
+  assert.match(projApi, /SnapshotResponse/);
+  assert.match(projApi, /EventsResponse/);
+
+  // 6. Global error boundary exists and uses antd Result + Alert + Button.
+  const errorFile = read("apps/workbench/app/error.tsx");
+  assert.match(errorFile, /"use client";/);
+  assert.match(errorFile, /Result/);
+  assert.match(errorFile, /Alert/);
+  assert.match(errorFile, /Button/);
+
+  // 7. Global loading boundary exists and uses antd Skeleton.
+  const loadingFile = read("apps/workbench/app/loading.tsx");
+  assert.match(loadingFile, /"use client";/);
+  assert.match(loadingFile, /Skeleton/);
+
+  // 8. Providers file wires ConfigProvider + AntdRegistry + AntdApp.
+  const providersFile = read("apps/workbench/app/providers.tsx");
+  assert.match(providersFile, /ConfigProvider/);
+  assert.match(providersFile, /AntdRegistry/);
+  assert.match(providersFile, /AntdApp/);
+  assert.match(providersFile, /workbenchTheme/);
+});
+
 test("project rules codify the antd + next.js single-page-app frontend constraints (step 03/7)", () => {
   // Step 03/7 of requirement-unknown-20260526033003 sediments the frontend
   // refactor constraints into the project-level rules so future agents cannot
