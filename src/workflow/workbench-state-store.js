@@ -210,7 +210,13 @@ ON CONFLICT(id) DO UPDATE SET
       return { status: "fail", issues, item: null, projection: null };
     }
     const workflowState = input.input || input.workflow_state || input.workflowState;
-    const projection = createWorkbenchProjection(workflowState);
+    // Merge model_plan and project_status into projection input for complete context
+    const projectionInput = {
+      ...workflowState,
+      model_plan: input.model_plan || workflowState?.model_plan,
+      project_status: input.project_status || workflowState?.project_status
+    };
+    const projection = createWorkbenchProjection(projectionInput);
     const publishIssues = projectionPublishIssues(projection);
     if (publishIssues.length > 0) {
       return { status: "fail", issues: publishIssues, item: null, projection };

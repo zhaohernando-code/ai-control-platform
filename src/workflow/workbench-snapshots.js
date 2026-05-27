@@ -98,7 +98,15 @@ export function publishWorkbenchSnapshot(input = {}, options = {}) {
   const historyPath = resolve(options.historyPath);
   const snapshotsRoot = resolve(options.snapshotsRoot);
   const workflowState = input.input || input.workflow_state || input.workflowState;
-  const projection = createWorkbenchProjection(workflowState);
+  // Pass complete input context for projection validation.
+  // Use OR-fallback so explicit envelope context (e.g. closeout-runner enrichment) takes precedence,
+  // but undefined input does not erase the workflow-state's own model_plan / project_status.
+  const projectionInput = {
+    ...workflowState,
+    model_plan: input.model_plan || workflowState?.model_plan,
+    project_status: input.project_status || workflowState?.project_status
+  };
+  const projection = createWorkbenchProjection(projectionInput);
   const id = input.id.trim();
   const publishIssues = projectionPublishIssues(projection);
   if (publishIssues.length > 0) {

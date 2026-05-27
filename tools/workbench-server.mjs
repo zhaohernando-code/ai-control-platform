@@ -66,7 +66,8 @@ import {
 import {
   createSqliteWorkbenchStateStore,
   isSqliteSnapshotPath,
-  sqliteSnapshotIdFromInputPath
+  sqliteSnapshotIdFromInputPath,
+  sqliteSnapshotInputPath
 } from "../src/workflow/workbench-state-store.js";
 
 const root = resolve(process.cwd());
@@ -111,6 +112,42 @@ function writeProjectStatusState(projectStatusPath = null, projectStatus = {}, s
   if (stateStore) return stateStore.writeProjectStatus(projectStatus);
   if (!projectStatusPath) return null;
   return writeJson(projectStatusPath, projectStatus);
+}
+
+/**
+ * Create an initial workflow state with all required identity fields and
+ * validation contracts (manifest/artifact_ledger run_id/cycle_id, model_plan,
+ * operator_event_ledger). Used when there is no existing workflow snapshot
+ * to bootstrap from.
+ */
+function createInitialWorkflowState(runId, cycleId, projectStatusPath = null, stateStore = null) {
+  return {
+    run_id: runId,
+    cycle_id: cycleId,
+    status: "pending",
+    manifest: {
+      run_id: runId,
+      cycle_id: cycleId,
+      events: [],
+      artifacts: []
+    },
+    artifact_ledger: {
+      run_id: runId,
+      cycle_id: cycleId,
+      artifacts: []
+    },
+    model_plan: {
+      selected_model: "claude-opus-4-7",
+      routes: []
+    },
+    reviewer_gate: { findings: [] },
+    operator_event_ledger: {
+      run_id: runId,
+      cycle_id: cycleId,
+      events: []
+    },
+    project_status: readProjectStatus(projectStatusPath, stateStore) || {}
+  };
 }
 
 function projectionInputWithProjectStatus(input = {}, projectStatusPath = null, stateStore = null) {
@@ -171,7 +208,20 @@ function projectionById(id = null, history = readJson(historyPath), allowedRoots
   const selectedId = id || history.latest;
   const item = history.items.find((entry) => entry.id === selectedId);
 
+  // If no item found and history is empty, generate initial projection for new submissions
   if (!item) {
+    if (history.items.length === 0 && !selectedId) {
+      // First-time state: empty history, create initial projection
+      const runId = `initial-workbench-${Date.now()}`;
+      const cycleId = `initial-cycle-${Date.now()}`;
+      const initialWorkflowState = createInitialWorkflowState(runId, cycleId, projectStatusPath, stateStore);
+      return {
+        history,
+        item: null,
+        projection: createWorkbenchProjection(initialWorkflowState)
+      };
+    }
+
     const error = new Error(`projection not found: ${selectedId}`);
     error.code = "PROJECTION_NOT_FOUND";
     throw error;
@@ -1431,6 +1481,9 @@ export function createWorkbenchServer(options = {}) {
       seedEventsPath: eventsPath
     }) : null);
   const readServerHistory = () => stateStore ? stateStore.readHistory() : readJson(serverHistoryPath);
+  const writeServerHistory = (history) => stateStore
+    ? stateStore.writeHistory(history)
+    : writeJson(serverHistoryPath, history);
   const readWorkflowState = (item) => readWorkflowStateFromItem(item, allowedHistoryRoots, stateStore);
   const writeWorkflowState = (item, workflowState) => writeWorkflowStateToItem(item, workflowState, allowedHistoryRoots, stateStore);
   const publishSnapshot = (input, publishOptions = {}) => stateStore
@@ -1806,14 +1859,6 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/requirements" && req.method === "POST") {
-        const history = readServerHistory();
-        const selectedId = url.searchParams.get("id") || history.latest;
-        const item = history.items.find((entry) => entry.id === selectedId);
-        if (!item?.input_path) {
-          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
-          return;
-        }
-
         const body = await readBody(req);
         let input = {};
         try {
@@ -1822,7 +1867,27 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 400, { error: "invalid json" });
           return;
         }
-        const workflowState = readWorkflowState(item);
+
+        // For independent requirement submissions, create or use initial workflow state
+        const history = readServerHistory();
+        const selectedId = url.searchParams.get("id") || history.latest;
+
+        let workflowState;
+        let item;
+
+        if (selectedId && history.items) {
+          item = history.items.find((entry) => entry.id === selectedId);
+          if (item?.input_path) {
+            workflowState = readWorkflowState(item);
+          }
+        }
+
+        // If no existing workflow state found, create a minimal initial one for this submission
+        if (!workflowState) {
+          const runId = `requirement-submission-${Date.now()}`;
+          const cycleId = `cycle-${Date.now()}`;
+          workflowState = createInitialWorkflowState(runId, cycleId, projectStatusPath, stateStore);
+        }
         const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const submitted = submitRequirementToProjectStatus(currentProjectStatus || {}, input, {
           created_at: input.created_at || input.createdAt,
@@ -1841,8 +1906,34 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
+        const recordedWorkflowState = { ...workflowState, ...submittedRecorded.workflow_state };
         writeProjectStatusState(projectStatusPath, submitted.project_status, stateStore);
-        writeWorkflowState(item, { ...workflowState, ...submittedRecorded.workflow_state });
+
+        // If no existing item, create a new projection history entry for this submission
+        if (!item) {
+          const requirementId = submitted.requirement?.id || `requirement-${Date.now()}`;
+          const snapshotId = `requirement-intake-submission-${safeSnapshotIdPart(requirementId)}-${Date.now()}`;
+          const createdAt = new Date().toISOString();
+          // Use SQLite path format when stateStore is configured
+          const inputPath = stateStore
+            ? sqliteSnapshotInputPath(snapshotId)
+            : `docs/examples/snapshots/${snapshotId}.workbench-input.json`;
+          const newItem = {
+            id: snapshotId,
+            label: `需求提交: ${submitted.requirement?.title || "未命名"}`,
+            input_path: inputPath,
+            projection_path: null,
+            created_at: createdAt,
+            status: "pending"
+          };
+          item = newItem;
+          // Add to history, using the configured store (SQLite or file)
+          history.items.unshift(newItem);
+          history.latest = snapshotId;
+          writeServerHistory(history);
+        }
+
+        writeWorkflowState(item, recordedWorkflowState);
 
         const planGeneration = await generateRequirementPlanIfRequested(submitted, input, {
           requirementPlanGenerator

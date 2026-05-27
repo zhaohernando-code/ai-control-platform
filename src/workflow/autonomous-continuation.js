@@ -705,16 +705,29 @@ function createSnapshotPublishPlan(input) {
   const workflowState = workflowStateFrom(input);
   if (!workflowState) return { plan: null, issues: [] };
 
+  // Ensure complete context for projection validation.
+  // Use OR-fallback so explicit input context takes precedence,
+  // but undefined input does not erase the workflow-state's own model_plan / project_status.
+  const projectionInput = {
+    ...workflowState,
+    model_plan: input?.model_plan || input?.modelPlan || workflowState?.model_plan,
+    project_status: input?.project_status || input?.projectStatus || workflowState?.project_status
+  };
+
   const plan = {
     action: "publish_workbench_snapshot",
     endpoint: "/api/workbench/snapshots",
     id: snapshotIdFrom({ ...input, ...workflowState }),
     label: normalizeString(input?.snapshot_label || input?.snapshotLabel) || "Autonomous run closeout snapshot",
-    input: workflowState
+    input: workflowState,
+    // Include context for closeout execution
+    model_plan: input?.model_plan || input?.modelPlan,
+    project_status: input?.project_status || input?.projectStatus
   };
+
   const issues = [
     ...snapshotIssues(plan),
-    ...projectionPublishIssues(createWorkbenchProjection(workflowState))
+    ...projectionPublishIssues(createWorkbenchProjection(projectionInput))
   ];
 
   if (issues.length > 0) {

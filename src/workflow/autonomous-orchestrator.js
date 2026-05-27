@@ -140,6 +140,10 @@ function continuationInputFromProjection(input, workflowState, projection) {
       blockers: projection.blockers,
       projection
     },
+    model_plan: input?.model_plan,
+    reviewer_gate: input?.reviewer_gate,
+    operator_event_ledger: input?.operator_event_ledger,
+    goal: input?.goal,
     workflow_state: cleanWorkflowState
   };
 }
@@ -497,7 +501,12 @@ async function runAutonomousCloseoutLoop(input = {}, options = {}) {
     };
   }
 
-  const closeout = await runCloseoutPlan({ snapshot_publish_plan: decision.snapshot_publish_plan }, options.closeout || options);
+  // Pass full context to closeout for projection validation
+  const closeout = await runCloseoutPlan({
+    snapshot_publish_plan: decision.snapshot_publish_plan,
+    model_plan: input?.model_plan,
+    project_status: input?.project_status
+  }, options.closeout || options);
   if (closeout.status !== "created") {
     return {
       status: "fail",

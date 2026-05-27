@@ -179,7 +179,16 @@ async function publishSnapshotOverHttp(plan, options = {}) {
       response_status: response.status
     };
   }
-  const expectedProjection = createWorkbenchProjection(plan.input || plan.workflow_state || plan.workflowState);
+  // Ensure projection input has complete context.
+  // Use OR-fallback so explicit plan envelope context takes precedence but undefined values
+  // do not erase the workflow-state's own model_plan / project_status.
+  const baseWorkflowState = plan.input || plan.workflow_state || plan.workflowState || {};
+  const projectionInput = {
+    ...baseWorkflowState,
+    model_plan: plan.model_plan || baseWorkflowState?.model_plan,
+    project_status: plan.project_status || baseWorkflowState?.project_status
+  };
+  const expectedProjection = createWorkbenchProjection(projectionInput);
   const projectionValidation = validateWorkbenchProjectionSchema(payload.projection);
   const id = normalizedSnapshotId(plan);
 
@@ -225,8 +234,15 @@ async function executeSnapshotPublishPlan(plan = {}, options = {}) {
     return { status: "fail", issues };
   }
 
+  // Enrich plan with context from options for projection validation
+  const enrichedPlan = {
+    ...plan,
+    model_plan: plan.model_plan || options.model_plan,
+    project_status: plan.project_status || options.project_status
+  };
+
   if (mode === "http") {
-    return publishSnapshotOverHttp(plan, options);
+    return publishSnapshotOverHttp(enrichedPlan, options);
   }
 
   const root = resolve(options.root || process.cwd());
@@ -241,7 +257,7 @@ async function executeSnapshotPublishPlan(plan = {}, options = {}) {
     return { status: "fail", issues: outputPathIssues };
   }
 
-  const result = publishWorkbenchSnapshot(plan, {
+  const result = publishWorkbenchSnapshot(enrichedPlan, {
     root,
     historyPath,
     snapshotsRoot
@@ -265,7 +281,13 @@ async function runCloseoutPlan(input = {}, options = {}) {
       issues: ["snapshot_publish_plan is required for autonomous closeout publishing"]
     };
   }
-  const result = await executeSnapshotPublishPlan(plan, options);
+  // Pass context from input to options for projection validation
+  const enrichedOptions = {
+    ...options,
+    model_plan: input.model_plan || options.model_plan,
+    project_status: input.project_status || options.project_status
+  };
+  const result = await executeSnapshotPublishPlan(plan, enrichedOptions);
   const workflowState = recordCloseoutEvidence(plan.input || plan.workflow_state || plan.workflowState, result, {
     ...options,
     plan

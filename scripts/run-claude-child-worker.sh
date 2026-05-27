@@ -15,7 +15,18 @@ USE_WORKTREE="${AI_CONTROL_WORKBENCH_CHILD_WORKER_USE_WORKTREE:-1}"
 INTEGRATE_MAINLINE="${AI_CONTROL_WORKBENCH_CHILD_WORKER_INTEGRATE_MAINLINE:-1}"
 WORKER_ROOT="${AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT:-$HOME/codex/worker-workspaces}"
 EXECUTION_ROOT="$PRIMARY_REPO_ROOT"
-BASE_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
+
+# Base commit selection:
+# Prefer the remote mainline (origin/main) so concurrent workers can rebase against the same shared base.
+# Fall back to local HEAD when the remote ref is unavailable (e.g. detached env, no network).
+BASE_REF="${AI_CONTROL_WORKBENCH_CHILD_WORKER_BASE_REF:-origin/main}"
+if git -C "$PRIMARY_REPO_ROOT" rev-parse --verify --quiet "$BASE_REF" >/dev/null 2>&1; then
+  BASE_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse "$BASE_REF")"
+  BASE_COMMIT_SOURCE="$BASE_REF"
+else
+  BASE_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
+  BASE_COMMIT_SOURCE="HEAD"
+fi
 WORKTREE_DIR=""
 WORKTREE_BRANCH=""
 
@@ -24,11 +35,13 @@ if [[ "$USE_WORKTREE" != "0" ]]; then
   WORKTREE_DIR="$WORKER_ROOT/$REPO_NAME/child-$PROMPT_HASH-$$"
   WORKTREE_BRANCH="worker/$REPO_NAME/child-$PROMPT_HASH-$$"
   mkdir -p "$(dirname "$WORKTREE_DIR")"
-  git -C "$PRIMARY_REPO_ROOT" worktree add -b "$WORKTREE_BRANCH" "$WORKTREE_DIR" HEAD >&2
+  # Create worktree from the resolved BASE_COMMIT (preferring the remote mainline)
+  git -C "$PRIMARY_REPO_ROOT" worktree add -b "$WORKTREE_BRANCH" "$WORKTREE_DIR" "$BASE_COMMIT" >&2
   EXECUTION_ROOT="$WORKTREE_DIR"
   export AI_CONTROL_WORKBENCH_CHILD_WORKTREE_PATH="$WORKTREE_DIR"
   export AI_CONTROL_WORKBENCH_CHILD_WORKTREE_BRANCH="$WORKTREE_BRANCH"
   export AI_CONTROL_WORKBENCH_PRIMARY_WORKTREE_PATH="$PRIMARY_REPO_ROOT"
+  export AI_CONTROL_WORKBENCH_CHILD_WORKER_BASE_COMMIT_SOURCE="$BASE_COMMIT_SOURCE"
 fi
 
 CLAUDE_PROXY="${AI_CONTROL_WORKBENCH_CLAUDE_PROXY:-$PRIMARY_REPO_ROOT/scripts/claude-role-proxy.sh}"
@@ -289,6 +302,72 @@ console.log(blocking.join("\n"));
 NODE
 }
 
+primary_dirty_conflicts_with_owned_files() {
+  # Compute the intersection between the worker's changed_files (from its declared output)
+  # and the primary repo's currently dirty files. Only this intersection blocks merge:
+  # unrelated dirty runtime/state files in the primary repo must not block worker integration.
+  local primary_status="$1"
+  CHILD_OUTPUT_PATH="$CHILD_OUTPUT_PATH" \
+  PRIMARY_STATUS="$primary_status" \
+  node --input-type=module <<'NODE'
+import { existsSync, readFileSync } from "node:fs";
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizePath(value = "") {
+  return String(value || "").trim().replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+function statusPath(line = "") {
+  const path = line.slice(3).trim();
+  const renameParts = path.split(" -> ");
+  return normalizePath(renameParts.at(-1) || path);
+}
+
+const outputPath = process.env.CHILD_OUTPUT_PATH || "";
+let workerTouched = new Set();
+if (outputPath && existsSync(outputPath)) {
+  try {
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    workerTouched = new Set([
+      ...asArray(output.changed_files || output.changedFiles || output.diff_files || output.diffFiles),
+      ...asArray(output.touched_files || output.touchedFiles),
+      ...asArray(output.owned_files || output.ownedFiles)
+    ].map(normalizePath).filter(Boolean));
+  } catch {
+    workerTouched = new Set();
+  }
+}
+
+const primaryDirtyPaths = String(process.env.PRIMARY_STATUS || "")
+  .split(/\r?\n/)
+  .filter(Boolean)
+  .map(statusPath)
+  .filter(Boolean);
+
+// Only paths that the worker actually touched/owns can block integration.
+// "." (whole-repo ownership) matches everything, so we treat it as full match too.
+const ownsEverything = workerTouched.has(".");
+const conflicts = ownsEverything
+  ? primaryDirtyPaths
+  : primaryDirtyPaths.filter((path) => {
+    if (workerTouched.has(path)) return true;
+    // also flag if worker owns a parent directory of a primary-dirty file
+    for (const owned of workerTouched) {
+      if (!owned) continue;
+      if (owned.endsWith("/") && path.startsWith(owned)) return true;
+      if (path === owned) return true;
+      if (path.startsWith(`${owned}/`)) return true;
+    }
+    return false;
+  });
+
+console.log(conflicts.join("\n"));
+NODE
+}
+
 FINAL_STATUS=$CLAUDE_STATUS
 if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPUT_PATH" ]]; then
   WORKER_HEAD="$(git -C "$EXECUTION_ROOT" rev-parse HEAD)"
@@ -297,26 +376,60 @@ if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPU
   MERGE_BLOCKING_DIRTY_STATUS="$(merge_blocking_dirty_status "$EXECUTION_ROOT" "$DIRTY_STATUS")"
   PRIMARY_STATUS="$(git -C "$PRIMARY_REPO_ROOT" status --porcelain)"
   PRIMARY_HEAD="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
+  # Only files the worker actually touched (or owns) can block primary integration.
+  # Unrelated runtime/state files in primary must not stop the merge.
+  PRIMARY_DIRTY_CONFLICTS="$(primary_dirty_conflicts_with_owned_files "$PRIMARY_STATUS")"
   export CHILD_WORKER_AHEAD_COUNT="$AHEAD_COUNT"
   export CHILD_WORKER_MERGE_BLOCKING_DIRTY_STATUS="$MERGE_BLOCKING_DIRTY_STATUS"
   CHILD_OUTPUT_VALIDATION="$(validate_child_output_before_integration)"
   CHILD_MERGE_STATUS="$(printf '%s\n' "$CHILD_OUTPUT_VALIDATION" | sed -n '1p')"
   CHILD_MERGE_MESSAGE="$(printf '%s\n' "$CHILD_OUTPUT_VALIDATION" | sed -n '2,$p' | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
 
+  # Helper: merge worker branch into primary. Stash unrelated dirty files first if needed.
+  merge_worker_into_primary() {
+    local merge_strategy="$1" # "ff-only" or "auto"
+    local stashed=0
+    if [[ -n "$PRIMARY_STATUS" ]]; then
+      if git -C "$PRIMARY_REPO_ROOT" stash push --include-untracked --keep-index --quiet -m "worker-merge-$WORKTREE_BRANCH" >&2; then
+        stashed=1
+      fi
+    fi
+    local merge_rc=0
+    if [[ "$merge_strategy" == "ff-only" ]]; then
+      git -C "$PRIMARY_REPO_ROOT" merge --ff-only "$WORKTREE_BRANCH" >&2 || merge_rc=$?
+    else
+      git -C "$PRIMARY_REPO_ROOT" merge --no-edit "$WORKTREE_BRANCH" >&2 || merge_rc=$?
+    fi
+    if [[ "$stashed" == "1" ]]; then
+      git -C "$PRIMARY_REPO_ROOT" stash pop --quiet >&2 || true
+    fi
+    return $merge_rc
+  }
+
   if [[ "$CHILD_MERGE_STATUS" == "pass" ]]; then
-    if [[ "$AHEAD_COUNT" -gt 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_STATUS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
-      if git -C "$PRIMARY_REPO_ROOT" merge --ff-only "$WORKTREE_BRANCH" >&2; then
+    if [[ "$AHEAD_COUNT" -gt 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_DIRTY_CONFLICTS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
+      # Happy path: fast-forward
+      if merge_worker_into_primary "ff-only"; then
         INTEGRATED_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
         update_child_output_integration "pass" "isolated worker branch fast-forwarded into primary mainline" "$WORKER_HEAD" "$INTEGRATED_COMMIT"
       else
         FINAL_STATUS=1
         update_child_output_integration "fail" "failed to fast-forward isolated worker branch into primary mainline" "$WORKER_HEAD" ""
       fi
-    elif [[ "$AHEAD_COUNT" -eq 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_STATUS" && "$PRIMARY_HEAD" == "$BASE_COMMIT" ]]; then
+    elif [[ "$AHEAD_COUNT" -gt 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_DIRTY_CONFLICTS" && "$PRIMARY_HEAD" != "$BASE_COMMIT" ]]; then
+      # Primary advanced (other worker merged); try real merge (not ff-only)
+      if merge_worker_into_primary "auto"; then
+        INTEGRATED_COMMIT="$(git -C "$PRIMARY_REPO_ROOT" rev-parse HEAD)"
+        update_child_output_integration "pass" "isolated worker branch merged into advanced primary mainline" "$WORKER_HEAD" "$INTEGRATED_COMMIT"
+      else
+        FINAL_STATUS=1
+        update_child_output_integration "fail" "failed to merge isolated worker branch into advanced primary mainline (likely owned-file conflict with another worker)" "$WORKER_HEAD" ""
+      fi
+    elif [[ "$AHEAD_COUNT" -eq 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_DIRTY_CONFLICTS" ]]; then
       update_child_output_integration "pass" "child returned pass with no new committed delta; current mainline accepted as already satisfying the work package" "$WORKER_HEAD" "$PRIMARY_HEAD"
     else
       FINAL_STATUS=1
-      update_child_output_integration "fail" "isolated worker result is not mergeable: ahead_count=$AHEAD_COUNT dirty_worker=$([[ -n "$MERGE_BLOCKING_DIRTY_STATUS" ]] && printf yes || printf no) dirty_primary=$([[ -n "$PRIMARY_STATUS" ]] && printf yes || printf no) primary_head_matches_base=$([[ "$PRIMARY_HEAD" == "$BASE_COMMIT" ]] && printf yes || printf no)" "$WORKER_HEAD" ""
+      update_child_output_integration "fail" "isolated worker result is not mergeable: ahead_count=$AHEAD_COUNT dirty_worker=$([[ -n "$MERGE_BLOCKING_DIRTY_STATUS" ]] && printf yes || printf no) primary_dirty_conflicts=$([[ -n "$PRIMARY_DIRTY_CONFLICTS" ]] && printf yes || printf no)" "$WORKER_HEAD" ""
     fi
   else
     FINAL_STATUS=1
