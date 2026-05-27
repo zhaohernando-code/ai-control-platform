@@ -137,7 +137,7 @@ export default function RequirementsPage() {
             showIcon
             type="info"
             message="验收方案由平台生成"
-            description="这里不填写验收标准。提交后请到任务流查看计划，并在计划审视中同意或打回。"
+            description="具体验收方案会在计划生成后进入任务流。请在计划审视中同意或打回。"
             style={{ marginBottom: 24 }}
           />
           <Space>
