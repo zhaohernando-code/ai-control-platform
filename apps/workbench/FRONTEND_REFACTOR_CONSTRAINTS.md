@@ -10,6 +10,15 @@
 - 应用框架：必须使用 [React](https://react.dev/) + [Next.js](https://nextjs.org/) 的 App Router（`app/` 目录模式）。
 - 语言：TypeScript 优先；保留 ESM 模式。
 
+## 关键选型确认（Step 02/9 of requirement-unknown-20260527043146）
+
+本节是“需求：前端重构”计划步骤 02 / 9（"与用户确认关键选型"）的durable 落点。四项关键选型已在主线代码中体现，并在本节固化为不可被静默回退的项目级约束；任何后续切片若要调整其中任一项，必须新增 DECISIONS.md 条目并同步更新本节。
+
+- TypeScript 是否纳入：纳入。新前端工程必须使用 TypeScript（`apps/workbench/tsconfig.json` 已开启 `strict: true`、`jsx: "preserve"`、`@/*` 路径别名）；`apps/workbench/package.json` 的 `devDependencies` 必须包含 `typescript`。原生 HTML/CSS/JS 入口在灰度期允许保留为回退入口，但新增视图与组件不得回退到非 TS 实现。
+- 包管理器（pnpm / npm）：使用 npm。`apps/workbench/package.json` 与仓库根均以 npm 作为唯一包管理器；锁文件以 `apps/workbench/package-lock.json` 与仓库根 `package-lock.json` 为准；不得引入 `pnpm-lock.yaml` 或 `yarn.lock`。脚本入口统一为 `npm run dev`、`npm run build`、`npm run lint`，便于 `tools/run-with-node18.mjs` 与既有 `check:workbench:*` 门禁直接复用。
+- Next.js 产物形态（standalone vs static export）：standalone。`apps/workbench/next.config.mjs` 必须保持 `output: "standalone"`；不采用 `next export` 静态导出，以便后续切片可以承载需要 server runtime 的接口转发与同源 SSR 逻辑。公开挂载路径仍走 `tools/workbench-server.mjs`，新前端通过 `WORKBENCH_API_BASE` 与 workbench-server 联调；当 standalone 产物切换为发布入口时，必须同步更新 server 静态/反代配置与 `check:workbench:live-route` 探测。
+- 是否需要新旧并行灰度：需要。在 standalone 产物完成 served-route 验证前，必须保留旧入口 `apps/workbench/desktop.html`、`apps/workbench/mobile.html`、`apps/workbench/workbench.js`、`apps/workbench/projection-source.js`、`apps/workbench/styles.css` 作为回退路径；任何切片删除旧入口前必须先在 PR 中明确灰度结束证据（含线上访问验证与回滚预案）。新入口与旧入口共享 `/api/workbench/*` 后端契约，禁止在新前端复制后端语义或绕过 workbench-server 直接读写状态。
+
 ## 组件与布局规则
 
 - 禁止自造基础组件：按钮、输入框、表格、表单、模态、抽屉、分页、菜单、Tab、消息提示、图标容器等基础控件必须直接使用 antd 提供的组件。

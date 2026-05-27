@@ -1,5 +1,15 @@
 # DECISIONS
 
+[2026-05-27T04:31:46+08:00] Frontend refactor key selections (requirement-unknown-20260527043146, plan step 02 / 9):
+对应需求 "前端重构" 的计划步骤 02 / 9 "与用户确认关键选型"，将四项关键技术选择固化为项目级 durable 决策，避免后续切片以"重新讨论"为由静默回退。完整条款见 `apps/workbench/FRONTEND_REFACTOR_CONSTRAINTS.md#关键选型确认step-029-of-requirement-unknown-20260527043146`，本条目用于审计与变更追溯。
+
+- TypeScript：纳入。新前端工程使用 TypeScript（`apps/workbench/tsconfig.json` 已开启 `strict`、`jsx: "preserve"`、`@/*` 路径别名）；`devDependencies` 必须包含 `typescript`，不允许新增 JS 视图回退到非 TS 实现。
+- 包管理器：使用 npm。仓库根与 `apps/workbench/` 均以 npm 为唯一包管理器，锁文件为 `package-lock.json`；不引入 `pnpm-lock.yaml` 或 `yarn.lock`，以便 `tools/run-with-node18.mjs` 与既有 `check:workbench:*` 门禁直接复用统一脚本入口。
+- Next.js 产物形态：standalone。`apps/workbench/next.config.mjs` 保持 `output: "standalone"`，不采用 `next export` 静态导出，为后续 server runtime 能力（如同源 SSR、轻量接口转发）保留扩展空间；公开挂载暂仍由 `tools/workbench-server.mjs` 承载，新前端通过 `WORKBENCH_API_BASE` 联调。
+- 新旧并行灰度：需要。在 standalone 产物完成 served-route 验证前，旧入口 `apps/workbench/desktop.html`、`apps/workbench/mobile.html`、`apps/workbench/workbench.js`、`apps/workbench/projection-source.js`、`apps/workbench/styles.css` 必须保留为回退路径；任何删除旧入口的切片必须先在 PR 中提供线上访问验证与回滚预案。
+
+四项选择已在主线代码中体现（tsconfig / package-lock.json / next.config.mjs / 双入口共存），本条目把"与用户确认"环节落地为 durable 项目决策，作为后续脚手架、切片和 lint/type-check/next build 门禁的输入。任何变更必须以新增 DECISIONS.md 条目 + 同步 FRONTEND_REFACTOR_CONSTRAINTS.md 的方式进行，不允许仅通过聊天或临时 PR 评论改写选型。
+
 [2026-05-21T15:20:00+08:00] Create standalone AI Control Platform repository:
 新中台不再继续落在 `stock_dashboard`、`local-control-server` 或 `dashboard-ui` 任一旧仓作为默认宿主。创建独立仓库 `ai-control-platform`，用于承载平台本体设计、流程合同、宿主边界 gate、任务 DAG、Recovery Engine、LLM Reviewer、CI/CD 门禁和 Ops Workbench。
 
