@@ -1582,6 +1582,8 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   );
   assert.match(closeout, /check-workbench-live-route\.mjs/);
   assert.match(closeout, /check-workbench-public-browser-route\.mjs/);
+  assert.match(closeout, /AI_CONTROL_WORKBENCH_API_PORT \|\| "4182"/);
+  assert.doesNotMatch(closeout, /record-workbench-url", `http:\/\/\$\{WORKBENCH_HOST\}:\$\{WORKBENCH_PORT\}/);
   assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
   assert.match(publicBrowserGate, /waitUntil: "domcontentloaded"/);
   assert.match(publicBrowserGate, /locator\("\.ant-layout"\)\.first\(\)\.waitFor/);

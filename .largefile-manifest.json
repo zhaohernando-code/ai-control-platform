@@ -111,7 +111,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/frontend-acceptance.test.js": {
-      "lines": 1593,
+      "lines": 1595,
       "reason": "Frontend acceptance tests cover content, layout, console, mounted route, favicon, and live-route false-pass regressions over shared artifacts.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
