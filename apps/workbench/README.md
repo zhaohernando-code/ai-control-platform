@@ -1,10 +1,10 @@
 # Workbench Shell
 
-AI Control Platform 工作台的前端入口集合。当前仓库正在从原生 HTML/CSS/JS
-shell 逐步迁移到 **Next.js (App Router) + Ant Design** 的单页 app 骨架。
-两个入口在迁移期共存，后端 API 统一由 `tools/workbench-server.mjs` 提供。
+AI Control Platform 工作台的前端入口。公开入口由 **Next.js (App Router)
++ Ant Design** 的完整运行时提供；`tools/workbench-server.mjs` 只保留
+`/api/workbench/*` 后端能力，不再托管 Next 构建出来的静态 HTML。
 
-## 1. 现有原生入口（迁移期保留为回退）
+## 1. 现有原生入口（测试兼容回退）
 
 - `desktop.html`：PC 单页工作台，固定占满浏览器视口，内部内容区允许纵向滚动。
 - `mobile.html`：手机独立信息架构，不是 PC 页面缩放。
@@ -12,7 +12,7 @@ shell 逐步迁移到 **Next.js (App Router) + Ant Design** 的单页 app 骨架
   不解析日志或聊天记录。
 - `projection-source.js`：projection 数据源抽象，默认读取本地 fixture，也支持
   `?projection=/api/workbench/projection` 指向服务接口。
-- `styles.css`：迁移完成后默认下线；保留期间不引入新的领域样式。
+- `styles.css`：仅供历史验收脚本兼容，不是公开入口。
 
 ## 2. Next.js + Ant Design 骨架（实施步骤 02 / 7）
 
@@ -24,10 +24,10 @@ shell 逐步迁移到 **Next.js (App Router) + Ant Design** 的单页 app 骨架
 | 路径 | 角色 |
 | --- | --- |
 | `package.json` | Next.js 子工程依赖与脚本（`next`、`react`、`antd`、`typescript`） |
-| `next.config.mjs` | Next.js 配置：`reactStrictMode`、`output: "standalone"`、API base 环境变量 |
+| `next.config.mjs` | Next.js 配置：`reactStrictMode`、`basePath`、API rewrite 与客户端 API base |
 | `tsconfig.json` | TypeScript 严格模式 + 路径别名 `@/*` |
 | `app/layout.tsx` | App Router 根布局，挂载 `<AppProviders>` 与 `<WorkbenchShell>` |
-| `app/providers.tsx` | antd `AntdRegistry` + `ConfigProvider`（locale + theme）+ `AntdApp` |
+| `app/providers.tsx` | antd `StyleProvider` + `ConfigProvider`（locale + theme）+ `AntdApp` |
 | `app/shell.tsx` | antd `Layout` + `Sider` + `Header` + `Menu`（SPA 导航，路由切换不刷新） |
 | `app/theme.ts` | antd v5 `ThemeConfig` token 与组件局部覆盖 |
 | `app/page.tsx` | 总览首屏占位（仅使用 antd `Card`/`Descriptions`/`Tag`/`Alert`/`Typography`） |
@@ -49,24 +49,31 @@ shell 逐步迁移到 **Next.js (App Router) + Ant Design** 的单页 app 骨架
 
 ## 3. 本地联调
 
-骨架阶段 Next.js dev/build 与原生 shell 在不同端口共存，避免后端语义被复制：
+本地/线上公开入口由 Next 运行时提供，API 后端独立运行：
 
-| 服务 | 端口 | 作用 |
+| 服务 | 默认端口 | 作用 |
 | --- | --- | --- |
-| `tools/workbench-server.mjs` | 4180 | 原生入口 + 全部 `/api/workbench/*` 后端 |
-| `apps/workbench` (Next.js) | 4181 | 新前端骨架，仅 UI；API 走 `WORKBENCH_API_BASE` 指向 4180 |
+| `tools/workbench-server.mjs` | 4182 | 只提供 `/api/workbench/*` 后端 |
+| `apps/workbench` (Next.js) | 4180 | 公开页面、App Router 动态路由、`_next/*` 资源；API 通过 rewrite 指向 4182 |
 
 启动流程：
 
 ```bash
-# 1) 启动后端（原生 shell + API）
-node tools/workbench-server.mjs --host 127.0.0.1 --port 4180
+# 1) 启动 API 后端
+node tools/workbench-server.mjs --host 127.0.0.1 --port 4182
 
-# 2) 启动新前端骨架（首次需 npm install）
+# 2) 启动 Next 前端
 cd apps/workbench
 npm install
-WORKBENCH_API_BASE=http://127.0.0.1:4180 npm run dev
+WORKBENCH_API_PROXY_TARGET=http://127.0.0.1:4182 npm run dev
 # 打开 http://127.0.0.1:4181/
+```
+
+完整 live 启动脚本会自动启动 API 后端和 `next start`：
+
+```bash
+scripts/start-workbench-live.sh
+# 打开 http://127.0.0.1:4180/projects/ai-control-platform/
 ```
 
 CI / 生产前的构建校验：
@@ -77,9 +84,9 @@ npm install --no-audit --no-fund
 npm run build
 ```
 
-公开挂载（`/projects/ai-control-platform/...`）仍由 `tools/workbench-server.mjs`
-负责，骨架阶段不接管 edge 路由；切片 9 完成后才会改写挂载路径与
-`check:workbench:live-route` 探测目标。
+公开挂载（`/projects/ai-control-platform/...`）由 Next 的 `basePath` 接管。
+例如 `/projects/ai-control-platform/flow/<taskId>` 是真实 App Router 动态
+路由，不需要 `.next/server/app/*.html` 预生成文件。
 
 ## 4. 后端接口入口（保持稳定）
 
@@ -109,13 +116,13 @@ POST /api/workbench/agent-lifecycle-pool
 POST /api/workbench/workbench-browser-events-run
 ```
 
-新前端只做客户端调用，不复制后端语义；接口返回必须先通过
+前端只做客户端调用，不复制后端语义；接口返回必须先通过
 `tools/check-workbench-projection.mjs` 同等校验后才能进入 UI。
 
 ## 5. 运行态存储
 
 Live Workbench 不应把运行态直接写进 Git-tracked JSON 文件。
-`tools/workbench-server.mjs` 支持 `--state-db <path>`，启用后会把以下运行态
+API 后端 `tools/workbench-server.mjs` 支持 `--state-db <path>`，启用后会把以下运行态
 写入 SQLite：
 
 - `PROJECT_STATUS` 等项目状态。

@@ -51,18 +51,20 @@ npm run check:process-hardening
 npm run check:workbench:browser-events
 node tools/build-workbench-projection.mjs docs/examples/current-session-workbench-input.json docs/examples/current-session-workbench-projection.json
 node tools/check-workbench-projection.mjs docs/examples/current-session-workbench-projection.json
-node tools/workbench-server.mjs 4180
+scripts/start-workbench-live.sh
 ```
 
-## Workbench Shell
+## Workbench
 
-- PC: `apps/workbench/desktop.html`
-- Mobile: `apps/workbench/mobile.html`
+公开入口是 `apps/workbench` 的 Next.js App Router 应用，生产挂载路径为
+`/projects/ai-control-platform/`。`tools/workbench-server.mjs` 只作为
+`/api/workbench/*` 后端服务运行；页面、动态路由和 `_next/*` 资源由 Next
+运行时负责，不再读取 `.next/server/app/*.html` 做静态托管。
 
-两个入口都只消费已验证的 `docs/examples/current-session-workbench-projection.json`。
-服务模式可使用 `?projection=/api/workbench/projection` 切换到本地 projection API。
+历史 `apps/workbench/desktop.html` / `apps/workbench/mobile.html` 仅保留给测试
+兼容和迁移对照，不是线上公开入口。
 
-本地服务同时提供：
+API 后端提供：
 
 - `GET /api/workbench/projection`
 - `GET /api/workbench/projections`

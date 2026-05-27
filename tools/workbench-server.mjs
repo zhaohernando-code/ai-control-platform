@@ -1483,64 +1483,6 @@ function safeStaticPath(pathname) {
   return filePath;
 }
 
-function safeStaticPathWithNextjs(pathname, nextjsStandalonePath = null) {
-  if (!nextjsStandalonePath) return null;
-
-  const nextStaticPrefix = "/_next/static/";
-  if (pathname.startsWith(nextStaticPrefix)) {
-    const assetRel = pathname.slice(nextStaticPrefix.length);
-    if (!assetRel || assetRel.includes("..")) return null;
-    const nextStaticDir = resolve(root, nextjsStandalonePath, "..", "static");
-    const assetPath = resolve(nextStaticDir, assetRel);
-    if (!assetPath.startsWith(nextStaticDir)) return null;
-    return { path: assetPath, kind: "nextjs_static" };
-  }
-
-  const nativePath = safeStaticPath(pathname);
-  if (nativePath) return { path: nativePath, kind: "native" };
-
-  return null;
-}
-
-function nextjsAppRoutePath(pathname, nextjsStandalonePath = null) {
-  if (!nextjsStandalonePath) return null;
-  const routePathname = String(pathname || "").replace(/^\/+/, "").replace(/\/+$/, "");
-  if (!routePathname || routePathname === "index") {
-    return "index";
-  }
-  const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
-  const htmlPath = resolve(nextAppDir, `${routePathname}.html`);
-  if (htmlPath.startsWith(nextAppDir) && existsSync(htmlPath)) {
-    return routePathname;
-  }
-  return null;
-}
-
-function nextjsAppRouteHtmlPath(routeName, nextjsStandalonePath = null) {
-  if (!nextjsStandalonePath || !routeName) return null;
-  const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
-  const htmlPath = resolve(nextAppDir, `${routeName}.html`);
-  if (!htmlPath.startsWith(nextAppDir) || !existsSync(htmlPath)) return null;
-  return htmlPath;
-}
-
-function nextjsAppIndexPath(nextjsStandalonePath = null) {
-  if (!nextjsStandalonePath) return null;
-  const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
-  const indexPath = resolve(nextAppDir, "index.html");
-  if (!indexPath.startsWith(nextAppDir) || !existsSync(indexPath)) return null;
-  return indexPath;
-}
-
-function nextjsMountHtml(content, mountPrefix = "/projects/ai-control-platform") {
-  const normalizedMountPrefix = String(mountPrefix || "").replace(/\/+$/, "");
-  return String(content)
-    .replaceAll('"/_next/', `"${normalizedMountPrefix}/_next/`)
-    .replaceAll("'/_next/", `'${normalizedMountPrefix}/_next/`)
-    .replaceAll('"/favicon.svg"', `"${normalizedMountPrefix}/apps/workbench/favicon.svg"`)
-    .replaceAll("'/favicon.svg'", `'${normalizedMountPrefix}/apps/workbench/favicon.svg'`);
-}
-
 function sendStaticFile(res, filePath, options = {}) {
   const content = readFileSync(filePath);
   const transformed = typeof options.transform === "function" ? options.transform(content) : content;
@@ -1608,21 +1550,18 @@ export function createWorkbenchServer(options = {}) {
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore)
   );
-  const nextjsStandalonePath = normalizeString(
-    options.nextjsStandalonePath || options.nextjs_standalone_path
-  ) || "apps/workbench/.next/standalone";
-  const nextjsStandaloneResolved = existsSync(resolve(root, nextjsStandalonePath))
-    ? resolve(root, nextjsStandalonePath)
-    : null;
+  const serveLegacyStatic = options.serveLegacyStatic === true ||
+    options.serve_legacy_static === true;
 
   return createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
       if (isProjectMountRoot(url.pathname)) {
-        const indexPath = nextjsAppIndexPath(nextjsStandaloneResolved);
-        if (indexPath) {
-          sendStaticFile(res, indexPath, { transform: nextjsMountHtml });
+        if (!serveLegacyStatic) {
+          jsonResponse(res, 404, {
+            error: "workbench pages are served by Next.js; this process only serves /api/workbench/*"
+          });
           return;
         }
         const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
@@ -2998,6 +2937,10 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/favicon.svg") {
+        if (!serveLegacyStatic) {
+          jsonResponse(res, 404, { error: "not found" });
+          return;
+        }
         const faviconPath = safeStaticPath("/apps/workbench/favicon.svg");
         if (faviconPath) {
           sendStaticFile(res, faviconPath);
@@ -3005,44 +2948,22 @@ export function createWorkbenchServer(options = {}) {
         }
       }
 
-      if (url.pathname === "/") {
-        const indexPath = nextjsAppIndexPath(nextjsStandaloneResolved);
-        if (indexPath) {
-          const forwardedPrefix = String(req.headers["x-forwarded-prefix"] || "").trim();
-          const transform = forwardedPrefix === "/projects/ai-control-platform"
-            ? (content) => nextjsMountHtml(content, forwardedPrefix)
-            : null;
-          sendStaticFile(res, indexPath, transform ? { transform } : {});
-          return;
-        }
+      if (!serveLegacyStatic) {
+        jsonResponse(res, 404, {
+          error: "workbench pages are served by Next.js; this process only serves /api/workbench/*"
+        });
+        return;
       }
 
-      const routeName = nextjsAppRoutePath(url.pathname, nextjsStandaloneResolved);
-      if (routeName) {
-        const routeHtmlPath = nextjsAppRouteHtmlPath(routeName, nextjsStandaloneResolved);
-        if (routeHtmlPath) {
-          const forwardedPrefix = String(req.headers["x-forwarded-prefix"] || "").trim();
-          const transform = forwardedPrefix === "/projects/ai-control-platform"
-            ? (content) => nextjsMountHtml(content, forwardedPrefix)
-            : null;
-          sendStaticFile(res, routeHtmlPath, transform ? { transform } : {});
-          return;
-        }
-      }
-
-      const resolvedPath = safeStaticPathWithNextjs(
-        url.pathname === "/" ? "/apps/workbench/desktop.html" : url.pathname,
-        nextjsStandaloneResolved
+      const resolvedPath = safeStaticPath(
+        url.pathname === "/" ? "/apps/workbench/desktop.html" : url.pathname
       );
       if (!resolvedPath) {
         jsonResponse(res, 404, { error: "not found" });
         return;
       }
 
-      const isNextStatic = resolvedPath.kind === "nextjs_static";
-      sendStaticFile(res, resolvedPath.path, {
-        cache_control: isNextStatic ? "public, max-age=31536000, immutable" : "no-store"
-      });
+      sendStaticFile(res, resolvedPath);
     } catch (error) {
       if (error.code === "ENOENT") {
         jsonResponse(res, 404, { error: "not found" });
@@ -3091,11 +3012,12 @@ function normalizeCliPort(value) {
 }
 
 function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process.env) {
-  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db", "--nextjs-standalone-path"]);
+  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db", "--serve-legacy-static"]);
+  const optionsWithValues = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db"]);
   const positionalArgs = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (optionNames.has(arg.split("=")[0])) {
+    if (optionsWithValues.has(arg.split("=")[0])) {
       if (!arg.includes("=")) index += 1;
       continue;
     }
@@ -3124,7 +3046,7 @@ function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process
     eventsPath: optionValue("--events-path"),
     projectStatusPath: optionValue("--project-status"),
     stateDbPath: optionValue("--state-db") || process.env.AI_CONTROL_WORKBENCH_STATE_DB || defaultStateDbPath,
-    nextjsStandalonePath: optionValue("--nextjs-standalone-path") || process.env.AI_CONTROL_WORKBENCH_NEXTJS_STANDALONE_PATH || null
+    serveLegacyStatic: args.includes("--serve-legacy-static") || env.AI_CONTROL_WORKBENCH_SERVE_LEGACY_STATIC === "1"
   };
 }
 
@@ -3136,7 +3058,7 @@ export function startWorkbenchServer({
   eventsPath: configuredEventsPath,
   projectStatusPath,
   stateDbPath = defaultStateDbPath,
-  nextjsStandalonePath = null
+  serveLegacyStatic = false
 } = {}) {
   const server = createWorkbenchServer({
     historyPath: configuredHistoryPath,
@@ -3144,7 +3066,7 @@ export function startWorkbenchServer({
     eventsPath: configuredEventsPath,
     projectStatusPath,
     stateDbPath,
-    nextjsStandalonePath
+    serveLegacyStatic
   });
   const listenPort = normalizeCliPort(port);
   server.listen(listenPort, host);
@@ -3154,15 +3076,13 @@ export function startWorkbenchServer({
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
-      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>] [--nextjs-standalone-path <path>]",
+      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>] [--serve-legacy-static]",
       "",
-      "Starts the local workbench service. Paths are resolved from the platform repo root. When --state-db is set, live workbench state is stored in SQLite instead of tracked JSON state files.",
+      "Starts the local workbench API service. Paths are resolved from the platform repo root. When --state-db is set, live workbench state is stored in SQLite instead of tracked JSON state files.",
       "",
-      "--nextjs-standalone-path  Relative path to the Next.js standalone build output directory",
-      "                          (default: apps/workbench/.next/standalone).",
-      "                          When the directory exists, the server serves",
-      "                          _next/static/* assets from the build output with",
-      "                          immutable caching."
+      "--serve-legacy-static   Test-only compatibility mode for the old native HTML shell.",
+      "                        Production and local public routes should be served by",
+      "                        the Next.js App Router runtime instead."
     ].join("\n"));
     process.exit(0);
   }

@@ -484,8 +484,11 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   const nextConfig = read("apps/workbench/next.config.mjs");
   assert.match(nextConfig, /reactStrictMode/);
   assert.match(nextConfig, /WORKBENCH_API_BASE/);
+  assert.match(nextConfig, /WORKBENCH_API_PROXY_TARGET/);
+  assert.match(nextConfig, /async rewrites\(\)/);
   assert.match(nextConfig, /assetPrefix/);
   assert.match(nextConfig, /WORKBENCH_MOUNT_PREFIX/);
+  assert.doesNotMatch(nextConfig, /output:\s*"standalone"/);
   // antd v5 在 App Router 下需要 transpilePackages，否则 build 时
   // server components 客户端清单会丢失 barrel optimized 子模块。
   assert.match(nextConfig, /transpilePackages/);
@@ -504,13 +507,14 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(layout, /<html lang="zh-CN">/);
   assert.match(layout, /workbenchMountPrefix/);
 
-  // 4. Providers wire ConfigProvider + AntdRegistry + AntdApp.
+  // 4. Providers wire ConfigProvider + antd cssinjs SSR + AntdApp.
   const providers = read("apps/workbench/app/providers.tsx");
   assert.match(providers, /"use client";/);
-  assert.match(providers, /@ant-design\/nextjs-registry/);
+  assert.match(providers, /@ant-design\/cssinjs/);
   assert.match(providers, /antd\/locale\/zh_CN/);
   assert.match(providers, /ConfigProvider/);
-  assert.match(providers, /AntdRegistry/);
+  assert.match(providers, /StyleProvider/);
+  assert.match(providers, /useServerInsertedHTML/);
 
   // 5. Shell is built from antd Layout / Sider / Header / Menu (no naked
   //    divs trying to re-implement layout primitives).
@@ -578,16 +582,22 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(projectionApi, /fetchCurrentProjection/);
   assert.match(projectionApi, /fetchProjectionHistory/);
 
-  // 9. Readme documents the local interop matrix between workbench-server
-  //    (4180) and the new Next.js skeleton (4181) so future agents do not
-  //    duplicate backend semantics in the new frontend.
+  // 9. Readme documents the runtime split: Next serves pages, the Node server
+  //    only serves workbench APIs, and API traffic is proxied to the backend.
   const readme = read("apps/workbench/README.md");
-  assert.match(readme, /Next\.js \(App Router\) \+ Ant Design/);
+  assert.match(readme, /Next\.js \(App Router\)[\s\S]*\+ Ant Design/);
   assert.match(readme, /workbench-server\.mjs/);
+  assert.match(readme, /API 后端/);
   assert.match(readme, /4180/);
-  assert.match(readme, /4181/);
-  assert.match(readme, /WORKBENCH_API_BASE/);
+  assert.match(readme, /4182/);
+  assert.match(readme, /WORKBENCH_API_PROXY_TARGET/);
   assert.match(readme, /npm run build/);
+
+  const liveScript = read("scripts/start-workbench-live.sh");
+  assert.match(liveScript, /tools\/workbench-server\.mjs/);
+  assert.match(liveScript, /API_PORT=.*4182/);
+  assert.match(liveScript, /next.*start/s);
+  assert.doesNotMatch(liveScript, /NEXTJS_STANDALONE_PATH/);
 });
 
 test("step 04/9: SSE/projection/snapshot React hooks infrastructure is durable", () => {
@@ -711,6 +721,12 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
     assert.match(shell, new RegExp(`key: "${route.dir}"`),
       `shell must have nav key: ${route.dir}`);
   }
+
+  const flowDetail = read("apps/workbench/app/flow/[taskId]/page.tsx");
+  assert.match(flowDetail, /params: \{ taskId: string \}/);
+  assert.match(flowDetail, /App Router dynamic route/);
+  assert.match(flowDetail, /useRouter/);
+  assert.match(flowDetail, /Descriptions/);
 });
 
 test("project rules codify the antd + next.js single-page-app frontend constraints (step 03/7)", () => {

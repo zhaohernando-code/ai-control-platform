@@ -2,6 +2,7 @@
   "name": "@ai-control-platform/workbench-web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Next.js + Ant Design skeleton for the AI Control Platform workbench (App Router).",
   "scripts": {
     "dev": "next dev -p 4181",

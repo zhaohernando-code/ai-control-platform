@@ -264,6 +264,7 @@ async function withWorkbenchServer(fn, options = {}) {
     snapshotsRoot,
     stateDbPath,
     projectStatusPath,
+    serveLegacyStatic: true,
     realReviewerExecutor: options.realReviewerExecutor
   });
   server.listen(0, "127.0.0.1");

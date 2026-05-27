@@ -3477,53 +3477,29 @@ test("workbench server rejects workflow state snapshots without operator event f
   }, { historyPath });
 });
 
-test("workbench server serves desktop app shell", async () => {
+test("workbench server is API-only by default for page routes", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/apps/workbench/desktop.html`);
-    const html = response.text;
+    const mountedRoot = await request(`${baseUrl}/projects/ai-control-platform/`);
+    const body = response.json();
 
-    assert.equal(response.status, 200);
-    assert.match(html, /data-view="desktop"/);
-    assert.match(response.headers["content-type"], /text\/html/);
+    assert.equal(response.status, 404);
+    assert.match(body.error, /served by Next\.js/);
+    assert.equal(mountedRoot.status, 404);
+    assert.match(mountedRoot.json().error, /served by Next\.js/);
   });
 });
 
-test("workbench server serves Next.js app at project mount roots when built", async () => {
+test("workbench server can serve legacy static shell only when explicitly enabled", async () => {
   await withServer(async (baseUrl) => {
-    const response = await request(`${baseUrl}/projects/ai-control-platform/?projection=/api/workbench/projection`);
-
-    assert.equal(response.status, 200);
-    assert.match(response.text, /Next\.js 14|Ant Design v5|ant-layout/);
-    assert.doesNotMatch(response.text, /class="desktop-shell"/);
-    assert.match(response.text, /\/projects\/ai-control-platform\/_next\/static/);
-    assert.match(response.headers["content-type"], /text\/html/);
-
-    const rootAsset = await request(`${baseUrl}/apps/workbench/workbench.js`);
+    const response = await request(`${baseUrl}/apps/workbench/desktop.html`);
     const mountedAsset = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/workbench.js`);
-    assert.equal(mountedAsset.status, 200);
-    assert.equal(mountedAsset.text, rootAsset.text);
-
-    const mountedFavicon = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/favicon.svg`);
-    assert.equal(mountedFavicon.status, 200);
-    assert.equal(mountedFavicon.headers["content-type"], "image/svg+xml");
-  });
-});
-
-test("workbench server rewrites Next.js assets when project proxy forwards mounted root to upstream root", async () => {
-  await withServer(async (baseUrl) => {
-    const response = await request(`${baseUrl}/`, {
-      headers: {
-        "x-forwarded-prefix": "/projects/ai-control-platform"
-      }
-    });
 
     assert.equal(response.status, 200);
-    assert.match(response.text, /Next\.js 14|Ant Design v5|ant-layout/);
-    assert.match(response.text, /\/projects\/ai-control-platform\/_next\/static/);
-    assert.doesNotMatch(response.text, /src="\/_next\/static/);
-    assert.doesNotMatch(response.text, /href="\/_next\/static/);
-    assert.doesNotMatch(response.text, /href="\/favicon\.svg"/);
-  });
+    assert.match(response.text, /data-view="desktop"/);
+    assert.match(response.headers["content-type"], /text\/html/);
+    assert.equal(mountedAsset.status, 200);
+  }, { serveLegacyStatic: true });
 });
 
 test("workbench server exposes mounted workbench APIs", async () => {

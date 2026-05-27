@@ -338,7 +338,8 @@ async function withFixtureWorkbenchServer(fn) {
     historyPath,
     snapshotsRoot,
     stateDbPath,
-    projectStatusPath: "PROJECT_STATUS.json"
+    projectStatusPath: "PROJECT_STATUS.json",
+    serveLegacyStatic: true
   });
   let port;
   try {
@@ -374,7 +375,8 @@ async function withLatestWorkbenchServer(fn) {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-frontend-acceptance-latest-"));
   const server = createWorkbenchServer({
     stateDbPath: join(dir, "workbench-state.sqlite"),
-    projectStatusPath: "PROJECT_STATUS.json"
+    projectStatusPath: "PROJECT_STATUS.json",
+    serveLegacyStatic: true
   });
   const targetInfo = latestTargetInfo();
   let port;

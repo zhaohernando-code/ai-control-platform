@@ -16,7 +16,7 @@ export interface WorkbenchEndpoint {
 
 export const WORKBENCH_API_BASE: string =
   (typeof process !== "undefined" && process.env?.WORKBENCH_API_BASE) ||
-  "http://127.0.0.1:4180";
+  "";
 
 export const WORKBENCH_API_ENDPOINTS: ReadonlyArray<WorkbenchEndpoint> = [
   { method: "GET", path: "/api/workbench/projection", description: "一屏 projection" },
