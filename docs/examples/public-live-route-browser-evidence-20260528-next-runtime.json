@@ -1,0 +1,35 @@
+{
+  "version": "workbench-public-browser-evidence.v1",
+  "status": "pass",
+  "created_at": "2026-05-27T18:05:19.839Z",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/projects/ai-control-platform",
+  "http_status": 200,
+  "title": "AI Control Platform Workbench",
+  "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n中台工作台\n单页 app · antd 骨架 · 与 workbench-server 联调\n/projects/ai-control-platform\n状态未知等待状态投影\nRun -- · Cycle --\n项目总数\n0\n活跃项目\n0\n任务包\n0\n已完成目标\n0/0\n运营事件\n0\n证据\n0\n收口验收\n状态等待上报\n\n\nSnapshot无\n推荐动作\n等待新的可执行任务\nAgent 池\n开放\n0\n未评估\n0\n未关闭\n0\n超时\n0\n心跳\n0\n已完成\n0\n调度\n调度步数\n0\n续跑就绪\n0\n循环迭代\n0\n审查分片\n0\n审查发现\n0\n可派发任务\n0\n治理\n自治理发现\n0\n自修复\n0\n证据任务\n0\n用户决策\n0\n运行时间线\n暂无运行事件\n数据更新时间：未知\n刷新",
+  "workbench_rendered": true,
+  "mounted_project_route": true,
+  "root_next_script_count": 0,
+  "mounted_next_script_count": 20,
+  "desktop_shell_count": 0,
+  "console_error_count": 0,
+  "failed_request_count": 0,
+  "navigation_error": null,
+  "responses": [
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "status": 308,
+      "content_type": null
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/css/61a733eac8bb6bcd.css",
+      "status": 200,
+      "content_type": "text/css; charset=UTF-8"
+    }
+  ],
+  "request_header_names": [
+    "X-HZ-Dev-Auth-Bypass-Token"
+  ],
+  "secret_policy": "Only header names and browser metadata are stored; no cookies, tokens, authorization headers, session values, or secret values are stored.",
+  "issues": []
+}

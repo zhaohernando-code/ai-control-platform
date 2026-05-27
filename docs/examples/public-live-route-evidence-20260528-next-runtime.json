@@ -1,0 +1,116 @@
+{
+  "version": "workbench-live-route-evidence.v1",
+  "status": "pass",
+  "created_at": "2026-05-27T18:05:20.374Z",
+  "project": "ai-control-platform",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/projects/ai-control-platform",
+  "http_status": 200,
+  "public_route_verified": true,
+  "mounted_workbench_route_verified": true,
+  "workbench_rendered": true,
+  "mounted_api_verified": true,
+  "auth_redirect_detected": false,
+  "local_loopback": false,
+  "verification_mode": "public_https",
+  "request_header_names": [
+    "X-HZ-Dev-Auth-Bypass-Token"
+  ],
+  "route": {
+    "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "final_url": "https://hernando-zhao.cn/projects/ai-control-platform",
+    "http_status": 200,
+    "redirect_count": 1,
+    "auth_redirect_detected": false,
+    "public_route_verified": true
+  },
+  "workbench": {
+    "shell_url": "https://hernando-zhao.cn/projects/ai-control-platform/flow",
+    "shell_final_url": "https://hernando-zhao.cn/projects/ai-control-platform",
+    "shell_http_status": 200,
+    "mounted_route_verified": true,
+    "rendered": true,
+    "api_url": "https://hernando-zhao.cn/projects/ai-control-platform/api/workbench/projection",
+    "api_http_status": 200,
+    "mounted_api_verified": true,
+    "referenced_asset_count": 22,
+    "referenced_assets_mounted": true,
+    "referenced_assets_reachable": true,
+    "referenced_asset_responses": [
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/css/61a733eac8bb6bcd.css",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/css/61a733eac8bb6bcd.css",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/webpack-44e4f189499aa9c2.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/webpack-44e4f189499aa9c2.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/fd9d1056-1867e78b82859f90.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/fd9d1056-1867e78b82859f90.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/117-046d67c9cefffd9c.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/117-046d67c9cefffd9c.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/main-app-85ec16350b55cf69.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/main-app-85ec16350b55cf69.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/220-7ef0e72ba832663e.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/220-7ef0e72ba832663e.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/328-81908837c65f0dec.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/328-81908837c65f0dec.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      },
+      {
+        "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/230-8513c2de66bba0ff.js",
+        "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/230-8513c2de66bba0ff.js",
+        "http_status": 200,
+        "auth_redirect_detected": false,
+        "error": null
+      }
+    ]
+  },
+  "redirects": [
+    {
+      "from_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "to_url": "https://hernando-zhao.cn/projects/ai-control-platform",
+      "http_status": 308,
+      "auth_redirect_detected": false
+    }
+  ],
+  "issues": [],
+  "validation": {
+    "status": "pass",
+    "version": "workbench-live-route-evidence.v1",
+    "generated_at": "2026-05-27T18:05:20.374Z",
+    "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+    "http_status": 200,
+    "issues": []
+  }
+}
