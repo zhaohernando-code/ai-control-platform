@@ -78,6 +78,18 @@
     "repair_work_package": null,
     "created_at": null
   },
+  "governance_audit": {
+    "status": "not_configured",
+    "artifact_id": null,
+    "event_id": null,
+    "final_verdict": null,
+    "blocking_count": 0,
+    "finding_count": 0,
+    "latest_finding": null,
+    "repair_required": false,
+    "repair_work_package": null,
+    "created_at": null
+  },
   "resume_health": {
     "status": "not_configured",
     "replay_status": null,
@@ -1591,6 +1603,7 @@
       "closeout_publishes": 0,
       "browser_event_scenarios": 0,
       "frontend_acceptance_blockers": 0,
+      "governance_audit_blockers": 0,
       "resume_blockers": 0,
       "provider_health_events": 1,
       "reviewer_scope_shards": 2,
