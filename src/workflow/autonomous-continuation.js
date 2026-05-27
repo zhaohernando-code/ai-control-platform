@@ -8,6 +8,9 @@ import {
   summarizeFrontendAcceptance
 } from "./frontend-acceptance.js";
 import { createSelfGovernanceReport } from "./self-governance.js";
+import {
+  summarizeGovernanceAuditSkillTrial
+} from "./governance-audit-skill-trial.js";
 import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
 import {
   createRequirementPlanWorkPackages,
@@ -126,6 +129,7 @@ function nextWorkPackagesFrom(input) {
   const scopeSplitPackages = aggregate ? [] : reviewerScopeSplitWorkPackagesFrom(input);
   const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
   const frontendRepairPackages = frontendAcceptanceRepairWorkPackagesFrom(input);
+  const governanceAuditRepairPackages = governanceAuditRepairWorkPackagesFrom(input);
   const selfGovernancePackages = selfGovernanceWorkPackagesFrom(input);
   const codeReviewCoveragePackages = codeReviewCoverageWorkPackagesFrom(input);
   const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
@@ -140,6 +144,7 @@ function nextWorkPackagesFrom(input) {
     ...scopeSplitPackages,
     ...lifecyclePoolPackages,
     ...frontendRepairPackages,
+    ...governanceAuditRepairPackages,
     ...selfGovernancePackages,
     ...codeReviewCoveragePackages
   ];
@@ -580,6 +585,17 @@ function frontendAcceptanceRepairWorkPackagesFrom(input = {}) {
   return workPackage ? [workPackage] : [];
 }
 
+function governanceAuditRepairWorkPackagesFrom(input = {}) {
+  const explicit = input?.governance_audit || input?.governanceAudit || input?.workflow_state?.governance_audit;
+  const workflowState = workflowStateFrom(input);
+  const summary = explicit || summarizeGovernanceAuditSkillTrial(
+    workflowState?.manifest,
+    workflowState?.artifact_ledger || workflowState?.artifactLedger
+  );
+  const workPackage = summary?.repair_work_package || summary?.repairWorkPackage;
+  return workPackage ? [workPackage] : [];
+}
+
 function projectStatus(input) {
   return input?.project_status || input?.projectStatus || {};
 }
@@ -651,6 +667,7 @@ function createContextPackSeed(input, action) {
         retry_workers: asArray(workPackage.retry_workers || workPackage.retryWorkers),
         timed_out_workers: asArray(workPackage.timed_out_workers || workPackage.timedOutWorkers),
         frontend_acceptance: workPackage.frontend_acceptance || workPackage.frontendAcceptance || null,
+        governance_audit: workPackage.governance_audit || workPackage.governanceAudit || null,
         code_review_coverage: workPackage.code_review_coverage || workPackage.codeReviewCoverage || null,
         acceptance_gates: acceptanceGatesFromWorkPackage(workPackage),
         reason: normalizeString(workPackage.reason)

@@ -14,6 +14,7 @@ import {
   STOP_FOR_HUMAN
 } from "../src/workflow/autonomous-continuation.js";
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
+import { GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT } from "../src/workflow/governance-audit-skill-trial.js";
 
 function projectStatus(overrides = {}) {
   return {
@@ -1231,6 +1232,80 @@ test("frontend repair continuation deduplicates package ids and preserves repair
   assert.ok(decision.context_pack_seed.acceptance_gates.includes("npm run check:workbench:browser-events"));
   assert.ok(decision.context_pack_seed.acceptance_gates.includes("npm run check:closeout"));
   assert.deepEqual(decision.context_pack_seed.subtasks[0].source.acceptance_gates, repairGates);
+});
+
+test("governance audit failure schedules a bounded repair package for continuation", () => {
+  const artifactId = "governance-audit-current";
+  const workflowState = {
+    manifest: {
+      run_id: "run-governance-repair",
+      cycle_id: "cycle-governance-repair",
+      events: [
+        {
+          id: `event-${artifactId}`,
+          type: GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT,
+          status: "fail",
+          artifact_id: artifactId,
+          metadata: {
+            final_verdict: "不通过",
+            blocking_count: 1,
+            findings: [
+              {
+                id: "served-entry-stack-mismatch",
+                type: "明确缺陷",
+                severity: "高",
+                summary: "真实入口仍服务 desktop.html",
+                repair_schedule: {
+                  target_files_or_modules: ["tools/workbench-server.mjs", "apps/workbench"],
+                  verification_commands: ["npm run run:governance-audit-skill-trial", "npm run check:closeout"]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      artifacts: []
+    },
+    artifact_ledger: {
+      artifacts: [
+        {
+          id: artifactId,
+          status: "fail",
+          metadata: {
+            final_verdict: "不通过",
+            blocking_count: 1,
+            findings: [
+              {
+                id: "served-entry-stack-mismatch",
+                type: "明确缺陷",
+                severity: "高",
+                summary: "真实入口仍服务 desktop.html",
+                repair_schedule: {
+                  target_files_or_modules: ["tools/workbench-server.mjs", "apps/workbench"],
+                  verification_commands: ["npm run run:governance-audit-skill-trial", "npm run check:closeout"]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  };
+  const decision = decideContinuation({
+    project_status: projectStatus({ next_step: "", next_work_packages: [] }),
+    run_evaluation: { status: "pass", next_work_packages: [] },
+    workflow_state: workflowState
+  });
+  const repairPackage = decision.next_work_packages.find((workPackage) => {
+    return workPackage.action === "repair_governance_audit_defect";
+  });
+
+  assert.equal(decision.action, CONTINUE);
+  assert.ok(repairPackage);
+  assert.ok(repairPackage.owned_files.includes("tools/workbench-server.mjs"));
+  assert.ok(repairPackage.owned_files.includes("apps/workbench"));
+  assert.ok(repairPackage.acceptance_gates.includes("npm run run:governance-audit-skill-trial"));
+  assert.ok(decision.context_pack_seed.subtasks.some((subtask) => subtask.source.governance_audit?.artifact_id === artifactId));
 });
 
 test("marks continuation complete only when all configured global goals are done", () => {

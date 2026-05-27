@@ -15,6 +15,10 @@ import {
   FRONTEND_ACCEPTANCE_REPAIR_ACTION,
   summarizeFrontendAcceptance
 } from "./frontend-acceptance.js";
+import {
+  GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT,
+  summarizeGovernanceAuditSkillTrial
+} from "./governance-audit-skill-trial.js";
 import { createSelfGovernanceReport, summarizeSelfGovernance } from "./self-governance.js";
 import { summarizeRequirementIntake } from "./requirement-intake.js";
 
@@ -920,6 +924,7 @@ const OPERATION_EVENT_TYPES = new Set([
   "reviewer_shard_aggregate",
   "workbench_browser_events_run",
   "frontend_acceptance_run",
+  GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT,
   "headless_projected_action_progress",
   ...AGENT_LIFECYCLE_EVENT_TYPES
 ]);
@@ -973,6 +978,9 @@ function operationSummary(type, metadata = {}) {
   if (type === "frontend_acceptance_run") {
     return `${metadata.status || "unknown"} / ${metadata.blocking_count || 0} blocker(s)`;
   }
+  if (type === GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT) {
+    return `${metadata.final_verdict || metadata.status || "unknown"} / ${metadata.blocking_count || 0} blocker(s)`;
+  }
   if (type === "headless_projected_action_progress") {
     return `${metadata.status || "unknown"} / ${metadata.action || "projected_action"}`;
   }
@@ -1005,6 +1013,9 @@ function operationNextActionRole(type, metadata = {}) {
   if (type === "project_status_continuation") return "operator_observable";
   if (type === "context_pack_cycle_materialized" || type === "context_pack_cycle_created" || type === "context_work_packages_run") return "operator_observable";
   if (type === "frontend_acceptance_run") {
+    return Number(metadata.blocking_count || 0) > 0 && metadata.status === "fail" ? "automation_driver" : "operator_observable";
+  }
+  if (type === GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT) {
     return Number(metadata.blocking_count || 0) > 0 && metadata.status === "fail" ? "automation_driver" : "operator_observable";
   }
   if (type === "reviewer_provider_health" || type === "reviewer_scope_split" || type === "reviewer_shard_aggregate") {
@@ -1077,6 +1088,7 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
   const globalGoals = summaries.globalGoalCompletion || {};
   const taskDag = summaries.taskDag || {};
   const frontendAcceptance = summaries.frontendAcceptance || {};
+  const governanceAudit = summaries.governanceAudit || {};
   if (lifecyclePool.next_action === "cleanup_agent_lifecycle_pool") {
     return {
       status: lifecyclePool.status === "blocked" ? "blocked" : "ready",
@@ -1344,6 +1356,17 @@ function createNextActionReadout(operationsTimeline = {}, summaries = {}) {
       requires_operator: false
     };
   }
+  if (driver.type === GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT && governanceAudit.repair_required) {
+    return {
+      status: "ready",
+      action: "prepare_project_status_continuation",
+      source_event_id: driver.event_id || governanceAudit.event_id || null,
+      source_type: driver.type,
+      target_projection_id: null,
+      reason: governanceAudit.repair_work_package?.reason || driver.summary,
+      requires_operator: false
+    };
+  }
   if (AGENT_LIFECYCLE_EVENT_TYPES.has(driver.type)) {
     if (
       lifecyclePool.status === "pass" &&
@@ -1595,6 +1618,7 @@ export function createWorkbenchProjection(input = {}) {
   const closeoutSummary = summarizeCloseoutEvidence(manifest, artifactLedger);
   const browserEventsSummary = summarizeWorkbenchBrowserEvents(manifest, artifactLedger);
   const frontendAcceptance = summarizeFrontendAcceptance(manifest, artifactLedger);
+  const governanceAudit = summarizeGovernanceAuditSkillTrial(manifest, artifactLedger);
   const resumeHealth = summarizeResumeHealth(manifest, artifactLedger);
   const reviewerProviderHealth = summarizeReviewerProviderHealth(manifest, artifactLedger);
   const reviewerScopeSplit = summarizeReviewerScopeSplit(manifest, artifactLedger);
@@ -1640,6 +1664,7 @@ export function createWorkbenchProjection(input = {}) {
     reviewerShardReview,
     agentLifecyclePool,
     frontendAcceptance,
+    governanceAudit,
     globalGoalCompletion,
     taskDag: dagSummary,
     projectStatus: input.project_status || input.projectStatus || {},
@@ -1681,6 +1706,7 @@ export function createWorkbenchProjection(input = {}) {
     closeout: closeoutSummary,
     workbench_browser_events: browserEventsSummary,
     frontend_acceptance: frontendAcceptance,
+    governance_audit: governanceAudit,
     resume_health: resumeHealth,
     reviewer_provider_health: reviewerProviderHealth,
     reviewer_scope_split: reviewerScopeSplit,
@@ -1720,6 +1746,11 @@ export function createWorkbenchProjection(input = {}) {
           action: workPackage.action,
           title: workPackage.title
         })),
+        ...asArray(governanceAudit.repair_work_package ? [governanceAudit.repair_work_package] : []).map((workPackage) => ({
+          id: workPackage.id,
+          action: workPackage.action,
+          title: workPackage.title
+        })),
         ...asArray(runEvaluation.next_work_packages).map((workPackage) => ({
           id: workPackage.id,
           action: workPackage.action || runEvaluation.decision,
@@ -1739,6 +1770,7 @@ export function createWorkbenchProjection(input = {}) {
         closeout_publishes: closeoutSummary.status === "not_configured" ? 0 : 1,
         browser_event_scenarios: browserEventsSummary.scenario_count || 0,
         frontend_acceptance_blockers: frontendAcceptance.blocking_count || 0,
+        governance_audit_blockers: governanceAudit.blocking_count || 0,
         resume_blockers: resumeHealth.status === "blocked" ? resumeHealth.issue_count || 1 : 0,
         provider_health_events: reviewerProviderHealth.status === "not_configured" ? 0 : 1,
         reviewer_scope_shards: reviewerScopeSplit.shard_count || 0,

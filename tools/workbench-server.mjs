@@ -46,6 +46,7 @@ import {
   evaluateReviewerProviderHealthPreflight
 } from "../src/workflow/reviewer-execution-policy.js";
 import { recordWorkbenchBrowserEventsRunArtifact } from "../src/workflow/workbench-browser-events.js";
+import { recordGovernanceAuditSkillTrialRunArtifact } from "../src/workflow/governance-audit-skill-trial.js";
 import {
   prepareContinuationFromProjectStatus,
   recordProjectStatusContinuationPrepared
@@ -1811,6 +1812,48 @@ export function createWorkbenchServer(options = {}) {
           status: "created",
           item,
           artifact: result.artifact,
+          projection: workbenchProjection(result.workflow_state)
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/governance-audit-skill-trial" && req.method === "POST") {
+        const history = readServerHistory();
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const workflowState = readWorkflowState(item);
+        const result = recordGovernanceAuditSkillTrialRunArtifact(
+          workflowState,
+          input.artifact || input.run_artifact || input.runArtifact || input,
+          {
+            artifact_id: input.artifact_id || input.artifactId,
+            created_at: input.created_at || input.createdAt
+          }
+        );
+        if (result.status !== "pass") {
+          jsonResponse(res, 400, { error: "governance audit skill trial record failed", issues: result.issues });
+          return;
+        }
+
+        writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
+        jsonResponse(res, 201, {
+          status: "created",
+          item,
+          artifact: result.artifact,
+          summary: result.summary,
           projection: workbenchProjection(result.workflow_state)
         });
         return;

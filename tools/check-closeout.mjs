@@ -11,6 +11,8 @@ import {
 } from "../src/workflow/closeout-validation.js";
 
 const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
+const WORKBENCH_PORT = process.env.AI_CONTROL_WORKBENCH_PORT || "4180";
+const WORKBENCH_HOST = process.env.AI_CONTROL_WORKBENCH_HOST || "127.0.0.1";
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -46,7 +48,8 @@ export function runCloseoutChecks() {
     "tools/run-governance-audit-skill-trial.mjs",
     "--output", "tmp/audit-skill-trial/closeout-governance-audit-current.json",
     "--raw-output", "tmp/audit-skill-trial/closeout-governance-audit-current.raw.txt",
-    "--prompt-output", "tmp/audit-skill-trial/closeout-governance-audit-current.prompt.md"
+    "--prompt-output", "tmp/audit-skill-trial/closeout-governance-audit-current.prompt.md",
+    "--record-workbench-url", `http://${WORKBENCH_HOST}:${WORKBENCH_PORT}/api/workbench/governance-audit-skill-trial`
   ]);
   run("mainline release readiness", ["tools/check-mainline-release-readiness.mjs", "--project-status", "PROJECT_STATUS.json"]);
   const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));

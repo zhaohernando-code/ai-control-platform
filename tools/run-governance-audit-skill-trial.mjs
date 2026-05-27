@@ -22,6 +22,7 @@ function usage() {
     "usage: run-governance-audit-skill-trial.mjs [--project-root PATH] [--skill-path PATH]",
     "                                           [--route URL] [--claimed-stack TEXT]",
     "                                           [--output PATH] [--raw-output PATH] [--prompt-output PATH]",
+    "                                           [--record-workbench-url URL]",
     "                                           [--runner-command CMD --runner-arg ARG...]",
     "                                           [--timeout-seconds N] [--no-fail-on-blocking-verdict]",
     "",
@@ -46,6 +47,7 @@ function parseArgs(argv) {
     promptOutputPath: DEFAULT_PROMPT_OUTPUT,
     runnerCommand: "",
     runnerArgs: [],
+    recordWorkbenchUrl: "",
     timeoutSeconds: 300,
     failOnBlockingVerdict: true
   };
@@ -75,6 +77,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--runner-command") {
       options.runnerCommand = requiredValue(argv, index, arg);
+      index += 1;
+    } else if (arg === "--record-workbench-url") {
+      options.recordWorkbenchUrl = requiredValue(argv, index, arg);
       index += 1;
     } else if (arg === "--runner-arg") {
       options.runnerArgs.push(requiredValue(argv, index, arg));
@@ -328,6 +333,35 @@ function runnerCommand(options) {
   return { command, args };
 }
 
+function recordArtifactToWorkbench(artifact, options) {
+  if (!options.recordWorkbenchUrl) return null;
+  const result = spawnSync("curl", [
+    "-sS",
+    "-X", "POST",
+    "--max-time", "20",
+    "-H", "content-type: application/json",
+    "--data-binary", JSON.stringify({ artifact }),
+    options.recordWorkbenchUrl
+  ], {
+    cwd: options.projectRoot,
+    encoding: "utf8"
+  });
+  const exitCode = result.status ?? (result.error ? 1 : 0);
+  let payload = null;
+  try {
+    payload = result.stdout ? JSON.parse(result.stdout) : null;
+  } catch {
+    payload = null;
+  }
+  return {
+    status: exitCode === 0 && payload?.status === "created" ? "pass" : "fail",
+    exit_code: exitCode,
+    response: payload,
+    stdout: result.stdout || "",
+    stderr: result.stderr || result.error?.message || ""
+  };
+}
+
 function extractJsonObject(text) {
   const fenced = [...String(text).matchAll(/```(?:json)?\s*([\s\S]*?)```/giu)].map((match) => match[1].trim());
   for (const candidate of fenced.reverse()) {
@@ -473,6 +507,7 @@ try {
     invoked_at: invokedAt
   });
   writeFileSync(options.outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+  const recordResult = recordArtifactToWorkbench(artifact, options);
 
   const validation = evaluateAuditSkillTrialRun(artifact, {
     expectedProjectRoot: DEFAULT_AUDIT_PROJECT_ROOT
@@ -482,10 +517,15 @@ try {
     invocation_exit_code: exitCode,
     artifact_path: options.outputPath,
     raw_output_path: options.rawOutputPath,
+    record_workbench: recordResult,
     validation
   }, null, 2));
 
   if (exitCode !== 0 || validation.status !== "pass") {
+    process.exit(1);
+  }
+  if (recordResult && recordResult.status !== "pass") {
+    console.error("governance audit skill artifact could not be recorded to workbench");
     process.exit(1);
   }
   if (options.failOnBlockingVerdict && !["通过", "带条件通过"].includes(String(artifact.final_verdict || "").trim())) {

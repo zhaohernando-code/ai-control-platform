@@ -6,6 +6,7 @@ import { createReviewerGateRequest, createReviewerTimeoutFinding } from "../src/
 import { buildModelCollaborationPlan } from "../src/workflow/model-router.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
 import { FRONTEND_ACCEPTANCE_RUN_VERSION } from "../src/workflow/frontend-acceptance.js";
+import { GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT } from "../src/workflow/governance-audit-skill-trial.js";
 import {
   createMobileWorkbenchProjection,
   createWorkbenchProjection,
@@ -154,6 +155,51 @@ test("workbench projection combines run, artifacts, model routing, reviewer and 
   assert.equal(projection.global_goal_completion.status, "not_configured");
   assert.equal(projection.one_screen.counters.global_goals_pending, 0);
   assert.equal(projection.one_screen.counters.operation_events, 0);
+});
+
+test("workbench projection exposes governance audit repair as an automation next action", () => {
+  const input = baseInput();
+  const artifactId = "governance-audit-current";
+  input.manifest.events.push({
+    id: `event-${artifactId}`,
+    type: GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT,
+    status: "fail",
+    artifact_id: artifactId,
+    metadata: {
+      status: "fail",
+      final_verdict: "不通过",
+      blocking_count: 1,
+      findings: [
+        {
+          id: "served-entry-stack-mismatch",
+          type: "明确缺陷",
+          severity: "高",
+          summary: "真实入口仍服务 desktop.html",
+          repair_schedule: {
+            target_files_or_modules: ["tools/workbench-server.mjs", "apps/workbench"],
+            verification_commands: ["npm run run:governance-audit-skill-trial", "npm run check:closeout"]
+          }
+        }
+      ]
+    }
+  });
+  input.artifact_ledger.artifacts.push({
+    id: artifactId,
+    type: "evaluation",
+    status: "fail",
+    producer: "governance-audit-skill-trial",
+    created_at: "2026-05-27T00:00:00.000Z",
+    metadata: input.manifest.events.at(-1).metadata
+  });
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.governance_audit.status, "fail");
+  assert.equal(projection.governance_audit.repair_required, true);
+  assert.equal(projection.governance_audit.repair_work_package.action, "repair_governance_audit_defect");
+  assert.equal(projection.next_action_readout.action, "prepare_project_status_continuation");
+  assert.equal(projection.next_action_readout.source_type, GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT);
+  assert.equal(projection.one_screen.counters.governance_audit_blockers, 1);
+  assert.ok(projection.one_screen.next_actions.some((action) => action.action === "repair_governance_audit_defect"));
 });
 
 test("workbench projection and mobile expose self-governance repair, evidence, and decision readout", () => {
