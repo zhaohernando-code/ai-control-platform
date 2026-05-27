@@ -1,9 +1,11 @@
 import { decideContinuation } from "./autonomous-continuation.js";
+import { runSchedulerLoopDriver } from "./autonomous-scheduler-loop.js";
 import { appendRunEvent } from "./run-manifest.js";
 import { recordArtifact } from "./artifact-ledger.js";
 import { runCloseoutPlan } from "./closeout-runner.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { validateWorkbenchProjectionSchema } from "./workbench-projection-schema.js";
+import { evaluateWorkPackageExecutionGovernance } from "./work-package-execution-governance.js";
 
 const AUTONOMOUS_LOOP_ARTIFACT_VERSION = "autonomous-closeout-loop-run.v1";
 
@@ -73,6 +75,59 @@ function workflowStateIdentityIssues(workflowState = {}) {
   }
 
   return issues;
+}
+
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function shouldHardExit(blockers = []) {
+  return asArray(blockers).some(b => b?.category === "hard_exit");
+}
+
+function updateProjectStatusFromExecution(input, closeoutResult, schedulerResult) {
+  if (!input?.project_status) return input;
+  if (!schedulerResult?.selected_work_packages || schedulerResult.selected_work_packages.length === 0) {
+    return input;
+  }
+  
+  const projectStatus = input.project_status;
+  const selected = schedulerResult.selected_work_packages;
+  const completedIds = new Set(selected.map(wp => wp?.id).filter(Boolean));
+  
+  const nextWorkPackages = asArray(projectStatus.next_work_packages).map(wp => {
+    if (completedIds.has(wp.id)) {
+      return {
+        ...wp,
+        status: "completed",
+        execution_metadata: {
+          ...(wp.execution_metadata || {}),
+          completed_at: new Date().toISOString()
+        }
+      };
+    }
+    return wp;
+  });
+  
+  const stillPending = nextWorkPackages.filter(wp => wp.status !== "completed");
+  const completedList = asArray(projectStatus.execution_trace?.completed_work_packages || []);
+  
+  return {
+    ...input,
+    project_status: {
+      ...projectStatus,
+      next_work_packages: stillPending,
+      execution_trace: {
+        ...(projectStatus.execution_trace || {}),
+        current_iteration: (projectStatus.execution_trace?.current_iteration || 0) + 1,
+        completed_work_packages: [
+          ...completedList,
+          ...Array.from(completedIds)
+        ]
+      }
+    }
+  };
 }
 
 function continuationInputFromProjection(input, workflowState, projection) {
@@ -455,6 +510,23 @@ async function runAutonomousCloseoutLoop(input = {}, options = {}) {
   const projection = createWorkbenchProjection(closeout.workflow_state);
   const nextDecision = decideContinuation(continuationInputFromProjection(input, closeout.workflow_state, projection));
 
+  // NEW: Governance gate check before continuation
+  const selectedPackages = nextDecision.context_pack_seed?.selected_work_packages || [];
+  if (selectedPackages.length > 0 && nextDecision.should_continue) {
+    const govResult = evaluateWorkPackageExecutionGovernance({ selected_work_packages: selectedPackages });
+    if (govResult.status !== "pass") {
+      return {
+        status: "fail",
+        phase: "work_package_execution_governance",
+        issues: govResult.issues,
+        decision,
+        closeout,
+        projection,
+        next_decision: nextDecision
+      };
+    }
+  }
+
   return {
     status: nextDecision.should_continue ? "pass" : "fail",
     phase: nextDecision.should_continue ? "next_continuation" : "next_continuation_blocked",
@@ -496,28 +568,92 @@ async function runAutonomousContinuationCycle(input = {}, options = {}) {
   let stopReason = "max_iterations_reached";
 
   for (let i = 0; i < maxIterations; i += 1) {
-    const result = await runAutonomousCloseoutLoop(currentInput, options);
-    iterations.push({
-      iteration: i + 1,
-      status: result.status,
-      phase: result.phase,
-      next_should_continue: result?.next_decision?.should_continue ?? null
-    });
-    lastResult = result;
+    // NEW: Check for hard-exit blockers at the start of each iteration
+    if (shouldHardExit(currentInput.project_status?.blockers)) {
+      stopReason = "blocked_by_hard_exit";
+      break;
+    }
 
-    if (result.status !== "pass") {
+    // Phase 1: Closeout and decision
+    const closeoutResult = await runAutonomousCloseoutLoop(currentInput, options);
+    
+    if (closeoutResult.status !== "pass") {
       stopReason = "iteration_failed";
+      lastResult = closeoutResult;
+      iterations.push({
+        iteration: i + 1,
+        status: closeoutResult.status,
+        phase: closeoutResult.phase,
+        next_should_continue: false
+      });
       break;
     }
-    if (!result.next_decision?.should_continue) {
+
+    // Phase 2: NEW - Scheduler dispatch and execution
+    let schedulerResult = null;
+    if (closeoutResult.next_decision?.context_pack_seed?.selected_work_packages) {
+      try {
+        schedulerResult = await runSchedulerLoopDriver(
+          {
+            selected_work_packages: closeoutResult.next_decision.context_pack_seed.selected_work_packages,
+            project_status: currentInput.project_status,
+            workflow_state: closeoutResult.closeout?.workflow_state
+          },
+          {
+            client: options.scheduler_client,
+            ...options
+          }
+        );
+      } catch (err) {
+        schedulerResult = {
+          status: "fail",
+          phase: "scheduler_dispatch",
+          issues: [issue("scheduler_dispatch_error", String(err.message || err), "")]
+        };
+      }
+
+      if (schedulerResult?.status !== "pass") {
+        stopReason = "scheduler_dispatch_failed";
+        lastResult = closeoutResult;
+        iterations.push({
+          iteration: i + 1,
+          status: "fail",
+          phase: "scheduler_dispatch",
+          next_should_continue: false
+        });
+        break;
+      }
+    }
+
+    // Phase 3: NEW - Update ProjectStatus based on execution
+    currentInput = updateProjectStatusFromExecution(currentInput, closeoutResult, schedulerResult);
+
+    // Check continuation decision
+    if (!closeoutResult.next_decision?.should_continue) {
       stopReason = "no_continuation_required";
+      lastResult = closeoutResult;
       break;
     }
-    if (!isObject(result.closeout?.workflow_state) || !isObject(result.projection)) {
+
+    if (!isObject(closeoutResult.closeout?.workflow_state) || !isObject(closeoutResult.projection)) {
       stopReason = "missing_projection_state";
       break;
     }
-    currentInput = continuationInputFromProjection(currentInput, result.closeout.workflow_state, result.projection);
+
+    // Prepare next iteration input
+    currentInput = continuationInputFromProjection(
+      currentInput,
+      closeoutResult.closeout.workflow_state,
+      closeoutResult.projection
+    );
+
+    lastResult = closeoutResult;
+    iterations.push({
+      iteration: i + 1,
+      status: "pass",
+      phase: "dispatch_and_closeout",
+      next_should_continue: true
+    });
   }
 
   return {
@@ -531,7 +667,6 @@ async function runAutonomousContinuationCycle(input = {}, options = {}) {
     issues: stopReason === "iteration_failed" ? (lastResult?.issues || []) : []
   };
 }
-
 export {
   AUTONOMOUS_LOOP_ARTIFACT_VERSION,
   DEFAULT_MAX_CONTINUATION_ITERATIONS,
