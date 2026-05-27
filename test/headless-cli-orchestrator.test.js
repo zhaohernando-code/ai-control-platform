@@ -588,6 +588,9 @@ test("live workbench starts Claude DeepSeek child workers with output path for i
   const script = readFileSync("scripts/start-workbench-live.sh", "utf8");
   assert.ok(script.includes("run-claude-deepseek-child-worker.sh"));
   assert.ok(script.includes("deepseek-v4-pro[1m]"));
+  assert.ok(script.includes("start-claude-deepseek-no-proxy.sh"));
+  assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG"));
+  assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG"));
   assert.ok(script.includes(`DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'`));
 });
 

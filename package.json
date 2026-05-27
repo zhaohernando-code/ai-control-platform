@@ -24,6 +24,7 @@
     "check:closeout": "node tools/run-with-node18.mjs tools/check-closeout.mjs",
     "run:self-governance-scan": "node tools/run-with-node18.mjs tools/run-self-governance-scan.mjs",
     "run:self-governance-dispatch": "node tools/run-with-node18.mjs tools/dispatch-self-governance-auto-repairs.mjs",
+    "run:governance-audit-skill-trial": "node tools/run-with-node18.mjs tools/run-governance-audit-skill-trial.mjs",
     "run:closeout-plan": "node tools/run-with-node18.mjs tools/run-closeout-plan.mjs",
     "run:autonomous-closeout-loop": "node tools/run-with-node18.mjs tools/run-autonomous-closeout-loop.mjs",
     "run:autonomous-continuation-cycle": "node tools/run-with-node18.mjs tools/run-autonomous-closeout-loop.mjs --cycle",

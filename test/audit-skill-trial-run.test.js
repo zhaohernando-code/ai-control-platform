@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -41,12 +41,13 @@ function dimension(id, evidenceId = `${id}-evidence`) {
 function validArtifact(overrides = {}) {
   const evidenceItems = [
     ...AUDIT_SKILL_DIMENSIONS.map((id) => evidence(`${id}-evidence`)),
-    evidence("current-closeout-evidence", {
+    evidence("governance-skill-invocation", {
       kind: "command",
-      source: "npm run check:closeout",
-      command_or_path: "npm run check:closeout",
+      source: "Claude+DeepSeek governance audit skill invocation",
+      collector: "governance-audit-orchestrator",
+      command_or_path: "python3 run_claude_deepseek_review.py --prompt-file tmp/audit.prompt.md using /Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
       exit_code: 0,
-      result_summary: "当前 closeout 门禁通过"
+      result_summary: "Claude+DeepSeek read and applied governance-audit-orchestrator/SKILL.md against real project state."
     })
   ];
   return {
@@ -112,6 +113,16 @@ function validArtifact(overrides = {}) {
       findings_without_evidence_count: 0,
       defects_without_repair_schedule_count: 0,
       optional_without_decision_package_count: 0
+    },
+    skill_invocation: {
+      provider: "claude_deepseek",
+      skill_path: "/Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
+      runner_command: "python3",
+      runner_args: ["/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py"],
+      prompt_path: "tmp/audit-skill-trial/governance-audit-current.prompt.md",
+      raw_output_path: "tmp/audit-skill-trial/governance-audit-current.raw.txt",
+      exit_code: 0,
+      invoked_at: "2026-05-25T00:00:00.000Z"
     },
     ...overrides
   };
@@ -197,12 +208,13 @@ test("audit skill trial run rejects summary-only evidence", () => {
         line: "1",
         result_summary: "状态总结"
       }),
-      evidence("current-closeout-evidence", {
+      evidence("governance-skill-invocation", {
         kind: "command",
-        source: "npm run check:closeout",
-        command_or_path: "npm run check:closeout",
+        source: "Claude+DeepSeek governance audit skill invocation",
+        collector: "governance-audit-orchestrator",
+        command_or_path: "python3 run_claude_deepseek_review.py --prompt-file tmp/audit.prompt.md using /Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
         exit_code: 0,
-        result_summary: "当前 closeout 门禁通过"
+        result_summary: "Claude+DeepSeek read and applied governance-audit-orchestrator/SKILL.md against real project state."
       })
     ],
     dimensions: AUDIT_SKILL_DIMENSIONS.map((id) => dimension(id, "quality_gate-evidence")),
@@ -222,14 +234,15 @@ test("audit skill trial run rejects summary-only evidence", () => {
   assert.ok(result.issues.some((issue) => issue.code === "dimension_summary_only_evidence"));
 });
 
-test("audit skill trial run requires current closeout evidence", () => {
+test("audit skill trial run requires a real Claude DeepSeek governance skill invocation", () => {
   const artifact = validArtifact({
-    evidence: AUDIT_SKILL_DIMENSIONS.map((id) => evidence(`${id}-evidence`))
+    evidence: AUDIT_SKILL_DIMENSIONS.map((id) => evidence(`${id}-evidence`)),
+    skill_invocation: undefined
   });
   const result = evaluateAuditSkillTrialRun(artifact);
 
   assert.equal(result.status, "fail");
-  assert.ok(result.issues.some((issue) => issue.code === "missing_current_closeout_evidence"));
+  assert.ok(result.issues.some((issue) => issue.code === "missing_real_governance_skill_invocation"));
 });
 
 test("audit skill trial CLI fails closed for invalid artifacts", () => {
@@ -250,4 +263,101 @@ test("audit skill trial CLI fails closed for invalid artifacts", () => {
   assert.match(valid.stdout, /"status": "pass"/);
   assert.equal(invalid.status, 1);
   assert.match(invalid.stdout, /audit_project_root_mismatch/);
+});
+
+test("governance audit skill runner invokes Claude DeepSeek command before validating artifact", () => {
+  const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-"));
+  const fakeRunner = join(dir, "fake-runner.sh");
+  const artifactPath = join(dir, "artifact.json");
+  const outputPath = join(dir, "out.json");
+  const rawPath = join(dir, "raw.txt");
+  const promptPath = join(dir, "prompt.md");
+  writeFileSync(artifactPath, `${JSON.stringify(validArtifact(), null, 2)}\n`);
+  writeFileSync(fakeRunner, [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "grep -q 'governance-audit-orchestrator/SKILL.md' \"$1\"",
+    "grep -q '真实 served route' \"$1\"",
+    "cat \"$FAKE_AUDIT_ARTIFACT\""
+  ].join("\n"));
+  chmodSync(fakeRunner, 0o755);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-governance-audit-skill-trial.mjs",
+    "--runner-command", fakeRunner,
+    "--runner-arg", "{prompt_path}",
+    "--output", outputPath,
+    "--raw-output", rawPath,
+    "--prompt-output", promptPath,
+    "--no-fail-on-blocking-verdict"
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FAKE_AUDIT_ARTIFACT: artifactPath
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /governance-audit-skill-trial/);
+  const output = JSON.parse(readFileSync(outputPath, "utf8"));
+  assert.equal(output.skill_invocation.provider, "claude_deepseek");
+  assert.match(readFileSync(rawPath, "utf8"), /audit-skill-trial-run\.v1/);
+});
+
+test("governance audit skill runner blocks closeout when invoked skill returns a failing verdict", () => {
+  const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-blocking-"));
+  const fakeRunner = join(dir, "fake-runner.sh");
+  const artifactPath = join(dir, "artifact.json");
+  const outputPath = join(dir, "out.json");
+  const rawPath = join(dir, "raw.txt");
+  const promptPath = join(dir, "prompt.md");
+  writeFileSync(artifactPath, `${JSON.stringify(validArtifact({
+    final_verdict: "不通过",
+    findings: [
+      {
+        id: "served-entry-stack-mismatch",
+        dimension: "product_capability_gap",
+        type: "明确缺陷",
+        severity: "高",
+        disposition: "立即修复",
+        user_visible: true,
+        evidence_ids: ["product_capability_gap-evidence"],
+        repair_schedule: {
+          scope: "served frontend entrypoint",
+          target_files_or_modules: ["tools/workbench-server.mjs", "apps/workbench"],
+          owner_role: "platform_core",
+          verification_commands: ["npm run check:closeout"],
+          post_repair_evidence_required: "browser evidence from the real served route",
+          live_or_browser_verification: "verify the route serves the claimed Next/Ant Design entry",
+          rollback_risk: "medium"
+        }
+      }
+    ]
+  }), null, 2)}\n`);
+  writeFileSync(fakeRunner, [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "cat \"$FAKE_AUDIT_ARTIFACT\""
+  ].join("\n"));
+  chmodSync(fakeRunner, 0o755);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-governance-audit-skill-trial.mjs",
+    "--runner-command", fakeRunner,
+    "--runner-arg", "{prompt_path}",
+    "--output", outputPath,
+    "--raw-output", rawPath,
+    "--prompt-output", promptPath
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FAKE_AUDIT_ARTIFACT: artifactPath
+    }
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /blocks closeout: 不通过/);
+  assert.equal(JSON.parse(readFileSync(outputPath, "utf8")).final_verdict, "不通过");
 });

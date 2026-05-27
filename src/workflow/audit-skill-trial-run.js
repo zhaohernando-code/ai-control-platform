@@ -92,6 +92,42 @@ function isPassingCloseoutEvidence(evidence) {
   return Number(evidence?.exit_code) === 0;
 }
 
+function hasGovernanceSkillPath(value) {
+  return /governance-audit-orchestrator\/SKILL\.md/u.test(normalizeString(value));
+}
+
+function isClaudeDeepSeekInvocationText(value) {
+  const text = normalizeString(value).toLowerCase();
+  return text.includes("claude") && text.includes("deepseek");
+}
+
+function isGovernanceSkillInvocationEvidence(evidence) {
+  if (normalizeToken(evidence?.kind) !== "command") return false;
+  if (Number(evidence?.exit_code) !== 0) return false;
+  const text = [
+    evidence?.source,
+    evidence?.collector,
+    evidence?.command_or_path,
+    evidence?.result_summary
+  ].map(normalizeString).join(" ");
+  return isClaudeDeepSeekInvocationText(text) && hasGovernanceSkillPath(text);
+}
+
+function hasRealGovernanceSkillInvocation(artifact, evidence) {
+  const invocation = artifact.skill_invocation || artifact.skillInvocation || artifact.runner || {};
+  const provider = normalizeString(invocation.provider || invocation.model_provider || invocation.executor);
+  const runnerCommand = normalizeString(invocation.runner_command || invocation.command || invocation.command_path);
+  const skillPath = normalizeString(invocation.skill_path || invocation.skillPath || invocation.skill_entrypoint);
+  const rawOutputPath = normalizeString(invocation.raw_output_path || invocation.rawOutputPath || invocation.transcript_path);
+  const exitCode = Number(invocation.exit_code);
+  const metadataClaimsRealInvocation =
+    isClaudeDeepSeekInvocationText(`${provider} ${runnerCommand}`) &&
+    hasGovernanceSkillPath(skillPath) &&
+    rawOutputPath &&
+    exitCode === 0;
+  return metadataClaimsRealInvocation || evidence.some(isGovernanceSkillInvocationEvidence);
+}
+
 function containsSampleSignal(value) {
   const text = normalizeString(value).toLowerCase();
   return SAMPLE_TOKENS.some((token) => text.includes(token));
@@ -308,8 +344,12 @@ export function evaluateAuditSkillTrialRun(artifact = {}, options = {}) {
   if (summaryOnlyEvidence.length > 0 && !hasImplementationEvidence) {
     issues.push(issue("summary_only_evidence_forbidden", "summary docs cannot be the only evidence", "evidence"));
   }
-  if (!evidence.some(isPassingCloseoutEvidence)) {
-    issues.push(issue("missing_current_closeout_evidence", "audit trial must include a passing current closeout command evidence", "evidence"));
+  if (!hasRealGovernanceSkillInvocation(artifact, evidence)) {
+    issues.push(issue(
+      "missing_real_governance_skill_invocation",
+      "audit trial must include a real Claude+DeepSeek invocation of governance-audit-orchestrator/SKILL.md, not only a prewritten JSON artifact",
+      "skill_invocation"
+    ));
   }
 
   const dimensions = asArray(artifact.dimensions);

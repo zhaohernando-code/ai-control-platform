@@ -287,14 +287,14 @@ function defaultRequirementPlanGenerator(input = {}) {
     input.requirement_plan_command ||
       input.requirementPlanCommand ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND ||
-      "/Users/hernando_zhao/claude-proxy.sh"
+      "/Users/hernando_zhao/codex/start-claude-deepseek-no-proxy.sh"
   );
   if (!script || !existsSync(script)) return null;
   const model = normalizeString(
     input.requirement_plan_model ||
       input.requirementPlanModel ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_MODEL ||
-      "claude-opus-4-7"
+      "deepseek-v4-pro[1m]"
   );
   const role = normalizeString(
     input.requirement_plan_role ||
@@ -316,10 +316,26 @@ function defaultRequirementPlanGenerator(input = {}) {
     "/usr/bin",
     "/bin"
   ].filter(Boolean).join(":");
+  const supportsModelArg = normalizeString(
+    input.requirement_plan_command_supports_model_arg ||
+      input.requirementPlanCommandSupportsModelArg ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG ||
+      (/start-claude-deepseek/i.test(script) ? "0" : "1")
+  ) !== "0";
+  const supportsRoleArg = normalizeString(
+    input.requirement_plan_command_supports_role_arg ||
+      input.requirementPlanCommandSupportsRoleArg ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG ||
+      (/start-claude-deepseek/i.test(script) ? "0" : "1")
+  ) !== "0";
 
   return async ({ requirement }) => {
     const prompt = createRequirementPlanPrompt(requirement);
-    const result = spawnSync(script, ["-m", model, "--role", role, "-p", prompt], {
+    const args = [];
+    if (supportsModelArg) args.push("-m", model);
+    if (supportsRoleArg) args.push("--role", role);
+    args.push("-p", prompt);
+    const result = spawnSync(script, args, {
       cwd: root,
       encoding: "utf8",
       timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
@@ -336,10 +352,12 @@ function defaultRequirementPlanGenerator(input = {}) {
       stdout,
       stderr,
       generator: {
-        kind: "claude_plan_mode",
+        kind: /start-claude-deepseek/i.test(script) ? "claude_deepseek_plan_mode" : "claude_plan_mode",
         command: script,
         role,
         model,
+        supports_model_arg: supportsModelArg,
+        supports_role_arg: supportsRoleArg,
         exit_code: result.status ?? null,
         timed_out: result.error?.code === "ETIMEDOUT"
       }
