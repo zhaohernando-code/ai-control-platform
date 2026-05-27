@@ -1567,6 +1567,7 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   const closeout = readFileSync("tools/check-closeout.mjs", "utf8");
   const liveRouteGate = readFileSync("tools/check-workbench-live-route.mjs", "utf8");
+  const publicBrowserGate = readFileSync("tools/check-workbench-public-browser-route.mjs", "utf8");
   const projectStatus = JSON.parse(readFileSync("PROJECT_STATUS.json", "utf8"));
   const evidencePath = projectStatus.workbench_live_route_evidence?.path;
   const evidence = JSON.parse(readFileSync(evidencePath, "utf8"));
@@ -1582,6 +1583,8 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   assert.match(closeout, /check-workbench-live-route\.mjs/);
   assert.match(closeout, /check-workbench-public-browser-route\.mjs/);
   assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
+  assert.match(publicBrowserGate, /waitUntil: "domcontentloaded"/);
+  assert.match(publicBrowserGate, /locator\("\.ant-layout"\)\.first\(\)\.waitFor/);
   assert.match(evidencePath, /^docs\/examples\/public-live-route-evidence-.+\.json$/);
   assert.equal(projectStatus.workbench_live_route_evidence?.status, "pass");
   assert.equal(evidence.version, "workbench-live-route-evidence.v1");

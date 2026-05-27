@@ -98,7 +98,8 @@ async function runBrowserCheck(options) {
   let navigationError = null;
   let response = null;
   try {
-    response = await page.goto(options.url, { waitUntil: "networkidle", timeout: 30000 });
+    response = await page.goto(options.url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    await page.locator(".ant-layout").first().waitFor({ state: "visible", timeout: 30000 });
   } catch (error) {
     navigationError = error.message;
   }
