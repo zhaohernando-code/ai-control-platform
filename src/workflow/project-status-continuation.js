@@ -147,10 +147,11 @@ export function recordProjectStatusContinuationPrepared(workflowState = {}, prep
   const nextWorkPackages = asArray(decision?.next_work_packages);
   const issues = asArray(prepared?.issues);
   const ready = prepared?.status === "ready";
+  const complete = prepared?.status === "complete" || prepared?.status === "completed";
   const artifact = {
     id,
     type: "evaluation",
-    status: ready ? "pass" : "fail",
+    status: ready || complete ? "pass" : "fail",
     uri: `project-status://continuation/${encodeURIComponent(runId)}/${encodeURIComponent(cycleId)}/${encodeURIComponent(id)}`,
     producer: "project-status-continuation",
     created_at: createdAt,
@@ -186,7 +187,7 @@ export function recordProjectStatusContinuationPrepared(workflowState = {}, prep
     artifact_id: id,
     message: ready
       ? "project status continuation prepared from repository global goals"
-      : "project status continuation blocked",
+      : complete ? "project status continuation completed" : "project status continuation blocked",
     created_at: createdAt,
     metadata: artifact.metadata
   });

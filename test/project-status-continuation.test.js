@@ -95,6 +95,26 @@ test("project status continuation completes only when configured goals are compl
   assert.equal(result.decision.action, "complete");
 });
 
+test("project status continuation records completed facts as passing evidence", () => {
+  const workflowState = JSON.parse(readFileSync("docs/examples/current-session-workbench-input.json", "utf8"));
+  workflowState.manifest.events = [];
+  const prepared = prepareContinuationFromProjectStatus(projectStatus({
+    next_step: "",
+    global_goals: [{ id: "done", title: "Done", status: "completed" }]
+  }), {
+    workflow_state: workflowState
+  });
+  const recorded = recordProjectStatusContinuationPrepared(workflowState, prepared, {
+    created_at: "2026-05-22T02:05:00.000Z"
+  });
+
+  assert.equal(recorded.status, "pass");
+  assert.equal(recorded.artifact.status, "pass");
+  assert.equal(recorded.fact.status, "complete");
+  assert.equal(recorded.fact.next_work_package_count, 0);
+  assert.equal(recorded.workflow_state.manifest.events.at(-1).status, "complete");
+});
+
 test("project status continuation blocks wrong project", () => {
   const result = prepareContinuationFromProjectStatus(projectStatus({ project: "stock_dashboard" }));
 
