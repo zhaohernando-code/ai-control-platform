@@ -1454,6 +1454,19 @@ function nextActionReadoutFromLatestOperatorFact(latest = {}, summaries = {}) {
     };
   }
   if (latest?.type === "project_status_continuation") {
+    const continuationStatus = normalizeString(latest.status);
+    if (continuationStatus !== "ready") {
+      const isComplete = continuationStatus === "complete" || continuationStatus === "completed";
+      return {
+        status: isComplete ? "complete" : "blocked",
+        action: "no_next_action",
+        source_event_id: latest.event_id,
+        source_type: latest.type,
+        target_projection_id: null,
+        reason: latest.summary || "project status continuation has no dispatchable context pack seed",
+        requires_operator: false
+      };
+    }
     return {
       status: "ready",
       action: "create_context_pack_from_seed",
