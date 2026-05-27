@@ -1502,6 +1502,28 @@ function safeStaticPathWithNextjs(pathname, nextjsStandalonePath = null) {
   return null;
 }
 
+function nextjsAppRoutePath(pathname, nextjsStandalonePath = null) {
+  if (!nextjsStandalonePath) return null;
+  const routePathname = String(pathname || "").replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!routePathname || routePathname === "index") {
+    return "index";
+  }
+  const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
+  const htmlPath = resolve(nextAppDir, `${routePathname}.html`);
+  if (htmlPath.startsWith(nextAppDir) && existsSync(htmlPath)) {
+    return routePathname;
+  }
+  return null;
+}
+
+function nextjsAppRouteHtmlPath(routeName, nextjsStandalonePath = null) {
+  if (!nextjsStandalonePath || !routeName) return null;
+  const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
+  const htmlPath = resolve(nextAppDir, `${routeName}.html`);
+  if (!htmlPath.startsWith(nextAppDir) || !existsSync(htmlPath)) return null;
+  return htmlPath;
+}
+
 function nextjsAppIndexPath(nextjsStandalonePath = null) {
   if (!nextjsStandalonePath) return null;
   const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
@@ -2991,6 +3013,19 @@ export function createWorkbenchServer(options = {}) {
             ? (content) => nextjsMountHtml(content, forwardedPrefix)
             : null;
           sendStaticFile(res, indexPath, transform ? { transform } : {});
+          return;
+        }
+      }
+
+      const routeName = nextjsAppRoutePath(url.pathname, nextjsStandaloneResolved);
+      if (routeName) {
+        const routeHtmlPath = nextjsAppRouteHtmlPath(routeName, nextjsStandaloneResolved);
+        if (routeHtmlPath) {
+          const forwardedPrefix = String(req.headers["x-forwarded-prefix"] || "").trim();
+          const transform = forwardedPrefix === "/projects/ai-control-platform"
+            ? (content) => nextjsMountHtml(content, forwardedPrefix)
+            : null;
+          sendStaticFile(res, routeHtmlPath, transform ? { transform } : {});
           return;
         }
       }
