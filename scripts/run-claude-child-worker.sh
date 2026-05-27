@@ -299,13 +299,23 @@ if (outputPath && existsSync(outputPath)) {
   }
 }
 
-const allowedPackageManagerSideEffects = new Set(["package-lock.json"]);
+const allowedPackageManagerSideEffects = new Set(["package-lock.json", "node_modules"]);
 const blocking = String(process.env.RAW_GIT_STATUS || "")
   .split(/\r?\n/)
   .filter(Boolean)
   .filter((line) => {
     const path = statusPath(line);
-    return !(allowedPackageManagerSideEffects.has(path) && !declaredFiles.has(path));
+    // Allow listed side-effect files (package-lock.json, node_modules symlink)
+    // when the worker did not declare them as changed_files.
+    if (allowedPackageManagerSideEffects.has(path) && !declaredFiles.has(path)) {
+      return false;
+    }
+    // node_modules content (e.g. node_modules/.package-lock.json,
+    // node_modules/<pkg>/...) is install side-effect, not a worker delta.
+    if (path === "node_modules" || path.startsWith("node_modules/")) {
+      return false;
+    }
+    return true;
   });
 
 console.log(blocking.join("\n"));
