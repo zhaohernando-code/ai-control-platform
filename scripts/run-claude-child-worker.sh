@@ -37,6 +37,16 @@ if [[ "$USE_WORKTREE" != "0" ]]; then
   mkdir -p "$(dirname "$WORKTREE_DIR")"
   # Create worktree from the resolved BASE_COMMIT (preferring the remote mainline)
   git -C "$PRIMARY_REPO_ROOT" worktree add -b "$WORKTREE_BRANCH" "$WORKTREE_DIR" "$BASE_COMMIT" >&2
+
+  # Symlink node_modules from the primary repo into the worktree so the worker
+  # can run npm scripts (tests, gates) without doing a fresh `npm install` per
+  # worktree. node_modules is not a tracked file, so the symlink does not
+  # affect git status / merge gate. Primary node_modules is shared via launchd
+  # bootstrap so this is the canonical version.
+  if [[ -d "$PRIMARY_REPO_ROOT/node_modules" && ! -e "$WORKTREE_DIR/node_modules" ]]; then
+    ln -s "$PRIMARY_REPO_ROOT/node_modules" "$WORKTREE_DIR/node_modules" >&2 || true
+  fi
+
   EXECUTION_ROOT="$WORKTREE_DIR"
   export AI_CONTROL_WORKBENCH_CHILD_WORKTREE_PATH="$WORKTREE_DIR"
   export AI_CONTROL_WORKBENCH_CHILD_WORKTREE_BRANCH="$WORKTREE_BRANCH"
