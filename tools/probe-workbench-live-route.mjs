@@ -208,7 +208,8 @@ function mountedUrl(routeUrl, projectId, suffix) {
 function isProjectMount(value, projectId) {
   try {
     const url = new URL(value);
-    return url.pathname.startsWith(`/projects/${projectId}/`);
+    const mountPath = `/projects/${projectId}`;
+    return url.pathname === mountPath || url.pathname.startsWith(`${mountPath}/`);
   } catch {
     return false;
   }
@@ -380,7 +381,7 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
   const expectedRouteUrls = extractExpectedPublicRouteUrls(projectStatus);
   const routeUrl = resolveRouteUrl(projectStatus, options.url);
   applyDefaultEdgeAgentAuth(options, routeUrl);
-  const shellUrl = mountedUrl(routeUrl, projectId, "apps/workbench/desktop.html");
+  const shellUrl = mountedUrl(routeUrl, projectId, "flow");
   const apiUrl = mountedUrl(routeUrl, projectId, "api/workbench/projection");
   const localLoopback = isLocalRoute(routeUrl);
   const probeIssues = [];
@@ -448,7 +449,7 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
     probeIssues.push(issue("public_route_not_verified", "route did not verify as an authenticated mounted workbench route"));
   }
   if (!mountedWorkbenchRouteVerified) {
-    probeIssues.push(issue("mounted_workbench_route_not_verified", "mounted desktop workbench shell did not render successfully"));
+    probeIssues.push(issue("mounted_workbench_route_not_verified", "mounted Next.js workbench route did not render successfully"));
   }
   if (!workbenchRendered) {
     probeIssues.push(issue("workbench_render_not_verified", "HTML did not contain expected workbench shell markers"));

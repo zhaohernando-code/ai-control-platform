@@ -60,13 +60,13 @@ function stubTransport(url, headers) {
   };
   if (!authorized) return Promise.resolve(redirect);
   const pathname = new URL(url).pathname;
-  if (pathname === "/projects/ai-control-platform/" || pathname === "/projects/ai-control-platform/apps/workbench/desktop.html") {
+  if (pathname === "/projects/ai-control-platform/" || pathname === "/projects/ai-control-platform/flow") {
     return Promise.resolve({
       url,
-      finalUrl: url,
+      finalUrl: pathname === "/projects/ai-control-platform/" ? url.replace(/\/$/, "") : url,
       status: 200,
       headers: { "content-type": "text/html; charset=utf-8" },
-      body: "<!doctype html><title>AI Control Platform Workbench</title><body data-view=\"desktop\"><main data-bind=\"headline\">Workbench</main></body>",
+      body: "<!doctype html><title>AI Control Platform Workbench</title><body><main class=\"ant-layout\">Next.js runtime Workbench</main></body>",
       redirects: [],
       authRedirectDetected: false
     });
@@ -163,6 +163,8 @@ test("probe writes authenticated local stub pass evidence accepted only in local
   assert.equal(artifact.mounted_workbench_route_verified, true);
   assert.equal(artifact.workbench_rendered, true);
   assert.equal(artifact.mounted_api_verified, true);
+  assert.equal(artifact.final_url, "http://127.0.0.1:4180/projects/ai-control-platform");
+  assert.equal(artifact.workbench.shell_url, "http://127.0.0.1:4180/projects/ai-control-platform/flow");
   assert.equal(testValidation.status, "pass");
   assert.equal(realValidation.status, "fail");
   assert.ok(realValidation.issues.some((issue) => issue.code === "local_live_route_evidence_not_allowed"));

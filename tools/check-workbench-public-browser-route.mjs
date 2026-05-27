@@ -55,7 +55,10 @@ function resolveEdgeAgentAuthToken(env = process.env) {
 function isMountedProjectUrl(value) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.pathname.startsWith("/projects/ai-control-platform/");
+    return url.protocol === "https:" && (
+      url.pathname === "/projects/ai-control-platform" ||
+      url.pathname.startsWith("/projects/ai-control-platform/")
+    );
   } catch {
     return false;
   }

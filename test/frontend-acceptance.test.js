@@ -1585,6 +1585,7 @@ test("closeout and package scripts wire public workbench live-route acceptance a
   assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
   assert.match(publicBrowserGate, /waitUntil: "domcontentloaded"/);
   assert.match(publicBrowserGate, /locator\("\.ant-layout"\)\.first\(\)\.waitFor/);
+  assert.match(publicBrowserGate, /pathname === "\/projects\/ai-control-platform"/);
   assert.match(evidencePath, /^docs\/examples\/public-live-route-evidence-.+\.json$/);
   assert.equal(projectStatus.workbench_live_route_evidence?.status, "pass");
   assert.equal(evidence.version, "workbench-live-route-evidence.v1");
