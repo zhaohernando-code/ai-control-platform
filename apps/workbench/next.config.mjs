@@ -16,6 +16,7 @@ const workbenchApiBase = process.env.WORKBENCH_API_BASE ||
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  basePath: workbenchMountPrefix || undefined,
   assetPrefix: workbenchMountPrefix || undefined,
   // Keep production builds output-self-contained so the eventual
   // hand-off to the public mount (`/projects/ai-control-platform/...`)
