@@ -1484,9 +1484,6 @@ function safeStaticPath(pathname) {
 }
 
 function safeStaticPathWithNextjs(pathname, nextjsStandalonePath = null) {
-  const nativePath = safeStaticPath(pathname);
-  if (nativePath) return { path: nativePath, kind: "native" };
-
   if (!nextjsStandalonePath) return null;
 
   const nextStaticPrefix = "/_next/static/";
@@ -1499,7 +1496,36 @@ function safeStaticPathWithNextjs(pathname, nextjsStandalonePath = null) {
     return { path: assetPath, kind: "nextjs_static" };
   }
 
+  const nativePath = safeStaticPath(pathname);
+  if (nativePath) return { path: nativePath, kind: "native" };
+
   return null;
+}
+
+function nextjsAppIndexPath(nextjsStandalonePath = null) {
+  if (!nextjsStandalonePath) return null;
+  const nextAppDir = resolve(root, nextjsStandalonePath, ".next", "server", "app");
+  const indexPath = resolve(nextAppDir, "index.html");
+  if (!indexPath.startsWith(nextAppDir) || !existsSync(indexPath)) return null;
+  return indexPath;
+}
+
+function nextjsMountHtml(content) {
+  return String(content)
+    .replaceAll('"/_next/', '"/projects/ai-control-platform/_next/')
+    .replaceAll("'/_next/", "'/projects/ai-control-platform/_next/")
+    .replaceAll('"/favicon.svg"', '"/projects/ai-control-platform/apps/workbench/favicon.svg"')
+    .replaceAll("'/favicon.svg'", "'/projects/ai-control-platform/apps/workbench/favicon.svg'");
+}
+
+function sendStaticFile(res, filePath, options = {}) {
+  const content = readFileSync(filePath);
+  const transformed = typeof options.transform === "function" ? options.transform(content) : content;
+  res.writeHead(200, {
+    "content-type": options.content_type || MIME_TYPES[extname(filePath)] || "application/octet-stream",
+    "cache-control": options.cache_control || "no-store"
+  });
+  res.end(transformed);
 }
 
 function isProjectMountRoot(pathname) {
@@ -1571,6 +1597,11 @@ export function createWorkbenchServer(options = {}) {
 
     try {
       if (isProjectMountRoot(url.pathname)) {
+        const indexPath = nextjsAppIndexPath(nextjsStandaloneResolved);
+        if (indexPath) {
+          sendStaticFile(res, indexPath, { transform: nextjsMountHtml });
+          return;
+        }
         const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
         res.writeHead(302, {
           location: `${basePath}apps/workbench/desktop.html${url.search}`,
@@ -2943,6 +2974,22 @@ export function createWorkbenchServer(options = {}) {
         return;
       }
 
+      if (url.pathname === "/favicon.svg") {
+        const faviconPath = safeStaticPath("/apps/workbench/favicon.svg");
+        if (faviconPath) {
+          sendStaticFile(res, faviconPath);
+          return;
+        }
+      }
+
+      if (url.pathname === "/") {
+        const indexPath = nextjsAppIndexPath(nextjsStandaloneResolved);
+        if (indexPath) {
+          sendStaticFile(res, indexPath);
+          return;
+        }
+      }
+
       const resolvedPath = safeStaticPathWithNextjs(
         url.pathname === "/" ? "/apps/workbench/desktop.html" : url.pathname,
         nextjsStandaloneResolved
@@ -2953,12 +3000,9 @@ export function createWorkbenchServer(options = {}) {
       }
 
       const isNextStatic = resolvedPath.kind === "nextjs_static";
-      const content = readFileSync(resolvedPath.path);
-      res.writeHead(200, {
-        "content-type": MIME_TYPES[extname(resolvedPath.path)] || "application/octet-stream",
-        "cache-control": isNextStatic ? "public, max-age=31536000, immutable" : "no-store"
+      sendStaticFile(res, resolvedPath.path, {
+        cache_control: isNextStatic ? "public, max-age=31536000, immutable" : "no-store"
       });
-      res.end(content);
     } catch (error) {
       if (error.code === "ENOENT") {
         jsonResponse(res, 404, { error: "not found" });

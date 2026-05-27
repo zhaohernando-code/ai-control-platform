@@ -3488,20 +3488,15 @@ test("workbench server serves desktop app shell", async () => {
   });
 });
 
-test("workbench server redirects project mount roots to the desktop shell", async () => {
+test("workbench server serves Next.js app at project mount roots when built", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/projects/ai-control-platform/?projection=/api/workbench/projection`);
 
-    assert.equal(response.status, 302);
-    assert.equal(
-      response.headers.location,
-      "/projects/ai-control-platform/apps/workbench/desktop.html?projection=/api/workbench/projection"
-    );
-
-    const shell = await request(new URL(response.headers.location, baseUrl));
-    assert.equal(shell.status, 200);
-    assert.match(shell.text, /data-view="desktop"/);
-    assert.match(shell.headers["content-type"], /text\/html/);
+    assert.equal(response.status, 200);
+    assert.match(response.text, /Next\.js 14|Ant Design v5|ant-layout/);
+    assert.doesNotMatch(response.text, /class="desktop-shell"/);
+    assert.match(response.text, /\/projects\/ai-control-platform\/_next\/static/);
+    assert.match(response.headers["content-type"], /text\/html/);
 
     const rootAsset = await request(`${baseUrl}/apps/workbench/workbench.js`);
     const mountedAsset = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/workbench.js`);
