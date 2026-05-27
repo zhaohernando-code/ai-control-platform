@@ -1510,12 +1510,13 @@ function nextjsAppIndexPath(nextjsStandalonePath = null) {
   return indexPath;
 }
 
-function nextjsMountHtml(content) {
+function nextjsMountHtml(content, mountPrefix = "/projects/ai-control-platform") {
+  const normalizedMountPrefix = String(mountPrefix || "").replace(/\/+$/, "");
   return String(content)
-    .replaceAll('"/_next/', '"/projects/ai-control-platform/_next/')
-    .replaceAll("'/_next/", "'/projects/ai-control-platform/_next/")
-    .replaceAll('"/favicon.svg"', '"/projects/ai-control-platform/apps/workbench/favicon.svg"')
-    .replaceAll("'/favicon.svg'", "'/projects/ai-control-platform/apps/workbench/favicon.svg'");
+    .replaceAll('"/_next/', `"${normalizedMountPrefix}/_next/`)
+    .replaceAll("'/_next/", `'${normalizedMountPrefix}/_next/`)
+    .replaceAll('"/favicon.svg"', `"${normalizedMountPrefix}/apps/workbench/favicon.svg"`)
+    .replaceAll("'/favicon.svg'", `'${normalizedMountPrefix}/apps/workbench/favicon.svg'`);
 }
 
 function sendStaticFile(res, filePath, options = {}) {
@@ -2985,7 +2986,11 @@ export function createWorkbenchServer(options = {}) {
       if (url.pathname === "/") {
         const indexPath = nextjsAppIndexPath(nextjsStandaloneResolved);
         if (indexPath) {
-          sendStaticFile(res, indexPath);
+          const forwardedPrefix = String(req.headers["x-forwarded-prefix"] || "").trim();
+          const transform = forwardedPrefix === "/projects/ai-control-platform"
+            ? (content) => nextjsMountHtml(content, forwardedPrefix)
+            : null;
+          sendStaticFile(res, indexPath, transform ? { transform } : {});
           return;
         }
       }

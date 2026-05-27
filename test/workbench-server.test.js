@@ -3509,6 +3509,23 @@ test("workbench server serves Next.js app at project mount roots when built", as
   });
 });
 
+test("workbench server rewrites Next.js assets when project proxy forwards mounted root to upstream root", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/`, {
+      headers: {
+        "x-forwarded-prefix": "/projects/ai-control-platform"
+      }
+    });
+
+    assert.equal(response.status, 200);
+    assert.match(response.text, /Next\.js 14|Ant Design v5|ant-layout/);
+    assert.match(response.text, /\/projects\/ai-control-platform\/_next\/static/);
+    assert.doesNotMatch(response.text, /src="\/_next\/static/);
+    assert.doesNotMatch(response.text, /href="\/_next\/static/);
+    assert.doesNotMatch(response.text, /href="\/favicon\.svg"/);
+  });
+});
+
 test("workbench server exposes mounted workbench APIs", async () => {
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/projects/ai-control-platform/api/workbench/projection?id=current-session`);

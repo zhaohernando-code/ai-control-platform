@@ -1575,7 +1575,12 @@ test("closeout and package scripts wire public workbench live-route acceptance a
     pkg.scripts["check:workbench:live-route"],
     "node tools/run-with-node18.mjs tools/check-workbench-live-route.mjs"
   );
+  assert.equal(
+    pkg.scripts["check:workbench:public-browser-route"],
+    "node tools/run-with-node18.mjs tools/check-workbench-public-browser-route.mjs"
+  );
   assert.match(closeout, /check-workbench-live-route\.mjs/);
+  assert.match(closeout, /check-workbench-public-browser-route\.mjs/);
   assert.match(liveRouteGate, /WORKBENCH_LIVE_ROUTE_EVIDENCE/);
   assert.match(evidencePath, /^docs\/examples\/public-live-route-evidence-.+\.json$/);
   assert.equal(projectStatus.workbench_live_route_evidence?.status, "pass");

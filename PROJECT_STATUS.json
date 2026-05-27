@@ -16,7 +16,7 @@
     "status": "pass",
     "path": "docs/examples/public-live-route-evidence-20260527-next-route-pass.json",
     "schema": "workbench-live-route-evidence.v1",
-    "captured_at": "2026-05-27T15:33:53.314Z",
+    "captured_at": "2026-05-27T15:59:35.532Z",
     "durable": true,
     "committed_artifact": true,
     "source": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs --url https://hernando-zhao.cn/projects/ai-control-platform/ --output docs/examples/public-live-route-evidence-20260527-next-route-pass.json",
@@ -29,16 +29,21 @@
     ],
     "browser_evidence": {
       "status": "pass",
-      "path": "docs/examples/public-live-route-browser-evidence-20260525-prompt-safety-pass.json",
+      "path": "docs/examples/public-live-route-browser-evidence-20260527-next-route-pass.json",
       "schema": "workbench-public-browser-evidence.v1",
-      "captured_at": "2026-05-25T09:24:49.661Z",
-      "auth_method": "edge_dev_login",
+      "captured_at": "2026-05-27T15:58:18.950Z",
+      "auth_method": "edge_agent_auth_header",
       "title": "AI Control Platform Workbench",
-      "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+      "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
       "workbench_rendered": true,
       "auth_redirect_detected": false,
       "mounted_api_http_status": 200,
-      "request_header_names": []
+      "root_next_script_count": 0,
+      "console_error_count": 0,
+      "failed_request_count": 0,
+      "request_header_names": [
+        "X-HZ-Dev-Auth-Bypass-Token"
+      ]
     }
   },
   "blockers": [],
@@ -271,16 +276,19 @@
   },
   "latest_public_live_route_browser_evidence": {
     "status": "pass",
-    "path": "docs/examples/public-live-route-browser-evidence-20260525-pass.json",
+    "path": "docs/examples/public-live-route-browser-evidence-20260527-next-route-pass.json",
     "schema": "workbench-public-browser-evidence.v1",
     "durable": true,
     "committed_artifact": true,
-    "source": "Playwright Chromium navigation to https://hernando-zhao.cn/projects/ai-control-platform/",
+    "source": "node tools/run-with-node18.mjs tools/check-workbench-public-browser-route.mjs --output docs/examples/public-live-route-browser-evidence-20260527-next-route-pass.json",
     "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
-    "observed_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/apps/workbench/desktop.html",
+    "observed_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
     "observed_title": "AI Control Platform Workbench",
     "workbench_rendered": true,
     "auth_redirect_detected": false,
+    "root_next_script_count": 0,
+    "console_error_count": 0,
+    "failed_request_count": 0,
     "secret_policy": "Only request metadata and a short visible body text sample are stored; no cookies, tokens, authorization headers, session values, or secret values are stored."
   },
   "next_work_packages": [],

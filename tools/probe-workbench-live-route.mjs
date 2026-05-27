@@ -335,6 +335,33 @@ function parseJsonObject(body) {
   }
 }
 
+function extractReferencedAssetUrls(html, baseUrl) {
+  const body = String(html || "");
+  const refs = [];
+  const pattern = /\b(?:src|href)=["']([^"']*(?:\/_next\/static\/|\/favicon\.svg)[^"']*)["']/giu;
+  for (const match of body.matchAll(pattern)) {
+    try {
+      refs.push(new URL(match[1], baseUrl).toString());
+    } catch {
+      // Ignore malformed HTML refs; the rendered-route checks will still fail if core markers are missing.
+    }
+  }
+  return [...new Set(refs)];
+}
+
+function assetPathMounted(url, projectId) {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.pathname.startsWith(`/projects/${projectId}/_next/static/`) ||
+      parsed.pathname === `/projects/${projectId}/favicon.svg` ||
+      parsed.pathname === `/projects/${projectId}/apps/workbench/favicon.svg`
+    );
+  } catch {
+    return false;
+  }
+}
+
 function issue(code, message, details = {}) {
   return { code, message, ...details };
 }
@@ -372,11 +399,26 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
     ? await safeRequest("workbench_shell", shellUrl, options.headers, options)
     : routeResponse;
   const apiResponse = await safeRequest("mounted_api", apiUrl, options.headers, options);
+  const referencedAssetUrls = extractReferencedAssetUrls(routeResponse.body, routeResponse.finalUrl);
+  const unmountedAssetUrls = referencedAssetUrls.filter((assetUrl) => !assetPathMounted(assetUrl, projectId));
+  const mountedAssetUrls = referencedAssetUrls.filter((assetUrl) => assetPathMounted(assetUrl, projectId));
+  const assetResponses = [];
+  for (const assetUrl of mountedAssetUrls.slice(0, 8)) {
+    const assetResponse = await safeRequest("referenced_asset", assetUrl, options.headers, options);
+    assetResponses.push({
+      url: assetUrl,
+      final_url: assetResponse.finalUrl,
+      http_status: assetResponse.status || null,
+      auth_redirect_detected: assetResponse.authRedirectDetected,
+      error: assetResponse.error || null
+    });
+  }
 
   const authRedirectDetected = Boolean(
     routeResponse.authRedirectDetected ||
       shellResponse.authRedirectDetected ||
-      apiResponse.authRedirectDetected
+      apiResponse.authRedirectDetected ||
+      assetResponses.some((response) => response.authRedirectDetected)
   );
   const routeHttpOk = routeResponse.status >= 200 && routeResponse.status < 300;
   const shellHttpOk = shellResponse.status >= 200 && shellResponse.status < 300;
@@ -390,6 +432,8 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
   const mountedWorkbenchRouteVerified = shellHttpOk &&
     workbenchRendered &&
     isProjectMount(shellResponse.finalUrl, projectId);
+  const referencedAssetsMounted = referencedAssetUrls.length === 0 || unmountedAssetUrls.length === 0;
+  const referencedAssetsReachable = assetResponses.every((response) => response.http_status >= 200 && response.http_status < 300);
 
   if (routeResponse.error) {
     probeIssues.push(issue("route_request_failed", "public route request failed", { target: "route" }));
@@ -411,6 +455,16 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
   }
   if (!mountedApiVerified) {
     probeIssues.push(issue("mounted_api_not_verified", "mounted workbench API did not return a 2xx JSON response"));
+  }
+  if (!referencedAssetsMounted) {
+    probeIssues.push(issue("referenced_assets_not_mounted", "served route HTML references root-level assets instead of project-mounted assets", {
+      unmounted_asset_urls: unmountedAssetUrls.slice(0, 10)
+    }));
+  }
+  if (!referencedAssetsReachable) {
+    probeIssues.push(issue("referenced_assets_not_reachable", "served route referenced mounted assets that did not return 2xx", {
+      asset_responses: assetResponses.filter((response) => !(response.http_status >= 200 && response.http_status < 300)).slice(0, 10)
+    }));
   }
 
   const prelimStatus = probeIssues.length === 0 ? "pass" : "fail";
@@ -446,7 +500,11 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
       rendered: workbenchRendered,
       api_url: apiUrl,
       api_http_status: apiResponse.status || null,
-      mounted_api_verified: mountedApiVerified
+      mounted_api_verified: mountedApiVerified,
+      referenced_asset_count: referencedAssetUrls.length,
+      referenced_assets_mounted: referencedAssetsMounted,
+      referenced_assets_reachable: referencedAssetsReachable,
+      referenced_asset_responses: assetResponses
     },
     redirects: routeResponse.redirects,
     issues: probeIssues

@@ -212,6 +212,69 @@ test("probe auto-injects shared edge agent auth from helper when env token is ab
   assert.doesNotMatch(JSON.stringify(artifact), /secret-header-value/);
 });
 
+test("probe rejects served workbench HTML that references root-level Next assets", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-probe-"));
+  const statusPath = writeProjectStatus(dir);
+  const requestText = (url, headers) => {
+    const authorized = headers["X-HZ-Dev-Auth-Bypass-Token"] === "secret-header-value";
+    if (!authorized) return stubTransport(url, headers);
+    const pathname = new URL(url).pathname;
+    if (pathname === "/projects/ai-control-platform/") {
+      return Promise.resolve({
+        url,
+        finalUrl: url,
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+        body: [
+          "<!doctype html><title>AI Control Platform Workbench</title>",
+          "<link rel=\"preload\" href=\"/_next/static/chunks/main-app.js\">",
+          "<script src=\"/_next/static/chunks/app/page.js\"></script>",
+          "<link rel=\"icon\" href=\"/favicon.svg\">",
+          "<body data-view=\"desktop\"><main data-bind=\"headline\">Workbench</main></body>"
+        ].join(""),
+        redirects: [],
+        authRedirectDetected: false
+      });
+    }
+    if (pathname === "/projects/ai-control-platform/api/workbench/projection") {
+      return Promise.resolve({
+        url,
+        finalUrl: url,
+        status: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projection_id: "stub", status: "pass" }),
+        redirects: [],
+        authRedirectDetected: false
+      });
+    }
+    return Promise.resolve({
+      url,
+      finalUrl: url,
+      status: 404,
+      headers: {},
+      body: "not found",
+      redirects: [],
+      authRedirectDetected: false
+    });
+  };
+
+  const artifact = await probeWorkbenchLiveRoute({
+    projectStatusPath: statusPath,
+    url: ROUTE_URL,
+    allowInsecureLocalTest: true,
+    headers: {
+      "X-HZ-Dev-Auth-Bypass-Token": "secret-header-value"
+    },
+    headerNames: ["X-HZ-Dev-Auth-Bypass-Token"],
+    requestText
+  });
+
+  assert.equal(artifact.status, "fail");
+  assert.equal(artifact.workbench.referenced_assets_mounted, false);
+  assert.ok(artifact.issues.some((issue) => issue.code === "referenced_assets_not_mounted"));
+  assert.doesNotMatch(JSON.stringify(artifact), /secret-header-value/);
+});
+
 test("probe CLI output redacts cookie and header values before any network request", async () => {
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-live-probe-"));
   const statusPath = writeProjectStatus(dir, UNREACHABLE_ROUTE_URL);

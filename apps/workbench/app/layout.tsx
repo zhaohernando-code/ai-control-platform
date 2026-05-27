@@ -6,6 +6,8 @@ import "./globals.css";
 import { AppProviders } from "./providers";
 import { WorkbenchShell } from "./shell";
 
+const workbenchMountPrefix = process.env.WORKBENCH_MOUNT_PREFIX || "";
+
 /**
  * Root layout：单页应用形态的唯一壳。
  *
@@ -19,7 +21,7 @@ export const metadata: Metadata = {
   description:
     "AI Control Platform 中台工作台：项目管理、任务流、Agents、风险、治理、运行诊断的一屏入口。",
   icons: {
-    icon: "/favicon.svg"
+    icon: `${workbenchMountPrefix}/favicon.svg`
   }
 };
 

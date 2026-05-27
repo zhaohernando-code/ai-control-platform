@@ -484,6 +484,8 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   const nextConfig = read("apps/workbench/next.config.mjs");
   assert.match(nextConfig, /reactStrictMode/);
   assert.match(nextConfig, /WORKBENCH_API_BASE/);
+  assert.match(nextConfig, /assetPrefix/);
+  assert.match(nextConfig, /WORKBENCH_MOUNT_PREFIX/);
   // antd v5 在 App Router 下需要 transpilePackages，否则 build 时
   // server components 客户端清单会丢失 barrel optimized 子模块。
   assert.match(nextConfig, /transpilePackages/);
@@ -500,6 +502,7 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(layout, /AppProviders/);
   assert.match(layout, /WorkbenchShell/);
   assert.match(layout, /<html lang="zh-CN">/);
+  assert.match(layout, /workbenchMountPrefix/);
 
   // 4. Providers wire ConfigProvider + AntdRegistry + AntdApp.
   const providers = read("apps/workbench/app/providers.tsx");

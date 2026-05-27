@@ -1,0 +1,135 @@
+{
+  "version": "workbench-public-browser-evidence.v1",
+  "status": "pass",
+  "created_at": "2026-05-27T15:58:18.950Z",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+  "http_status": 200,
+  "title": "AI Control Platform Workbench",
+  "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n中台工作台\n单页 app · antd 骨架 · 与 workbench-server 联调\n/projects/ai-control-platform\nrerunRepair governance audit blocking defects\nRun requirement-submission-1779856306868 · Cycle cycle-1779856306868-context-pack-1779856913403-context-pack-1779857446323-context-pack-1779864106359-context-pack-1779893569054\n项目总数\n1\n活跃项目\n1\n任务包\n1\n已完成目标\n5/5\n运营事件\n9\n证据\n10\n收口验收\n状态\nnot_configured\n\n\nSnapshot\n无\n推荐动作\nrerun\nRerun failed checks with recovery context\n\n\nrepair_governance_audit_defect\nRepair governance audit blocking defects\nAgent 池\n开放\n0\n未评估\n0\n未关闭\n0\n超时\n0\n心跳\n0\n已完成\n0\n调度\n调度步数\n0\n续跑就绪\n0\n循环迭代\n0\n审查分片\n0\n审查发现\n0\n可派发任务\n1\n治理\n自治理发现\n0\n自修复\n0\n证据任务\n0\n用户决策\n0\n运行时间线\n暂无运行事件\n数据更新时间：2026-05-27T15:58:18.101Z\n刷新",
+  "workbench_rendered": true,
+  "mounted_project_route": true,
+  "root_next_script_count": 0,
+  "mounted_next_script_count": 8,
+  "desktop_shell_count": 0,
+  "console_error_count": 0,
+  "failed_request_count": 0,
+  "navigation_error": null,
+  "responses": [
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/css/61a733eac8bb6bcd.css",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/webpack-44e4f189499aa9c2.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/main-app-85ec16350b55cf69.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/fd9d1056-1e78f98e91b6cc44.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/230-9779df696b0fae72.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/220-809a5b7f434f3c9d.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/328-72d680d1407bf67f.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/117-b07ca0ba579aae6a.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/650-5c3a2e659e509218.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/app/layout-ba9548488ce0c285.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/653-cea6db9bd123faa8.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/449-83f994a090640927.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/app/error-1fcb5ac81ad890a1.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/648-7d0565840654e018.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/app/not-found-794ac1a8590bb75f.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/110-e4613c132e4f1e21.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/app/loading-dabd8c63f7c2885d.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/app/page-ce537ebafe4aa0c0.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/34-aed232ab4a67afb2.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/96-f4be34aba5e02cd9.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/api/workbench/projection",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    }
+  ],
+  "request_header_names": [
+    "X-HZ-Dev-Auth-Bypass-Token"
+  ],
+  "secret_policy": "Only header names and browser metadata are stored; no cookies, tokens, authorization headers, session values, or secret values are stored.",
+  "issues": []
+}

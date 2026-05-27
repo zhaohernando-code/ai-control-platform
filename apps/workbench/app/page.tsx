@@ -76,6 +76,12 @@ function safeCount(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
 /* ---------- 主组件 ---------- */
 
 /**
@@ -132,9 +138,17 @@ export default function OverviewPage() {
   }
 
   /* ---- 真实数据渲染 ---- */
-  const oneScreen = projection?.one_screen;
-  const counters = oneScreen?.counters ?? {};
-  const closeout = (projection as Record<string, unknown> | null)?.closeout as Record<string, unknown> | undefined;
+  const projectionRecord = asRecord(projection);
+  const oneScreen = asRecord(projectionRecord.one_screen);
+  const counters = asRecord(oneScreen.counters);
+  const closeout = asRecord(projectionRecord.closeout);
+  const nextActions = Array.isArray(oneScreen.next_actions)
+    ? oneScreen.next_actions as Array<Record<string, unknown>>
+    : [];
+  const manifest = asRecord(projectionRecord.manifest);
+  const events = Array.isArray(manifest.events)
+    ? manifest.events as Array<Record<string, unknown>>
+    : [];
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -246,9 +260,9 @@ export default function OverviewPage() {
             }
             size="small"
           >
-            {oneScreen?.next_actions && (oneScreen.next_actions as Array<Record<string, unknown>>).length > 0 ? (
+            {nextActions.length > 0 ? (
               <Descriptions column={1} size="small" colon={false}>
-                {(oneScreen.next_actions as Array<Record<string, unknown>>).map(
+                {nextActions.map(
                   (action, idx) => (
                     <Descriptions.Item key={String(action.id ?? idx)} label={safeText(action.action)}>
                       {safeText(action.title)}
@@ -335,13 +349,9 @@ export default function OverviewPage() {
 
       {/* ====== 运行时间线 ====== */}
       <Card title="运行时间线" size="small">
-        {Array.isArray((projection as Record<string, unknown> | null)?.manifest?.events) &&
-        ((projection as Record<string, unknown>).manifest as Record<string, unknown>).events &&
-        (((projection as Record<string, unknown>).manifest as Record<string, unknown>).events as Array<Record<string, unknown>>).length > 0 ? (
+        {events.length > 0 ? (
           <Timeline
-            items={(
-              ((projection as Record<string, unknown>).manifest as Record<string, unknown>).events as Array<Record<string, unknown>>
-            )
+            items={events
               .slice(-8)
               .map((event) => ({
                 color: statusColor(event.status ?? event.type),

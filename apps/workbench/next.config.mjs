@@ -8,9 +8,15 @@
 // `http://127.0.0.1:4180`. See `apps/workbench/README.md` for the local
 // interop matrix.
 
+const workbenchMountPrefix = process.env.WORKBENCH_MOUNT_PREFIX ||
+  (process.env.NODE_ENV === "production" ? "/projects/ai-control-platform" : "");
+const workbenchApiBase = process.env.WORKBENCH_API_BASE ||
+  (workbenchMountPrefix || "http://127.0.0.1:4180");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  assetPrefix: workbenchMountPrefix || undefined,
   // Keep production builds output-self-contained so the eventual
   // hand-off to the public mount (`/projects/ai-control-platform/...`)
   // stays declarative; today this is verified via `next build` only.
@@ -41,7 +47,8 @@ const nextConfig = {
   // the value can be overridden via `WORKBENCH_API_BASE` to point at the
   // mounted edge route once the cut-over slice lands.
   env: {
-    WORKBENCH_API_BASE: process.env.WORKBENCH_API_BASE || "http://127.0.0.1:4180"
+    WORKBENCH_API_BASE: workbenchApiBase,
+    WORKBENCH_MOUNT_PREFIX: workbenchMountPrefix
   }
 };
 
