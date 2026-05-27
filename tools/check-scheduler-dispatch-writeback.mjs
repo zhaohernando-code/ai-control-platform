@@ -154,7 +154,7 @@ export async function runSchedulerDispatchWritebackCheck() {
     ]
   }, null, 2));
 
-  await withWorkbenchServer({ historyPath, snapshotsRoot, stateDbPath }, async (baseUrl) => {
+  await withWorkbenchServer({ historyPath, snapshotsRoot, stateDbPath, serveLegacyStatic: true }, async (baseUrl) => {
     const plan = createSchedulerDispatchPlan({
       project_status: {
         project: "ai-control-platform",
