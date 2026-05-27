@@ -10,11 +10,14 @@ SNAPSHOTS_ROOT="${AI_CONTROL_WORKBENCH_SNAPSHOTS_ROOT:-docs/examples}"
 EVENTS_PATH="${AI_CONTROL_WORKBENCH_EVENTS_PATH:-tmp/workbench-live-events.json}"
 PROJECT_STATUS="${AI_CONTROL_WORKBENCH_PROJECT_STATUS:-PROJECT_STATUS.json}"
 STATE_DB="${AI_CONTROL_WORKBENCH_STATE_DB:-$HOME/codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite}"
+NEXTJS_STANDALONE_PATH="${AI_CONTROL_WORKBENCH_NEXTJS_STANDALONE_PATH:-apps/workbench/.next/standalone}"
+NEXTJS_AUTO_BUILD="${AI_CONTROL_WORKBENCH_NEXTJS_AUTO_BUILD:-1}"
 NODE_BIN="${AI_CONTROL_WORKBENCH_NODE:-}"
 DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'
 DEFAULT_CHILD_WORKER_OUTPUT_PATH='tmp/workbench-child-workers/{run_id}-{cycle_id}-{work_package_id}.json'
 
-export AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND="${AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND:-$REPO_ROOT/scripts/run-claude-child-worker.sh}"
+export AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND="${AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND:-$REPO_ROOT/scripts/run-claude-deepseek-child-worker.sh}"
+export AI_CONTROL_WORKBENCH_CLAUDE_MODEL="${AI_CONTROL_WORKBENCH_CLAUDE_MODEL:-deepseek-v4-pro[1m]}"
 export AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND="${AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND:-$REPO_ROOT/scripts/claude-role-proxy.sh}"
 export AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_ROLE="${AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_ROLE:-manager}"
 export AI_CONTROL_WORKBENCH_CHILD_WORKER_ARGS_JSON="${AI_CONTROL_WORKBENCH_CHILD_WORKER_ARGS_JSON:-$DEFAULT_CHILD_WORKER_ARGS_JSON}"
@@ -37,6 +40,18 @@ if [[ -z "$NODE_BIN" ]]; then
 fi
 
 cd "$REPO_ROOT"
+
+if [[ "$NEXTJS_AUTO_BUILD" != "0" && ! -d "$NEXTJS_STANDALONE_PATH" ]]; then
+  echo "[workbench-live] building Next.js standalone output..." >&2
+  if [[ -d apps/workbench/node_modules ]]; then
+    (cd apps/workbench && npx next build) || \
+      echo "[workbench-live] next build failed; serving native shell only" >&2
+  else
+    (cd apps/workbench && npm install --no-audit --no-fund && npm run build) || \
+      echo "[workbench-live] next build failed; serving native shell only" >&2
+  fi
+fi
+
 mkdir -p "$(dirname "$STATE_DB")"
 exec "$NODE_BIN" tools/run-with-node18.mjs tools/workbench-server.mjs \
   --host "$HOST" \
@@ -45,4 +60,5 @@ exec "$NODE_BIN" tools/run-with-node18.mjs tools/workbench-server.mjs \
   --snapshots-root "$SNAPSHOTS_ROOT" \
   --events-path "$EVENTS_PATH" \
   --project-status "$PROJECT_STATUS" \
-  --state-db "$STATE_DB"
+  --state-db "$STATE_DB" \
+  --nextjs-standalone-path "$NEXTJS_STANDALONE_PATH"

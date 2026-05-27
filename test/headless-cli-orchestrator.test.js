@@ -346,6 +346,47 @@ test("Claude child worker runs in bare mode without workflow hook inheritance", 
   assert.ok(args.includes("--add-dir"));
 });
 
+test("Claude DeepSeek child worker omits role flag for canonical DeepSeek launcher", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "claude-deepseek-child-worker-"));
+  const promptFile = join(tempDir, "prompt.md");
+  const captureFile = join(tempDir, "args.txt");
+  const fakeProxy = join(tempDir, "claude-deepseek-launcher.sh");
+  writeFileSync(promptFile, "Return JSON.");
+  writeFileSync(fakeProxy, [
+    "#!/usr/bin/env bash",
+    "{",
+    "  printf 'MODEL=%s\\n' \"$AI_CONTROL_WORKBENCH_CLAUDE_MODEL\"",
+    "  printf '%s\\n' \"$@\"",
+    "} > \"$CAPTURE_ARGS\"",
+    "printf '{\"status\":\"pass\"}\\n'"
+  ].join("\n"));
+  chmodSync(fakeProxy, 0o755);
+
+  const result = spawnSync("bash", ["scripts/run-claude-deepseek-child-worker.sh", promptFile], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
+      AI_CONTROL_WORKBENCH_CHILD_WORKER_USE_WORKTREE: "0",
+      CAPTURE_ARGS: captureFile
+    }
+  });
+
+  assert.equal(result.status, 0);
+  const args = readFileSync(captureFile, "utf8").trim().split("\n");
+  assert.equal(args[0], "MODEL=deepseek-v4-pro[1m]");
+  assert.equal(args.includes("-m"), false);
+  assert.equal(args.includes("deepseek-v4-pro[1m]"), false);
+  assert.equal(args.includes("--role"), false);
+  assert.ok(args.includes("--bare"));
+  assert.ok(args.includes("--permission-mode"));
+  assert.ok(args.includes("bypassPermissions"));
+  assert.ok(args.includes("--no-session-persistence"));
+  assert.ok(args.includes("--tools"));
+  assert.ok(args.includes("default"));
+});
+
 test("Claude child worker runs in an isolated worker worktree by default", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "claude-child-worktree-"));
   const workerRoot = join(tempDir, "worker-workspaces");
@@ -381,6 +422,14 @@ test("Claude child worker runs in an isolated worker worktree by default", () =>
     const captured = readFileSync(captureFile, "utf8").trim().split("\n");
     workerCwd = captured[0];
     assert.ok(workerCwd.startsWith(join(workerRoot, "ai-control-platform")));
+    const primaryHead = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: process.cwd(),
+      encoding: "utf8"
+    }).stdout.trim();
+    const workerHead = spawnSync("git", ["-C", workerCwd, "rev-parse", "HEAD"], {
+      encoding: "utf8"
+    }).stdout.trim();
+    assert.equal(workerHead, primaryHead);
     const addDirIndex = captured.indexOf("--add-dir");
     assert.ok(addDirIndex >= 0);
     assert.equal(captured[addDirIndex + 1], workerCwd);
@@ -535,8 +584,10 @@ test("Claude child worker accepts already-satisfied package despite undeclared p
   }
 });
 
-test("live workbench starts Claude child workers with output path for integration writeback", () => {
+test("live workbench starts Claude DeepSeek child workers with output path for integration writeback", () => {
   const script = readFileSync("scripts/start-workbench-live.sh", "utf8");
+  assert.ok(script.includes("run-claude-deepseek-child-worker.sh"));
+  assert.ok(script.includes("deepseek-v4-pro[1m]"));
   assert.ok(script.includes(`DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'`));
 });
 
@@ -935,6 +986,8 @@ test("headless child prompt defers parent-owned release gates outside isolated w
     acceptance_gates: [
       "npm run check:workbench:browser-events",
       "npm run check:closeout",
+      "发布链路在 canonical checkout 上完成一次端到端 publish 演练并可回滚。",
+      "PROJECT_RULES.md 与 DECISIONS.md 的规范条款合入 main。",
       "完成已审核实施步骤 3：固化 antd + Next.js 约束"
     ],
     source: {
@@ -945,6 +998,8 @@ test("headless child prompt defers parent-owned release gates outside isolated w
       acceptance_gates: [
         "npm run check:workbench:browser-events",
         "npm run check:closeout",
+        "发布链路在 canonical checkout 上完成一次端到端 publish 演练并可回滚。",
+        "PROJECT_RULES.md 与 DECISIONS.md 的规范条款合入 main。",
         "完成已审核实施步骤 3：固化 antd + Next.js 约束"
       ]
     }
@@ -956,8 +1011,14 @@ test("headless child prompt defers parent-owned release gates outside isolated w
   assert.match(prompt, /npm run check:workbench:browser-events/);
   assert.match(prompt, /完成已审核实施步骤 3/);
   assert.match(prompt, /Deferred parent-owned release gates:[\s\S]*npm run check:closeout/);
+  assert.match(prompt, /Deferred parent-owned release gates:[\s\S]*发布链路在 canonical checkout/);
+  assert.match(prompt, /Deferred parent-owned release gates:[\s\S]*PROJECT_RULES\.md 与 DECISIONS\.md/);
   assert.doesNotMatch(childOwnedPrompt, /npm run check:closeout/);
+  assert.doesNotMatch(childOwnedPrompt, /发布链路在 canonical checkout/);
+  assert.doesNotMatch(childOwnedPrompt, /PROJECT_RULES\.md 与 DECISIONS\.md/);
   assert.match(prompt, /Do not run deferred parent-owned release gates from the isolated worker branch/);
+  assert.match(prompt, /Deferred parent-owned release gates are not your failure criteria/);
+  assert.match(prompt, /Do not set process_hardening\.status="pending"/);
 });
 
 test("headless CLI orchestrator passes configured output path into child prompt and parses file output", () => {

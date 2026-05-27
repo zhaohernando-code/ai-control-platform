@@ -453,13 +453,13 @@ function isParentOwnedAcceptanceGate(gate = "") {
   // orchestrator (or human operator) so the worker does not self-evaluate as
   // failed just because it cannot run a manual checklist.
   const raw = normalizeString(gate);
-  if (/真实浏览器|verify\s+技能|verify技能|live\s+route|手动|人工|人工走查/i.test(raw)) {
+  if (/真实浏览器|verify\s+技能|verify技能|live\s+route|publish|release|手动|人工|人工走查|发布链路|发布演练|可回滚/i.test(raw)) {
     return true;
   }
   // Free-form 中文 statements that describe an outcome the worker cannot
   // self-assert (e.g. "现状盘点清单经用户/评审确认" or "完成已审核实施步骤 N：…")
   // are also parent/operator-owned.
-  if (/经用户.*确认|经评审.*确认|用户\/评审|完成已审核实施步骤/.test(raw)) {
+  if (/经用户.*确认|经评审.*确认|用户\/评审|完成已审核实施步骤|合入\s*main|合入主线/.test(raw)) {
     return true;
   }
   return false;
@@ -547,6 +547,8 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
     "- Do not create .claude/worktrees or run claude --worktree; return status=fail if the current execution root is unsuitable.",
     "- If you are running inside an isolated worker worktree, commit the bounded changes on the current worker branch before returning status=pass; the parent runner owns mainline integration.",
     "- Run only the child acceptance gates listed below. Do not run deferred parent-owned release gates from the isolated worker branch.",
+    "- Deferred parent-owned release gates are not your failure criteria. If all child acceptance gates pass and your bounded diff is committed, return status=pass, process_hardening={required:false,status:\"not_required\"}, continuation_readiness.ready=true, and self_evaluation.aligned=true.",
+    "- Do not set process_hardening.status=\"pending\", continuation_readiness.ready=false, or self_evaluation.aligned=false solely because deferred_parent_gates remain for the parent runner.",
     "",
     "Required JSON shape:",
     JSON.stringify({

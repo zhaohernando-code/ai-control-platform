@@ -81,9 +81,19 @@ const defaultStateDbPath = resolve(process.env.HOME || "/Users/hernando_zhao", "
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml"
+  ".svg": "image/svg+xml",
+  ".map": "application/json; charset=utf-8",
+  ".woff2": "font/woff2",
+  ".woff": "font/woff",
+  ".ttf": "font/ttf",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon"
 };
 
 function jsonResponse(res, status, body) {
@@ -137,7 +147,7 @@ function createInitialWorkflowState(runId, cycleId, projectStatusPath = null, st
       artifacts: []
     },
     model_plan: {
-      selected_model: "claude-opus-4-7",
+      selected_model: "deepseek-v4-pro[1m]",
       routes: []
     },
     reviewer_gate: { findings: [] },
@@ -859,6 +869,14 @@ function envFlagEnabled(name) {
 
 function defaultChildProviderForCommand(command) {
   const normalizedCommand = normalizeString(command);
+  if (/run-claude-deepseek-child-worker\.sh$|start-claude-deepseek/i.test(normalizedCommand)) {
+    return {
+      command_runner_kind: "external_provider_child_process",
+      executor_kind: "claude_deepseek_cli_worker",
+      provider: "claude_deepseek",
+      model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "deepseek-v4-pro[1m]"
+    };
+  }
   if (/run-claude-child-worker\.sh$|claude/i.test(normalizedCommand)) {
     return {
       command_runner_kind: "external_provider_child_process",
@@ -1446,6 +1464,25 @@ function safeStaticPath(pathname) {
   return filePath;
 }
 
+function safeStaticPathWithNextjs(pathname, nextjsStandalonePath = null) {
+  const nativePath = safeStaticPath(pathname);
+  if (nativePath) return { path: nativePath, kind: "native" };
+
+  if (!nextjsStandalonePath) return null;
+
+  const nextStaticPrefix = "/_next/static/";
+  if (pathname.startsWith(nextStaticPrefix)) {
+    const assetRel = pathname.slice(nextStaticPrefix.length);
+    if (!assetRel || assetRel.includes("..")) return null;
+    const nextStaticDir = resolve(root, nextjsStandalonePath, "..", "static");
+    const assetPath = resolve(nextStaticDir, assetRel);
+    if (!assetPath.startsWith(nextStaticDir)) return null;
+    return { path: assetPath, kind: "nextjs_static" };
+  }
+
+  return null;
+}
+
 function isProjectMountRoot(pathname) {
   return /^\/projects\/ai-control-platform\/?$/.test(String(pathname || ""));
 }
@@ -1503,6 +1540,12 @@ export function createWorkbenchServer(options = {}) {
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore)
   );
+  const nextjsStandalonePath = normalizeString(
+    options.nextjsStandalonePath || options.nextjs_standalone_path
+  ) || "apps/workbench/.next/standalone";
+  const nextjsStandaloneResolved = existsSync(resolve(root, nextjsStandalonePath))
+    ? resolve(root, nextjsStandalonePath)
+    : null;
 
   return createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -2839,20 +2882,29 @@ export function createWorkbenchServer(options = {}) {
         return;
       }
 
-      const staticPath = safeStaticPath(url.pathname === "/" ? "/apps/workbench/desktop.html" : url.pathname);
-      if (!staticPath) {
-        jsonResponse(res, 403, { error: "forbidden" });
+      const resolvedPath = safeStaticPathWithNextjs(
+        url.pathname === "/" ? "/apps/workbench/desktop.html" : url.pathname,
+        nextjsStandaloneResolved
+      );
+      if (!resolvedPath) {
+        jsonResponse(res, 404, { error: "not found" });
         return;
       }
 
-      const content = readFileSync(staticPath);
+      const isNextStatic = resolvedPath.kind === "nextjs_static";
+      const content = readFileSync(resolvedPath.path);
       res.writeHead(200, {
-        "content-type": MIME_TYPES[extname(staticPath)] || "application/octet-stream",
-        "cache-control": "no-store"
+        "content-type": MIME_TYPES[extname(resolvedPath.path)] || "application/octet-stream",
+        "cache-control": isNextStatic ? "public, max-age=31536000, immutable" : "no-store"
       });
       res.end(content);
     } catch (error) {
-      if (error.code === "ENOENT" || error.code === "PROJECTION_NOT_FOUND") {
+      if (error.code === "ENOENT") {
+        jsonResponse(res, 404, { error: "not found" });
+        return;
+      }
+
+      if (error.code === "PROJECTION_NOT_FOUND") {
         jsonResponse(res, 404, { error: error.message });
         return;
       }
@@ -2894,7 +2946,7 @@ function normalizeCliPort(value) {
 }
 
 function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process.env) {
-  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status"]);
+  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db", "--nextjs-standalone-path"]);
   const positionalArgs = [];
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -2926,7 +2978,8 @@ function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process
     snapshotsRoot: optionValue("--snapshots-root"),
     eventsPath: optionValue("--events-path"),
     projectStatusPath: optionValue("--project-status"),
-    stateDbPath: optionValue("--state-db") || process.env.AI_CONTROL_WORKBENCH_STATE_DB || defaultStateDbPath
+    stateDbPath: optionValue("--state-db") || process.env.AI_CONTROL_WORKBENCH_STATE_DB || defaultStateDbPath,
+    nextjsStandalonePath: optionValue("--nextjs-standalone-path") || process.env.AI_CONTROL_WORKBENCH_NEXTJS_STANDALONE_PATH || null
   };
 }
 
@@ -2937,14 +2990,16 @@ export function startWorkbenchServer({
   snapshotsRoot: configuredSnapshotsRoot,
   eventsPath: configuredEventsPath,
   projectStatusPath,
-  stateDbPath = defaultStateDbPath
+  stateDbPath = defaultStateDbPath,
+  nextjsStandalonePath = null
 } = {}) {
   const server = createWorkbenchServer({
     historyPath: configuredHistoryPath,
     snapshotsRoot: configuredSnapshotsRoot,
     eventsPath: configuredEventsPath,
     projectStatusPath,
-    stateDbPath
+    stateDbPath,
+    nextjsStandalonePath
   });
   const listenPort = normalizeCliPort(port);
   server.listen(listenPort, host);
@@ -2954,9 +3009,15 @@ export function startWorkbenchServer({
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
-      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>]",
+      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>] [--nextjs-standalone-path <path>]",
       "",
-      "Starts the local workbench service. Paths are resolved from the platform repo root. When --state-db is set, live workbench state is stored in SQLite instead of tracked JSON state files."
+      "Starts the local workbench service. Paths are resolved from the platform repo root. When --state-db is set, live workbench state is stored in SQLite instead of tracked JSON state files.",
+      "",
+      "--nextjs-standalone-path  Relative path to the Next.js standalone build output directory",
+      "                          (default: apps/workbench/.next/standalone).",
+      "                          When the directory exists, the server serves",
+      "                          _next/static/* assets from the build output with",
+      "                          immutable caching."
     ].join("\n"));
     process.exit(0);
   }
