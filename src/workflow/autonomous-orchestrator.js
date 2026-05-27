@@ -1,5 +1,4 @@
 import { decideContinuation } from "./autonomous-continuation.js";
-import { runSchedulerLoopDriver } from "./autonomous-scheduler-loop.js";
 import { appendRunEvent } from "./run-manifest.js";
 import { recordArtifact } from "./artifact-ledger.js";
 import { runCloseoutPlan } from "./closeout-runner.js";
@@ -86,44 +85,37 @@ function shouldHardExit(blockers = []) {
   return asArray(blockers).some(b => b?.category === "hard_exit");
 }
 
-function updateProjectStatusFromExecution(input, closeoutResult, schedulerResult) {
-  if (!input?.project_status) return input;
-  if (!schedulerResult?.selected_work_packages || schedulerResult.selected_work_packages.length === 0) {
-    return input;
-  }
+function readWorkPackageStatusFromManifest(workflowState = {}) {
+  const manifest = workflowState?.manifest || {};
+  const packages = asArray(manifest.work_packages);
+  return new Map(packages.map(wp => [wp?.id, wp?.status]).filter(([id]) => id));
+}
+
+function updateProjectStatusFromExecution(input, closeoutResult) {
+  if (!input?.project_status || !closeoutResult?.closeout?.workflow_state) return input;
   
   const projectStatus = input.project_status;
-  const selected = schedulerResult.selected_work_packages;
-  const completedIds = new Set(selected.map(wp => wp?.id).filter(Boolean));
+  const manifestStatus = readWorkPackageStatusFromManifest(closeoutResult.closeout.workflow_state);
   
-  const nextWorkPackages = asArray(projectStatus.next_work_packages).map(wp => {
-    if (completedIds.has(wp.id)) {
-      return {
-        ...wp,
-        status: "completed",
-        execution_metadata: {
-          ...(wp.execution_metadata || {}),
-          completed_at: new Date().toISOString()
-        }
-      };
-    }
-    return wp;
-  });
+  const completedStatuses = new Set(["completed", "complete", "done", "passed", "pass"]);
+  const updated = asArray(projectStatus.next_work_packages).map(wp => ({
+    ...wp,
+    status: manifestStatus.get(wp.id) || wp.status || "queued"
+  }));
   
-  const stillPending = nextWorkPackages.filter(wp => wp.status !== "completed");
-  const completedList = asArray(projectStatus.execution_trace?.completed_work_packages || []);
+  const completed = updated.filter(wp => completedStatuses.has(wp.status));
+  const pending = updated.filter(wp => !completed.includes(wp));
   
   return {
     ...input,
     project_status: {
       ...projectStatus,
-      next_work_packages: stillPending,
+      next_work_packages: pending,
       execution_trace: {
         ...(projectStatus.execution_trace || {}),
-        current_iteration: (projectStatus.execution_trace?.current_iteration || 0) + 1,
         completed_work_packages: [
-          ...completedList,
-          ...Array.from(completedIds)
+          ...(projectStatus.execution_trace?.completed_work_packages || []),
+          ...completed.map(wp => wp.id)
         ]
       }
     }
@@ -598,45 +590,10 @@ async function runAutonomousContinuationCycle(input = {}, options = {}) {
       break;
     }
 
-    // Phase 2: NEW - Scheduler dispatch and execution
-    let schedulerResult = null;
-    if (closeoutResult.next_decision?.context_pack_seed?.selected_work_packages) {
-      try {
-        schedulerResult = await runSchedulerLoopDriver(
-          {
-            selected_work_packages: closeoutResult.next_decision.context_pack_seed.selected_work_packages,
-            project_status: currentInput.project_status,
-            workflow_state: closeoutResult.closeout?.workflow_state
-          },
-          {
-            client: options.scheduler_client,
-            ...options
-          }
-        );
-      } catch (err) {
-        schedulerResult = {
-          status: "fail",
-          phase: "scheduler_dispatch",
-          issues: [issue("scheduler_dispatch_error", String(err.message || err), "")]
-        };
-      }
+    // Scheduler is external; work package execution is tracked via manifest
 
-      if (schedulerResult?.status !== "pass") {
-        stopReason = "scheduler_dispatch_failed";
-        lastResult = closeoutResult;
-        iterations.push({
-          iteration: i + 1,
-          status: "fail",
-          phase: "scheduler_dispatch",
-          next_should_continue: false
-        });
-        break;
-      }
-    }
-
-    // Phase 3: NEW - Update ProjectStatus based on execution
-    const selectedPackages = closeoutResult.next_decision?.context_pack_seed?.selected_work_packages || [];
-    currentInput = updateProjectStatusFromExecution(currentInput, closeoutResult, { ...schedulerResult, selected_work_packages: selectedPackages });
+    // Phase 3: NEW - Update ProjectStatus based on manifest work_packages status
+    currentInput = updateProjectStatusFromExecution(currentInput, closeoutResult);
 
     // Check continuation decision
     if (!closeoutResult.next_decision?.should_continue) {
