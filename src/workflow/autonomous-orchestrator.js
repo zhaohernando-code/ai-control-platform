@@ -131,15 +131,24 @@ function updateProjectStatusFromExecution(input, closeoutResult, schedulerResult
 }
 
 function continuationInputFromProjection(input, workflowState, projection) {
+  // CRITICAL: input.project_status is the source of truth, not workflow_state.project_status
+  // which may be stale from a prior iteration
+  const projectStatus = input.project_status || input.projectStatus || input.next_project_status || input.nextProjectStatus;
+  const cleanWorkflowState = {
+    ...workflowState,
+    // Remove any stale project_status from workflow_state
+    project_status: undefined,
+    projectStatus: undefined
+  };
   return {
-    project_status: input.next_project_status || input.nextProjectStatus || input.project_status || input.projectStatus,
+    project_status: projectStatus,
     run_evaluation: {
       status: projection.status,
       decision: projection.decision,
       blockers: projection.blockers,
       projection
     },
-    workflow_state: workflowState
+    workflow_state: cleanWorkflowState
   };
 }
 
@@ -626,7 +635,8 @@ async function runAutonomousContinuationCycle(input = {}, options = {}) {
     }
 
     // Phase 3: NEW - Update ProjectStatus based on execution
-    currentInput = updateProjectStatusFromExecution(currentInput, closeoutResult, schedulerResult);
+    const selectedPackages = closeoutResult.next_decision?.context_pack_seed?.selected_work_packages || [];
+    currentInput = updateProjectStatusFromExecution(currentInput, closeoutResult, { ...schedulerResult, selected_work_packages: selectedPackages });
 
     // Check continuation decision
     if (!closeoutResult.next_decision?.should_continue) {
