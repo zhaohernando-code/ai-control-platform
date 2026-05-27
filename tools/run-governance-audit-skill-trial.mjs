@@ -119,7 +119,8 @@ function buildPrompt(options) {
     "- 必须根据下面的只读证据包检查真实 served route，比较最终 URL、HTML entry、script/style assets、DOM markers 是否匹配声称的前端栈。",
     "- 如果源码里有新实现但真实入口仍服务旧 HTML/CSS/JS shell，必须按 skill 的 Live Frontend Entry Checks 作为明确缺陷。",
     "- 必须覆盖 13 个维度；不适用维度要给出理由。",
-    "- 默认不要再运行命令；证据包已由 runner 即时收集。只有证据包明显不足时，才指出 需补证。",
+    "- 默认不要再运行命令；证据包已由 runner 即时收集，且按审计维度覆盖 live route、源码、测试门禁、发布/恢复、权限边界、成本控制、知识留存和模型协作。",
+    "- 不要因为没有每个维度的独立 JSON 子报告而判定缺证；只有证据包缺少能判断该维度的真实命令/代码/运行时证据时，才指出 需补证，并说明缺少的具体证据。",
     "",
     "13 个维度：",
     dimensions,
@@ -204,8 +205,19 @@ function collectPreflightEvidence(options) {
   const commands = [
     ["served route headers", `curl -sS -L -I --max-time 10 ${quotedRoute}`],
     ["served route html", `curl -sS -L --max-time 10 ${quotedRoute} | sed -n '1,22p'`],
+    ["served next static asset", "asset=$(curl -sS -L --max-time 10 http://127.0.0.1:4180/projects/ai-control-platform/ | grep -o '/projects/ai-control-platform/_next/static/chunks/main-app-[^\"]*\\.js' | head -1); test -n \"$asset\" && curl -sS -I --max-time 10 \"http://127.0.0.1:4180$asset\" | sed -n '1,8p'"],
+    ["served favicon asset", "curl -sS -I --max-time 10 http://127.0.0.1:4180/projects/ai-control-platform/apps/workbench/favicon.svg | sed -n '1,8p'"],
     ["claimed antd code", "rg -n \"from ['\\\"]antd['\\\"]|@ant-design/nextjs-registry|antd\\\"\" apps/workbench/app/page.tsx apps/workbench/app/providers.tsx apps/workbench/app/shell.tsx apps/workbench/package.json -S | sed -n '1,12p'"],
-    ["server route mapping", "sed -n '1568,1578p;2898,2907p' tools/workbench-server.mjs"]
+    ["server route mapping", "rg -n \"nextjsMountHtml|nextjsAppIndexPath|isProjectMountRoot|_next/static|favicon.svg\" tools/workbench-server.mjs | sed -n '1,20p'"],
+    ["targeted quality gates", "node --test test/audit-skill-trial-run.test.js test/workbench-server.test.js test/live-route-probe.test.js"],
+    ["closeout gate wiring", "rg -n \"check:closeout|governance audit skill trial|workbench live route acceptance|mainline release readiness\" package.json tools/check-closeout.mjs src test | sed -n '1,40p'"],
+    ["git release state", "git status --short && git rev-list --left-right --count origin/main...HEAD && git log --oneline -5"],
+    ["security boundary evidence", "rg -n \"allowedHistoryRoots|safeStaticPath|unsafe|unauthorized|auth|token|host\" tools/workbench-server.mjs src tools test | sed -n '1,40p'"],
+    ["recovery and publish evidence", "rg -n \"rollback|recovery|resume|publish|snapshot|launchctl|kickstart|live route\" scripts tools src test docs | sed -n '1,40p'"],
+    ["cost and budget controls", "rg -n \"budget|max-budget|timeout|cost|bounded|risk|profile\" tools src test package.json | sed -n '1,40p'"],
+    ["auto repair workflow evidence", "rg -n \"governance audit failure schedules|Repair governance audit|repair_schedule|context work package|next-action\" src test tools | sed -n '1,40p'"],
+    ["knowledge retention evidence", "rg -n \"handoff|PROJECT_STATUS|DECISIONS|PROCESS|artifact ledger|workflow state|durable\" PROJECT_STATUS.json PROCESS.md DECISIONS.md docs src test tools | sed -n '1,40p'"],
+    ["model collaboration evidence", "rg -n \"Claude DeepSeek|claude_deepseek|deepseek|reviewer|model routing|provider\" tools src test docs package.json | sed -n '1,40p'"]
   ];
   const evidenceItems = [];
   const text = commands.map(([label, command]) => {
@@ -221,7 +233,7 @@ function collectPreflightEvidence(options) {
       exit_code: Number(/exit_code=(\d+)/u.exec(output)?.[1] || 1),
       result_summary: truncate(output, 1000)
     });
-    return [`## ${label}`, output].join("\n");
+    return [`## ${id}: ${label}`, output].join("\n");
   }).join("\n\n");
   return { text, evidenceItems };
 }
