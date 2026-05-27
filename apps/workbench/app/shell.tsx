@@ -11,10 +11,10 @@ import {
   SolutionOutlined,
   WarningOutlined
 } from "@ant-design/icons";
-import { Layout, Menu, Space, Typography, theme } from "antd";
+import { Layout, Menu, Space, Spin, Typography, theme } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo, useTransition } from "react";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -51,6 +51,7 @@ function selectedKeyFromPath(pathname: string | null): NavKey {
 export function WorkbenchShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
   const {
     token: { colorBgContainer, colorBorderSecondary }
   } = theme.useToken();
@@ -63,6 +64,20 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
         icon: item.icon
       })),
     []
+  );
+
+  // 使用 startTransition 包裹路由切换，让 antd 的状态更新（selectedKeys）
+  // 与页面内容切换在同一帧内完成，避免中间态闪烁。
+  const handleMenuClick = useCallback(
+    ({ key }: { key: string }) => {
+      const target = NAV_ITEMS.find((item) => item.key === key);
+      if (target && target.href !== pathname) {
+        startTransition(() => {
+          router.push(target.href, { scroll: false });
+        });
+      }
+    },
+    [router, pathname, startTransition]
   );
 
   return (
@@ -88,12 +103,7 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
           mode="inline"
           items={menuItems}
           selectedKeys={[selectedKey]}
-          onClick={({ key }) => {
-            const target = NAV_ITEMS.find((item) => item.key === key);
-            if (target) {
-              router.push(target.href);
-            }
-          }}
+          onClick={handleMenuClick}
           data-component="workbench-nav"
         />
       </Sider>
@@ -118,7 +128,11 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
             {process.env.WORKBENCH_API_BASE || "http://127.0.0.1:4180"}
           </Text>
         </Header>
-        <Content style={{ padding: 24 }}>{children}</Content>
+        <Content style={{ padding: 24 }}>
+          <Spin spinning={isPending} size="large">
+            {children}
+          </Spin>
+        </Content>
       </Layout>
     </Layout>
   );
