@@ -542,11 +542,14 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(themeFile, /Layout:/);
 
   // 7. Entry page uses antd components only (no naked div / inline css spree).
+  // Step 05/9: overview now uses useProjection hook + antd Statistic/Timeline.
   const page = read("apps/workbench/app/page.tsx");
   assert.match(page, /from "antd"/);
   assert.match(page, /Card/);
   assert.match(page, /Descriptions/);
-  assert.match(page, /WORKBENCH_API_ENDPOINTS/);
+  assert.match(page, /Statistic/);
+  assert.match(page, /Timeline/);
+  assert.match(page, /useProjection/);
   // Loading / error / 404 boundaries also via antd.
   assert.match(read("apps/workbench/app/loading.tsx"), /Skeleton/);
   assert.match(read("apps/workbench/app/error.tsx"), /Result/);
@@ -652,6 +655,59 @@ test("step 04/9: SSE/projection/snapshot React hooks infrastructure is durable",
   assert.match(providersFile, /AntdRegistry/);
   assert.match(providersFile, /AntdApp/);
   assert.match(providersFile, /workbenchTheme/);
+});
+
+test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-routes exist", () => {
+  // Step 05/9 of the frontend refactor: the first substantive content migration.
+  // The overview page now uses useProjection hook to fetch real workbench
+  // projection data and renders it with antd Statistic/Timeline/Card/etc.
+  // All 7 navigation sub-routes must exist as placeholder pages using antd.
+
+  // 1. Overview page uses useProjection hook + antd data components.
+  const overview = read("apps/workbench/app/page.tsx");
+  assert.match(overview, /"use client";/);
+  assert.match(overview, /useProjection/);
+  assert.match(overview, /Statistic/);
+  assert.match(overview, /Timeline/);
+  assert.match(overview, /Skeleton/);
+  assert.match(overview, /Alert/);
+  assert.match(overview, /pollIntervalMs/);
+  assert.match(overview, /refresh/);
+  // No raw div+css workarounds.
+  assert.doesNotMatch(overview, /className="workbench|className="desktop-app/);
+  // Uses only antd imports.
+  assert.match(overview, /from "antd"/);
+  assert.doesNotMatch(overview, /from "\.\/styles"/);
+  assert.doesNotMatch(overview, /from "\.\/workbench"/);
+
+  // 2. Every navigation sub-route exists with a "use client" page.
+  const routePages = [
+    { dir: "requirements", label: "新建任务", icon: "SolutionOutlined" },
+    { dir: "projects", label: "项目列表", icon: "ProjectOutlined" },
+    { dir: "flow", label: "任务流", icon: "AppstoreOutlined" },
+    { dir: "agents", label: "Agents", icon: "RobotOutlined" },
+    { dir: "risks", label: "风险", icon: "WarningOutlined" },
+    { dir: "governance", label: "治理", icon: "SafetyCertificateOutlined" },
+    { dir: "runs", label: "运行诊断", icon: "ExperimentOutlined" }
+  ];
+  for (const route of routePages) {
+    const pg = read(`apps/workbench/app/${route.dir}/page.tsx`);
+    assert.match(pg, /"use client";/, `${route.dir} must be a client component`);
+    assert.match(pg, /from "antd"/, `${route.dir} must use antd`);
+    assert.match(pg, /Card/, `${route.dir} must use antd Card`);
+    assert.match(pg, new RegExp(route.label), `${route.dir} must mention ${route.label}`);
+    assert.match(pg, new RegExp(route.icon), `${route.dir} must use ${route.icon}`);
+    assert.match(pg, /useRouter/, `${route.dir} must use Next.js router for SPA nav`);
+    assert.doesNotMatch(pg, /from "\.\/styles/);
+    assert.doesNotMatch(pg, /from "\.\.\/workbench/);
+  }
+
+  // 3. The shell navigation keys must match sub-route directories.
+  const shell = read("apps/workbench/app/shell.tsx");
+  for (const route of routePages) {
+    assert.match(shell, new RegExp(`key: "${route.dir}"`),
+      `shell must have nav key: ${route.dir}`);
+  }
 });
 
 test("project rules codify the antd + next.js single-page-app frontend constraints (step 03/7)", () => {
