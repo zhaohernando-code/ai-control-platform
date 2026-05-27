@@ -684,9 +684,17 @@ function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile 
   const parsed = fileOutput || parseHeadlessChildWorkerOutput(stdout);
 
   if (parsed) {
+    // Preserve worker-declared command evidence sub-fields (notably child_worker_integration,
+    // which is populated by scripts/run-claude-child-worker.sh after the worker exits and is
+    // required by evaluateHeadlessChildWorkerOutput / childOutputAllowsNoDiff to accept
+    // no_diff=true read-only work packages whose mainline already satisfies the task).
+    const parsedCommandEvidence = (parsed.command_evidence && typeof parsed.command_evidence === "object" && !Array.isArray(parsed.command_evidence))
+      ? parsed.command_evidence
+      : {};
     return {
       ...parsed,
       command_evidence: {
+        ...parsedCommandEvidence,
         exit_code: exitCode,
         timed_out: timedOut,
         stdout_present: Boolean(stdout),

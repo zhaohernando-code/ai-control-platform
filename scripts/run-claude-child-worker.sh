@@ -426,7 +426,10 @@ if [[ "$USE_WORKTREE" != "0" && "$INTEGRATE_MAINLINE" != "0" && -n "$CHILD_OUTPU
         update_child_output_integration "fail" "failed to merge isolated worker branch into advanced primary mainline (likely owned-file conflict with another worker)" "$WORKER_HEAD" ""
       fi
     elif [[ "$AHEAD_COUNT" -eq 0 && -z "$MERGE_BLOCKING_DIRTY_STATUS" && -z "$PRIMARY_DIRTY_CONFLICTS" ]]; then
-      update_child_output_integration "pass" "child returned pass with no new committed delta; current mainline accepted as already satisfying the work package" "$WORKER_HEAD" "$PRIMARY_HEAD"
+      # No-delta: worker observed that BASE already satisfied the task. Use BASE_COMMIT as
+      # the integrated_commit so consumers can detect "no integration happened" via
+      # base_commit == integrated_commit, regardless of whether PRIMARY has advanced.
+      update_child_output_integration "pass" "child returned pass with no new committed delta; current mainline accepted as already satisfying the work package" "$WORKER_HEAD" "$BASE_COMMIT"
     else
       FINAL_STATUS=1
       update_child_output_integration "fail" "isolated worker result is not mergeable: ahead_count=$AHEAD_COUNT dirty_worker=$([[ -n "$MERGE_BLOCKING_DIRTY_STATUS" ]] && printf yes || printf no) primary_dirty_conflicts=$([[ -n "$PRIMARY_DIRTY_CONFLICTS" ]] && printf yes || printf no)" "$WORKER_HEAD" ""
