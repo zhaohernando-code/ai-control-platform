@@ -49,6 +49,7 @@ export function runCloseoutChecks() {
   run("development flow real dual CLI", ["tools/check-development-flow-real.mjs"]);
   run("governance audit skill trial", [
     "tools/run-governance-audit-skill-trial.mjs",
+    "--route", `http://${WORKBENCH_HOST}:4180/projects/ai-control-platform/flow`,
     "--output", "tmp/audit-skill-trial/closeout-governance-audit-current.json",
     "--raw-output", "tmp/audit-skill-trial/closeout-governance-audit-current.raw.txt",
     "--prompt-output", "tmp/audit-skill-trial/closeout-governance-audit-current.prompt.md",
