@@ -36,6 +36,33 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
       <body style={{ margin: 0 }}>
+        {/* FOUC 防护：内联 loading 遮罩，在 React 水合完成后由脚本移除 */}
+        <div id="app-loading-overlay" suppressHydrationWarning>
+          <div className="loading-spinner" />
+        </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function removeOverlay() {
+                  var el = document.getElementById('app-loading-overlay');
+                  if (el) {
+                    el.classList.add('fade-out');
+                    setTimeout(function() { el.remove(); }, 300);
+                  }
+                }
+                // 等待 React 水合完成后移除
+                if (document.readyState === 'complete') {
+                  setTimeout(removeOverlay, 0);
+                } else {
+                  window.addEventListener('load', function() {
+                    setTimeout(removeOverlay, 0);
+                  });
+                }
+              })();
+            `
+          }}
+        />
         <AppProviders>
           <WorkbenchShell>{children}</WorkbenchShell>
         </AppProviders>
