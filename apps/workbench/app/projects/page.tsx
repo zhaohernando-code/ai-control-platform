@@ -213,6 +213,19 @@ export default function ProjectsPage() {
       render: (_, task) => safeText(task.phase_label)
     },
     {
+      title: "失败原因",
+      dataIndex: "failure_reason",
+      key: "failure_reason",
+      width: 200,
+      ellipsis: true,
+      render: (_, task) =>
+        task.failure_reason ? (
+          <Text type="danger" ellipsis={{ tooltip: task.failure_reason }}>
+            {task.failure_reason}
+          </Text>
+        ) : null
+    },
+    {
       title: "更新时间",
       dataIndex: "updated_at",
       key: "updated_at",
@@ -333,7 +346,7 @@ export default function ProjectsPage() {
           dataSource={taskItems}
           loading={loading && taskItems.length === 0}
           pagination={{ pageSize: 6, showSizeChanger: false }}
-          scroll={{ x: 875 }}
+          scroll={{ x: 1075 }}
           locale={{ emptyText: <Empty description="暂无任务" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         />
       </Card>

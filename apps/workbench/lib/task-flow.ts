@@ -33,6 +33,7 @@ export interface TaskWorkPackage {
   depends_on?: string[];
   acceptance_gates?: string[];
   source?: Record<string, unknown>;
+  failure_reason?: string | null;
 }
 
 export interface TaskFlowItem {

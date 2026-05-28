@@ -233,7 +233,12 @@ function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "") 
       status: normalizeString(workPackage.status) || "pending",
       depends_on: asArray(workPackage.depends_on || workPackage.dependsOn).map(normalizeString).filter(Boolean),
       acceptance_gates: asArray(workPackage.acceptance_gates || workPackage.acceptanceGates).map(normalizeString).filter(Boolean),
-      source: workPackage.source || {}
+      source: workPackage.source || {},
+      failure_reason: normalizeString(
+        workPackage.failure_reason || workPackage.failureReason ||
+        workPackage.error?.message || workPackage.error_message ||
+        workPackage.issues?.[0]?.message
+      ) || null
     }));
 }
 
@@ -406,7 +411,10 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) 
       constraints: normalizeString(requirement.constraints),
       reviewable: status.phase === "ready_for_review",
       recoverable: taskCanRecover(status, review),
-      failure_reason: normalizeString(review?.generation_error?.message || review?.failure_reason) || null,
+      failure_reason: normalizeString(review?.generation_error?.message || review?.failure_reason) ||
+        workPackages.filter((wp) => ["failed", "fail", "error", "timeout"].includes(normalizeString(wp.status).toLowerCase()))
+          .map((wp) => wp.failure_reason || `${wp.title || wp.id} 执行失败`)
+          .join("; ") || null,
       plan_review: {
         ...(review || {}),
         requirement_id: requirementId,
