@@ -2599,6 +2599,54 @@ export function createWorkbenchServer(options = {}) {
         writeProjectStatusState(projectStatusPath, reset.project_status, stateStore);
         writeWorkflowState(item, nextWorkflowState);
         const projection = workbenchProjection(nextWorkflowState);
+        const suppliedGeneratedPlan = input.generated_plan || input.generatedPlan;
+        if (suppliedGeneratedPlan) {
+          const parsedPlan = parseRequirementPlanGenerationOutput(reset.requirement, suppliedGeneratedPlan);
+          if (parsedPlan.status !== "pass") {
+            jsonResponse(res, 400, { error: "invalid supplied requirement plan", issues: parsedPlan.issues || [] });
+            return;
+          }
+          const applied = applyGeneratedRequirementPlan(reset.project_status, {
+            requirement_id: reset.requirement.id,
+            generated_plan: parsedPlan,
+            generator: {
+              kind: "operator_supplied_requirement_plan",
+              command: null,
+              role: "operator",
+              model: null,
+              timed_out: false
+            }
+          }, {
+            created_at: input.created_at || input.createdAt
+          });
+          if (applied.status !== "pass") {
+            jsonResponse(res, 400, { error: "supplied requirement plan apply failed", issues: applied.issues || [] });
+            return;
+          }
+          const appliedWorkflowState = workflowStateWithProjectStatus(workflowState, applied.project_status);
+          writeProjectStatusState(projectStatusPath, applied.project_status, stateStore);
+          writeWorkflowState(item, appliedWorkflowState);
+          const appliedProjection = workbenchProjection(appliedWorkflowState);
+          jsonResponse(res, 201, {
+            status: "generated",
+            item,
+            requirement: applied.requirement,
+            plan_review: applied.plan_review,
+            plan_generation: {
+              status: "generated",
+              issues: []
+            },
+            projection: appliedProjection,
+            auto_advance: {
+              status: "waiting_for_plan_review",
+              result: null,
+              artifact: null,
+              projection: appliedProjection,
+              reason: "supplied requirement plan is ready for review"
+            }
+          });
+          return;
+        }
         startRequirementPlanGenerationInBackground({
           submitted: {
             status: "pass",

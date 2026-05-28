@@ -141,7 +141,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-server.test.js": {
-      "lines": 4088,
+      "lines": 4159,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
