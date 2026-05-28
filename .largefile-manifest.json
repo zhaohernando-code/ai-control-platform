@@ -56,6 +56,12 @@
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
+    "src/workflow/development-flow-real.js": {
+      "lines": 648,
+      "reason": "Development flow real acceptance harness: fixture setup, dual CLI command construction, model-output contract parsing, and phase evidence aggregation are kept together for the first reusable gate.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
     "src/workflow/frontend-acceptance.js": {
       "lines": 801,
       "reason": "Frontend acceptance validator: browser evidence schema, layout/content checks, console errors, and live-route constraints are one acceptance surface.",
