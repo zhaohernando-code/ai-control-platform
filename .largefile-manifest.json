@@ -123,7 +123,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/headless-cli-orchestrator.test.js": {
-      "lines": 2053,
+      "lines": 2054,
       "reason": "Headless CLI orchestrator tests share worker-result, owned-file, no-diff, and continuation acceptance fixtures.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -141,7 +141,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-server.test.js": {
-      "lines": 4012,
+      "lines": 4088,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"

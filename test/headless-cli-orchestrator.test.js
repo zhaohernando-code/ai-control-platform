@@ -590,6 +590,7 @@ test("live workbench starts Claude DeepSeek child workers with output path for i
   assert.ok(script.includes("run-claude-deepseek-child-worker.sh"));
   assert.ok(script.includes("scripts/claude-role-proxy.sh"));
   assert.ok(script.includes("claude-sonnet-4-6"));
+  assert.ok(script.includes("claude-haiku-4-5-20251001"));
   assert.ok(!script.includes("start-claude-deepseek-no-proxy.sh"));
   assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG"));
   assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG"));

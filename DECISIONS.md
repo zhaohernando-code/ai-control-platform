@@ -496,6 +496,7 @@ runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚
 - Workbench 默认计划生成改走项目内 `scripts/claude-role-proxy.sh`，由平台脚本统一治理 role、model、key pool、锁和退出语义。
 - `scripts/start-workbench-live.sh` 不再默认指向个人 launcher；个人 launcher 只能通过显式环境变量覆盖。
 - 默认计划模型改为 `claude-sonnet-4-6`，计划生成 timeout 提升到 300 秒，并显式传递 `--role manager` / `-m`。
+- 计划生成超时时必须按 timer 触发和 `exit_code=143` 归类为 `timed_out=true`；primary 超时后可自动落到 `claude-haiku-4-5-20251001`，并在 generator attempts 中保留两次尝试。
 - child worker wrapper 默认也使用项目内 governed proxy，避免计划生成、实现 worker 和 reviewer 各自拼不同启动器。
 - `development-flow-real` closeout gate 的 Claude 分支默认也改走项目内 governed proxy；外部 manual agent CLI 只允许通过显式环境变量/参数覆盖。
 - Claude JSON contract 先解析 `--output-format json` 外层对象和 `structured_output`，再回退解析 result/fenced JSON，避免真实成功运行因输出包装格式被误判失败。

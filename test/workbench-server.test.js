@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
@@ -1081,6 +1081,82 @@ test("workbench server retries and closes failed requirement plan generation", a
         ? { status: "pass", generated_plan: generatedRequirementPlan(), generator: { kind: "test_model_plan" } }
         : { status: "fail", stderr: "simulated model timeout", generator: { kind: "test_model_plan", timed_out: true } }
     )
+  });
+});
+
+test("workbench server falls back to a governed requirement plan model after timeout", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-fallback-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "requirement-fallback-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const commandPath = join(snapshotsRoot, "plan-generator.sh");
+  const workflowState = currentSessionWithoutRequirementPlanReview();
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "requirement-fallback",
+    items: [
+      {
+        id: "requirement-fallback",
+        label: "Requirement fallback",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+  writeFileSync(commandPath, [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "if [[ \" $* \" == *\" claude-sonnet-4-6 \"* ]]; then",
+    "  sleep 2",
+    "  exit 143",
+    "fi",
+    "cat <<'JSON'",
+    JSON.stringify(generatedRequirementPlan()),
+    "JSON",
+    ""
+  ].join("\n"));
+  chmodSync(commandPath, 0o755);
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-fallback`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "完成项目 tab",
+        project_id: "ai-control-platform",
+        problem_statement: "项目 tab 需要接入项目治理。",
+        plan_review_requested: true,
+        generate_plan: true,
+        wait_for_plan_generation: true,
+        requirement_plan_command: commandPath,
+        requirement_plan_model: "claude-sonnet-4-6",
+        requirement_plan_fallback_model: "claude-haiku-4-5-20251001",
+        requirement_plan_timeout_ms: 50,
+        created_at: "2026-05-25T10:00:00.000Z",
+        requirement_id: "requirement-project-tab"
+      })
+    });
+    const payload = response.json();
+    const generator = payload.plan_review.generator;
+    assert.equal(response.status, 201);
+    assert.equal(payload.plan_review.phase, "ready_for_review");
+    assert.equal(generator.model, "claude-haiku-4-5-20251001");
+    assert.equal(generator.fallback_from_model, "claude-sonnet-4-6");
+    assert.equal(generator.attempts[0].timed_out, true);
+    assert.equal(generator.attempts[1].attempt, "timeout_fallback");
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath
   });
 });
 

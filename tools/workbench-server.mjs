@@ -319,8 +319,12 @@ function runProcess(command, args = [], options = {}) {
       stderr = append(stderr, chunk);
     });
     const timeoutMs = Number(options.timeout || options.timeoutMs || 180000);
+    let timerFired = false;
     const timer = Number.isFinite(timeoutMs) && timeoutMs > 0
-      ? setTimeout(() => child.kill("SIGTERM"), timeoutMs)
+      ? setTimeout(() => {
+        timerFired = true;
+        child.kill("SIGTERM");
+      }, timeoutMs)
       : null;
     child.on("error", (error) => {
       if (timer) clearTimeout(timer);
@@ -329,7 +333,7 @@ function runProcess(command, args = [], options = {}) {
         error,
         stdout,
         stderr: stderr || error?.message || "",
-        timed_out: false,
+        timed_out: timerFired || error?.code === "ETIMEDOUT",
         latency_ms: Date.now() - startedAt
       });
     });
@@ -340,7 +344,7 @@ function runProcess(command, args = [], options = {}) {
         signal,
         stdout,
         stderr,
-        timed_out: signal === "SIGTERM",
+        timed_out: timerFired || signal === "SIGTERM" || code === 143,
         latency_ms: Date.now() - startedAt
       });
     });
@@ -360,6 +364,12 @@ function defaultRequirementPlanGenerator(input = {}) {
       input.requirementPlanModel ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_MODEL ||
       "claude-sonnet-4-6"
+  );
+  const fallbackModel = normalizeString(
+    input.requirement_plan_fallback_model ||
+      input.requirementPlanFallbackModel ||
+      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_FALLBACK_MODEL ||
+      "claude-haiku-4-5-20251001"
   );
   const role = normalizeString(
     input.requirement_plan_role ||
@@ -396,34 +406,63 @@ function defaultRequirementPlanGenerator(input = {}) {
 
   return async ({ requirement }) => {
     const prompt = createRequirementPlanPrompt(requirement);
-    const args = [];
-    if (supportsModelArg) args.push("-m", model);
-    if (supportsRoleArg) args.push("--role", role);
-    args.push("-p", prompt);
-    const result = await runProcess(script, args, {
-      cwd: root,
-      timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
-      env: {
-        ...process.env,
-        HOME: process.env.HOME || "/Users/hernando_zhao",
-        PATH: childPath
-      }
-    });
-    const stdout = result.stdout || "";
-    const stderr = result.stderr || result.error?.message || "";
+    const runAttempt = async (selectedModel, attemptKind = "primary") => {
+      const args = [];
+      if (supportsModelArg) args.push("-m", selectedModel);
+      if (supportsRoleArg) args.push("--role", role);
+      args.push("-p", prompt);
+      const result = await runProcess(script, args, {
+        cwd: root,
+        timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
+        env: {
+          ...process.env,
+          HOME: process.env.HOME || "/Users/hernando_zhao",
+          PATH: childPath
+        }
+      });
+      const stdout = result.stdout || "";
+      const baseStderr = result.stderr || result.error?.message || "";
+      const timedOut = result.timed_out === true || result.error?.code === "ETIMEDOUT";
+      const stderr = timedOut
+        ? normalizeString(`${baseStderr}\nrequirement plan generation timed out after ${Number.isFinite(timeoutMs) ? timeoutMs : 180000}ms`)
+        : baseStderr;
+      return {
+        status: result.status === 0 && !result.error && normalizeString(stdout) ? "pass" : "fail",
+        stdout,
+        stderr,
+        result,
+        generator: {
+          kind: script === resolve(root, "scripts/claude-role-proxy.sh") ? "governed_claude_plan_mode" : (/start-claude-deepseek/i.test(script) ? "legacy_external_claude_deepseek_plan_mode" : "claude_plan_mode"),
+          command: script,
+          role,
+          model: selectedModel,
+          supports_model_arg: supportsModelArg,
+          supports_role_arg: supportsRoleArg,
+          exit_code: result.status ?? null,
+          timed_out: timedOut,
+          attempt: attemptKind,
+          timeout_ms: Number.isFinite(timeoutMs) ? timeoutMs : 180000
+        }
+      };
+    };
+    const primary = await runAttempt(model, "primary");
+    const shouldFallback = primary.generator.timed_out === true &&
+      normalizeString(fallbackModel) &&
+      fallbackModel !== model &&
+      supportsModelArg;
+    const finalAttempt = shouldFallback
+      ? await runAttempt(fallbackModel, "timeout_fallback")
+      : primary;
+    const attempts = shouldFallback ? [primary.generator, finalAttempt.generator] : [primary.generator];
     return {
-      status: result.status === 0 && !result.error && normalizeString(stdout) ? "pass" : "fail",
-      stdout,
-      stderr,
+      status: finalAttempt.status,
+      stdout: finalAttempt.stdout,
+      stderr: finalAttempt.stderr,
       generator: {
-        kind: script === resolve(root, "scripts/claude-role-proxy.sh") ? "governed_claude_plan_mode" : (/start-claude-deepseek/i.test(script) ? "legacy_external_claude_deepseek_plan_mode" : "claude_plan_mode"),
-        command: script,
-        role,
-        model,
-        supports_model_arg: supportsModelArg,
-        supports_role_arg: supportsRoleArg,
-        exit_code: result.status ?? null,
-        timed_out: result.timed_out === true || result.error?.code === "ETIMEDOUT"
+        ...finalAttempt.generator,
+        fallback_model: fallbackModel || null,
+        fallback_from_model: shouldFallback ? model : null,
+        attempts
       }
     };
   };
