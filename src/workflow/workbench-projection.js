@@ -207,12 +207,15 @@ function summarizePlanReview(projectStatus = {}, requirementIntake = {}) {
   };
 }
 
-function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "") {
+function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "", manifestWorkPackages = []) {
   const id = normalizeString(requirementId);
   if (!id) return [];
   const directPackages = asArray(projectStatus.next_work_packages || projectStatus.nextWorkPackages);
   const goalPackages = asArray(projectStatus.global_goals || projectStatus.globalGoals)
     .flatMap((goal) => asArray(goal?.next_work_packages || goal?.nextWorkPackages));
+  const manifestById = new Map(
+    asArray(manifestWorkPackages).map((wp) => [normalizeString(wp?.id || wp?.work_package_id), wp])
+  );
   const seen = new Set();
   return [...directPackages, ...goalPackages]
     .filter((workPackage) => {
@@ -226,20 +229,29 @@ function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "") 
       seen.add(packageId);
       return true;
     })
-    .map((workPackage) => ({
-      id: normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId),
-      title: normalizeString(workPackage.title),
-      action: normalizeString(workPackage.action),
-      status: normalizeString(workPackage.status) || "pending",
-      depends_on: asArray(workPackage.depends_on || workPackage.dependsOn).map(normalizeString).filter(Boolean),
-      acceptance_gates: asArray(workPackage.acceptance_gates || workPackage.acceptanceGates).map(normalizeString).filter(Boolean),
-      source: workPackage.source || {},
-      failure_reason: normalizeString(
-        workPackage.failure_reason || workPackage.failureReason ||
-        workPackage.error?.message || workPackage.error_message ||
-        workPackage.issues?.[0]?.message
-      ) || null
-    }));
+    .map((workPackage) => {
+      const packageId = normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId);
+      const manifestWp = manifestById.get(packageId) || {};
+      const merged = { ...manifestWp, ...workPackage };
+      const failureIssues = asArray(merged.failure_issues || merged.failureIssues);
+      return {
+        id: packageId,
+        title: normalizeString(merged.title),
+        action: normalizeString(merged.action),
+        status: normalizeString(merged.status) || "pending",
+        result: normalizeString(merged.result) || null,
+        depends_on: asArray(merged.depends_on || merged.dependsOn).map(normalizeString).filter(Boolean),
+        acceptance_gates: asArray(merged.acceptance_gates || merged.acceptanceGates).map(normalizeString).filter(Boolean),
+        source: merged.source || {},
+        failure_reason: normalizeString(
+          merged.failure_reason || merged.failureReason ||
+          merged.error?.message || merged.error_message ||
+          failureIssues.map((fi) => fi.message).filter(Boolean).join("; ") ||
+          merged.issues?.[0]?.message
+        ) || null,
+        failure_issues: failureIssues
+      };
+    });
 }
 
 function requirementGoalCompleted(projectStatus = {}, requirementId = "") {
@@ -385,14 +397,14 @@ function taskCanRecover(status = {}, review = {}) {
     ["pending_plan_generation", "plan_generation_failed"].includes(normalizedPhase);
 }
 
-function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) {
+function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}, manifestWorkPackages = []) {
   const planReviews = projectStatus?.plan_reviews && typeof projectStatus.plan_reviews === "object"
     ? projectStatus.plan_reviews
     : {};
   return asArray(requirementIntake.items).map((requirement) => {
     const requirementId = normalizeString(requirement.id);
     const review = planReviews[requirementId] || {};
-    const workPackages = taskWorkPackagesForRequirement(projectStatus, requirementId);
+    const workPackages = taskWorkPackagesForRequirement(projectStatus, requirementId, manifestWorkPackages);
     const status = taskStatusForPlanPhase(review.phase, review, requirement, projectStatus, workPackages);
     return {
       task_id: requirementId,
@@ -436,7 +448,8 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const nextActionReadout = summaries.nextActionReadout || {};
   const requirementIntake = summarizeRequirementIntake(projectStatus);
   const planReview = summarizePlanReview(projectStatus, requirementIntake);
-  const taskItems = taskItemsFromProjectStatus(projectStatus, requirementIntake);
+  const manifestWorkPackages = asArray(input.manifest?.work_packages);
+  const taskItems = taskItemsFromProjectStatus(projectStatus, requirementIntake, manifestWorkPackages);
   const taskFlow = taskFlowFromDag(dagSummary);
   const hasTaskItems = taskItems.length > 0;
   const activeTaskItems = taskItems
