@@ -255,8 +255,14 @@ function workPackageExecutionStatus(workPackages = []) {
   if (statuses.some((status) => ["running", "active", "in_progress", "in-progress"].includes(status))) {
     return "running";
   }
+  if (statuses.some((status) => ["failed", "fail", "blocked", "error"].includes(status))) {
+    return "failed";
+  }
   if (statuses.some((status) => ["pending", "queued", "ready", "rerun"].includes(status))) {
     return "pending_execution";
+  }
+  if (statuses.length > 0 && statuses.every((status) => ["completed", "complete", "pass", "passed", "done"].includes(status))) {
+    return "completed";
   }
   return "";
 }
@@ -304,13 +310,32 @@ function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, proje
     };
   }
   if (normalizedPhase === "in_development") {
-    if (workPackageExecutionStatus(workPackages) === "pending_execution") {
+    const executionStatus = workPackageExecutionStatus(workPackages);
+    if (executionStatus === "pending_execution") {
       return {
         status: "pending_execution",
         status_label: "待执行",
         phase: normalizedPhase,
         phase_label: "等待派发",
         location_label: "执行队列"
+      };
+    }
+    if (executionStatus === "failed") {
+      return {
+        status: "failed",
+        status_label: "失败",
+        phase: normalizedPhase,
+        phase_label: "执行失败",
+        location_label: "执行队列"
+      };
+    }
+    if (executionStatus === "completed") {
+      return {
+        status: "completed",
+        status_label: "完成",
+        phase: normalizedPhase,
+        phase_label: "任务包完成",
+        location_label: "完成归档"
       };
     }
     return {

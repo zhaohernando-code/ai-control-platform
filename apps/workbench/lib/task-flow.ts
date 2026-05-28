@@ -85,7 +85,7 @@ export function isRecoverablePlanTask(task: TaskFlowItem): boolean {
   return task.status === "pending_plan_generation" ||
     task.phase === "pending_plan_generation" ||
     task.phase === "plan_generation_failed" ||
-    isRecoverableFailedTask(task);
+    (task.phase !== "in_development" && isRecoverableFailedTask(task));
 }
 
 export function recoveryActionLabel(task: TaskFlowItem): string {
@@ -98,7 +98,7 @@ export function isPendingExecutionTask(task: TaskFlowItem): boolean {
   if (task.status === "pending_execution") return true;
   if (task.phase !== "in_development") return false;
   return asArray<TaskWorkPackage>(task.work_packages)
-    .some((workPackage) => ["pending", "queued", "ready", "rerun"].includes(safeText(workPackage.status, "").toLowerCase()));
+    .some((workPackage) => ["pending", "queued", "ready", "rerun", "failed", "blocked", "error"].includes(safeText(workPackage.status, "").toLowerCase()));
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {

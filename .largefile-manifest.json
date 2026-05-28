@@ -51,7 +51,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 819,
+      "lines": 1042,
       "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, and result normalization share one flow.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -87,7 +87,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2291,
+      "lines": 2316,
       "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -111,7 +111,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/context-work-package-runner.test.js": {
-      "lines": 903,
+      "lines": 998,
       "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -135,14 +135,20 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 2927,
+      "lines": 3062,
       "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-server.test.js": {
-      "lines": 4167,
+      "lines": 4299,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-05-28"
+    },
+    "tools/workbench-server.mjs": {
+      "lines": 3752,
+      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, provider dispatch, and mounted public-route behavior while the server is still a single operational boundary.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },

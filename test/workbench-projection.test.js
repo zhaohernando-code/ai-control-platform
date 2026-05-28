@@ -300,6 +300,141 @@ test("approved requirements with only pending work packages are projected as pen
   assert.equal(task.work_packages[0].status, "pending");
 });
 
+test("approved requirements with running work packages are projected as running", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-project-tab-running",
+            title: "完成项目 tab",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "项目 tab 需要接入项目治理。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-project-tab-running": {
+          id: "plan-review-requirement-project-tab-running",
+          phase: "in_development",
+          status: "in_development",
+          reviewed_at: "2026-05-28T02:10:00.000Z"
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-project-tab-running-plan-step-01",
+          title: "完成项目 tab：实施步骤 01 / 2",
+          action: "execute_requirement_plan_step",
+          status: "running",
+          global_goal_id: "requirement-project-tab-running",
+          source: { requirement_id: "requirement-project-tab-running" }
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "running");
+  assert.equal(task.status_label, "运行中");
+  assert.equal(task.phase_label, "开发执行");
+  assert.equal(task.recoverable, false);
+});
+
+test("approved requirements with failed work packages are projected as failed and recoverable", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-project-tab-failed",
+            title: "完成项目 tab",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "项目 tab 需要接入项目治理。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-project-tab-failed": {
+          id: "plan-review-requirement-project-tab-failed",
+          phase: "in_development",
+          status: "in_development",
+          reviewed_at: "2026-05-28T02:10:00.000Z"
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-project-tab-failed-plan-step-01",
+          title: "完成项目 tab：实施步骤 01 / 2",
+          action: "execute_requirement_plan_step",
+          status: "failed",
+          global_goal_id: "requirement-project-tab-failed",
+          source: { requirement_id: "requirement-project-tab-failed" }
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "failed");
+  assert.equal(task.status_label, "失败");
+  assert.equal(task.phase_label, "执行失败");
+  assert.equal(task.recoverable, true);
+});
+
+test("approved requirements with completed work packages are projected as completed", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-project-tab-completed",
+            title: "完成项目 tab",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "项目 tab 需要接入项目治理。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-project-tab-completed": {
+          id: "plan-review-requirement-project-tab-completed",
+          phase: "in_development",
+          status: "in_development",
+          reviewed_at: "2026-05-28T02:10:00.000Z"
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-project-tab-completed-plan-step-01",
+          title: "完成项目 tab：实施步骤 01 / 2",
+          action: "execute_requirement_plan_step",
+          status: "completed",
+          global_goal_id: "requirement-project-tab-completed",
+          source: { requirement_id: "requirement-project-tab-completed" }
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "completed");
+  assert.equal(task.status_label, "完成");
+  assert.equal(task.phase_label, "任务包完成");
+  assert.equal(task.recoverable, false);
+});
+
 test("workbench projection counts task flow items as the task source of truth", () => {
   const projection = createWorkbenchProjection(baseInput({
     manifest: {

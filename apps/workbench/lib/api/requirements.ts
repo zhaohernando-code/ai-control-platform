@@ -73,12 +73,16 @@ export interface ContextWorkPackagesRunInput {
   created_at?: string;
   execution_profile?: string;
   execution_mode?: string;
+  dispatch_mode?: "background" | "sync";
+  background?: boolean;
   [key: string]: unknown;
 }
 
 export interface ContextWorkPackagesRunResponse {
-  status: string;
+  status: "created" | "accepted" | string;
   phase?: string;
+  dispatch_run_id?: string;
+  selected_work_package_ids?: string[];
   executed_count?: number;
   executed_work_packages?: Array<Record<string, unknown>>;
   projection?: ProjectionResponse;

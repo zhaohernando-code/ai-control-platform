@@ -84,6 +84,8 @@ export default function FlowTaskDetailPage({
     try {
       await runContextWorkPackages({
         max_package_count: 1,
+        dispatch_mode: "background",
+        background: true,
         created_at: new Date().toISOString()
       });
       refresh();

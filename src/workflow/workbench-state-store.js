@@ -27,8 +27,9 @@ function sqlString(value) {
 
 function runSql(dbPath, sql, options = {}) {
   mkdirSync(dirname(dbPath), { recursive: true });
+  const timeoutMs = Number(options.timeoutMs || options.timeout_ms || 5000);
   const result = spawnSync(options.sqliteBin || "sqlite3", [dbPath], {
-    input: sql,
+    input: `.timeout ${timeoutMs}\n${sql}`,
     encoding: "utf8",
     maxBuffer: options.maxBuffer || 20 * 1024 * 1024
   });
@@ -43,8 +44,9 @@ function runSql(dbPath, sql, options = {}) {
 }
 
 function queryRows(dbPath, sql, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || options.timeout_ms || 5000);
   const result = spawnSync(options.sqliteBin || "sqlite3", ["-json", dbPath], {
-    input: sql,
+    input: `.timeout ${timeoutMs}\n${sql}`,
     encoding: "utf8",
     maxBuffer: options.maxBuffer || 20 * 1024 * 1024
   });

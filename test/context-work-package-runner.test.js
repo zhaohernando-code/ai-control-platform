@@ -3,7 +3,11 @@ import test from "node:test";
 
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
-import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
+import {
+  markContextWorkPackageDispatchFailed,
+  runContextWorkPackages,
+  stageContextWorkPackageDispatch
+} from "../src/workflow/context-work-package-runner.js";
 import { createRunManifest } from "../src/workflow/run-manifest.js";
 import {
   prepareContinuationFromProjectStatus,
@@ -900,4 +904,95 @@ test("context work package runner completes verified provider profile with durab
   assert.equal(result.artifact.metadata.completion_authority.allows_work_package_completion, true);
   assert.equal(result.artifact.metadata.package_results[0].allows_work_package_completion, true);
   assert.equal(result.artifact.metadata.model_routing.strategy, "per_work_package_buildModelCollaborationPlan");
+});
+
+test("context work package dispatch can be staged as running before background provider execution", () => {
+  const workflowState = workflowStateWithContextCycle();
+
+  const staged = stageContextWorkPackageDispatch(workflowState, {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    dispatch_run_id: "dispatch-running-001",
+    created_at: "2026-05-28T13:30:00.000Z"
+  });
+
+  assert.equal(staged.status, "pass");
+  assert.equal(staged.phase, "context_work_packages_dispatch_started");
+  assert.deepEqual(staged.selected_work_package_ids, ["runtime"]);
+  const runtime = staged.workflow_state.manifest.work_packages.find((item) => item.id === "runtime");
+  assert.equal(runtime.status, "running");
+  assert.equal(runtime.result, "dispatch_started");
+  assert.equal(runtime.dispatch_run_id, "dispatch-running-001");
+  assert.ok(staged.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_dispatch_started"));
+});
+
+test("context work package runner can complete a staged running package by explicit id", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const staged = stageContextWorkPackageDispatch(workflowState, {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    dispatch_run_id: "dispatch-complete-001",
+    created_at: "2026-05-28T13:31:00.000Z"
+  });
+
+  const result = runContextWorkPackages(staged.workflow_state, {
+    selected_work_package_ids: staged.selected_work_package_ids,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    created_at: "2026-05-28T13:32:00.000Z",
+    provider_executor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "background provider completed staged package"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `background-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "background_provider_executor",
+        provider: "multi_provider",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 1,
+        deterministic: false
+      }
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_count, 1);
+  assert.equal(result.workflow_state.manifest.work_packages.find((item) => item.id === "runtime").status, "completed");
+});
+
+test("context work package dispatch failure is persisted as failed", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const staged = stageContextWorkPackageDispatch(workflowState, {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    dispatch_run_id: "dispatch-failed-001",
+    created_at: "2026-05-28T13:33:00.000Z"
+  });
+
+  const failed = markContextWorkPackageDispatchFailed(staged.workflow_state, {
+    selected_work_package_ids: staged.selected_work_package_ids,
+    dispatch_run_id: "dispatch-failed-001",
+    created_at: "2026-05-28T13:34:00.000Z",
+    issues: [{ code: "provider_executor_timeout", message: "provider timed out", path: "provider_executor" }]
+  });
+
+  assert.equal(failed.status, "pass");
+  const runtime = failed.workflow_state.manifest.work_packages.find((item) => item.id === "runtime");
+  assert.equal(runtime.status, "failed");
+  assert.equal(runtime.result, "dispatch_failed");
+  assert.equal(runtime.failure_issues[0].code, "provider_executor_timeout");
+  assert.ok(failed.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_dispatch_failed"));
 });

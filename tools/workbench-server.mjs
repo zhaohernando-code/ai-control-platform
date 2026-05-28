@@ -55,7 +55,10 @@ import {
   recordProjectStatusContinuationPrepared
 } from "../src/workflow/project-status-continuation.js";
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
-import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
+import {
+  runContextWorkPackages,
+  stageContextWorkPackageDispatch
+} from "../src/workflow/context-work-package-runner.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import {
   applyGeneratedRequirementPlan,
@@ -1076,6 +1079,49 @@ function contextWorkPackageRunOptions(input = {}, projection = null) {
   };
 }
 
+function backgroundContextWorkPackageRequested(input = {}) {
+  const mode = normalizeString(input.dispatch_mode || input.dispatchMode || input.run_mode || input.runMode).toLowerCase();
+  return input.background === true ||
+    input.async === true ||
+    mode === "background" ||
+    mode === "async";
+}
+
+function backgroundContextWorkPackageOutputPath(dispatchRunId) {
+  return resolve(root, "tmp/context-work-package-background-jobs", `${dispatchRunId}.json`);
+}
+
+function launchContextWorkPackageBackgroundJob(input = {}) {
+  const args = [
+    resolve(root, "tools/run-context-work-packages-background-job.mjs"),
+    "--state-db", input.state_db,
+    "--snapshot-id", input.snapshot_id,
+    "--output", input.output_path,
+    "--selected-work-package-ids", input.selected_work_package_ids.join(","),
+    "--dispatch-run-id", input.dispatch_run_id,
+    "--created-at", input.created_at,
+    "--cwd", root
+  ];
+  if (input.timeout_seconds) args.push("--timeout-seconds", String(input.timeout_seconds));
+  if (input.channels_path) args.push("--channels-path", input.channels_path);
+  if (input.profiles_path) args.push("--profiles-path", input.profiles_path);
+  const child = spawn(process.execPath, args, {
+    cwd: root,
+    detached: true,
+    stdio: "ignore",
+    env: {
+      ...process.env,
+      AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS: String(input.timeout_seconds || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS || "")
+    }
+  });
+  child.unref();
+  return {
+    status: "started",
+    pid: child.pid,
+    output_path: input.output_path
+  };
+}
+
 function step03FrontendRulesPackage(node = {}) {
   const source = node.source || {};
   const implementation = normalizeString(source.implementation_step || source.implementationStep || node.reason || node.title);
@@ -1682,6 +1728,11 @@ export function createWorkbenchServer(options = {}) {
           options.agent_profiles_path ||
           process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH
       });
+  const contextWorkPackageBackgroundLauncher = typeof options.contextWorkPackageBackgroundLauncher === "function"
+    ? options.contextWorkPackageBackgroundLauncher
+    : typeof options.context_work_package_background_launcher === "function"
+      ? options.context_work_package_background_launcher
+      : launchContextWorkPackageBackgroundJob;
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore)
   );
@@ -2795,8 +2846,79 @@ export function createWorkbenchServer(options = {}) {
         }
         const workflowState = readWorkflowState(item);
         const projection = workbenchProjection(workflowState);
+        const runOptions = contextWorkPackageRunOptions(input, projection);
+        if (backgroundContextWorkPackageRequested(input)) {
+          if (!stateStore || !stateDbPath || !isSqliteSnapshotPath(item.input_path)) {
+            jsonResponse(res, 409, {
+              status: "blocked",
+              error: "background context work package dispatch requires sqlite live state",
+              item,
+              issues: [{
+                code: "background_dispatch_requires_sqlite_state",
+                message: "background context work package dispatch requires a sqlite workflow snapshot so the child runner can update state without blocking the API",
+                path: "state_store"
+              }],
+              projection
+            });
+            return;
+          }
+
+          const dispatchRunId = `context-work-package-dispatch-${selectedId}-${Date.now()}`;
+          const staged = stageContextWorkPackageDispatch(workflowState, {
+            ...runOptions,
+            dispatch_run_id: dispatchRunId
+          });
+          if (staged.status !== "pass") {
+            jsonResponse(res, 409, {
+              status: staged.status,
+              error: "context work package dispatch could not be started",
+              issues: staged.issues || [],
+              item,
+              phase: staged.phase,
+              fixed_development_mode_gate: staged.fixed_development_mode_gate || staged.gate_result || null,
+              work_package_execution_governance: staged.work_package_execution_governance ||
+                (staged.phase === "work_package_execution_governance" ? staged.gate_result : null),
+              projection
+            });
+            return;
+          }
+
+          writeWorkflowState(item, staged.workflow_state);
+          if (staged.workflow_state.project_status) {
+            writeProjectStatusState(projectStatusPath, staged.workflow_state.project_status, stateStore);
+          }
+          const stagedProjection = workbenchProjection(staged.workflow_state);
+          const backgroundJob = contextWorkPackageBackgroundLauncher({
+            state_db: stateDbPath,
+            snapshot_id: sqliteSnapshotIdFromInputPath(item.input_path),
+            output_path: backgroundContextWorkPackageOutputPath(dispatchRunId),
+            selected_work_package_ids: staged.selected_work_package_ids,
+            dispatch_run_id: dispatchRunId,
+            created_at: input.created_at || input.createdAt || new Date().toISOString(),
+            timeout_seconds: options.contextWorkPackageProviderTimeoutSeconds ||
+              options.context_work_package_provider_timeout_seconds ||
+              process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS,
+            channels_path: options.agentChannelsPath ||
+              options.agent_channels_path ||
+              process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
+            profiles_path: options.agentProfilesPath ||
+              options.agent_profiles_path ||
+              process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH
+          });
+          jsonResponse(res, 202, {
+            status: "accepted",
+            phase: staged.phase,
+            item,
+            dispatch_run_id: dispatchRunId,
+            selected_work_package_ids: staged.selected_work_package_ids,
+            background_job: backgroundJob,
+            projection: stagedProjection
+          });
+          return;
+        }
+
         const result = runContextWorkPackages(workflowState, {
-          ...contextWorkPackageRunOptions(input, projection),
+          ...runOptions,
           already_satisfied_evaluator: createMainlineAlreadySatisfiedEvaluator(),
           provider_executor: contextWorkPackageProviderExecutor
         });
@@ -2823,6 +2945,9 @@ export function createWorkbenchServer(options = {}) {
         }
 
         writeWorkflowState(item, { ...workflowState, ...result.workflow_state });
+        if (result.workflow_state?.project_status) {
+          writeProjectStatusState(projectStatusPath, result.workflow_state.project_status, stateStore);
+        }
         jsonResponse(res, 201, {
           status: "created",
           item,
