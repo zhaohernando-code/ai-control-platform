@@ -88,6 +88,23 @@ export function safeText(value: unknown, fallback = "--"): string {
   return String(value);
 }
 
+export function formatBeijingDateTime(value: unknown, fallback = "--"): string {
+  const raw = safeText(value, "");
+  if (!raw) return fallback;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(date).replace(/\//g, "-");
+}
+
 export function taskItemsFromProjection(projection: ProjectionResponse | null): TaskFlowItem[] {
   const projectManagement = asRecord(asRecord(projection).project_management);
   return asArray<TaskFlowItem>(projectManagement.task_items);

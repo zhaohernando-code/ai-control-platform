@@ -29,6 +29,7 @@ import { useProjection } from "@/lib/hooks";
 import {
   TASK_STATUS_COLOR,
   type TaskFlowItem,
+  formatBeijingDateTime,
   safeText,
   taskDetailHref,
   taskItemsFromProjection
@@ -66,8 +67,7 @@ export default function FlowPage() {
         task.project_id,
         task.project_name,
         task.status_label,
-        task.phase_label,
-        task.location_label
+        task.phase_label
       ].map((value) => safeText(value, "").toLowerCase()).join(" ");
       return statusMatches && (!normalizedQuery || text.includes(normalizedQuery));
     });
@@ -78,10 +78,10 @@ export default function FlowPage() {
       title: "任务标题",
       dataIndex: "title",
       key: "title",
+      width: 190,
       render: (_, task) => (
         <Space direction="vertical" size={0}>
           <Text strong>{safeText(task.title)}</Text>
-          <Text type="secondary">{safeText(task.task_id)}</Text>
         </Space>
       )
     },
@@ -89,12 +89,14 @@ export default function FlowPage() {
       title: "所属项目",
       dataIndex: "project_name",
       key: "project_name",
+      width: 130,
       render: (_, task) => safeText(task.project_name || task.project_id)
     },
     {
       title: "当前状态",
       dataIndex: "status_label",
       key: "status_label",
+      width: 105,
       render: (_, task) => (
         <Tag color={TASK_STATUS_COLOR[safeText(task.status, "")] || "default"}>
           {safeText(task.status_label)}
@@ -105,32 +107,33 @@ export default function FlowPage() {
       title: "当前阶段",
       dataIndex: "phase_label",
       key: "phase_label",
+      width: 120,
       render: (_, task) => safeText(task.phase_label)
-    },
-    {
-      title: "所在",
-      dataIndex: "location_label",
-      key: "location_label",
-      render: (_, task) => safeText(task.location_label)
     },
     {
       title: "更新时间",
       dataIndex: "updated_at",
       key: "updated_at",
-      render: (_, task) => safeText(task.updated_at || task.submitted_at)
+      width: 185,
+      render: (_, task) => (
+        <Text style={{ whiteSpace: "nowrap" }}>
+          {formatBeijingDateTime(task.updated_at || task.submitted_at)}
+        </Text>
+      )
     },
     {
       title: "操作",
       key: "actions",
       fixed: "right",
+      width: 196,
       render: (_, task) => (
-        <Space>
+        <Space wrap size={8}>
           <Button
             size="small"
             icon={<EyeOutlined />}
             onClick={() => router.push(taskDetailHref(task.task_id))}
           >
-            显示详情
+            详情
           </Button>
           {task.reviewable && (
             <Button size="small" type="primary" onClick={() => setReviewTask(task)}>
@@ -191,7 +194,7 @@ export default function FlowPage() {
               dataSource={filteredTasks}
               loading={loading && tasks.length === 0}
               pagination={{ pageSize: 8, showSizeChanger: false }}
-              scroll={{ x: 1100 }}
+              scroll={{ x: 926 }}
               locale={{ emptyText: <Empty description="暂无任务" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
             />
           ) : (

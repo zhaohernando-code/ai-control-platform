@@ -28,6 +28,7 @@ import {
   asArray,
   asRecord,
   findTaskById,
+  formatBeijingDateTime,
   safeText
 } from "@/lib/task-flow";
 
@@ -124,7 +125,7 @@ export default function FlowTaskDetailPage({
                   {safeText(task.location_label)}
                 </Descriptions.Item>
                 <Descriptions.Item label="更新时间">
-                  {safeText(task.updated_at || task.submitted_at)}
+                  {formatBeijingDateTime(task.updated_at || task.submitted_at)}
                 </Descriptions.Item>
                 <Descriptions.Item label="需求描述" span={2}>
                   <Paragraph style={{ marginBottom: 0, whiteSpace: "pre-wrap" }}>

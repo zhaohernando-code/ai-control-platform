@@ -721,6 +721,7 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
     assert.match(shell, new RegExp(`key: "${route.dir}"`),
       `shell must have nav key: ${route.dir}`);
   }
+  assert.doesNotMatch(shell, /中台工作台/);
 
   const flowDetail = read("apps/workbench/app/flow/[taskId]/page.tsx");
   assert.match(flowDetail, /params: \{ taskId: string \}/);
@@ -745,6 +746,10 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(flow, /taskItemsFromProjection/);
   assert.match(flow, /计划审视/);
   assert.match(flow, /taskDetailHref/);
+  assert.match(flow, /formatBeijingDateTime/);
+  assert.doesNotMatch(flow, /title:\s*"所在"/);
+  assert.doesNotMatch(flow, /显示详情/);
+  assert.doesNotMatch(flow, /<Text type="secondary">\{safeText\(task\.task_id\)\}<\/Text>/);
   assert.doesNotMatch(flow, /\/flow\?task=/);
 });
 

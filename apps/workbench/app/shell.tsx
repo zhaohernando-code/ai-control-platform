@@ -11,13 +11,13 @@ import {
   SolutionOutlined,
   WarningOutlined
 } from "@ant-design/icons";
-import { Layout, Menu, Space, Spin, Typography, theme } from "antd";
+import { Layout, Menu, Space, Spin, Typography } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useTransition } from "react";
 
-const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
+const { Sider, Content } = Layout;
+const { Title } = Typography;
 
 /**
  * WorkbenchShell：固定 antd Layout 骨架（Sider + Header + Content）。
@@ -52,9 +52,6 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
-  const {
-    token: { colorBgContainer, colorBorderSecondary }
-  } = theme.useToken();
   const selectedKey = useMemo(() => selectedKeyFromPath(pathname), [pathname]);
   const menuItems = useMemo(
     () =>
@@ -108,26 +105,6 @@ export function WorkbenchShell({ children }: { children: ReactNode }) {
         />
       </Sider>
       <Layout>
-        <Header
-          style={{
-            background: colorBgContainer,
-            borderBottom: `1px solid ${colorBorderSecondary}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 24px"
-          }}
-        >
-          <Space size="middle" align="center">
-            <Title level={4} style={{ margin: 0 }}>
-              中台工作台
-            </Title>
-            <Text type="secondary">单页 app · antd 骨架 · 与 workbench-server 联调</Text>
-          </Space>
-          <Text type="secondary" data-bind="ui_environment">
-            {process.env.WORKBENCH_API_BASE || "http://127.0.0.1:4180"}
-          </Text>
-        </Header>
         <Content style={{ padding: 24 }}>
           <Spin spinning={isPending} size="large">
             {children}
