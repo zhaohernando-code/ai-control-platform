@@ -14,6 +14,7 @@ import {
   Grid,
   Input,
   List,
+  Modal,
   Segmented,
   Space,
   Table,
@@ -25,11 +26,13 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { PlanReviewDrawer } from "./plan-review-drawer";
+import { closeRequirementTask, retryRequirementPlan } from "@/lib/api/requirements";
 import { useProjection } from "@/lib/hooks";
 import {
   TASK_STATUS_COLOR,
   type TaskFlowItem,
   formatBeijingDateTime,
+  isRecoverableFailedTask,
   safeText,
   taskDetailHref,
   taskItemsFromProjection
@@ -56,6 +59,8 @@ export default function FlowPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string>("all");
   const [reviewTask, setReviewTask] = useState<TaskFlowItem | null>(null);
+  const [actionTaskId, setActionTaskId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const screens = useBreakpoint();
   const tasks = taskItemsFromProjection(projection);
   const filteredTasks = useMemo(() => {
@@ -72,6 +77,49 @@ export default function FlowPage() {
       return statusMatches && (!normalizedQuery || text.includes(normalizedQuery));
     });
   }, [tasks, query, status]);
+
+  const handleRetryPlan = async (task: TaskFlowItem) => {
+    setActionError(null);
+    setActionTaskId(task.task_id);
+    try {
+      await retryRequirementPlan({
+        requirement_id: task.task_id,
+        created_at: new Date().toISOString()
+      });
+      refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "计划生成重试失败");
+    } finally {
+      setActionTaskId(null);
+    }
+  };
+
+  const handleCloseFailedTask = (task: TaskFlowItem) => {
+    Modal.confirm({
+      title: "关闭失败任务",
+      content: `关闭后「${safeText(task.title)}」不再阻塞任务流，可从历史记录继续查看。`,
+      okText: "关闭任务",
+      okButtonProps: { danger: true },
+      cancelText: "取消",
+      onOk: async () => {
+        setActionError(null);
+        setActionTaskId(task.task_id);
+        try {
+          await closeRequirementTask({
+            requirement_id: task.task_id,
+            note: "operator closed failed task from task flow",
+            created_at: new Date().toISOString()
+          });
+          refresh();
+        } catch (err) {
+          setActionError(err instanceof Error ? err.message : "关闭任务失败");
+          throw err;
+        } finally {
+          setActionTaskId(null);
+        }
+      }
+    });
+  };
 
   const columns: ColumnsType<TaskFlowItem> = [
     {
@@ -140,6 +188,26 @@ export default function FlowPage() {
               计划审视
             </Button>
           )}
+          {isRecoverableFailedTask(task) && (
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              loading={actionTaskId === task.task_id}
+              onClick={() => handleRetryPlan(task)}
+            >
+              重试计划
+            </Button>
+          )}
+          {isRecoverableFailedTask(task) && (
+            <Button
+              size="small"
+              danger
+              loading={actionTaskId === task.task_id}
+              onClick={() => handleCloseFailedTask(task)}
+            >
+              关闭
+            </Button>
+          )}
         </Space>
       )
     }
@@ -165,6 +233,16 @@ export default function FlowPage() {
           message="任务流加载失败"
           description={error.message}
           action={<Button size="small" danger onClick={refresh}>重试</Button>}
+        />
+      )}
+      {actionError && (
+        <Alert
+          showIcon
+          type="error"
+          message="任务操作失败"
+          description={actionError}
+          closable
+          onClose={() => setActionError(null)}
         />
       )}
       <Card>
@@ -212,6 +290,27 @@ export default function FlowPage() {
                   actions.push(
                     <Button key="review" size="small" type="primary" onClick={() => setReviewTask(task)}>
                       计划审视
+                    </Button>
+                  );
+                }
+                if (isRecoverableFailedTask(task)) {
+                  actions.push(
+                    <Button
+                      key="retry"
+                      size="small"
+                      loading={actionTaskId === task.task_id}
+                      onClick={() => handleRetryPlan(task)}
+                    >
+                      重试计划
+                    </Button>,
+                    <Button
+                      key="close"
+                      size="small"
+                      danger
+                      loading={actionTaskId === task.task_id}
+                      onClick={() => handleCloseFailedTask(task)}
+                    >
+                      关闭
                     </Button>
                   );
                 }

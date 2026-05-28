@@ -1,4 +1,4 @@
-const COMPLETE_STATUSES = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed", "shipped"]);
+const COMPLETE_STATUSES = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed", "closed_failed", "canceled", "cancelled", "shipped"]);
 const BLOCKED_STATUSES = new Set(["blocked", "human_intervention", "stop_for_human"]);
 
 function asArray(value) {

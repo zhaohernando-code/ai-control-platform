@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   applyGeneratedRequirementPlan,
+  closeRequirementInProjectStatus,
   completeRequirementInProjectStatus,
   createRequirementPlanPrompt,
   markRequirementPlanGenerationFailed,
@@ -10,6 +11,7 @@ import {
   normalizeRequirementPlanWorkPackagesGranularity,
   parseRequirementPlanGenerationOutput,
   recordRequirementIntakeSubmitted,
+  resetRequirementPlanGeneration,
   submitRequirementToProjectStatus,
   summarizeRequirementIntake,
   updateRequirementPlanReview
@@ -195,6 +197,53 @@ test("requirement plan generation failures are persisted as explicit failed stat
   assert.equal(projection.project_management.plan_review.phase, "plan_generation_failed");
   assert.equal(projection.next_action_readout.action, "retry_requirement_plan_generation");
   assert.match(projection.project_management.plan_review.assessment_summary, /生成失败/);
+});
+
+test("failed requirement plan generation can be retried or closed without blocking forever", () => {
+  const submitted = submitRequirementToProjectStatus(workflowState().project_status, {
+    title: "完成项目 tab",
+    project_id: "ai-control-platform",
+    problem_statement: "项目 tab 需要接入项目治理。",
+    plan_review_requested: true
+  }, {
+    created_at: "2026-05-25T08:00:00.000Z",
+    requirement_id: "requirement-project-tab"
+  });
+  const failed = markRequirementPlanGenerationFailed(submitted.project_status, {
+    requirement_id: "requirement-project-tab",
+    stderr: "spawnSync plan generator ETIMEDOUT"
+  }, {
+    created_at: "2026-05-25T08:02:00.000Z"
+  });
+
+  const retried = resetRequirementPlanGeneration(failed.project_status, {
+    requirement_id: "requirement-project-tab"
+  }, {
+    created_at: "2026-05-25T08:05:00.000Z"
+  });
+  assert.equal(retried.status, "pass");
+  assert.equal(retried.plan_review.phase, "pending_plan_generation");
+  assert.equal(retried.plan_review.generation_error, null);
+  assert.equal(retried.project_status.requirement_intake.active_requirement_id, "requirement-project-tab");
+
+  const closed = closeRequirementInProjectStatus(failed.project_status, {
+    requirement_id: "requirement-project-tab",
+    note: "用户关闭失败任务"
+  }, {
+    created_at: "2026-05-25T08:10:00.000Z"
+  });
+  const projection = createWorkbenchProjection({
+    ...workflowState(),
+    project_status: closed.project_status
+  });
+
+  assert.equal(closed.status, "pass");
+  assert.equal(closed.plan_review.phase, "closed_failed");
+  assert.equal(closed.project_status.requirement_intake.open_count, 0);
+  assert.equal(closed.project_status.global_goals[0].status, "closed");
+  assert.equal(projection.project_management.task_items[0].status, "closed");
+  assert.equal(projection.project_management.active_tasks, 0);
+  assert.equal(projection.global_goal_completion.pending, 0);
 });
 
 test("requirement intake fact drives workbench next action into existing autonomous flow", () => {

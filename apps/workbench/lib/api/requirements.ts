@@ -50,6 +50,24 @@ export interface PlanReviewUpdateResponse {
   [key: string]: unknown;
 }
 
+export interface RequirementTaskActionInput {
+  requirement_id: string;
+  note?: string;
+  created_at?: string;
+}
+
+export interface RequirementTaskActionResponse {
+  status: string;
+  requirement?: Record<string, unknown>;
+  plan_review?: Record<string, unknown>;
+  projection?: ProjectionResponse;
+  plan_generation?: {
+    status?: string;
+    issues?: Array<Record<string, unknown>>;
+  };
+  [key: string]: unknown;
+}
+
 export function submitRequirement(
   input: RequirementSubmissionInput
 ): Promise<RequirementSubmissionResponse> {
@@ -64,6 +82,26 @@ export function updatePlanReview(
   input: PlanReviewUpdateInput
 ): Promise<PlanReviewUpdateResponse> {
   return fetchWorkbenchJson<PlanReviewUpdateResponse>("/api/workbench/plan-reviews", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export function retryRequirementPlan(
+  input: RequirementTaskActionInput
+): Promise<RequirementTaskActionResponse> {
+  return fetchWorkbenchJson<RequirementTaskActionResponse>("/api/workbench/requirements/retry-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export function closeRequirementTask(
+  input: RequirementTaskActionInput
+): Promise<RequirementTaskActionResponse> {
+  return fetchWorkbenchJson<RequirementTaskActionResponse>("/api/workbench/requirements/close", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)

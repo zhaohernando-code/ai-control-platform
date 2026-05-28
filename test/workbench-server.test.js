@@ -990,6 +990,100 @@ test("workbench server persists frontend requirement before model plan generatio
   });
 });
 
+test("workbench server retries and closes failed requirement plan generation", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-retry-close-"));
+  const historyPath = join(snapshotsRoot, "projection-history.json");
+  const inputPath = join(snapshotsRoot, "requirement-retry-close-input.json");
+  const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
+  const workflowState = currentSessionWithoutRequirementPlanReview();
+  workflowState.manifest.events = [];
+  writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
+  writeFileSync(projectStatusPath, JSON.stringify({
+    project: "ai-control-platform",
+    status: "in_progress",
+    blockers: [],
+    next_step: "",
+    global_goals: []
+  }, null, 2));
+  writeFileSync(historyPath, JSON.stringify({
+    version: "projection-history.v1",
+    latest: "requirement-retry-close",
+    items: [
+      {
+        id: "requirement-retry-close",
+        label: "Requirement retry close",
+        status: "pass",
+        input_path: relative(process.cwd(), inputPath)
+      }
+    ]
+  }, null, 2));
+
+  let generatorMode = "fail";
+  await withServer(async (baseUrl) => {
+    const submitted = await request(`${baseUrl}/api/workbench/requirements?id=requirement-retry-close`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: "完成项目 tab",
+        project_id: "ai-control-platform",
+        problem_statement: "项目 tab 需要接入项目治理。",
+        plan_review_requested: true,
+        generate_plan: true,
+        created_at: "2026-05-25T10:00:00.000Z",
+        requirement_id: "requirement-project-tab"
+      })
+    });
+    assert.equal(submitted.status, 201);
+    await waitForCondition(() => {
+      const currentProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+      return currentProjectStatus.plan_reviews["requirement-project-tab"].phase === "plan_generation_failed";
+    }, "initial failed plan generation");
+
+    generatorMode = "pass";
+    const retry = await request(`${baseUrl}/api/workbench/requirements/retry-plan?id=requirement-retry-close`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requirement_id: "requirement-project-tab",
+        created_at: "2026-05-25T10:05:00.000Z"
+      })
+    });
+    const retryPayload = retry.json();
+    assert.equal(retry.status, 202);
+    assert.equal(retryPayload.plan_review.phase, "pending_plan_generation");
+    assert.equal(retryPayload.plan_generation.status, "scheduled");
+    await waitForCondition(() => {
+      const currentProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+      return currentProjectStatus.plan_reviews["requirement-project-tab"].phase === "ready_for_review";
+    }, "retried plan generation");
+
+    const close = await request(`${baseUrl}/api/workbench/requirements/close?id=requirement-retry-close`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        requirement_id: "requirement-project-tab",
+        note: "operator closed failed task",
+        created_at: "2026-05-25T10:10:00.000Z"
+      })
+    });
+    const closePayload = close.json();
+    assert.equal(close.status, 201);
+    assert.equal(closePayload.plan_review.phase, "closed_failed");
+    assert.equal(closePayload.projection.project_management.task_items[0].status, "closed");
+    assert.equal(closePayload.projection.project_management.active_tasks, 0);
+    assert.equal(closePayload.projection.global_goal_completion.pending, 0);
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath,
+    requirementPlanGenerator: async () => (
+      generatorMode === "pass"
+        ? { status: "pass", generated_plan: generatedRequirementPlan(), generator: { kind: "test_model_plan" } }
+        : { status: "fail", stderr: "simulated model timeout", generator: { kind: "test_model_plan", timed_out: true } }
+    )
+  });
+});
+
 test("workbench server records plan review decisions", async () => {
   const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-plan-review-"));
   const historyPath = join(snapshotsRoot, "projection-history.json");

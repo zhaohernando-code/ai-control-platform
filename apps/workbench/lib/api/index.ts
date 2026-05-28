@@ -26,6 +26,8 @@ export const WORKBENCH_API_ENDPOINTS: ReadonlyArray<WorkbenchEndpoint> = [
   { method: "GET", path: "/api/workbench/events", description: "operator 事件账本读取" },
   { method: "POST", path: "/api/workbench/events", description: "operator 事件写入" },
   { method: "POST", path: "/api/workbench/requirements", description: "新建任务（需求录入）" },
+  { method: "POST", path: "/api/workbench/requirements/retry-plan", description: "任务计划生成重试" },
+  { method: "POST", path: "/api/workbench/requirements/close", description: "关闭失败任务" },
   { method: "POST", path: "/api/workbench/plan-reviews", description: "方案审核（approve / revise）" },
   { method: "POST", path: "/api/workbench/next-action", description: "已守护的下一步动作" },
   { method: "POST", path: "/api/workbench/scheduler-dispatch", description: "调度派发" },

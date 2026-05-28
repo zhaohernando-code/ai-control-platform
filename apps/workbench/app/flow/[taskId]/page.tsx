@@ -12,6 +12,7 @@ import {
   Descriptions,
   Empty,
   List,
+  Modal,
   Space,
   Spin,
   Tag,
@@ -22,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { PlanReviewDrawer } from "../plan-review-drawer";
+import { closeRequirementTask, retryRequirementPlan } from "@/lib/api/requirements";
 import { useProjection } from "@/lib/hooks";
 import {
   TASK_STATUS_COLOR,
@@ -29,6 +31,7 @@ import {
   asRecord,
   findTaskById,
   formatBeijingDateTime,
+  isRecoverableFailedTask,
   safeText
 } from "@/lib/task-flow";
 
@@ -46,12 +49,59 @@ export default function FlowTaskDetailPage({
     immediate: true
   });
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const task = findTaskById(projection, taskId);
   const planReview = task?.plan_review || {};
   const workPackages = task?.work_packages || [];
   const events = asArray<Record<string, unknown>>(
     asRecord(asRecord(projection).operations_timeline).items
   ).filter((event) => safeText(event.requirement_id || event.global_goal_id || "", "") === taskId);
+
+  const handleRetryPlan = async () => {
+    if (!task) return;
+    setActionError(null);
+    setActionLoading(true);
+    try {
+      await retryRequirementPlan({
+        requirement_id: task.task_id,
+        created_at: new Date().toISOString()
+      });
+      refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "计划生成重试失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCloseFailedTask = () => {
+    if (!task) return;
+    Modal.confirm({
+      title: "关闭失败任务",
+      content: `关闭后「${safeText(task.title)}」不再阻塞任务流，可从历史记录继续查看。`,
+      okText: "关闭任务",
+      okButtonProps: { danger: true },
+      cancelText: "取消",
+      onOk: async () => {
+        setActionError(null);
+        setActionLoading(true);
+        try {
+          await closeRequirementTask({
+            requirement_id: task.task_id,
+            note: "operator closed failed task from task detail",
+            created_at: new Date().toISOString()
+          });
+          refresh();
+        } catch (err) {
+          setActionError(err instanceof Error ? err.message : "关闭任务失败");
+          throw err;
+        } finally {
+          setActionLoading(false);
+        }
+      }
+    });
+  };
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
@@ -81,6 +131,16 @@ export default function FlowTaskDetailPage({
           action={<Button size="small" danger onClick={refresh}>重试</Button>}
         />
       )}
+      {actionError && (
+        <Alert
+          showIcon
+          type="error"
+          message="任务操作失败"
+          description={actionError}
+          closable
+          onClose={() => setActionError(null)}
+        />
+      )}
       <Spin spinning={loading && !task}>
         {!task ? (
           <Card>
@@ -101,6 +161,24 @@ export default function FlowTaskDetailPage({
                   {task.reviewable && (
                     <Button type="primary" onClick={() => setReviewOpen(true)}>
                       计划审视
+                    </Button>
+                  )}
+                  {isRecoverableFailedTask(task) && (
+                    <Button
+                      icon={<ReloadOutlined />}
+                      loading={actionLoading}
+                      onClick={handleRetryPlan}
+                    >
+                      重试计划
+                    </Button>
+                  )}
+                  {isRecoverableFailedTask(task) && (
+                    <Button
+                      danger
+                      loading={actionLoading}
+                      onClick={handleCloseFailedTask}
+                    >
+                      关闭失败任务
                     </Button>
                   )}
                 </Space>

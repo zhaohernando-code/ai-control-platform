@@ -258,6 +258,15 @@ function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, proje
       review?.failure_reason
   );
   const timedOut = /timeout|timed\s*out|超时/i.test(failureText);
+  if (["closed_failed", "canceled", "cancelled"].includes(requirementStatus) || ["closed_failed", "canceled", "cancelled"].includes(reviewStatus) || ["closed_failed", "canceled", "cancelled"].includes(normalizedPhase)) {
+    return {
+      status: "closed",
+      status_label: "已关闭",
+      phase: normalizedPhase,
+      phase_label: "失败已关闭",
+      location_label: "任务归档"
+    };
+  }
   if (
     ["completed", "complete", "accepted", "closed"].includes(requirementStatus) ||
     ["completed", "complete", "accepted", "closed"].includes(reviewStatus) ||
@@ -367,7 +376,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const taskFlow = taskFlowFromDag(dagSummary);
   const hasTaskItems = taskItems.length > 0;
   const activeTaskItems = taskItems
-    .filter((item) => !["completed", "failed", "timeout"].includes(normalizeString(item.status)));
+    .filter((item) => !["completed", "failed", "timeout", "closed"].includes(normalizeString(item.status)));
   const latestRequirement = requirementIntake.latest || null;
   const currentTask = normalizeString(
     latestRequirement?.summary ||

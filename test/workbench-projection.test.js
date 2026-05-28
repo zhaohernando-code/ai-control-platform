@@ -301,6 +301,47 @@ test("workbench projection treats completed requirement goals as completed task 
   assert.equal(projection.one_screen.counters.active_tasks, 0);
 });
 
+test("workbench projection treats closed failed requirements as inactive archived tasks", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        open_count: 0,
+        items: [
+          {
+            id: "requirement-closed-failed",
+            title: "关闭失败任务",
+            status: "closed_failed",
+            submitted_at: "2026-05-28T02:00:00.000Z"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-closed-failed": {
+          phase: "closed_failed",
+          status: "closed_failed",
+          close_reason: "operator closed failed task"
+        }
+      },
+      global_goals: [
+        {
+          id: "requirement-closed-failed",
+          title: "关闭失败任务",
+          status: "closed"
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "closed");
+  assert.equal(task.status_label, "已关闭");
+  assert.equal(task.phase_label, "失败已关闭");
+  assert.equal(projection.project_management.active_tasks, 0);
+  assert.equal(projection.global_goal_completion.pending, 0);
+});
+
 test("workbench projection exposes governance audit repair as an automation next action", () => {
   const input = baseInput();
   const artifactId = "governance-audit-current";

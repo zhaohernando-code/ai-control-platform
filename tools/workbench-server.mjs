@@ -58,11 +58,13 @@ import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-w
 import { createHeadlessProviderExecutor } from "../src/workflow/headless-cli-orchestrator.js";
 import {
   applyGeneratedRequirementPlan,
+  closeRequirementInProjectStatus,
   completeRequirementInProjectStatus,
   createRequirementPlanPrompt,
   markRequirementPlanGenerationFailed,
   parseRequirementPlanGenerationOutput,
   recordRequirementIntakeSubmitted,
+  resetRequirementPlanGeneration,
   submitRequirementToProjectStatus,
   updateRequirementPlanReview
 } from "../src/workflow/requirement-intake.js";
@@ -2518,6 +2520,114 @@ export function createWorkbenchServer(options = {}) {
           projection: auto_advance.projection || projection,
           submitted_projection: projection,
           auto_advance
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/requirements/retry-plan" && req.method === "POST") {
+        const history = readServerHistory();
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const workflowState = readWorkflowState(item);
+        const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
+        const reset = resetRequirementPlanGeneration(currentProjectStatus || {}, input, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (reset.status !== "pass") {
+          jsonResponse(res, 400, { error: "invalid requirement plan retry", issues: reset.issues || [] });
+          return;
+        }
+
+        const nextWorkflowState = workflowStateWithProjectStatus(workflowState, reset.project_status);
+        writeProjectStatusState(projectStatusPath, reset.project_status, stateStore);
+        writeWorkflowState(item, nextWorkflowState);
+        const projection = workbenchProjection(nextWorkflowState);
+        startRequirementPlanGenerationInBackground({
+          submitted: {
+            status: "pass",
+            requirement: reset.requirement,
+            plan_review: reset.plan_review,
+            project_status: reset.project_status
+          },
+          input,
+          item,
+          readWorkflowState,
+          writeWorkflowState,
+          projectStatusPath,
+          stateStore,
+          requirementPlanGenerator
+        });
+        jsonResponse(res, 202, {
+          status: "scheduled",
+          item,
+          requirement: reset.requirement,
+          plan_review: reset.plan_review,
+          plan_generation: {
+            status: "scheduled",
+            issues: []
+          },
+          projection,
+          auto_advance: {
+            status: "waiting_for_plan_generation",
+            result: null,
+            artifact: null,
+            projection,
+            reason: "requirement plan generation retry is running in the task flow"
+          }
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/requirements/close" && req.method === "POST") {
+        const history = readServerHistory();
+        const selectedId = url.searchParams.get("id") || history.latest;
+        const item = history.items.find((entry) => entry.id === selectedId);
+        if (!item?.input_path) {
+          jsonResponse(res, 400, { error: `workflow state input not found: ${selectedId}` });
+          return;
+        }
+
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const workflowState = readWorkflowState(item);
+        const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
+        const closed = closeRequirementInProjectStatus(currentProjectStatus || {}, input, {
+          created_at: input.created_at || input.createdAt
+        });
+        if (closed.status !== "pass") {
+          jsonResponse(res, 400, { error: "invalid requirement close", issues: closed.issues || [] });
+          return;
+        }
+
+        const nextWorkflowState = workflowStateWithProjectStatus(workflowState, closed.project_status);
+        writeProjectStatusState(projectStatusPath, closed.project_status, stateStore);
+        writeWorkflowState(item, nextWorkflowState);
+        const projection = workbenchProjection(nextWorkflowState);
+        jsonResponse(res, 201, {
+          status: "closed",
+          item,
+          requirement: closed.requirement,
+          plan_review: closed.plan_review,
+          projection
         });
         return;
       }

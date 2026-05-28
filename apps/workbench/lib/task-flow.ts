@@ -70,8 +70,13 @@ export const TASK_STATUS_COLOR: Record<string, string> = {
   completed: "green",
   failed: "red",
   timeout: "volcano",
+  closed: "default",
   revising: "purple"
 };
+
+export function isRecoverableFailedTask(task: TaskFlowItem): boolean {
+  return task.status === "failed" || task.status === "timeout";
+}
 
 export function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
