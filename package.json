@@ -22,6 +22,7 @@
     "check:workbench:state-boundary": "node tools/run-with-node18.mjs tools/check-workbench-state-boundary.mjs",
     "check:audit-skill-trial": "node tools/run-with-node18.mjs tools/check-audit-skill-trial-run.mjs",
     "check:scheduler-dispatch-writeback": "node tools/run-with-node18.mjs tools/check-scheduler-dispatch-writeback.mjs",
+    "check:development-flow-real": "node tools/run-with-node18.mjs tools/check-development-flow-real.mjs",
     "check:autonomous-closeout-loop-run": "node tools/run-with-node18.mjs tools/check-autonomous-closeout-loop-run.mjs",
     "check:closeout": "node tools/run-with-node18.mjs tools/check-closeout.mjs",
     "run:self-governance-scan": "node tools/run-with-node18.mjs tools/run-self-governance-scan.mjs",
