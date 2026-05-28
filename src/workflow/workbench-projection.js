@@ -248,7 +248,20 @@ function requirementGoalCompleted(projectStatus = {}, requirementId = "") {
     });
 }
 
-function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, projectStatus = {}) {
+function workPackageExecutionStatus(workPackages = []) {
+  const statuses = asArray(workPackages)
+    .map((workPackage) => normalizeString(workPackage?.status).toLowerCase())
+    .filter(Boolean);
+  if (statuses.some((status) => ["running", "active", "in_progress", "in-progress"].includes(status))) {
+    return "running";
+  }
+  if (statuses.some((status) => ["pending", "queued", "ready", "rerun"].includes(status))) {
+    return "pending_execution";
+  }
+  return "";
+}
+
+function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, projectStatus = {}, workPackages = []) {
   const normalizedPhase = normalizeString(phase) || "pending_plan_generation";
   const requirementStatus = normalizeString(requirement.status).toLowerCase();
   const reviewStatus = normalizeString(review.status).toLowerCase();
@@ -291,6 +304,15 @@ function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, proje
     };
   }
   if (normalizedPhase === "in_development") {
+    if (workPackageExecutionStatus(workPackages) === "pending_execution") {
+      return {
+        status: "pending_execution",
+        status_label: "待执行",
+        phase: normalizedPhase,
+        phase_label: "等待派发",
+        location_label: "执行队列"
+      };
+    }
     return {
       status: "running",
       status_label: "运行中",
@@ -318,12 +340,19 @@ function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, proje
     };
   }
   return {
-    status: "running",
-    status_label: "运行中",
+    status: "pending_plan_generation",
+    status_label: "待生成",
     phase: normalizedPhase,
-    phase_label: "计划生成中",
+    phase_label: "等待方案生成",
     location_label: "计划生成"
   };
+}
+
+function taskCanRecover(status = {}, review = {}) {
+  const normalizedStatus = normalizeString(status.status);
+  const normalizedPhase = normalizeString(status.phase || review.phase);
+  return ["pending_plan_generation", "pending_execution", "failed", "timeout"].includes(normalizedStatus) ||
+    ["pending_plan_generation", "plan_generation_failed"].includes(normalizedPhase);
 }
 
 function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) {
@@ -333,7 +362,8 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) 
   return asArray(requirementIntake.items).map((requirement) => {
     const requirementId = normalizeString(requirement.id);
     const review = planReviews[requirementId] || {};
-    const status = taskStatusForPlanPhase(review.phase, review, requirement, projectStatus);
+    const workPackages = taskWorkPackagesForRequirement(projectStatus, requirementId);
+    const status = taskStatusForPlanPhase(review.phase, review, requirement, projectStatus, workPackages);
     return {
       task_id: requirementId,
       title: normalizeString(requirement.title) || requirementId,
@@ -350,6 +380,7 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) 
       problem_statement: normalizeString(requirement.problem_statement || requirement.problemStatement),
       constraints: normalizeString(requirement.constraints),
       reviewable: status.phase === "ready_for_review",
+      recoverable: taskCanRecover(status, review),
       failure_reason: normalizeString(review?.generation_error?.message || review?.failure_reason) || null,
       plan_review: {
         ...(review || {}),
@@ -357,7 +388,7 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) 
         requirement_title: normalizeString(requirement.title) || normalizeString(review.requirement_title),
         reviewable: status.phase === "ready_for_review"
       },
-      work_packages: taskWorkPackagesForRequirement(projectStatus, requirementId)
+      work_packages: workPackages
     };
   });
 }

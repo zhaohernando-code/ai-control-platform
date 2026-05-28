@@ -87,7 +87,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2260,
+      "lines": 2291,
       "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -135,7 +135,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 2843,
+      "lines": 2927,
       "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -147,7 +147,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-shell.test.js": {
-      "lines": 791,
+      "lines": 815,
       "reason": "Workbench shell tests cover desktop/mobile shell invariants and mounted entry compatibility across shared fixtures.",
       "status": "accepted",
       "reviewed_at": "2026-05-28"

@@ -23,7 +23,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { PlanReviewDrawer } from "../plan-review-drawer";
-import { closeRequirementTask, retryRequirementPlan } from "@/lib/api/requirements";
+import { closeRequirementTask, retryRequirementPlan, runContextWorkPackages } from "@/lib/api/requirements";
 import { useProjection } from "@/lib/hooks";
 import {
   TASK_STATUS_COLOR,
@@ -31,7 +31,9 @@ import {
   asRecord,
   findTaskById,
   formatBeijingDateTime,
-  isRecoverableFailedTask,
+  isPendingExecutionTask,
+  isRecoverablePlanTask,
+  recoveryActionLabel,
   safeText
 } from "@/lib/task-flow";
 
@@ -75,10 +77,27 @@ export default function FlowTaskDetailPage({
     }
   };
 
-  const handleCloseFailedTask = () => {
+  const handleResumeExecution = async () => {
+    if (!task) return;
+    setActionError(null);
+    setActionLoading(true);
+    try {
+      await runContextWorkPackages({
+        max_package_count: 1,
+        created_at: new Date().toISOString()
+      });
+      refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "恢复执行失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCloseTask = () => {
     if (!task) return;
     Modal.confirm({
-      title: "关闭失败任务",
+      title: "关闭任务",
       content: `关闭后「${safeText(task.title)}」不再阻塞任务流，可从历史记录继续查看。`,
       okText: "关闭任务",
       okButtonProps: { danger: true },
@@ -163,22 +182,31 @@ export default function FlowTaskDetailPage({
                       计划审视
                     </Button>
                   )}
-                  {isRecoverableFailedTask(task) && (
+                  {isPendingExecutionTask(task) && (
+                    <Button
+                      icon={<ReloadOutlined />}
+                      loading={actionLoading}
+                      onClick={handleResumeExecution}
+                    >
+                      恢复执行
+                    </Button>
+                  )}
+                  {isRecoverablePlanTask(task) && (
                     <Button
                       icon={<ReloadOutlined />}
                       loading={actionLoading}
                       onClick={handleRetryPlan}
                     >
-                      重试计划
+                      {recoveryActionLabel(task)}
                     </Button>
                   )}
-                  {isRecoverableFailedTask(task) && (
+                  {isRecoverablePlanTask(task) && (
                     <Button
                       danger
                       loading={actionLoading}
-                      onClick={handleCloseFailedTask}
+                      onClick={handleCloseTask}
                     >
-                      关闭失败任务
+                      关闭任务
                     </Button>
                   )}
                 </Space>

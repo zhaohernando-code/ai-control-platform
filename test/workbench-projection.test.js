@@ -216,6 +216,90 @@ test("workbench projection exposes task flow items for submitted requirements", 
   assert.equal(projection.one_screen.counters.active_tasks, 1);
 });
 
+test("pending requirement plan generation is not projected as running and stays recoverable", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-project-tab",
+            title: "完成项目 tab",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "项目 tab 需要接入项目治理。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-project-tab": {
+          id: "plan-review-requirement-project-tab",
+          phase: "pending_plan_generation",
+          status: "pending_plan_generation",
+          requested_at: "2026-05-28T02:01:00.000Z"
+        }
+      }
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "pending_plan_generation");
+  assert.equal(task.status_label, "待生成");
+  assert.equal(task.phase_label, "等待方案生成");
+  assert.equal(task.location_label, "计划生成");
+  assert.equal(task.recoverable, true);
+  assert.equal(projection.project_management.active_tasks, 1);
+});
+
+test("approved requirements with only pending work packages are projected as pending execution", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-project-tab-execution",
+            title: "完成项目 tab",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "项目 tab 需要接入项目治理。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-project-tab-execution": {
+          id: "plan-review-requirement-project-tab-execution",
+          phase: "in_development",
+          status: "in_development",
+          reviewed_at: "2026-05-28T02:10:00.000Z"
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-project-tab-execution-plan-step-01",
+          title: "完成项目 tab：实施步骤 01 / 2",
+          action: "execute_requirement_plan_step",
+          status: "pending",
+          global_goal_id: "requirement-project-tab-execution",
+          source: { requirement_id: "requirement-project-tab-execution" }
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "pending_execution");
+  assert.equal(task.status_label, "待执行");
+  assert.equal(task.phase_label, "等待派发");
+  assert.equal(task.location_label, "执行队列");
+  assert.equal(task.recoverable, true);
+  assert.equal(task.work_packages[0].status, "pending");
+});
+
 test("workbench projection counts task flow items as the task source of truth", () => {
   const projection = createWorkbenchProjection(baseInput({
     manifest: {

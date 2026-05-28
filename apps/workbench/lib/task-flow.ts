@@ -52,6 +52,7 @@ export interface TaskFlowItem {
   constraints?: string;
   reviewable?: boolean;
   failure_reason?: string | null;
+  recoverable?: boolean;
   plan_review?: PlanReview;
   work_packages?: TaskWorkPackage[];
 }
@@ -66,6 +67,8 @@ export const FEEDBACK_CATEGORY_OPTIONS = [
 
 export const TASK_STATUS_COLOR: Record<string, string> = {
   running: "blue",
+  pending_plan_generation: "gold",
+  pending_execution: "gold",
   pending_review: "gold",
   completed: "green",
   failed: "red",
@@ -76,6 +79,26 @@ export const TASK_STATUS_COLOR: Record<string, string> = {
 
 export function isRecoverableFailedTask(task: TaskFlowItem): boolean {
   return task.status === "failed" || task.status === "timeout";
+}
+
+export function isRecoverablePlanTask(task: TaskFlowItem): boolean {
+  return task.status === "pending_plan_generation" ||
+    task.phase === "pending_plan_generation" ||
+    task.phase === "plan_generation_failed" ||
+    isRecoverableFailedTask(task);
+}
+
+export function recoveryActionLabel(task: TaskFlowItem): string {
+  return task.status === "pending_plan_generation" || task.phase === "pending_plan_generation"
+    ? "重新生成计划"
+    : "重试计划";
+}
+
+export function isPendingExecutionTask(task: TaskFlowItem): boolean {
+  if (task.status === "pending_execution") return true;
+  if (task.phase !== "in_development") return false;
+  return asArray<TaskWorkPackage>(task.work_packages)
+    .some((workPackage) => ["pending", "queued", "ready", "rerun"].includes(safeText(workPackage.status, "").toLowerCase()));
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {

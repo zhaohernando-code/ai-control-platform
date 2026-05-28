@@ -68,6 +68,24 @@ export interface RequirementTaskActionResponse {
   [key: string]: unknown;
 }
 
+export interface ContextWorkPackagesRunInput {
+  max_package_count?: number;
+  created_at?: string;
+  execution_profile?: string;
+  execution_mode?: string;
+  [key: string]: unknown;
+}
+
+export interface ContextWorkPackagesRunResponse {
+  status: string;
+  phase?: string;
+  executed_count?: number;
+  executed_work_packages?: Array<Record<string, unknown>>;
+  projection?: ProjectionResponse;
+  issues?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
 export function submitRequirement(
   input: RequirementSubmissionInput
 ): Promise<RequirementSubmissionResponse> {
@@ -102,6 +120,16 @@ export function closeRequirementTask(
   input: RequirementTaskActionInput
 ): Promise<RequirementTaskActionResponse> {
   return fetchWorkbenchJson<RequirementTaskActionResponse>("/api/workbench/requirements/close", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+export function runContextWorkPackages(
+  input: ContextWorkPackagesRunInput
+): Promise<ContextWorkPackagesRunResponse> {
+  return fetchWorkbenchJson<ContextWorkPackagesRunResponse>("/api/workbench/context-work-packages-run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input)

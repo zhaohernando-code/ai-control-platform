@@ -26,13 +26,15 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { PlanReviewDrawer } from "./plan-review-drawer";
-import { closeRequirementTask, retryRequirementPlan } from "@/lib/api/requirements";
+import { closeRequirementTask, retryRequirementPlan, runContextWorkPackages } from "@/lib/api/requirements";
 import { useProjection } from "@/lib/hooks";
 import {
   TASK_STATUS_COLOR,
   type TaskFlowItem,
   formatBeijingDateTime,
-  isRecoverableFailedTask,
+  isPendingExecutionTask,
+  isRecoverablePlanTask,
+  recoveryActionLabel,
   safeText,
   taskDetailHref,
   taskItemsFromProjection
@@ -44,6 +46,8 @@ const { useBreakpoint } = Grid;
 const STATUS_FILTERS = [
   { label: "全部", value: "all" },
   { label: "运行中", value: "running" },
+  { label: "待执行", value: "pending_execution" },
+  { label: "待生成", value: "pending_plan_generation" },
   { label: "待审视", value: "pending_review" },
   { label: "完成", value: "completed" },
   { label: "失败", value: "failed" },
@@ -94,9 +98,25 @@ export default function FlowPage() {
     }
   };
 
+  const handleResumeExecution = async (task: TaskFlowItem) => {
+    setActionError(null);
+    setActionTaskId(task.task_id);
+    try {
+      await runContextWorkPackages({
+        max_package_count: 1,
+        created_at: new Date().toISOString()
+      });
+      refresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "恢复执行失败");
+    } finally {
+      setActionTaskId(null);
+    }
+  };
+
   const handleCloseFailedTask = (task: TaskFlowItem) => {
     Modal.confirm({
-      title: "关闭失败任务",
+      title: "关闭任务",
       content: `关闭后「${safeText(task.title)}」不再阻塞任务流，可从历史记录继续查看。`,
       okText: "关闭任务",
       okButtonProps: { danger: true },
@@ -188,17 +208,27 @@ export default function FlowPage() {
               计划审视
             </Button>
           )}
-          {isRecoverableFailedTask(task) && (
+          {isPendingExecutionTask(task) && (
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              loading={actionTaskId === task.task_id}
+              onClick={() => handleResumeExecution(task)}
+            >
+              恢复执行
+            </Button>
+          )}
+          {isRecoverablePlanTask(task) && (
             <Button
               size="small"
               icon={<ReloadOutlined />}
               loading={actionTaskId === task.task_id}
               onClick={() => handleRetryPlan(task)}
             >
-              重试计划
+              {recoveryActionLabel(task)}
             </Button>
           )}
-          {isRecoverableFailedTask(task) && (
+          {isRecoverablePlanTask(task) && (
             <Button
               size="small"
               danger
@@ -293,7 +323,19 @@ export default function FlowPage() {
                     </Button>
                   );
                 }
-                if (isRecoverableFailedTask(task)) {
+                if (isPendingExecutionTask(task)) {
+                  actions.push(
+                    <Button
+                      key="resume"
+                      size="small"
+                      loading={actionTaskId === task.task_id}
+                      onClick={() => handleResumeExecution(task)}
+                    >
+                      恢复执行
+                    </Button>
+                  );
+                }
+                if (isRecoverablePlanTask(task)) {
                   actions.push(
                     <Button
                       key="retry"
@@ -301,7 +343,7 @@ export default function FlowPage() {
                       loading={actionTaskId === task.task_id}
                       onClick={() => handleRetryPlan(task)}
                     >
-                      重试计划
+                      {recoveryActionLabel(task)}
                     </Button>,
                     <Button
                       key="close"

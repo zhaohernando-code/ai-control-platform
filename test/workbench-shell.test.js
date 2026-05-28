@@ -730,6 +730,11 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(flowDetail, /Descriptions/);
   assert.match(flowDetail, /PlanReviewDrawer/);
   assert.match(flowDetail, /findTaskById/);
+  assert.match(flowDetail, /runContextWorkPackages/);
+  assert.match(flowDetail, /isPendingExecutionTask/);
+  assert.match(flowDetail, /isRecoverablePlanTask/);
+  assert.match(flowDetail, /recoveryActionLabel/);
+  assert.match(flowDetail, /恢复执行/);
   assert.match(flowDetail, /返回任务流/);
 
   const requirements = read("apps/workbench/app/requirements/page.tsx");
@@ -747,10 +752,29 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(flow, /计划审视/);
   assert.match(flow, /taskDetailHref/);
   assert.match(flow, /formatBeijingDateTime/);
+  assert.match(flow, /pending_plan_generation/);
+  assert.match(flow, /pending_execution/);
+  assert.match(flow, /runContextWorkPackages/);
+  assert.match(flow, /isPendingExecutionTask/);
+  assert.match(flow, /isRecoverablePlanTask/);
+  assert.match(flow, /recoveryActionLabel/);
+  assert.match(flow, /恢复执行/);
   assert.doesNotMatch(flow, /title:\s*"所在"/);
   assert.doesNotMatch(flow, /显示详情/);
   assert.doesNotMatch(flow, /<Text type="secondary">\{safeText\(task\.task_id\)\}<\/Text>/);
   assert.doesNotMatch(flow, /\/flow\?task=/);
+
+  const projects = read("apps/workbench/app/projects/page.tsx");
+  assert.match(projects, /useProjection/);
+  assert.match(projects, /taskItemsFromProjection/);
+  assert.match(projects, /retryRequirementPlan/);
+  assert.match(projects, /runContextWorkPackages/);
+  assert.match(projects, /closeRequirementTask/);
+  assert.match(projects, /isPendingExecutionTask/);
+  assert.match(projects, /isRecoverablePlanTask/);
+  assert.match(projects, /项目下的任务/);
+  assert.match(projects, /恢复执行/);
+  assert.doesNotMatch(projects, /占位页|后续切片|将在后续/);
 });
 
 test("project rules codify the antd + next.js single-page-app frontend constraints (step 03/7)", () => {

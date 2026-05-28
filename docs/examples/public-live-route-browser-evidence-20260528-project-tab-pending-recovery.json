@@ -1,0 +1,25 @@
+{
+  "schema": "workbench-public-browser-evidence.v1",
+  "status": "pass",
+  "captured_at": "2026-05-28T13:25:00.000Z",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/projects",
+  "observed_final_url": "https://hernando-zhao.cn/projects/ai-control-platform/projects",
+  "detail_url": "https://hernando-zhao.cn/projects/ai-control-platform/flow/requirement-tab-20260528064224",
+  "auth_method": "edge_agent_auth_header",
+  "project_page_has_task": true,
+  "project_page_task_id": "requirement-tab-20260528064224",
+  "project_page_task_title": "完成“项目”tab",
+  "project_page_has_pending_execution": true,
+  "project_page_has_resume_action": true,
+  "project_page_task_shows_running": false,
+  "detail_page_has_pending_execution": true,
+  "detail_page_has_resume_action": true,
+  "detail_page_shows_pending_package": true,
+  "console_error_count": 0,
+  "failed_request_count": 0,
+  "screenshot_paths": [
+    "/tmp/project-tab-public-projects.png",
+    "/tmp/project-tab-public-detail.png"
+  ],
+  "secret_policy": "Only request metadata and boolean UI assertions are stored; no cookies, tokens, authorization headers, session values, or secret values are stored."
+}

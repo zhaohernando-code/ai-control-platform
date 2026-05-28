@@ -1291,8 +1291,8 @@ test("workbench server records plan review decisions", async () => {
     assert.equal(payload.plan_review.phase, "in_development");
     assert.equal(payload.projection.project_management.plan_review.phase, "in_development");
     assert.equal(payload.projection.project_management.plan_review.action_status, "开发中");
-    assert.equal(payload.projection.project_management.task_items[0].status, "running");
-    assert.equal(payload.projection.project_management.task_items[0].phase_label, "开发执行");
+    assert.equal(payload.projection.project_management.task_items[0].status, "pending_execution");
+    assert.equal(payload.projection.project_management.task_items[0].phase_label, "等待派发");
     assert.equal(savedProjectStatus.plan_reviews["requirement-plan-review-server"].phase, "in_development");
     assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-plan-review-server"].phase, "in_development");
   }, { historyPath, snapshotsRoot, projectStatusPath });
