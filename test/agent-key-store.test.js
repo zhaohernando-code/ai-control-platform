@@ -211,6 +211,8 @@ test("account health checker uses command result for login-style agents", async 
       assert.equal(command, "/bin/codex");
       assert.deepEqual(args, ["doctor", "--json"]);
       assert.ok(options.env.PATH.includes(dirname(process.execPath)));
+      assert.ok(options.env.PATH.includes(`${process.env.HOME}/.nvm/versions/node/v22.16.0/bin`));
+      assert.ok(options.env.PATH.includes("/Applications/Codex.app/Contents/Resources"));
       return { exitCode: 0, stdout: "{}", stderr: "", latency_ms: 7 };
     }
   });

@@ -17,6 +17,7 @@ NODE_BIN="${AI_CONTROL_WORKBENCH_NODE:-}"
 NEXT_DIR="$REPO_ROOT/apps/workbench"
 NEXT_BIN="$NEXT_DIR/node_modules/next/dist/bin/next"
 
+export PATH="$HOME/.nvm/versions/node/v22.16.0/bin:$HOME/.local/bin:/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 export AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH="${AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH:-$REPO_ROOT/config/agent-channels.json}"
 export AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH="${AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH:-$REPO_ROOT/config/agent-profiles.json}"
 export AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS="${AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS:-300000}"

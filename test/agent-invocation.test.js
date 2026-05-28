@@ -163,6 +163,8 @@ test("codex account invocation uses codex exec profile without API key acquisiti
   assert.equal(plan.invocation.runner, "codex");
   assert.equal(plan.invocation.agent_id, "codex-account");
   assert.ok(plan.invocation.env.PATH.includes(dirname(process.execPath)));
+  assert.ok(plan.invocation.env.PATH.includes(`${process.env.HOME}/.nvm/versions/node/v22.16.0/bin`));
+  assert.ok(plan.invocation.env.PATH.includes("/Applications/Codex.app/Contents/Resources"));
   assert.ok(plan.invocation.args.includes("exec"));
   assert.ok(!plan.invocation.args.includes("--ephemeral"));
   assert.ok(plan.invocation.args.includes("--output-schema"));

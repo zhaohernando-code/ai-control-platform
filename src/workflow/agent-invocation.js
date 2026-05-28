@@ -102,10 +102,13 @@ function commandExists(command = "") {
 }
 
 function agentCommandPath() {
+  const home = normalizeString(process.env.HOME) || "/Users/hernando_zhao";
   return [
     process.env.PATH,
     dirname(process.execPath),
-    "/Users/hernando_zhao/.local/bin",
+    `${home}/.nvm/versions/node/v22.16.0/bin`,
+    `${home}/.local/bin`,
+    "/Applications/Codex.app/Contents/Resources",
     "/opt/homebrew/bin",
     "/usr/local/bin",
     "/usr/bin",
