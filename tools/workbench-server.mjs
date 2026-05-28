@@ -41,7 +41,9 @@ import {
   runSchedulerLoopDriver
 } from "../src/workflow/autonomous-scheduler-loop.js";
 import { runReviewerShard } from "../src/workflow/reviewer-shard-runner.js";
-import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
+import { loadAgentInvocationConfig, runAgentInvocation } from "../src/workflow/agent-invocation.js";
+import { createAgentReviewerShardExecutor } from "../src/workflow/agent-reviewer-shard-executor.js";
+import { createAgentContextWorkPackageProviderExecutor } from "../src/workflow/context-work-package-provider-executor.js";
 import {
   evaluateReviewerExecutionPolicy,
   evaluateReviewerProviderHealthPreflight
@@ -55,7 +57,6 @@ import {
 import { materializeContextPackCycleFromWorkflowState } from "../src/workflow/context-pack-cycle.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
-import { createHeadlessProviderExecutor } from "../src/workflow/headless-cli-orchestrator.js";
 import {
   applyGeneratedRequirementPlan,
   closeRequirementInProjectStatus,
@@ -351,123 +352,73 @@ function runProcess(command, args = [], options = {}) {
   });
 }
 
-function defaultRequirementPlanGenerator(input = {}) {
-  const script = normalizeString(
-    input.requirement_plan_command ||
-      input.requirementPlanCommand ||
-      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND ||
-      resolve(root, "scripts/claude-role-proxy.sh")
-  );
-  if (!script || !existsSync(script)) return null;
-  const model = normalizeString(
-    input.requirement_plan_model ||
-      input.requirementPlanModel ||
-      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_MODEL ||
-      "claude-sonnet-4-6"
-  );
-  const fallbackModel = normalizeString(
-    input.requirement_plan_fallback_model ||
-      input.requirementPlanFallbackModel ||
-      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_FALLBACK_MODEL ||
-      "claude-haiku-4-5-20251001"
-  );
-  const role = normalizeString(
-    input.requirement_plan_role ||
-      input.requirementPlanRole ||
-      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_ROLE ||
-      "manager"
-  );
+function defaultRequirementPlanGenerator(input = {}, options = {}) {
   const timeoutMs = Number(
     input.requirement_plan_timeout_ms ||
       input.requirementPlanTimeoutMs ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS ||
       300000
   );
-  const childPath = [
-    process.env.PATH,
-    "/Users/hernando_zhao/.local/bin",
-    "/opt/homebrew/bin",
-    "/usr/local/bin",
-    "/usr/bin",
-    "/bin"
-  ].filter(Boolean).join(":");
-  const supportsModelArg = normalizeString(
-    input.requirement_plan_command_supports_model_arg ||
-      input.requirementPlanCommandSupportsModelArg ||
-      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG ||
-      "1"
-  ) !== "0";
-  const supportsRoleArg = normalizeString(
-    input.requirement_plan_command_supports_role_arg ||
-      input.requirementPlanCommandSupportsRoleArg ||
-      process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG ||
-      "1"
-  ) !== "0";
+  const maxAttempts = Number(input.requirement_plan_max_attempts || input.requirementPlanMaxAttempts || 4) || 4;
 
   return async ({ requirement }) => {
     const prompt = createRequirementPlanPrompt(requirement);
-    const runAttempt = async (selectedModel, attemptKind = "primary") => {
-      const args = [];
-      if (supportsModelArg) args.push("-m", selectedModel);
-      if (supportsRoleArg) args.push("--role", role);
-      args.push("-p", prompt);
-      // Primary attempt uses the configured (possibly short) timeout for fast-fail.
-      // Fallback attempt always uses the full default timeout so a tight primary
-      // timeout does not also kill the recovery path.
-      const attemptTimeout = attemptKind === "primary"
-        ? (Number.isFinite(timeoutMs) ? timeoutMs : 180000)
-        : 180000;
-      const result = await runProcess(script, args, {
+    const attempts = [];
+    let finalAttempt = null;
+    for (let candidateIndex = 0; candidateIndex < maxAttempts; candidateIndex += 1) {
+      const invocationResult = runAgentInvocation({
+        profile_id: "requirement_plan_generation",
+        prompt,
         cwd: root,
-        timeout: attemptTimeout,
-        env: {
-          ...process.env,
-          HOME: process.env.HOME || "/Users/hernando_zhao",
-          PATH: childPath
-        }
+        timeout_ms: Number.isFinite(timeoutMs) ? timeoutMs : 300000,
+        invocation_id: `${normalizeString(requirement?.id) || "requirement-plan"}:${candidateIndex}`,
+        candidate_index: candidateIndex,
+        goal: requirement?.title || "requirement plan generation",
+        risk: input.risk || "medium",
+        budget_tier: input.budget_tier || input.budgetTier || "balanced"
+      }, {
+        stateStore: options.stateStore || options.state_store,
+        channels_path: input.agent_channels_path || input.agentChannelsPath || process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
+        profiles_path: input.agent_profiles_path || input.agentProfilesPath || process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH,
+        commandRunner: options.commandRunner,
+        maxBuffer: options.maxBuffer
       });
-      const stdout = result.stdout || "";
-      const baseStderr = result.stderr || result.error?.message || "";
-      const timedOut = result.timed_out === true || result.error?.code === "ETIMEDOUT";
-      const stderr = timedOut
-        ? normalizeString(`${baseStderr}\nrequirement plan generation timed out after ${Number.isFinite(timeoutMs) ? timeoutMs : 180000}ms`)
-        : baseStderr;
-      return {
-        status: result.status === 0 && !result.error && normalizeString(stdout) ? "pass" : "fail",
-        stdout,
-        stderr,
-        result,
-        generator: {
-          kind: script === resolve(root, "scripts/claude-role-proxy.sh") ? "governed_claude_plan_mode" : (/start-claude-deepseek/i.test(script) ? "legacy_external_claude_deepseek_plan_mode" : "claude_plan_mode"),
-          command: script,
-          role,
-          model: selectedModel,
-          supports_model_arg: supportsModelArg,
-          supports_role_arg: supportsRoleArg,
-          exit_code: result.status ?? null,
-          timed_out: timedOut,
-          attempt: attemptKind,
-          timeout_ms: Number.isFinite(timeoutMs) ? timeoutMs : 180000
-        }
+      const generator = {
+        kind: "agent_invocation_requirement_plan",
+        invocation_version: invocationResult.invocation?.version || null,
+        profile_id: invocationResult.invocation?.profile_id || "requirement_plan_generation",
+        command: invocationResult.invocation?.command || null,
+        agent_id: invocationResult.invocation?.agent_id || null,
+        role: invocationResult.invocation?.role || "planner",
+        model: invocationResult.invocation?.model || null,
+        strength: invocationResult.invocation?.strength || null,
+        hooks: invocationResult.invocation?.hooks || [],
+        exit_code: invocationResult.result?.exit_code ?? null,
+        timed_out: invocationResult.result?.timed_out === true,
+        failure_classification: invocationResult.result?.failure_classification || invocationResult.issues?.[0]?.code || null,
+        attempt: candidateIndex === 0 ? "primary" : "candidate_fallback",
+        candidate_index: candidateIndex,
+        timeout_ms: Number.isFinite(timeoutMs) ? timeoutMs : 300000
       };
-    };
-    const primary = await runAttempt(model, "primary");
-    const shouldFallback = primary.generator.timed_out === true &&
-      normalizeString(fallbackModel) &&
-      fallbackModel !== model &&
-      supportsModelArg;
-    const finalAttempt = shouldFallback
-      ? await runAttempt(fallbackModel, "timeout_fallback")
-      : primary;
-    const attempts = shouldFallback ? [primary.generator, finalAttempt.generator] : [primary.generator];
+      attempts.push(generator);
+      finalAttempt = {
+        status: invocationResult.status,
+        stdout: invocationResult.stdout || "",
+        stderr: invocationResult.stderr || "",
+        generator
+      };
+      if (invocationResult.status === "pass" && normalizeString(invocationResult.stdout)) break;
+      if (!invocationResult.invocation && invocationResult.status !== "pass" && candidateIndex < maxAttempts - 1) continue;
+      if (!generator.timed_out && generator.failure_classification !== "model_unavailable" && generator.failure_classification !== "auth_failed") break;
+    }
     return {
       status: finalAttempt.status,
       stdout: finalAttempt.stdout,
       stderr: finalAttempt.stderr,
       generator: {
         ...finalAttempt.generator,
-        fallback_model: fallbackModel || null,
-        fallback_from_model: shouldFallback ? model : null,
+        fallback_model: attempts.length > 1 ? finalAttempt.generator.model : null,
+        fallback_from_model: attempts.length > 1 ? attempts[0]?.model || null : null,
         attempts
       }
     };
@@ -475,7 +426,7 @@ function defaultRequirementPlanGenerator(input = {}) {
 }
 
 async function generateRequirementPlanOnly(submitted = {}, input = {}, options = {}) {
-  const generator = options.requirementPlanGenerator || defaultRequirementPlanGenerator(input);
+  const generator = options.requirementPlanGenerator || defaultRequirementPlanGenerator(input, options);
   if (typeof generator !== "function") {
     const issues = [{ code: "requirement_plan_generator_unavailable", message: "model plan generator is not configured", path: "requirement_plan_generator" }];
     return { status: "fail", issues };
@@ -613,7 +564,7 @@ function startRequirementPlanGenerationInBackground({
 }) {
   setTimeout(async () => {
     try {
-      const generated = await generateRequirementPlanOnly(submitted, input, { requirementPlanGenerator });
+      const generated = await generateRequirementPlanOnly(submitted, input, { requirementPlanGenerator, stateStore });
       const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || submitted.project_status;
       const next = generated.status === "pass"
         ? applyGeneratedRequirementPlan(currentProjectStatus || {}, {
@@ -1125,98 +1076,6 @@ function contextWorkPackageRunOptions(input = {}, projection = null) {
   };
 }
 
-function jsonArrayOption(value) {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
-function envFlagEnabled(name) {
-  const value = normalizeString(process.env[name]).toLowerCase();
-  return value === "1" || value === "true" || value === "yes";
-}
-
-function defaultChildProviderForCommand(command) {
-  const normalizedCommand = normalizeString(command);
-  const configuredProxy = normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_PROXY);
-  const configuredBaseUrl = normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_BASE_URL);
-  const usesExternalDeepSeekLauncher = /start-claude-deepseek/i.test(normalizedCommand) ||
-    /start-claude-deepseek/i.test(configuredProxy) ||
-    /api\.deepseek\.com\/anthropic/i.test(configuredBaseUrl);
-  if (usesExternalDeepSeekLauncher) {
-    return {
-      command_runner_kind: "external_provider_child_process",
-      executor_kind: "claude_deepseek_cli_worker",
-      provider: "claude_deepseek",
-      model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "deepseek-v4-pro[1m]"
-    };
-  }
-  if (/run-claude-deepseek-child-worker\.sh$|run-claude-child-worker\.sh$|claude/i.test(normalizedCommand)) {
-    return {
-      command_runner_kind: "external_provider_child_process",
-      executor_kind: "governed_claude_proxy_cli_worker",
-      provider: "governed_claude_proxy",
-      model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "claude-sonnet-4-6"
-    };
-  }
-  return {
-    command_runner_kind: "codex_proxy_child_process",
-    executor_kind: "codex_proxy_cli_worker",
-    provider: "codex_proxy",
-    model: "codex-cli"
-  };
-}
-
-function configuredHeadlessChildProviderExecutor(options = {}) {
-  if (typeof options.contextWorkPackageProviderExecutor === "function" ||
-    typeof options.context_work_package_provider_executor === "function") {
-    return null;
-  }
-  const command = normalizeString(
-    options.childWorkerCommand ||
-      options.child_worker_command ||
-      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND
-  );
-  if (!command) return null;
-  const args = Array.isArray(options.childWorkerArgs)
-    ? options.childWorkerArgs
-    : Array.isArray(options.child_worker_args)
-      ? options.child_worker_args
-      : jsonArrayOption(process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_ARGS_JSON);
-  const childProvider = defaultChildProviderForCommand(command);
-  return createHeadlessProviderExecutor({
-    child_worker_command: command,
-    child_worker_args: args,
-    child_worker_timeout_ms: options.childWorkerTimeoutMs ||
-      options.child_worker_timeout_ms ||
-      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_TIMEOUT_MS,
-    child_worker_output_path: options.childWorkerOutputPath ||
-      options.child_worker_output_path ||
-      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH ||
-      "tmp/workbench-child-workers/{run_id}-{cycle_id}-{work_package_id}.json",
-    child_worker_max_attempts: options.childWorkerMaxAttempts ||
-      options.child_worker_max_attempts ||
-      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_MAX_ATTEMPTS,
-    child_worker_split_retry: options.childWorkerSplitRetry === true ||
-      options.child_worker_split_retry === true ||
-      envFlagEnabled("AI_CONTROL_WORKBENCH_CHILD_WORKER_SPLIT_RETRY"),
-    child_worker_cwd: options.childWorkerCwd ||
-      options.child_worker_cwd ||
-      process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_CWD ||
-      root,
-    command_runner_kind: childProvider.command_runner_kind,
-    executor_kind: childProvider.executor_kind,
-    default_child_provider: {
-      provider: childProvider.provider,
-      model: childProvider.model
-    }
-  });
-}
-
 function step03FrontendRulesPackage(node = {}) {
   const source = node.source || {};
   const implementation = normalizeString(source.implementation_step || source.implementationStep || node.reason || node.title);
@@ -1573,9 +1432,10 @@ function reviewerShardExecutorFromInput(input = {}, options = {}) {
   }
 
   const timeoutSeconds = policy.controls.timeout_seconds;
-  const baseExecutor = options.realReviewerExecutor || createClaudeDeepSeekShardExecutor({
+  const baseExecutor = options.realReviewerExecutor || createAgentReviewerShardExecutor({
     cwd: root,
-    timeout_seconds: timeoutSeconds
+    timeout_seconds: timeoutSeconds,
+    stateStore: options.stateStore || options.state_store
   });
   return {
     policy,
@@ -1801,11 +1661,27 @@ export function createWorkbenchServer(options = {}) {
     : typeof options.requirement_plan_generator === "function"
       ? options.requirement_plan_generator
       : null;
+  const disableDefaultAgentProviderExecutor = options.disableDefaultAgentProviderExecutor === true ||
+    options.disable_default_agent_provider_executor === true;
   const contextWorkPackageProviderExecutor = typeof options.contextWorkPackageProviderExecutor === "function"
     ? options.contextWorkPackageProviderExecutor
     : typeof options.context_work_package_provider_executor === "function"
       ? options.context_work_package_provider_executor
-      : configuredHeadlessChildProviderExecutor(options);
+      : disableDefaultAgentProviderExecutor
+        ? null
+        : createAgentContextWorkPackageProviderExecutor({
+        cwd: root,
+        stateStore,
+        timeout_seconds: options.contextWorkPackageProviderTimeoutSeconds ||
+          options.context_work_package_provider_timeout_seconds ||
+          process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS,
+        channels_path: options.agentChannelsPath ||
+          options.agent_channels_path ||
+          process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
+        profiles_path: options.agentProfilesPath ||
+          options.agent_profiles_path ||
+          process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH
+      });
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore)
   );
@@ -1851,7 +1727,33 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
           return;
         }
-        jsonResponse(res, 200, stateStore.listAgents());
+        const registry = stateStore.listAgents();
+        const invocationConfig = loadAgentInvocationConfig({
+          channels_path: process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
+          profiles_path: process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH
+        });
+        jsonResponse(res, 200, {
+          ...registry,
+          invocation: {
+            version: invocationConfig.version,
+            profiles_path: invocationConfig.profiles_path,
+            channels_path: invocationConfig.channels_path,
+            profiles: Object.entries(invocationConfig.profiles).map(([id, profile]) => ({
+              id,
+              role: profile.role,
+              stage: profile.stage,
+              risk: profile.risk,
+              budget_tier: profile.budget_tier,
+              strength: profile.strength,
+              timeout_ms: profile.timeout_ms,
+              hooks: profile.hooks || [],
+              candidates: (profile.candidates || []).map((candidate) => ({
+                agent_id: candidate.agent_id || candidate.agentId,
+                model: candidate.model
+              }))
+            }))
+          }
+        });
         return;
       }
 
@@ -2282,7 +2184,7 @@ export function createWorkbenchServer(options = {}) {
         const workflowState = readWorkflowState(item);
         let executorSetup;
         try {
-          executorSetup = reviewerShardExecutorFromInput(input, { realReviewerExecutor, workflowState });
+          executorSetup = reviewerShardExecutorFromInput(input, { realReviewerExecutor, workflowState, stateStore });
         } catch (error) {
           jsonResponse(res, 400, {
             error: error.code === "reviewer_execution_policy_rejected" || error.code === "reviewer_provider_health_preflight_rejected"

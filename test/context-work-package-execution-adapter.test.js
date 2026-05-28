@@ -150,7 +150,7 @@ test("verified provider profile blocks pass result without completion evidence a
         status: "pass"
       })),
       executor_provenance: {
-        executor_kind: "claude_deepseek_provider_executor",
+        executor_kind: "agent_invocation_provider_executor",
         execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
         external_calls: 0
       }
@@ -189,7 +189,7 @@ test("verified provider profile rejects fake command runner provenance", () => {
         }
       })),
       executor_provenance: {
-        executor_kind: "claude_deepseek_provider_executor",
+        executor_kind: "agent_invocation_provider_executor",
         provider: "deepseek",
         execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
         command_runner_kind: "fake_test_command_runner",
@@ -229,7 +229,7 @@ test("verified provider profile grants completion authority only for compliant e
         }
       })),
       executor_provenance: {
-        executor_kind: "claude_deepseek_gpt_provider_executor",
+        executor_kind: "agent_invocation_gpt_provider_executor",
         provider: "multi_provider",
         execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
         external_calls: 2,

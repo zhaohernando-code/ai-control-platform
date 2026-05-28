@@ -17,7 +17,7 @@
 - 如果聊天记录、cwd、历史 hook 或临时日志与 durable 状态冲突，以本仓库 durable 状态和最新 Context Pack 为准。
 - 长任务必须持续把当前阶段、决策、进度、阻塞和下一步写回 durable 项目文件或工作台状态，避免压缩失败后只能依赖聊天上下文。
 - 文档规则是压缩后的恢复入口，不是唯一拦截点；`run_context_work_packages` 必须经过 fixed-development-mode runtime gate 后才能调度或标记 work package 完成。该 gate 必须检查 Context Pack root `owned_files`、subtasks `owned_files` 和 selected work package `owned_files`。
-- 使用 `codex_proxy`、Claude Code、DeepSeek 或其他外部 CLI 子进程时，必须额外读取 `docs/contracts/CODEX_PROXY_HANDOFF_CN.md`，并在 prompt 中显式重申 host、owned files、读文件上限、最小 diff、测试命令和子进程自评要求；不能假设外部 CLI 继承 Codex App 的隐性上下文或门禁。
+- 使用 Claude Code、Codex CLI、DeepSeek、MiMo 或其他 agent 时，必须通过项目内 `src/workflow/agent-invocation.js` 和 `config/agent-profiles.json` 调用，并在 prompt 中显式重申 host、owned files、读文件上限、最小 diff、测试命令和子进程自评要求；不能假设外部 CLI 继承 Codex App 的隐性上下文或门禁。
 
 ## 禁止事项
 

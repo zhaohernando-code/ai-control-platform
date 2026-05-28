@@ -1,7 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 
 import {
   PROVIDER_MODEL_ROUTED_MODE,
@@ -13,9 +10,12 @@ import {
   promptSafeWorkPackages,
   promptSafetyPreamble
 } from "./external-prompt-safety.js";
+import {
+  createAgentInvocationPlan,
+  runAgentInvocation
+} from "./agent-invocation.js";
 
 export const CONTEXT_WORK_PACKAGE_PROVIDER_EXECUTOR_VERSION = "context-work-package-provider-executor.v1";
-export const DEFAULT_DEEPSEEK_REVIEW_SCRIPT = "/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py";
 export const DEFAULT_MODEL = "deepseek-v4-pro[1m]";
 export const DEFAULT_FALLBACK_MODEL = "deepseek-v4-flash";
 
@@ -50,11 +50,9 @@ function jsonCandidate(text) {
   const value = normalizeString(text);
   const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced) return fenced[1].trim();
-
   const objectStart = value.indexOf("{");
   const objectEnd = value.lastIndexOf("}");
   if (objectStart !== -1 && objectEnd > objectStart) return value.slice(objectStart, objectEnd + 1);
-
   return "";
 }
 
@@ -74,15 +72,17 @@ function commandAuditFor(command = {}) {
     command: command.command,
     args: command.args,
     cwd: command.cwd,
-    prompt_file: command.prompt_file,
+    prompt_file: null,
     timeout_seconds: command.timeout_seconds,
     model: command.model,
     tools: command.tools,
     no_tools: command.tools === "",
     effort: command.effort,
     max_budget_usd: command.max_budget_usd,
-    script_path: command.script_path,
     add_dir: command.add_dir,
+    profile_id: command.profile_id,
+    agent_id: command.agent_id,
+    runner: command.runner,
     command_runner_kind: command.command_runner_kind
   };
 }
@@ -91,8 +91,8 @@ function providerProvenance(command = {}, overrides = {}) {
   return {
     adapter_id: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
     executor_version: CONTEXT_WORK_PACKAGE_PROVIDER_EXECUTOR_VERSION,
-    executor_kind: "claude_deepseek_provider_executor",
-    provider: "deepseek",
+    executor_kind: "agent_invocation_provider_executor",
+    provider: command.provider || "agent_invocation",
     model: command.model,
     execution_mode: PROVIDER_MODEL_ROUTED_MODE,
     execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
@@ -102,7 +102,10 @@ function providerProvenance(command = {}, overrides = {}) {
     tools: command.tools,
     no_tools: command.tools === "",
     cwd: command.cwd,
-    prompt_file: command.prompt_file,
+    prompt_file: null,
+    profile_id: command.profile_id,
+    agent_id: command.agent_id,
+    runner: command.runner,
     command_runner_kind: command.command_runner_kind,
     ...overrides
   };
@@ -130,7 +133,6 @@ function failureResult({ selectedWorkPackages = [], reason, issueCode, command, 
     timed_out: timedOut,
     command: commandAuditFor(command)
   };
-
   return {
     status: "fail",
     completion_evidence: {
@@ -181,7 +183,7 @@ function providerAttemptEvidence({ command, result, status, issueCode, workflowO
   const stdout = normalizeString(result?.stdout);
   const stderr = normalizeString(result?.stderr);
   const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
-  const timedOut = exitCode === 124 || result?.error?.code === "ETIMEDOUT" || /CLAUDE_DEEPSEEK_TIMEOUT/.test(stderr);
+  const timedOut = exitCode === 124 || result?.error?.code === "ETIMEDOUT";
   return {
     model: command.model,
     timeout_seconds: command.timeout_seconds,
@@ -263,48 +265,47 @@ export function promptForProviderExecution(input = {}) {
   ].join("\n");
 }
 
-export function createClaudeDeepSeekProviderCommand(input = {}) {
+export function createAgentContextWorkPackageProviderCommand(input = {}) {
   const cwd = resolve(normalizeString(input.cwd) || process.cwd());
-  const scriptPath = normalizeString(input.script_path || input.scriptPath) || DEFAULT_DEEPSEEK_REVIEW_SCRIPT;
   const timeoutSeconds = numberValue(input.timeout_seconds || input.timeoutSeconds, 120);
   const model = normalizeString(input.model) || DEFAULT_MODEL;
   const tools = toolsString(input.tools ?? input.allowed_tools ?? input.allowedTools, input.no_tools === true || input.noTools === true);
-  const promptFile = normalizeString(input.prompt_file || input.promptFile);
   const addDir = normalizeString(input.add_dir || input.addDir) || cwd;
   const effort = normalizeToken(input.effort) || "high";
   const maxBudgetUsd = normalizeString(input.max_budget_usd || input.maxBudgetUsd) || "1";
-  const args = [
-    scriptPath,
-    "--cwd",
+  const planned = createAgentInvocationPlan({
+    profile_id: "context_work_package_provider",
+    prompt: normalizeString(input.prompt),
     cwd,
-    "--prompt-file",
-    promptFile,
-    "--timeout-seconds",
-    String(timeoutSeconds),
-    "--tools",
-    tools,
-    "--model",
     model,
-    "--max-budget-usd",
-    maxBudgetUsd,
-    "--effort",
-    effort,
-    "--add-dir",
-    addDir
-  ];
-
-  return {
-    command: normalizeString(input.python || input.python_bin || input.pythonBin) || "python3",
-    args,
-    cwd,
-    prompt_file: promptFile,
-    timeout_seconds: timeoutSeconds,
     tools,
-    model,
+    add_dir: addDir,
     effort,
     max_budget_usd: maxBudgetUsd,
-    script_path: scriptPath,
+    timeout_ms: timeoutSeconds * 1000,
+    invocation_id: input.invocation_id || input.invocationId,
+    candidate_index: input.candidate_index ?? input.candidateIndex
+  }, {
+    channels_path: input.channels_path || input.channelsPath,
+    profiles_path: input.profiles_path || input.profilesPath
+  });
+  const invocation = planned.invocation || {};
+  return {
+    status: planned.status,
+    issues: planned.issues || [],
+    command: invocation.command,
+    args: invocation.args || [],
+    cwd,
+    timeout_seconds: timeoutSeconds,
+    tools,
+    model: invocation.model || model,
+    effort,
+    max_budget_usd: maxBudgetUsd,
     add_dir: addDir,
+    profile_id: invocation.profile_id || "context_work_package_provider",
+    agent_id: invocation.agent_id || null,
+    runner: invocation.runner || null,
+    provider: invocation.provider || null,
     command_runner_kind: normalizeString(input.command_runner_kind || input.commandRunnerKind) || "spawn_sync"
   };
 }
@@ -317,33 +318,30 @@ function normalizeProviderPass(parsed = {}, command = {}) {
   };
 }
 
-export function createClaudeDeepSeekContextWorkPackageProviderExecutor(options = {}) {
-  const commandRunner = options.commandRunner || ((command, args, runnerOptions) => spawnSync(command, args, runnerOptions));
+export function createAgentContextWorkPackageProviderExecutor(options = {}) {
   const commandRunnerKind = normalizeString(options.command_runner_kind || options.commandRunnerKind) ||
     (options.commandRunner ? "injected_command_runner" : "spawn_sync");
 
   return ({ workflow_state, selected_work_packages, execution_plan }) => {
-    const tempDir = mkdtempSync(join(tmpdir(), "context-work-package-provider-"));
-    const promptFile = join(tempDir, "provider-execution-prompt.md");
-    writeFileSync(promptFile, promptForProviderExecution({
+    const prompt = promptForProviderExecution({
       workflow_state,
       selected_work_packages,
       execution_plan
-    }));
-
-    const primaryCommand = createClaudeDeepSeekProviderCommand({
+    });
+    const primaryCommand = createAgentContextWorkPackageProviderCommand({
       ...options,
-      prompt_file: promptFile,
+      prompt,
       command_runner_kind: commandRunnerKind
     });
     const fallbackModel = fallbackModelFrom(options, primaryCommand.model);
     const commands = [
       primaryCommand,
       ...(fallbackModel ? [
-        createClaudeDeepSeekProviderCommand({
+        createAgentContextWorkPackageProviderCommand({
           ...options,
           model: fallbackModel,
-          prompt_file: promptFile,
+          prompt,
+          candidate_index: 1,
           command_runner_kind: commandRunnerKind
         })
       ] : [])
@@ -352,29 +350,63 @@ export function createClaudeDeepSeekContextWorkPackageProviderExecutor(options =
     let lastFailure = null;
 
     for (const [index, command] of commands.entries()) {
-      const result = commandRunner(command.command, command.args, {
+      if (command.status && command.status !== "pass") {
+        const issueCode = "provider_executor_invocation_planning_failed";
+        const result = { status: 1, stdout: "", stderr: JSON.stringify(command.issues || []) };
+        attempts.push(providerAttemptEvidence({ command, result, status: "fail", issueCode }));
+        lastFailure = failureResult({
+          selectedWorkPackages: selected_work_packages,
+          reason: "agent provider executor could not create a governed invocation plan",
+          issueCode,
+          command,
+          stdout: "",
+          stderr: result.stderr,
+          exitCode: 1,
+          timedOut: false
+        });
+        if (index < commands.length - 1) continue;
+        return withAttempts(lastFailure, attempts);
+      }
+
+      const invocationResult = runAgentInvocation({
+        profile_id: "context_work_package_provider",
+        prompt,
         cwd: command.cwd,
-        encoding: "utf8",
-        timeout: (command.timeout_seconds + 5) * 1000
+        model: command.model,
+        tools: command.tools,
+        add_dir: command.add_dir,
+        effort: command.effort,
+        max_budget_usd: command.max_budget_usd,
+        timeout_ms: command.timeout_seconds * 1000,
+        invocation_id: `${normalizeString(workflow_state?.run_id || workflow_state?.runId) || "context-work-package"}:${index}`,
+        candidate_index: index
+      }, {
+        stateStore: options.stateStore || options.state_store,
+        channels_path: options.channels_path || options.channelsPath,
+        profiles_path: options.profiles_path || options.profilesPath,
+        commandRunner: options.commandRunner,
+        parseOutput: parseProviderExecutorOutput,
+        maxBuffer: options.maxBuffer
       });
+      const result = {
+        status: invocationResult.status === "pass" ? 0 : 1,
+        stdout: invocationResult.stdout,
+        stderr: invocationResult.stderr,
+        error: invocationResult.result?.timed_out ? { code: "ETIMEDOUT" } : undefined
+      };
       const stdout = normalizeString(result?.stdout);
       const stderr = normalizeString(result?.stderr);
       const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
-      const timedOut = exitCode === 124 || result?.error?.code === "ETIMEDOUT" || /CLAUDE_DEEPSEEK_TIMEOUT/.test(stderr);
+      const timedOut = invocationResult.result?.timed_out === true || exitCode === 124 || result?.error?.code === "ETIMEDOUT";
 
       if (exitCode !== 0 || result?.error) {
         const issueCode = timedOut ? "provider_executor_timeout" : "provider_executor_command_failed";
-        attempts.push(providerAttemptEvidence({
-          command,
-          result,
-          status: "fail",
-          issueCode
-        }));
+        attempts.push(providerAttemptEvidence({ command, result, status: "fail", issueCode }));
         lastFailure = failureResult({
           selectedWorkPackages: selected_work_packages,
           reason: timedOut
-            ? `Claude+DeepSeek provider executor timed out after ${command.timeout_seconds}s`
-            : `Claude+DeepSeek provider executor failed with exit code ${exitCode}`,
+            ? `agent provider executor timed out after ${command.timeout_seconds}s`
+            : `agent provider executor failed with exit code ${exitCode}`,
           issueCode,
           command,
           stdout,
@@ -389,15 +421,10 @@ export function createClaudeDeepSeekContextWorkPackageProviderExecutor(options =
       const parsed = parseProviderExecutorOutput(stdout);
       if (!parsed) {
         const issueCode = "provider_executor_unstructured_output";
-        attempts.push(providerAttemptEvidence({
-          command,
-          result,
-          status: "fail",
-          issueCode
-        }));
+        attempts.push(providerAttemptEvidence({ command, result, status: "fail", issueCode }));
         lastFailure = failureResult({
           selectedWorkPackages: selected_work_packages,
-          reason: "Claude+DeepSeek provider executor returned non-structured output; completion was not trusted",
+          reason: "agent provider executor returned non-structured output; completion was not trusted",
           issueCode,
           command,
           stdout,
@@ -409,12 +436,7 @@ export function createClaudeDeepSeekContextWorkPackageProviderExecutor(options =
         return withAttempts(lastFailure, attempts);
       }
 
-      attempts.push(providerAttemptEvidence({
-        command,
-        result,
-        status: "pass",
-        issueCode: null
-      }));
+      attempts.push(providerAttemptEvidence({ command, result, status: "pass", issueCode: null }));
       return withAttempts(normalizeProviderPass(parsed, command), attempts);
     }
 

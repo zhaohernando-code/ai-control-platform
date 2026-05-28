@@ -127,7 +127,11 @@ export function summarizeGovernanceAuditSkillTrial(manifest = {}, artifactLedger
     ...asArray(artifactLedger?.artifacts),
     ...asArray(manifest?.artifacts)
   ];
-  const artifact = artifacts.find((entry) => entry.id === latestEvent.artifact_id) || null;
+  const artifact = (
+    artifacts.findLast
+      ? artifacts.findLast((entry) => entry.id === latestEvent.artifact_id)
+      : [...artifacts].reverse().find((entry) => entry.id === latestEvent.artifact_id)
+  ) || null;
   const metadata = artifact?.metadata || latestEvent.metadata || {};
   const findings = asArray(metadata.findings);
   const blockingFindings = findings.filter(isBlockingFinding);

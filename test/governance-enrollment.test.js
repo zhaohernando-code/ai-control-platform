@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { relative } from "node:path";
 import test from "node:test";
 
@@ -17,7 +17,8 @@ function trackedFiles() {
     encoding: "utf8"
   })
     .split("\n")
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((path) => existsSync(new URL(path, root)));
 }
 
 function extension(path) {

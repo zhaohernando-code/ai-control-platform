@@ -23,6 +23,7 @@ import {
   promptSafeWorkPackage,
   promptSafetyPreamble
 } from "./external-prompt-safety.js";
+import { runAgentInvocation } from "./agent-invocation.js";
 
 export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
 export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
@@ -170,7 +171,7 @@ function spawnFactsFor(workflowState = {}, workPackages = [], options = {}) {
       worker_role: CHILD_WORKER_ROLE,
       work_package_id: workPackage.id || workPackage.work_package_id,
       owned_files: compactStrings(workPackage.owned_files),
-      executor: normalizeString(options.executor_kind || options.executorKind) || "codex_proxy_or_cli_worker"
+      executor: normalizeString(options.executor_kind || options.executorKind) || "agent_or_cli_worker"
     };
     return [
       {
@@ -586,29 +587,34 @@ export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, 
   ].join("\n");
 }
 
-function commandTemplateFrom(options = {}) {
+function agentInvocationTemplateFrom(options = {}) {
   const provider = options.default_child_provider || options.defaultChildProvider || {};
-  const command = normalizeString(
-    options.child_worker_command ||
-      options.childWorkerCommand ||
-      provider.command ||
-      options.default_child_worker_command ||
-      options.defaultChildWorkerCommand
+  const profileId = normalizeString(
+    options.agent_invocation_profile ||
+      options.agentInvocationProfile ||
+      options.child_worker_agent_profile ||
+      options.childWorkerAgentProfile ||
+      provider.profile_id ||
+      provider.profileId
   );
-  if (!command) return null;
+  if (!profileId) return null;
   return {
-    command,
-    args: asArray(
-      options.child_worker_args ||
-        options.childWorkerArgs ||
-        provider.args ||
-        options.default_child_worker_args ||
-        options.defaultChildWorkerArgs
-    ).map(String),
-    provider: normalizeString(provider.provider || options.default_child_provider_name || options.defaultChildProviderName) || "codex_proxy",
-    model: normalizeString(provider.model || options.default_child_provider_model || options.defaultChildProviderModel) || "codex-cli",
-    retry_policy: provider.retry_policy || provider.retryPolicy || options.child_worker_retry_policy || options.childWorkerRetryPolicy || {}
+    profile_id: profileId,
+    provider: "agent_invocation",
+    model: normalizeString(options.agent_invocation_model || options.agentInvocationModel || provider.model) || "",
+    agent_id: normalizeString(options.agent_invocation_agent_id || options.agentInvocationAgentId || provider.agent_id || provider.agentId),
+    candidate_index: options.agent_invocation_candidate_index ?? options.agentInvocationCandidateIndex ?? provider.candidate_index ?? provider.candidateIndex,
+    retry_policy: agentInvocationRetryPolicy(options)
   };
+}
+
+function agentInvocationRetryPolicy(options = {}) {
+  const provider = options.default_child_provider || options.defaultChildProvider || {};
+  return options.agent_invocation_retry_policy ||
+    options.agentInvocationRetryPolicy ||
+    provider.retry_policy ||
+    provider.retryPolicy ||
+    {};
 }
 
 function childWorkerTimeoutMs(options = {}) {
@@ -617,11 +623,10 @@ function childWorkerTimeoutMs(options = {}) {
 }
 
 function maxChildWorkerAttempts(options = {}) {
-  const template = commandTemplateFrom(options);
-  const retryPolicy = template?.retry_policy || {};
+  const retryPolicy = agentInvocationRetryPolicy(options);
   const value = Number(
-    options.child_worker_max_attempts ??
-      options.childWorkerMaxAttempts ??
+    options.agent_invocation_max_attempts ??
+      options.agentInvocationMaxAttempts ??
       retryPolicy.max_attempts ??
       retryPolicy.maxAttempts ??
       1
@@ -630,10 +635,9 @@ function maxChildWorkerAttempts(options = {}) {
 }
 
 function splitRetryEnabled(options = {}) {
-  const template = commandTemplateFrom(options);
-  const retryPolicy = template?.retry_policy || {};
-  return options.child_worker_split_retry === true ||
-    options.childWorkerSplitRetry === true ||
+  const retryPolicy = agentInvocationRetryPolicy(options);
+  return options.agent_invocation_split_retry === true ||
+    options.agentInvocationSplitRetry === true ||
     retryPolicy.split_retry === true ||
     retryPolicy.splitRetry === true;
 }
@@ -641,7 +645,7 @@ function splitRetryEnabled(options = {}) {
 function childWorkerRunnerFrom(options = {}) {
   if (typeof options.child_worker_runner === "function") return options.child_worker_runner;
   if (typeof options.childWorkerRunner === "function") return options.childWorkerRunner;
-  const template = commandTemplateFrom(options);
+  const template = agentInvocationTemplateFrom(options);
   if (!template) return null;
   return ({ prompt_file: promptFile, work_package: workPackage, workflow_state: workflowState, timeout_ms: timeoutMs, output_path: outputPath }) => {
     const resolvedOutputPath = resolvedChildWorkerOutputPath(outputPath) ||
@@ -651,18 +655,66 @@ function childWorkerRunnerFrom(options = {}) {
         cycle_id: workflowState?.manifest?.cycle_id
       })) ||
       "";
-    const args = template.args.map((arg) => arg
-      .replaceAll("{prompt_file}", promptFile)
-      .replaceAll("{output_path}", resolvedOutputPath)
-      .replaceAll("{work_package_id}", normalizeString(workPackage.id))
-      .replaceAll("{run_id}", normalizeString(workflowState?.manifest?.run_id))
-      .replaceAll("{cycle_id}", normalizeString(workflowState?.manifest?.cycle_id)));
-    return spawnSync(template.command, args, {
-      cwd: resolve(normalizeString(options.child_worker_cwd || options.childWorkerCwd) || process.cwd()),
-      encoding: "utf8",
-      timeout: timeoutMs,
-      env: childWorkerProcessEnv(options)
+    const commandRunner = typeof options.agent_invocation_command_runner === "function"
+      ? options.agent_invocation_command_runner
+      : typeof options.agentInvocationCommandRunner === "function"
+        ? options.agentInvocationCommandRunner
+        : null;
+    const invocationResult = runAgentInvocation({
+      profile_id: template.profile_id,
+      agent_id: template.agent_id,
+      candidate_index: template.candidate_index,
+      model: template.model,
+      prompt_file: promptFile,
+      output_path: resolvedOutputPath,
+      cwd: resolve(normalizeString(options.agent_invocation_cwd || options.agentInvocationCwd) || process.cwd()),
+      timeout_ms: timeoutMs,
+      lock_owner: `headless-${normalizeString(workflowState?.manifest?.run_id) || "run"}-${normalizeString(workPackage.id) || "work-package"}`,
+      created_at: options.created_at || options.createdAt,
+      stage: "implementation",
+      risk: workPackage.risk || options.risk,
+      budget_tier: workPackage.budget_tier || options.budget_tier,
+      tags: ["headless_cli_orchestrator", "bounded_child_worker"]
+    }, {
+      stateStore: options.stateStore || options.state_store,
+      channels_path: options.agent_channels_path || options.agentChannelsPath,
+      profiles_path: options.agent_profiles_path || options.agentProfilesPath,
+      commandRunner: commandRunner
+        ? (command, args, runnerOptions) => commandRunner(command, args, {
+            ...runnerOptions,
+            env: childWorkerProcessEnv({ child_worker_env: runnerOptions.env })
+          })
+        : undefined
     });
+    return {
+      status: invocationResult.result?.exit_code ?? (invocationResult.status === "pass" ? 0 : 1),
+      stdout: invocationResult.stdout || "",
+      stderr: invocationResult.stderr || invocationResult.issues?.map((item) => item.message).join("\n") || "",
+      error: invocationResult.status === "blocked" ? new Error("agent invocation blocked") : undefined,
+      agent_invocation: invocationResult.invocation || null
+    };
+  };
+}
+
+function selectedModelFromResult(result = {}) {
+  return normalizeString(result?.agent_invocation?.model);
+}
+
+function agentInvocationEvidenceFromResult(result = {}) {
+  const invocation = result?.agent_invocation;
+  if (!invocation) return null;
+  return {
+    version: invocation.version,
+    profile_id: invocation.profile_id,
+    role: invocation.role,
+    stage: invocation.stage,
+    agent_id: invocation.agent_id,
+    runner: invocation.runner,
+    provider: invocation.provider,
+    model: invocation.model,
+    model_profile: invocation.model_profile,
+    command_audit: invocation.command_audit,
+    result: result.result || null
   };
 }
 
@@ -706,7 +758,7 @@ function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile 
 
   if (parsed) {
     // Preserve worker-declared command evidence sub-fields (notably child_worker_integration,
-    // which is populated by scripts/run-claude-child-worker.sh after the worker exits and is
+    // which is populated by legacy shell child worker after the worker exits and is
     // required by evaluateHeadlessChildWorkerOutput / childOutputAllowsNoDiff to accept
     // no_diff=true read-only work packages whose mainline already satisfies the task).
     const parsedCommandEvidence = (parsed.command_evidence && typeof parsed.command_evidence === "object" && !Array.isArray(parsed.command_evidence))
@@ -721,8 +773,10 @@ function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile 
         stdout_present: Boolean(stdout),
         stderr_present: Boolean(stderr),
         prompt_file: promptFile,
-        output_path: outputPath
-      }
+        output_path: outputPath,
+        agent_invocation: agentInvocationEvidenceFromResult(result)
+      },
+      selected_model: normalizeString(parsed.selected_model) || selectedModelFromResult(result) || parsed.selected_model
     };
   }
 
@@ -751,8 +805,10 @@ function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile 
       stdout,
       stderr,
       prompt_file: promptFile,
-      output_path: outputPath
-    }
+      output_path: outputPath,
+      agent_invocation: agentInvocationEvidenceFromResult(result)
+    },
+    selected_model: selectedModelFromResult(result) || null
   };
 }
 
@@ -798,11 +854,11 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
       };
     }
     normalized = normalizeCommandRunnerResult(result, workPackage, promptFile, outputPath);
-    const template = commandTemplateFrom(options);
-    if (template?.model && !normalizeString(normalized?.selected_model)) {
+    const template = agentInvocationTemplateFrom(options);
+    if ((template?.model || selectedModelFromResult(result)) && !normalizeString(normalized?.selected_model)) {
       normalized = {
         ...normalized,
-        selected_model: template.model
+        selected_model: template.model || selectedModelFromResult(result)
       };
     }
     attempts.push({
@@ -886,11 +942,11 @@ export function createHeadlessProviderExecutor(options = {}) {
       },
       package_results: packageResults,
       executor_provenance: {
-        executor_kind: normalizeString(options.executor_kind || options.executorKind) || "codex_proxy_cli_worker",
+        executor_kind: normalizeString(options.executor_kind || options.executorKind) || "agent_cli_worker",
         command_runner_kind: normalizeString(options.command_runner_kind || options.commandRunnerKind) ||
-          (childWorkerRunnerFrom(options) ? "codex_proxy_child_process" : "codex_proxy"),
-        provider: commandTemplateFrom(options)?.provider || normalizeString(options.provider) || "codex_proxy",
-        model: commandTemplateFrom(options)?.model || normalizeString(options.model) || "codex-cli",
+          (childWorkerRunnerFrom(options) ? "agent_invocation_child_process" : "agent_invocation"),
+        provider: agentInvocationTemplateFrom(options)?.provider || normalizeString(options.provider) || "agent_invocation",
+        model: agentInvocationTemplateFrom(options)?.model || normalizeString(options.model) || "codex-cli",
         retry_policy: {
           max_attempts: maxChildWorkerAttempts(options),
           split_retry: splitRetryEnabled(options)

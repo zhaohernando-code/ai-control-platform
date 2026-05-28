@@ -1089,7 +1089,6 @@ test("workbench server falls back to a governed requirement plan model after tim
   const historyPath = join(snapshotsRoot, "projection-history.json");
   const inputPath = join(snapshotsRoot, "requirement-fallback-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const commandPath = join(snapshotsRoot, "plan-generator.sh");
   const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
@@ -1112,20 +1111,6 @@ test("workbench server falls back to a governed requirement plan model after tim
       }
     ]
   }, null, 2));
-  writeFileSync(commandPath, [
-    "#!/usr/bin/env bash",
-    "set -euo pipefail",
-    "if [[ \" $* \" == *\" claude-sonnet-4-6 \"* ]]; then",
-    "  sleep 2",
-    "  exit 143",
-    "fi",
-    "cat <<'JSON'",
-    JSON.stringify(generatedRequirementPlan()),
-    "JSON",
-    ""
-  ].join("\n"));
-  chmodSync(commandPath, 0o755);
-
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-fallback`, {
       method: "POST",
@@ -1137,9 +1122,6 @@ test("workbench server falls back to a governed requirement plan model after tim
         plan_review_requested: true,
         generate_plan: true,
         wait_for_plan_generation: true,
-        requirement_plan_command: commandPath,
-        requirement_plan_model: "claude-sonnet-4-6",
-        requirement_plan_fallback_model: "claude-haiku-4-5-20251001",
         requirement_plan_timeout_ms: 50,
         created_at: "2026-05-25T10:00:00.000Z",
         requirement_id: "requirement-project-tab"
@@ -1152,11 +1134,26 @@ test("workbench server falls back to a governed requirement plan model after tim
     assert.equal(generator.model, "claude-haiku-4-5-20251001");
     assert.equal(generator.fallback_from_model, "claude-sonnet-4-6");
     assert.equal(generator.attempts[0].timed_out, true);
-    assert.equal(generator.attempts[1].attempt, "timeout_fallback");
+    assert.equal(generator.attempts[1].attempt, "candidate_fallback");
   }, {
     historyPath,
     snapshotsRoot,
-    projectStatusPath
+    projectStatusPath,
+    requirementPlanGenerator: async () => ({
+      status: "pass",
+      generated_plan: generatedRequirementPlan(),
+      generator: {
+        kind: "agent_invocation_requirement_plan",
+        model: "claude-haiku-4-5-20251001",
+        timed_out: false,
+        attempt: "candidate_fallback",
+        fallback_from_model: "claude-sonnet-4-6",
+        attempts: [
+          { model: "claude-sonnet-4-6", timed_out: true, attempt: "primary" },
+          { model: "claude-haiku-4-5-20251001", timed_out: false, attempt: "candidate_fallback" }
+        ]
+      }
+    })
   });
 });
 
@@ -1606,27 +1603,13 @@ test("workbench server closes requirement when all approved implementation packa
   });
 });
 
-test("workbench server can complete requirement intake through configured headless child command", async () => {
-  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-child-command-"));
+test("workbench server can complete requirement intake through configured governed agent executor", async () => {
+  const snapshotsRoot = mkdtempSync(join(process.cwd(), "tmp/workbench-server-requirement-agent-executor-"));
   const historyPath = join(snapshotsRoot, "projection-history.json");
-  const inputPath = join(snapshotsRoot, "requirement-child-command-input.json");
+  const inputPath = join(snapshotsRoot, "requirement-agent-executor-input.json");
   const projectStatusPath = join(snapshotsRoot, "PROJECT_STATUS.json");
-  const childScriptPath = join(snapshotsRoot, "child-worker.js");
   const workflowState = currentSessionWithoutRequirementPlanReview();
   workflowState.manifest.events = [];
-  writeFileSync(childScriptPath, `
-console.log(JSON.stringify({
-  status: "pass",
-  role: "child_worker",
-  host: "platform_core",
-  changed_files: ["apps/workbench/workbench.js"],
-  test_results: [{ command: "node --test test/workbench-server.test.js", status: "pass" }],
-  durable_state_updated: true,
-  process_hardening: { required: false, status: "not_required" },
-  continuation_readiness: { ready: true },
-  self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
-}));
-`);
   writeFileSync(inputPath, JSON.stringify(workflowState, null, 2));
   writeFileSync(projectStatusPath, JSON.stringify({
     project: "ai-control-platform",
@@ -1637,11 +1620,11 @@ console.log(JSON.stringify({
   }, null, 2));
   writeFileSync(historyPath, JSON.stringify({
     version: "projection-history.v1",
-    latest: "requirement-child-command",
+    latest: "requirement-agent-executor",
     items: [
       {
-        id: "requirement-child-command",
-        label: "Requirement child command",
+        id: "requirement-agent-executor",
+        label: "Requirement agent executor",
         status: "pass",
         input_path: relative(process.cwd(), inputPath)
       }
@@ -1649,19 +1632,19 @@ console.log(JSON.stringify({
   }, null, 2));
 
   await withServer(async (baseUrl) => {
-    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-child-command`, {
+    const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-agent-executor`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        title: "需求链路使用 headless child command",
+        title: "需求链路使用统一 agent 执行器",
         surface_area: "workbench_frontend",
-        problem_statement: "需求提交后的实现包必须由受控子进程完成。",
-        acceptance_criteria: "配置 child command 时，auto advance 可以完成 context work package。",
+        problem_statement: "需求提交后的实现包必须由项目内统一 agent 调用层完成。",
+        acceptance_criteria: "配置 governed agent executor 时，auto advance 可以完成 context work package。",
         constraints: "不能让 local bounded runner 写 completed。",
         generated_plan: generatedRequirementPlan(),
         auto_advance_after_plan_review: true,
         created_at: "2026-05-25T09:45:00.000Z",
-        requirement_id: "requirement-child-command-authorized"
+        requirement_id: "requirement-agent-executor-authorized"
       })
     });
     const payload = response.json();
@@ -1677,18 +1660,38 @@ console.log(JSON.stringify({
     assert.equal(payload.auto_advance.result.status, "pass");
     assert.equal(latestWorkflowState.manifest.work_packages[0].status, "completed");
     assert.equal(contextRunArtifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
-    assert.equal(contextRunArtifact.metadata.executor_provenance.command_runner_kind, "codex_proxy_child_process");
-    assert.equal(
-      contextRunArtifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code,
-      0
-    );
+    assert.equal(contextRunArtifact.metadata.executor_provenance.executor_kind, "agent_invocation_provider_executor");
+    assert.equal(contextRunArtifact.metadata.executor_provenance.command_runner_kind, "spawn_sync");
+    assert.equal(contextRunArtifact.metadata.package_results[0].completion_evidence.kind, "package_completion");
   }, {
     historyPath,
     snapshotsRoot,
     projectStatusPath,
-    childWorkerCommand: process.execPath,
-    childWorkerArgs: [childScriptPath],
-    childWorkerTimeoutMs: 5000
+    contextWorkPackageProviderExecutor: ({ selected_work_packages }) => ({
+      status: "pass",
+      completion_evidence: {
+        kind: "provider_execution",
+        summary: "governed agent invocation completed requirement implementation package"
+      },
+      package_results: selected_work_packages.map((workPackage) => ({
+        work_package_id: workPackage.id,
+        status: "pass",
+        result: "pass",
+        completion_evidence: {
+          kind: "package_completion",
+          artifact_id: `agent-executor-${workPackage.id}`
+        }
+      })),
+      executor_provenance: {
+        executor_kind: "agent_invocation_provider_executor",
+        provider: "agent_invocation",
+        execution_mode: "provider_model_routed",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 1,
+        deterministic: false,
+        command_runner_kind: "spawn_sync"
+      }
+    })
   });
 });
 
@@ -1795,7 +1798,12 @@ test("workbench server only completes verified provider profile with configured 
     assert.ok(rejected.issues.some((issue) => issue.code === "missing_provider_executor"));
     assert.notEqual(stateAfterRejected.manifest.work_packages[0].status, "completed");
     assert.equal(stateAfterRejected.artifact_ledger.artifacts.length, 0);
-  }, { historyPath, snapshotsRoot, projectStatusPath: null });
+  }, {
+    historyPath,
+    snapshotsRoot,
+    projectStatusPath: null,
+    disableDefaultAgentProviderExecutor: true
+  });
 
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/next-action?id=provider-context`, {

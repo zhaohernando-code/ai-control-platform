@@ -9,9 +9,9 @@ import {
   DEFAULT_AUDIT_PROJECT_ROOT,
   evaluateAuditSkillTrialRun
 } from "../src/workflow/audit-skill-trial-run.js";
+import { runAgentInvocation } from "../src/workflow/agent-invocation.js";
 
 const DEFAULT_SKILL_PATH = "/Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md";
-const DEFAULT_REVIEW_WRAPPER = "/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py";
 const DEFAULT_ROUTE = "http://127.0.0.1:4180/projects/ai-control-platform/";
 const DEFAULT_OUTPUT = "tmp/audit-skill-trial/governance-audit-current.json";
 const DEFAULT_RAW_OUTPUT = "tmp/audit-skill-trial/governance-audit-current.raw.txt";
@@ -26,7 +26,7 @@ function usage() {
     "                                           [--runner-command CMD --runner-arg ARG...]",
     "                                           [--timeout-seconds N] [--no-fail-on-blocking-verdict]",
     "",
-    "Invokes Claude+DeepSeek to read governance-audit-orchestrator/SKILL.md and produce an audit-skill-trial-run.v1 artifact."
+    "Invokes the governed agent invocation profile to read governance-audit-orchestrator/SKILL.md and produce an audit-skill-trial-run.v1 artifact."
   ].join("\n");
 }
 
@@ -157,18 +157,6 @@ function buildPrompt(options) {
   ].join("\n");
 }
 
-function defaultRunnerArgs(options) {
-  return [
-    DEFAULT_REVIEW_WRAPPER,
-    "--cwd", options.projectRoot,
-    "--tools", "",
-    "--timeout-seconds", String(options.timeoutSeconds),
-    "--effort", "high",
-    "--model", "deepseek-v4-flash",
-    "--prompt-file", options.promptOutputPath
-  ];
-}
-
 function truncate(value, maxLength = 12000) {
   const text = String(value || "");
   if (text.length <= maxLength) return text;
@@ -215,14 +203,14 @@ function collectPreflightEvidence(options) {
     ["task failure recovery tests", "node --test test/requirement-intake.test.js test/workbench-projection.test.js test/workbench-server.test.js"],
     ["live task failure projection", "curl -sS --max-time 10 http://127.0.0.1:4182/api/workbench/projection | node -e 'let s=\"\"; process.stdin.on(\"data\", d => s += d); process.stdin.on(\"end\", () => { const p = JSON.parse(s); const task = (p.project_management && p.project_management.task_items || []).find((item) => item.task_id === \"requirement-tab-20260528064224\"); console.log(JSON.stringify({ task_id: task && task.task_id, title: task && task.title, status: task && task.status, phase: task && task.phase, next_action: task && task.next_action_readout && task.next_action_readout.action, failure_reason: task && task.failure_reason }, null, 2)); })'"],
     ["targeted quality gates", "node --test test/audit-skill-trial-run.test.js test/requirement-intake.test.js test/workbench-projection.test.js test/workbench-server.test.js test/live-route-probe.test.js"],
-    ["closeout gate wiring", "rg -n \"check:closeout|governance audit skill trial|workbench live route acceptance|mainline release readiness\" package.json tools/check-closeout.mjs src test | sed -n '1,40p'"],
-    ["git release state", "git status --short && git rev-list --left-right --count origin/main...HEAD && git log --oneline -5"],
+    ["closeout gate wiring", "rg -n \"check:closeout|governance audit skill trial|workbench live route acceptance|isolated worktree closeout|mainline release readiness\" package.json tools/check-closeout.mjs src test | sed -n '1,60p'"],
+    ["git release state", "branch=$(git branch --show-current); git status --short; if [ \"$branch\" = \"main\" ] || [ \"${AI_CONTROL_CLOSEOUT_REQUIRE_MAINLINE:-0}\" = \"1\" ]; then git rev-list --left-right --count origin/main...HEAD; else echo \"isolated_worktree_closeout=true\"; echo \"mainline_release_readiness=deferred_to_parent_release_step\"; fi; git log --oneline -5"],
     ["security boundary evidence", "rg -n \"allowedHistoryRoots|safeStaticPath|unsafe|unauthorized|auth|token|host\" tools/workbench-server.mjs src tools test | sed -n '1,40p'"],
     ["recovery and publish evidence", "rg -n \"rollback|recovery|resume|publish|snapshot|launchctl|kickstart|live route\" scripts tools src test docs | sed -n '1,40p'"],
     ["cost and budget controls", "rg -n \"budget|max-budget|timeout|cost|bounded|risk|profile\" tools src test package.json | sed -n '1,40p'"],
     ["auto repair workflow evidence", "rg -n \"governance audit failure schedules|Repair governance audit|repair_schedule|context work package|next-action\" src test tools | sed -n '1,40p'"],
     ["knowledge retention evidence", "rg -n \"handoff|PROJECT_STATUS|DECISIONS|PROCESS|artifact ledger|workflow state|durable\" PROJECT_STATUS.json PROCESS.md DECISIONS.md docs src test tools | sed -n '1,40p'"],
-    ["model collaboration evidence", "rg -n \"Claude DeepSeek|claude_deepseek|deepseek|reviewer|model routing|provider\" tools src test docs package.json | sed -n '1,40p'"]
+    ["model collaboration evidence", "rg -n \"agent_invocation|deepseek|reviewer|model routing|provider\" tools src test docs package.json | sed -n '1,40p'"]
   ];
   const evidenceItems = [];
   const text = commands.map(([label, command]) => {
@@ -343,10 +331,9 @@ function applyArgTokens(value, options) {
 }
 
 function runnerCommand(options) {
-  const command = options.runnerCommand || "python3";
-  const args = options.runnerCommand
-    ? options.runnerArgs.map((arg) => applyArgTokens(arg, options))
-    : defaultRunnerArgs(options);
+  if (!options.runnerCommand) return null;
+  const command = options.runnerCommand;
+  const args = options.runnerArgs.map((arg) => applyArgTokens(arg, options));
   return { command, args };
 }
 
@@ -427,7 +414,7 @@ function extractJsonObject(text) {
     }
   }
   if (parsedObjects.length > 0) return parsedObjects[0];
-  throw new Error("Claude+DeepSeek output did not contain a parseable JSON object");
+  throw new Error("governed agent output did not contain a parseable JSON object");
 }
 
 function normalizeArtifact(artifact, options, invocation) {
@@ -440,12 +427,12 @@ function normalizeArtifact(artifact, options, invocation) {
     evidence.push({
       id: invocationEvidenceId,
       kind: "command",
-      source: "Claude+DeepSeek governance audit skill invocation",
+      source: "Governed agent governance audit skill invocation",
       collected_at: invocation.invoked_at,
       collector: "governance-audit-orchestrator",
       command_or_path: `${invocation.runner_command} ${invocation.runner_args.join(" ")} using ${options.skillPath}`,
       exit_code: invocation.exit_code,
-      result_summary: "Claude+DeepSeek was invoked to read and apply governance-audit-orchestrator/SKILL.md against real project state."
+      result_summary: "agent invocation was used to read and apply governance-audit-orchestrator/SKILL.md against real project state."
     });
   }
   return {
@@ -480,25 +467,35 @@ ensureParent(options.rawOutputPath);
 ensureParent(options.outputPath);
 writeFileSync(options.promptOutputPath, `${buildPrompt(options)}\n`);
 
-const { command, args } = runnerCommand(options);
+const customRunner = runnerCommand(options);
 const invokedAt = new Date().toISOString();
-const result = spawnSync(command, args, {
-  cwd: options.projectRoot,
-  encoding: "utf8",
-  timeout: Number.isFinite(options.timeoutSeconds) ? (options.timeoutSeconds + 15) * 1000 : 315000,
-  env: {
-    ...process.env,
-    PATH: [
-      process.env.PATH,
-      "/Users/hernando_zhao/.local/bin",
-      "/Users/hernando_zhao/.nvm/versions/node/v22.16.0/bin",
-      "/opt/homebrew/bin",
-      "/usr/local/bin",
-      "/usr/bin",
-      "/bin"
-    ].filter(Boolean).join(":")
-  }
-});
+const result = customRunner
+  ? spawnSync(customRunner.command, customRunner.args, {
+    cwd: options.projectRoot,
+    encoding: "utf8",
+    timeout: Number.isFinite(options.timeoutSeconds) ? (options.timeoutSeconds + 15) * 1000 : 315000,
+    env: {
+      ...process.env,
+      PATH: [
+        process.env.PATH,
+        "/Users/hernando_zhao/.local/bin",
+        "/Users/hernando_zhao/.nvm/versions/node/v22.16.0/bin",
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin"
+      ].filter(Boolean).join(":")
+    }
+  })
+  : runAgentInvocation({
+    profile_id: "governance_audit_skill_trial",
+    prompt_file: options.promptOutputPath,
+    cwd: options.projectRoot,
+    timeout_ms: Number.isFinite(options.timeoutSeconds) ? options.timeoutSeconds * 1000 : 300000,
+    invocation_id: `governance-audit-skill-trial:${invokedAt}`
+  });
+const command = customRunner?.command || result.invocation?.command || "agent_invocation";
+const args = customRunner?.args || result.invocation?.command_audit?.args || [];
 
 const rawOutput = [
   result.stdout || "",
@@ -507,14 +504,18 @@ const rawOutput = [
 ].join("");
 writeFileSync(options.rawOutputPath, rawOutput);
 
-const exitCode = result.status ?? (result.error ? 1 : 0);
+const exitCode = Number.isFinite(Number(result.status))
+  ? Number(result.status)
+  : Number(result.result?.exit_code ?? (result.status === "pass" ? 0 : 1));
 if (exitCode !== 0) {
-  console.error(`Claude+DeepSeek governance audit invocation failed with exit code ${exitCode}`);
+  console.error(`Governed agent governance audit invocation failed with exit code ${exitCode}`);
 }
 
 try {
   const artifact = normalizeArtifact(extractJsonObject(result.stdout || rawOutput), options, {
-    provider: "claude_deepseek",
+    provider: "agent_invocation",
+    profile_id: "governance_audit_skill_trial",
+    model: result.invocation?.model || null,
     skill_path: options.skillPath,
     runner_command: command,
     runner_args: args,

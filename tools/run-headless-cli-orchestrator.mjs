@@ -22,16 +22,16 @@ function usage() {
     "",
     "Runs one bounded headless Codex CLI main_orchestrator cycle from durable repository state.",
     "",
-    "Optional child-worker execution:",
-    "  --child-worker-command <cmd>         Real codex_proxy/CLI child command",
-    "  --child-worker-arg <arg>             Repeatable argument; supports {prompt_file}, {work_package_id}, {run_id}, {cycle_id}",
-    "  --child-worker-timeout-ms <ms>       Child command timeout",
-    "  --child-worker-output-path <path>    Optional structured JSON output path template",
+    "Optional governed agent execution:",
+    "  --agent-profile <profile>           Agent invocation profile for bounded implementation",
+    "  --agent-id <id>                     Optional configured channel id",
+    "  --agent-model <model>               Optional model override inside the profile",
+    "  --agent-candidate-index <n>         Candidate index inside the profile",
+    "  --agent-timeout-ms <ms>             Governed invocation timeout",
+    "  --agent-output-path <path>          Optional structured JSON output path template",
     "  --allow-mock-child-worker            Explicitly allow the built-in deterministic mock child worker",
-    "  --default-child-provider-command <cmd>  Configured default child provider command",
-    "  --default-child-provider-arg <arg>      Repeatable default provider argument",
-    "  --child-worker-max-attempts <n>         Retry bound, capped at 3",
-    "  --child-worker-split-retry              Mark retries as split retries",
+    "  --agent-max-attempts <n>            Retry bound, capped at 3",
+    "  --agent-split-retry                 Mark retries as split retries",
     "",
     "Optional persistence/loop:",
     "  --history-path <path>                Projection history path to update with headless snapshots",
@@ -84,22 +84,32 @@ const projectedNextAction = valueAfter("--projected-next-action", args);
 const projectedNextActionStatus = valueAfter("--projected-next-action-status", args);
 const reviewerMockStatus = valueAfter("--reviewer-mock-status", args);
 const reviewerMockFindingsJson = valueAfter("--reviewer-mock-findings-json", args);
-const childWorkerCommand = valueAfter("--child-worker-command", args);
-const defaultChildProviderCommand = valueAfter("--default-child-provider-command", args);
-const childWorkerTimeoutMs = valueAfter("--child-worker-timeout-ms", args);
-const childWorkerOutputPath = valueAfter("--child-worker-output-path", args);
-const childWorkerMaxAttempts = valueAfter("--child-worker-max-attempts", args);
-
-function valuesAfter(flag, args) {
-  const values = [];
-  for (let index = 0; index < args.length; index += 1) {
-    if (args[index] === flag && args[index + 1]) values.push(args[index + 1]);
-  }
-  return values;
-}
+const agentProfile = valueAfter("--agent-profile", args);
+const agentId = valueAfter("--agent-id", args);
+const agentModel = valueAfter("--agent-model", args);
+const agentCandidateIndex = valueAfter("--agent-candidate-index", args);
+const agentTimeoutMs = valueAfter("--agent-timeout-ms", args);
+const agentOutputPath = valueAfter("--agent-output-path", args);
+const agentMaxAttempts = valueAfter("--agent-max-attempts", args);
 
 if (!projectStatusPath || !workflowStatePath || !outputPath) {
   console.error(usage());
+  process.exit(1);
+}
+
+const removedAgentCommandFlags = [
+  "--child-worker-command",
+  "--child-worker-arg",
+  "--default-child-provider-command",
+  "--default-child-provider-arg",
+  "--child-worker-timeout-ms",
+  "--child-worker-output-path",
+  "--child-worker-max-attempts",
+  "--child-worker-split-retry"
+];
+const removedFlag = removedAgentCommandFlags.find((flag) => hasFlag(flag, args));
+if (removedFlag) {
+  console.error(`Removed external command flag is not supported: ${removedFlag}. Use --agent-profile with config/agent-profiles.json.`);
   process.exit(1);
 }
 
@@ -143,24 +153,20 @@ try {
     projection_history_path: historyPath,
     snapshots_root: snapshotsRoot,
     snapshot_prefix: snapshotPrefix,
-    child_worker_command: childWorkerCommand,
-    child_worker_args: valuesAfter("--child-worker-arg", args),
-    default_child_provider: defaultChildProviderCommand ? {
-      command: defaultChildProviderCommand,
-      args: valuesAfter("--default-child-provider-arg", args),
-      provider: "codex_proxy",
-      model: "codex-cli",
-      retry_policy: {
-        max_attempts: childWorkerMaxAttempts || 1,
-        split_retry: hasFlag("--child-worker-split-retry", args)
-      }
-    } : undefined,
-    child_worker_max_attempts: childWorkerMaxAttempts,
-    child_worker_split_retry: hasFlag("--child-worker-split-retry", args),
-    child_worker_timeout_ms: childWorkerTimeoutMs,
-    child_worker_output_path: childWorkerOutputPath,
+    agent_invocation_profile: agentProfile,
+    agent_invocation_agent_id: agentId,
+    agent_invocation_model: agentModel,
+    agent_invocation_candidate_index: agentCandidateIndex,
+    agent_invocation_max_attempts: agentMaxAttempts,
+    agent_invocation_split_retry: hasFlag("--agent-split-retry", args),
+    agent_invocation_retry_policy: {
+      max_attempts: agentMaxAttempts || 1,
+      split_retry: hasFlag("--agent-split-retry", args)
+    },
+    child_worker_timeout_ms: agentTimeoutMs,
+    child_worker_output_path: agentOutputPath,
     allow_mock_child_worker: hasFlag("--allow-mock-child-worker", args),
-    command_runner_kind: childWorkerCommand || defaultChildProviderCommand ? "codex_proxy_child_process" : undefined
+    command_runner_kind: agentProfile ? "agent_invocation_child_process" : undefined
   };
 
   result = hasFlag("--loop", args)

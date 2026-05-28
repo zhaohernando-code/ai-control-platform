@@ -43,11 +43,11 @@ function validArtifact(overrides = {}) {
     ...AUDIT_SKILL_DIMENSIONS.map((id) => evidence(`${id}-evidence`)),
     evidence("governance-skill-invocation", {
       kind: "command",
-      source: "Claude+DeepSeek governance audit skill invocation",
+      source: "Governed agent governance audit skill invocation",
       collector: "governance-audit-orchestrator",
-      command_or_path: "python3 run_claude_deepseek_review.py --prompt-file tmp/audit.prompt.md using /Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
+      command_or_path: "agent_invocation governance_audit_skill_trial --prompt-file tmp/audit.prompt.md using /Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
       exit_code: 0,
-      result_summary: "Claude+DeepSeek read and applied governance-audit-orchestrator/SKILL.md against real project state."
+      result_summary: "agent invocation read and applied governance-audit-orchestrator/SKILL.md against real project state."
     })
   ];
   return {
@@ -115,10 +115,10 @@ function validArtifact(overrides = {}) {
       optional_without_decision_package_count: 0
     },
     skill_invocation: {
-      provider: "claude_deepseek",
+      provider: "agent_invocation",
       skill_path: "/Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
-      runner_command: "python3",
-      runner_args: ["/Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py"],
+      runner_command: "agent_invocation",
+      runner_args: ["governance_audit_skill_trial"],
       prompt_path: "tmp/audit-skill-trial/governance-audit-current.prompt.md",
       raw_output_path: "tmp/audit-skill-trial/governance-audit-current.raw.txt",
       exit_code: 0,
@@ -210,11 +210,11 @@ test("audit skill trial run rejects summary-only evidence", () => {
       }),
       evidence("governance-skill-invocation", {
         kind: "command",
-        source: "Claude+DeepSeek governance audit skill invocation",
+        source: "Governed agent governance audit skill invocation",
         collector: "governance-audit-orchestrator",
-        command_or_path: "python3 run_claude_deepseek_review.py --prompt-file tmp/audit.prompt.md using /Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
+        command_or_path: "agent_invocation governance_audit_skill_trial --prompt-file tmp/audit.prompt.md using /Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md",
         exit_code: 0,
-        result_summary: "Claude+DeepSeek read and applied governance-audit-orchestrator/SKILL.md against real project state."
+        result_summary: "agent invocation read and applied governance-audit-orchestrator/SKILL.md against real project state."
       })
     ],
     dimensions: AUDIT_SKILL_DIMENSIONS.map((id) => dimension(id, "quality_gate-evidence")),
@@ -234,7 +234,7 @@ test("audit skill trial run rejects summary-only evidence", () => {
   assert.ok(result.issues.some((issue) => issue.code === "dimension_summary_only_evidence"));
 });
 
-test("audit skill trial run requires a real Claude DeepSeek governance skill invocation", () => {
+test("audit skill trial run requires a real governed agent governance skill invocation", () => {
   const artifact = validArtifact({
     evidence: AUDIT_SKILL_DIMENSIONS.map((id) => evidence(`${id}-evidence`)),
     skill_invocation: undefined
@@ -265,7 +265,7 @@ test("audit skill trial CLI fails closed for invalid artifacts", () => {
   assert.match(invalid.stdout, /audit_project_root_mismatch/);
 });
 
-test("governance audit skill runner invokes Claude DeepSeek command before validating artifact", () => {
+test("governance audit skill runner invokes governed agent command before validating artifact", () => {
   const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-"));
   const fakeRunner = join(dir, "fake-runner.sh");
   const artifactPath = join(dir, "artifact.json");
@@ -301,7 +301,7 @@ test("governance audit skill runner invokes Claude DeepSeek command before valid
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /governance-audit-skill-trial/);
   const output = JSON.parse(readFileSync(outputPath, "utf8"));
-  assert.equal(output.skill_invocation.provider, "claude_deepseek");
+  assert.equal(output.skill_invocation.provider, "agent_invocation");
   assert.match(readFileSync(rawPath, "utf8"), /audit-skill-trial-run\.v1/);
 });
 

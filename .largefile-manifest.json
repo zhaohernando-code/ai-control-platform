@@ -69,7 +69,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 2000,
+      "lines": 2056,
       "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -135,13 +135,13 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 2761,
+      "lines": 2843,
       "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-server.test.js": {
-      "lines": 4159,
+      "lines": 4167,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"

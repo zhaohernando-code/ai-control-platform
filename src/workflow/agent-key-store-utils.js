@@ -1,9 +1,12 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 export const AGENT_KEY_STORE_VERSION = "agent-key-store.sqlite.v1";
-export const DEFAULT_MANUAL_AGENT_CONFIG_PATH = "/Users/hernando_zhao/manual_agent_config.json";
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+export const DEFAULT_AGENT_CHANNEL_CONFIG_PATH = resolve(PROJECT_ROOT, "config/agent-channels.json");
+export const DEFAULT_MANUAL_AGENT_CONFIG_PATH = DEFAULT_AGENT_CHANNEL_CONFIG_PATH;
 
 export const AGENT_ROLE_DEFINITIONS = [
   { id: "plan_generation", label: "计划生成" },

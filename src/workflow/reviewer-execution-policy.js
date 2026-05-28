@@ -164,7 +164,7 @@ export function evaluateReviewerExecutionPolicy(input = {}) {
     execution_mode: issues.length ? "blocked" : "bounded_real_reviewer",
     profile,
     controls: {
-      executor_mode: "claude_deepseek",
+      executor_mode: "agent_invocation",
       max_external_reviewer_calls: maxExternalReviewerCalls,
       max_allowed_external_reviewer_calls: maxAllowedReviewerCalls,
       ds_participation_mode: dsParticipationMode(input),
@@ -183,7 +183,7 @@ export function evaluateReviewerExecutionPolicy(input = {}) {
 }
 
 export function evaluateReviewerProviderHealthPreflight(workflowState = {}, policy = {}) {
-  if (policy?.controls?.executor_mode !== "claude_deepseek") {
+  if (policy?.controls?.executor_mode !== "agent_invocation") {
     return { status: "pass", issues: [] };
   }
 

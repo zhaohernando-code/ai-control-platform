@@ -96,9 +96,11 @@ function hasGovernanceSkillPath(value) {
   return /governance-audit-orchestrator\/SKILL\.md/u.test(normalizeString(value));
 }
 
-function isClaudeDeepSeekInvocationText(value) {
+function isGovernedAgentInvocationText(value) {
   const text = normalizeString(value).toLowerCase();
-  return text.includes("claude") && text.includes("deepseek");
+  return text.includes("agent_invocation") ||
+    text.includes("governance_audit_skill_trial") ||
+    text.includes("claude") && text.includes("deepseek");
 }
 
 function isGovernanceSkillInvocationEvidence(evidence) {
@@ -110,7 +112,7 @@ function isGovernanceSkillInvocationEvidence(evidence) {
     evidence?.command_or_path,
     evidence?.result_summary
   ].map(normalizeString).join(" ");
-  return isClaudeDeepSeekInvocationText(text) && hasGovernanceSkillPath(text);
+  return isGovernedAgentInvocationText(text) && hasGovernanceSkillPath(text);
 }
 
 function hasRealGovernanceSkillInvocation(artifact, evidence) {
@@ -121,7 +123,7 @@ function hasRealGovernanceSkillInvocation(artifact, evidence) {
   const rawOutputPath = normalizeString(invocation.raw_output_path || invocation.rawOutputPath || invocation.transcript_path);
   const exitCode = Number(invocation.exit_code);
   const metadataClaimsRealInvocation =
-    isClaudeDeepSeekInvocationText(`${provider} ${runnerCommand}`) &&
+    isGovernedAgentInvocationText(`${provider} ${runnerCommand} ${normalizeString(invocation.profile_id || invocation.profileId)}`) &&
     hasGovernanceSkillPath(skillPath) &&
     rawOutputPath &&
     exitCode === 0;
@@ -347,7 +349,7 @@ export function evaluateAuditSkillTrialRun(artifact = {}, options = {}) {
   if (!hasRealGovernanceSkillInvocation(artifact, evidence)) {
     issues.push(issue(
       "missing_real_governance_skill_invocation",
-      "audit trial must include a real Claude+DeepSeek invocation of governance-audit-orchestrator/SKILL.md, not only a prewritten JSON artifact",
+      "audit trial must include a real governed agent invocation of governance-audit-orchestrator/SKILL.md, not only a prewritten JSON artifact",
       "skill_invocation"
     ));
   }

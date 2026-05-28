@@ -7,6 +7,46 @@ const MODEL_PROFILES = {
     latency_tier: "medium",
     strengths: ["complex_planning", "high_risk_code", "architecture", "final_arbitration"]
   },
+  "gpt-5.5": {
+    model_id: "gpt-5.5",
+    family: "gpt",
+    cost_tier: "high",
+    accuracy_tier: "very_high",
+    latency_tier: "medium",
+    strengths: ["complex_planning", "repo_code_landing", "architecture", "final_arbitration"]
+  },
+  "gpt-5.3-codex-spark": {
+    model_id: "gpt-5.3-codex-spark",
+    family: "gpt",
+    cost_tier: "medium",
+    accuracy_tier: "high",
+    latency_tier: "medium",
+    strengths: ["repo_code_landing", "fixture_acceptance", "implementation"]
+  },
+  "claude-opus-4-7": {
+    model_id: "claude-opus-4-7",
+    family: "claude",
+    cost_tier: "high",
+    accuracy_tier: "very_high",
+    latency_tier: "medium",
+    strengths: ["architecture", "complex_planning", "deep_review"]
+  },
+  "claude-sonnet-4-6": {
+    model_id: "claude-sonnet-4-6",
+    family: "claude",
+    cost_tier: "medium",
+    accuracy_tier: "high",
+    latency_tier: "medium",
+    strengths: ["structured_planning", "repo_code_landing", "review", "implementation"]
+  },
+  "claude-haiku-4-5-20251001": {
+    model_id: "claude-haiku-4-5-20251001",
+    family: "claude",
+    cost_tier: "low",
+    accuracy_tier: "medium",
+    latency_tier: "low",
+    strengths: ["fallback", "summarization", "routing"]
+  },
   "deepseek-v4-pro": {
     model_id: "deepseek-v4-pro",
     family: "deepseek",
@@ -15,6 +55,14 @@ const MODEL_PROFILES = {
     latency_tier: "medium",
     strengths: ["independent_review", "code_audit", "reasoning", "second_opinion"]
   },
+  "deepseek-v4-pro[1m]": {
+    model_id: "deepseek-v4-pro[1m]",
+    family: "deepseek",
+    cost_tier: "medium",
+    accuracy_tier: "high",
+    latency_tier: "medium",
+    strengths: ["independent_review", "bounded_execution", "code_audit", "second_opinion"]
+  },
   "deepseek-v4-flash": {
     model_id: "deepseek-v4-flash",
     family: "deepseek",
@@ -22,6 +70,22 @@ const MODEL_PROFILES = {
     accuracy_tier: "medium",
     latency_tier: "low",
     strengths: ["classification", "summarization", "routing", "low_risk_batch_checks"]
+  },
+  "mimo-v2.5-pro": {
+    model_id: "mimo-v2.5-pro",
+    family: "mimo",
+    cost_tier: "medium",
+    accuracy_tier: "medium",
+    latency_tier: "medium",
+    strengths: ["anthropic_compatible_fallback", "structured_planning", "bounded_execution"]
+  },
+  "mimo-v2.5": {
+    model_id: "mimo-v2.5",
+    family: "mimo",
+    cost_tier: "low",
+    accuracy_tier: "medium",
+    latency_tier: "low",
+    strengths: ["fallback", "summarization", "routing"]
   }
 };
 

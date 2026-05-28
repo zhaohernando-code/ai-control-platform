@@ -2,7 +2,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { createClaudeDeepSeekShardExecutor } from "../src/workflow/claude-deepseek-shard-executor.js";
+import { createAgentReviewerShardExecutor } from "../src/workflow/agent-reviewer-shard-executor.js";
 import {
   createReviewerShardLoopRunArtifact,
   runReviewerShard,
@@ -17,8 +17,8 @@ function usage() {
     "  --shard-id <id>               Pending shard id; defaults to the first pending shard",
     "  --all                         Continue pending shards until aggregate or provider health stop",
     "  --max-shards <n>              Safety cap for --all",
-    "  --cwd <path>                  Project cwd for external reviewer",
-    "  --timeout-seconds <seconds>   External reviewer timeout override",
+    "  --cwd <path>                  Project cwd for governed reviewer agent",
+    "  --timeout-seconds <seconds>   Reviewer agent timeout override",
     "  --created-at <iso>            Fact timestamp",
     "  --aggregate-created-at <iso>  Aggregate timestamp",
     "  --record-provider-health      Write provider health fact when shard times out",
@@ -70,7 +70,7 @@ let workflowState;
 let executor;
 try {
   workflowState = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
-  executor = mockExecutorFromArgs(args) || createClaudeDeepSeekShardExecutor({
+  executor = mockExecutorFromArgs(args) || createAgentReviewerShardExecutor({
     cwd: valueAfter("--cwd", args) || process.cwd(),
     timeout_seconds: valueAfter("--timeout-seconds", args)
   });

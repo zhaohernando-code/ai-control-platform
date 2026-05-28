@@ -301,10 +301,12 @@ VALUES (${sqlString(id)}, ${sqlString(agentId)}, ${sqlString(status)}, ${Number.
     const lockedAt = normalizeString(options.now) || nowIso();
     const ttlMs = Number(options.ttl_ms || options.ttlMs || 10 * 60 * 1000);
     const expiresAt = new Date(Date.parse(lockedAt) + ttlMs).toISOString();
+    const preferredAgentId = normalizeString(options.agent_id || options.agentId);
     const registry = listAgents();
     const locks = new Map(readLocks().map((lock) => [lock.key_id, lock]));
     const candidates = registry.agents
       .filter((agent) => !agent.account_login && agent.roles?.[role] === true)
+      .filter((agent) => !preferredAgentId || agent.id === preferredAgentId)
       .flatMap((agent) => agent.keys.map((key) => ({ agent, key })))
       .filter(({ key }) => key.health.status === "success")
       .filter(({ key }) => {

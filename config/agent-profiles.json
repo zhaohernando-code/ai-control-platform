@@ -1,0 +1,119 @@
+{
+  "version": "agent-profiles.v1",
+  "profiles": {
+    "requirement_plan_generation": {
+      "role": "plan_generation",
+      "stage": "planning",
+      "risk": "medium",
+      "budget_tier": "balanced",
+      "strength": "structured_planning",
+      "bare": true,
+      "output_format": "json",
+      "tools": "",
+      "effort": "high",
+      "max_budget_usd": "1",
+      "timeout_ms": 300000,
+      "hooks": ["requirement_intake", "plan_review"],
+      "candidates": [
+        { "agent_id": "claude", "model": "claude-sonnet-4-6" },
+        { "agent_id": "deepseek", "model": "deepseek-v4-pro[1m]" },
+        { "agent_id": "xiaomi-mimo", "model": "mimo-v2.5-pro" },
+        { "agent_id": "claude", "model": "claude-haiku-4-5-20251001" }
+      ]
+    },
+    "reviewer_shard": {
+      "role": "acceptance_check",
+      "stage": "review",
+      "risk": "high",
+      "budget_tier": "balanced",
+      "strength": "independent_review",
+      "bare": true,
+      "output_format": "json",
+      "tools": "",
+      "effort": "high",
+      "max_budget_usd": "1",
+      "timeout_ms": 180000,
+      "hooks": ["reviewer_scope_shard", "provider_health"],
+      "candidates": [
+        { "agent_id": "deepseek", "model": "deepseek-v4-pro[1m]" },
+        { "agent_id": "claude", "model": "claude-sonnet-4-6" },
+        { "agent_id": "deepseek", "model": "deepseek-v4-flash" },
+        { "agent_id": "xiaomi-mimo", "model": "mimo-v2.5-pro" }
+      ]
+    },
+    "context_work_package_provider": {
+      "role": "code_implementation",
+      "stage": "implementation",
+      "risk": "medium",
+      "budget_tier": "balanced",
+      "strength": "bounded_execution",
+      "bare": true,
+      "output_format": "json",
+      "tools": "",
+      "effort": "high",
+      "max_budget_usd": "1",
+      "timeout_ms": 120000,
+      "hooks": ["context_work_package", "completion_evidence"],
+      "candidates": [
+        { "agent_id": "deepseek", "model": "deepseek-v4-pro[1m]" },
+        { "agent_id": "claude", "model": "claude-sonnet-4-6" },
+        { "agent_id": "xiaomi-mimo", "model": "mimo-v2.5-pro" },
+        { "agent_id": "deepseek", "model": "deepseek-v4-flash" }
+      ]
+    },
+    "development_flow_codex": {
+      "role": "code_implementation",
+      "stage": "implementation",
+      "risk": "medium",
+      "budget_tier": "high",
+      "strength": "repo_code_landing",
+      "ephemeral": false,
+      "bare": false,
+      "timeout_ms": 240000,
+      "hooks": ["development_flow", "fixture_acceptance"],
+      "candidates": [
+        { "agent_id": "codex-account", "model": "gpt-5.3-codex-spark" },
+        { "agent_id": "codex-token", "model": "gpt-5.5" }
+      ]
+    },
+    "development_flow_claude": {
+      "role": "code_implementation",
+      "stage": "implementation",
+      "risk": "medium",
+      "budget_tier": "balanced",
+      "strength": "repo_code_landing",
+      "bare": true,
+      "output_format": "json",
+      "tools": "Read,Edit,Bash(node --test *)",
+      "effort": "high",
+      "max_budget_usd": "0.50",
+      "timeout_ms": 240000,
+      "hooks": ["development_flow", "fixture_acceptance"],
+      "candidates": [
+        { "agent_id": "claude", "model": "claude-sonnet-4-6" },
+        { "agent_id": "deepseek", "model": "deepseek-v4-pro[1m]" },
+        { "agent_id": "xiaomi-mimo", "model": "mimo-v2.5-pro" }
+      ]
+    },
+    "governance_audit_skill_trial": {
+      "role": "acceptance_check",
+      "stage": "review",
+      "risk": "high",
+      "budget_tier": "balanced",
+      "strength": "governance_audit",
+      "ephemeral": true,
+      "bare": true,
+      "output_format": "json",
+      "tools": "",
+      "effort": "high",
+      "max_budget_usd": "1",
+      "timeout_ms": 300000,
+      "hooks": ["governance_audit_orchestrator", "closeout_gate"],
+      "candidates": [
+        { "agent_id": "codex-account", "model": "gpt-5.5" },
+        { "agent_id": "deepseek", "model": "deepseek-v4-flash" },
+        { "agent_id": "claude", "model": "claude-sonnet-4-6" }
+      ]
+    }
+  }
+}

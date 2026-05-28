@@ -51,11 +51,32 @@ export interface AgentChannel {
   status: AgentHealthStatus;
 }
 
+export interface AgentInvocationProfile {
+  id: string;
+  role: string;
+  stage: string;
+  risk: string;
+  budget_tier: string;
+  strength: string;
+  timeout_ms: number;
+  hooks: string[];
+  candidates: Array<{
+    agent_id: string;
+    model: string;
+  }>;
+}
+
 export interface AgentsResponse {
   version: string;
   role_definitions: AgentRoleDefinition[];
   last_refresh_at: string | null;
   agents: AgentChannel[];
+  invocation?: {
+    version: string;
+    profiles_path: string;
+    channels_path: string;
+    profiles: AgentInvocationProfile[];
+  };
 }
 
 export interface HealthCheckResponse {

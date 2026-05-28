@@ -22,7 +22,7 @@
 - **主进程不能跳过调度闭环**：平台能力开发要先固化 Context Pack、owned files、目标/非目标、证据要求和重跑条件，再派发子进程。任务小或文档多都不是绕过调度的理由。
 - **每个子进程必须自评**：每个 worker 只能写授权文件集合，结束时自评是否跑偏、证据是否足够、是否需要重跑。主进程用自评做验收输入，而不是把它当总结。
 - **无 diff 或无自评是流程失败**：外部 CLI 子进程如果只分析不落地、超范围读取、没有自评或没有测试结果，主进程要归类为 process gap，先加强 gate/文档/测试，再重新派发或收敛为最小修复。
-- **外部 CLI prompt 必须完整交接**：`codex_proxy`、Claude Code 或其他 CLI worker 不继承 Codex App 的上下文、skill、connector、浏览器和 heartbeat 状态。派发前必须写清 host、owned files、必读范围、禁止动作、验证命令和自评格式。
+- **Agent prompt 必须完整交接**：Claude Code、Codex CLI、DeepSeek、MiMo 或其他 agent 不继承 Codex App 的上下文、skill、connector、浏览器和 heartbeat 状态。派发前必须经过项目内统一调用层，并写清 host、owned files、必读范围、禁止动作、验证命令和自评格式。
 - **外部 CLI prompt 必须最小化和语义降噪**：交给中转 API、Codex CLI、Claude Code 或 DeepSeek 的 prompt 不得直接塞入完整 workflow_state、Context Pack 或历史摘要。主进程必须只给最小任务视图、精确 owned files、验收命令和输出 JSON 协议，并把内部治理/持续运行/调度类术语转换成中台质量运营语义，避免 provider 把项目管理流程误判成其他工具链。
 
 ## Gate 与持续执行
@@ -54,6 +54,6 @@
 
 - **源码规模治理接入共享 hook**：新中台和被纳管项目使用同一套 `../../.githooks/pre-commit` 500 行门禁。新增 checkout 要运行 `scripts/install-git-hooks.sh`；`.largefile-manifest.json` 只记录当前超线且仍需治理的文件，明显过大的平台核心文件应标为 `planned_refactor`，后续增长必须先拆分而不是扩大豁免。
 - **主线必须保持干净**：`main` 只承载已验收结果；发现 primary worktree 在 `main` 且有未提交修改时，先切到隔离分支或 worktree，再继续派发/验收。
-- **收口必须证明远端主线一致**：最终 closeout 不能只证明本地测试通过；必须确认本地 `main` 干净、HEAD 与 `origin/main` 一致，并且用户可见入口或发布入口有通过证据。
+- **收口按执行角色分层**：隔离 worktree 的 `check:closeout` 证明当前分支干净、代码门禁通过、运行态发布入口已验证、SQLite 状态清洁；远端主线一致性属于 parent-owned 集成发布步骤，只能在 `main` 或显式设置 `AI_CONTROL_CLOSEOUT_REQUIRE_MAINLINE=1` 时执行，不能要求 worker 为了收口直接改主线。
 - **child worker 必须使用隔离 worktree**：分支名不是宿主边界。`child_worker` 只能在 primary worktree 之外的 worker worktree 中累积 diff；`main_orchestrator`/integration closeout 才能在受控集成路径验收。
 - **CLI orchestrator 与 CLI worker 分层**：同一 Codex CLI 能力可以承担 main orchestrator 或 child worker，但运行模式必须显式声明；worker 不能反向接管拆任务、验收和流程修正职责。

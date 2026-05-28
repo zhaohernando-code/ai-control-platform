@@ -40,7 +40,7 @@ test("reviewer execution policy allows bounded real reviewer profile", () => {
 
   assert.equal(policy.status, "pass");
   assert.equal(policy.execution_mode, "bounded_real_reviewer");
-  assert.equal(policy.controls.executor_mode, "claude_deepseek");
+  assert.equal(policy.controls.executor_mode, "agent_invocation");
   assert.equal(policy.controls.max_external_reviewer_calls, 1);
   assert.equal(policy.controls.max_allowed_external_reviewer_calls, 1);
   assert.equal(policy.controls.ds_participation_mode, "balanced");
@@ -60,7 +60,7 @@ test("reviewer execution policy can temporarily expand DS bounded participation"
 
   assert.equal(policy.status, "pass");
   assert.equal(policy.execution_mode, "bounded_real_reviewer");
-  assert.equal(policy.controls.executor_mode, "claude_deepseek");
+  assert.equal(policy.controls.executor_mode, "agent_invocation");
   assert.equal(policy.controls.max_external_reviewer_calls, 2);
   assert.equal(policy.controls.max_allowed_external_reviewer_calls, 2);
   assert.equal(policy.controls.ds_participation_mode, "expanded");

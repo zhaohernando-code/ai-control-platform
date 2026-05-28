@@ -387,6 +387,88 @@ test("workbench projection exposes governance audit repair as an automation next
   assert.ok(projection.one_screen.next_actions.some((action) => action.action === "repair_governance_audit_defect"));
 });
 
+test("workbench projection uses the latest governance audit artifact with a repeated id", () => {
+  const input = baseInput();
+  const artifactId = "governance-audit-current";
+  const failedMetadata = {
+    status: "fail",
+    final_verdict: "不通过",
+    blocking_count: 1,
+    findings: [
+      {
+        id: "stale-mainline-release-readiness",
+        type: "明确缺陷",
+        severity: "高",
+        summary: "stale failure",
+        repair_schedule: {
+          target_files_or_modules: ["tools/check-closeout.mjs"],
+          verification_commands: ["npm run check:closeout"]
+        }
+      }
+    ]
+  };
+  const passedMetadata = {
+    status: "pass",
+    final_verdict: "带条件通过",
+    blocking_count: 0,
+    findings: [
+      {
+        id: "live-frontend-entry-verified",
+        type: "可选迭代",
+        severity: "低",
+        summary: "latest pass",
+        decision_package: {
+          options: ["defer", "schedule follow-up"],
+          tradeoffs: "low risk",
+          recommended_option: "defer",
+          estimated_cost: "low",
+          confidence_gain: "low"
+        }
+      }
+    ]
+  };
+  input.manifest.events.push(
+    {
+      id: `event-${artifactId}-failed`,
+      type: GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT,
+      status: "fail",
+      artifact_id: artifactId,
+      metadata: failedMetadata
+    },
+    {
+      id: `event-${artifactId}-passed`,
+      type: GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT,
+      status: "pass",
+      artifact_id: artifactId,
+      metadata: passedMetadata
+    }
+  );
+  input.artifact_ledger.artifacts.push(
+    {
+      id: artifactId,
+      type: "evaluation",
+      status: "fail",
+      producer: "governance-audit-skill-trial",
+      created_at: "2026-05-27T00:00:00.000Z",
+      metadata: failedMetadata
+    },
+    {
+      id: artifactId,
+      type: "evaluation",
+      status: "pass",
+      producer: "governance-audit-skill-trial",
+      created_at: "2026-05-28T00:00:00.000Z",
+      metadata: passedMetadata
+    }
+  );
+  const projection = createWorkbenchProjection(input);
+
+  assert.equal(projection.governance_audit.status, "pass");
+  assert.equal(projection.governance_audit.final_verdict, "带条件通过");
+  assert.equal(projection.governance_audit.blocking_count, 0);
+  assert.equal(projection.one_screen.counters.governance_audit_blockers, 0);
+});
+
 test("workbench projection and mobile expose self-governance repair, evidence, and decision readout", () => {
   const input = baseInput({
     self_governance_findings: [
@@ -838,9 +920,9 @@ test("workbench projection exposes headless child provider retry and split evide
         }
       ],
       executor_provenance: {
-        executor_kind: "codex_proxy_cli_worker",
-        command_runner_kind: "codex_proxy_child_process",
-        provider: "codex_proxy",
+        executor_kind: "agent_cli_worker",
+        command_runner_kind: "agent_invocation_child_process",
+        provider: "agent_invocation",
         model: "codex-cli",
         retry_policy: {
           max_attempts: 2,
@@ -874,10 +956,10 @@ test("workbench projection exposes headless child provider retry and split evide
   const mobile = createMobileWorkbenchProjection(input);
 
   assert.equal(projection.headless_child_provider.status, "pass");
-  assert.equal(projection.headless_child_provider.provider, "codex_proxy");
-  assert.equal(projection.headless_child_provider.executor_kind, "codex_proxy_cli_worker");
+  assert.equal(projection.headless_child_provider.provider, "agent_invocation");
+  assert.equal(projection.headless_child_provider.executor_kind, "agent_cli_worker");
   assert.equal(projection.headless_child_provider.mock_child_worker, false);
-  assert.equal(projection.headless_child_provider.command_runner_kind, "codex_proxy_child_process");
+  assert.equal(projection.headless_child_provider.command_runner_kind, "agent_invocation_child_process");
   assert.equal(projection.headless_child_provider.max_attempts, 2);
   assert.equal(projection.headless_child_provider.split_retry, true);
   assert.equal(projection.headless_child_provider.package_count, 1);
@@ -920,9 +1002,9 @@ test("workbench projection exposes explicit mock child worker provenance", () =>
         }
       ],
       executor_provenance: {
-        executor_kind: "codex_proxy_cli_worker",
+        executor_kind: "agent_cli_worker",
         command_runner_kind: "mock_child_worker",
-        provider: "codex_proxy",
+        provider: "agent_invocation",
         model: "codex-cli",
         retry_policy: {
           max_attempts: 1,
@@ -1871,7 +1953,7 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
           shard_id: "reviewer-scope-shard-002",
           status: "fail",
           executor_provenance: {
-            executor_kind: "claude_deepseek",
+            executor_kind: "agent_invocation",
             execution_profile: "approved_bounded_real_reviewer",
             provider: "deepseek",
             model: "deepseek-v4-pro",
@@ -1902,12 +1984,12 @@ test("workbench projection exposes reviewer shard aggregate status", () => {
   assert.equal(projection.reviewer_shard_review.completed_shards, 2);
   assert.equal(projection.reviewer_shard_review.pending_shards, 0);
   assert.equal(projection.reviewer_shard_review.failed_finding_count, 1);
-  assert.equal(projection.reviewer_shard_review.latest_executor_kind, "claude_deepseek");
+  assert.equal(projection.reviewer_shard_review.latest_executor_kind, "agent_invocation");
   assert.equal(projection.reviewer_shard_review.latest_execution_profile, "approved_bounded_real_reviewer");
   assert.equal(projection.reviewer_shard_review.latest_external_call_budget_used, 1);
   assert.equal(projection.one_screen.counters.reviewer_shards_completed, 2);
   assert.equal(mobile.shard_review.failed_finding_count, 1);
-  assert.equal(mobile.shard_review.latest_executor_kind, "claude_deepseek");
+  assert.equal(mobile.shard_review.latest_executor_kind, "agent_invocation");
   assert.equal(projection.next_action_readout.action, "continue_after_reviewer_aggregate");
 });
 

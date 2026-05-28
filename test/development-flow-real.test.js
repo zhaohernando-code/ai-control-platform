@@ -45,7 +45,7 @@ test("development flow real harness validates both CLI chains with injected comm
   assert.ok(artifact.runs.claude_cli.diff_summary.changed_files.includes("src/math.js"));
 });
 
-test("development flow Claude chain defaults to the project-governed proxy", () => {
+test("development flow Claude chain defaults to project agent invocation profile", () => {
   let captured = null;
   const run = runDevelopmentFlowCliChain("claude_cli", {
     root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-proxy-test-")),
@@ -57,10 +57,9 @@ test("development flow Claude chain defaults to the project-governed proxy", () 
   });
 
   assert.equal(run.status, "pass");
-  assert.ok(captured.command.endsWith("scripts/claude-role-proxy.sh"));
-  assert.ok(captured.args.includes("--role"));
-  assert.ok(captured.args.includes("developer"));
-  assert.ok(captured.args.includes("-m"));
+  assert.equal(captured.command, "claude");
+  assert.ok(captured.args.includes("--bare"));
+  assert.ok(captured.args.includes("--model"));
   assert.ok(captured.args.includes("claude-sonnet-4-6"));
   assert.ok(captured.args.includes("--json-schema"));
 });

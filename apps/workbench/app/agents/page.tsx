@@ -117,6 +117,7 @@ export default function AgentsPage() {
   }, [loadAgents]);
 
   const definitions = useMemo(() => registry?.role_definitions || [], [registry]);
+  const invocationProfiles = useMemo(() => registry?.invocation?.profiles || [], [registry]);
 
   const runCheck = useCallback((scope: string, action: () => Promise<unknown>) => {
     setTestingScope(scope);
@@ -385,6 +386,37 @@ export default function AgentsPage() {
           action={<Button size="small" danger onClick={loadAgents}>重试</Button>}
         />
       )}
+      <Card title={<Space><ApiOutlined />统一调用治理</Space>}>
+        <List
+          dataSource={invocationProfiles}
+          locale={{ emptyText: <Empty description="暂无调用 profile" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+          renderItem={(profile) => (
+            <List.Item>
+              <List.Item.Meta
+                title={
+                  <Space wrap>
+                    <Text strong>{profile.id}</Text>
+                    <Tag color="blue">{profile.role}</Tag>
+                    <Tag>{profile.stage}</Tag>
+                    <Tag color={profile.risk === "high" ? "warning" : "default"}>{profile.risk}</Tag>
+                    <Tag>{profile.strength}</Tag>
+                  </Space>
+                }
+                description={
+                  <Space direction="vertical" size={4}>
+                    <Text type="secondary">
+                      {profile.candidates.map((candidate) => `${candidate.agent_id}:${candidate.model}`).join(" -> ")}
+                    </Text>
+                    <Text type="secondary">
+                      timeout {Math.round(Number(profile.timeout_ms || 0) / 1000)}s · hooks {(profile.hooks || []).join("、") || "无"}
+                    </Text>
+                  </Space>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      </Card>
       <Spin spinning={loading && !registry}>
         <Collapse items={collapseItems} bordered={false} />
       </Spin>

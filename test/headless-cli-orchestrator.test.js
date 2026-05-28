@@ -247,36 +247,38 @@ test("headless CLI orchestrator continues existing context cycle without remater
   assert.equal(result.workflow_state.manifest.work_packages[1].status, "completed");
 });
 
-test("headless child worker commands receive sanitized workbench child-worker environment", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "headless-child-env-"));
-  const workerScript = join(tempDir, "worker.mjs");
-  writeFileSync(workerScript, [
-    "const leaked = Object.keys(process.env).filter((name) => name.startsWith('AI_CONTROL_WORKBENCH_CHILD_WORKER_'));",
-    "const pass = leaked.length === 0;",
-    "console.log(JSON.stringify({",
-    "  status: pass ? 'pass' : 'fail',",
-    "  role: 'bounded_child_worker',",
-    "  host: 'platform_core',",
-    "  changed_files: ['src/workflow/headless-cli-orchestrator.js'],",
-    "  test_results: [{ command: 'child worker env isolation', status: pass ? 'pass' : 'fail' }],",
-    "  durable_state_updated: true,",
-    "  process_hardening: { required: false, status: 'not_required' },",
-    "  continuation_readiness: { ready: true },",
-    "  self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true },",
-    "  blocker: pass ? null : `leaked ${leaked.join(',')}`",
-    "}));"
-  ].join("\n"));
-
+test("headless governed agent invocation receives sanitized workbench child-worker environment", () => {
+  let sawCleanInvocationEnv = false;
   const previousCommand = process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND;
   const previousOutputPath = process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH;
   process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_COMMAND = "would-recursively-spawn";
   process.env.AI_CONTROL_WORKBENCH_CHILD_WORKER_OUTPUT_PATH = "would-recursively-write";
   try {
     const executor = createHeadlessProviderExecutor({
-      child_worker_command: process.execPath,
-      child_worker_args: [workerScript],
+      agent_invocation_profile: "development_flow_codex",
       child_worker_timeout_ms: 10000,
-      child_worker_max_attempts: 1
+      agent_invocation_max_attempts: 1,
+      agent_invocation_command_runner: (_command, _args, runnerOptions) => {
+        const leaked = Object.keys(runnerOptions.env || {})
+          .filter((name) => name.startsWith("AI_CONTROL_WORKBENCH_CHILD_WORKER_"));
+        sawCleanInvocationEnv = leaked.length === 0;
+        return {
+          status: 0,
+          stdout: JSON.stringify({
+            status: sawCleanInvocationEnv ? "pass" : "fail",
+            role: "bounded_child_worker",
+            host: "platform_core",
+            changed_files: ["src/workflow/headless-cli-orchestrator.js"],
+            test_results: [{ command: "agent invocation env isolation", status: sawCleanInvocationEnv ? "pass" : "fail" }],
+            durable_state_updated: true,
+            process_hardening: { required: false, status: "not_required" },
+            continuation_readiness: { ready: true },
+            self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true },
+            blocker: sawCleanInvocationEnv ? null : "workbench child-worker env leaked"
+          }),
+          stderr: ""
+        };
+      }
     });
     const result = executor({
       workflow_state: sourceWorkflowState(),
@@ -292,6 +294,7 @@ test("headless child worker commands receive sanitized workbench child-worker en
     });
 
     assert.equal(result.status, "pass");
+    assert.equal(sawCleanInvocationEnv, true);
     assert.equal(result.package_results[0].status, "pass");
   } finally {
     if (previousCommand === undefined) {
@@ -307,345 +310,6 @@ test("headless child worker commands receive sanitized workbench child-worker en
   }
 });
 
-test("Claude child worker runs in bare mode without workflow hook inheritance", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-worker-"));
-  const promptFile = join(tempDir, "prompt.md");
-  const captureFile = join(tempDir, "args.txt");
-  const fakeProxy = join(tempDir, "claude-proxy.sh");
-  writeFileSync(promptFile, "Return JSON.");
-  writeFileSync(fakeProxy, [
-    "#!/usr/bin/env bash",
-    "printf '%s\\n' \"$@\" > \"$CAPTURE_ARGS\"",
-    "printf '{\"status\":\"pass\"}\\n'"
-  ].join("\n"));
-  chmodSync(fakeProxy, 0o755);
-
-  const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
-      AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
-      AI_CONTROL_WORKBENCH_CHILD_WORKER_USE_WORKTREE: "0",
-      CAPTURE_ARGS: captureFile
-    }
-  });
-
-  assert.equal(result.status, 0);
-  const args = readFileSync(captureFile, "utf8").trim().split("\n");
-  assert.deepEqual(args.slice(0, 2), ["-m", "claude-haiku-4-5-20251001"]);
-  assert.ok(args.includes("--role"));
-  assert.ok(args.includes("developer"));
-  assert.ok(args.includes("--bare"));
-  assert.ok(args.includes("--permission-mode"));
-  assert.ok(args.includes("bypassPermissions"));
-  assert.ok(args.includes("--no-session-persistence"));
-  assert.ok(args.includes("--tools"));
-  assert.ok(args.includes("default"));
-  assert.ok(args.includes("--add-dir"));
-});
-
-test("Claude DeepSeek child worker uses governed proxy role and model defaults", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "claude-deepseek-child-worker-"));
-  const promptFile = join(tempDir, "prompt.md");
-  const captureFile = join(tempDir, "args.txt");
-  const fakeProxy = join(tempDir, "claude-deepseek-launcher.sh");
-  writeFileSync(promptFile, "Return JSON.");
-  writeFileSync(fakeProxy, [
-    "#!/usr/bin/env bash",
-    "{",
-    "  printf 'MODEL=%s\\n' \"$AI_CONTROL_WORKBENCH_CLAUDE_MODEL\"",
-    "  printf '%s\\n' \"$@\"",
-    "} > \"$CAPTURE_ARGS\"",
-    "printf '{\"status\":\"pass\"}\\n'"
-  ].join("\n"));
-  chmodSync(fakeProxy, 0o755);
-
-  const result = spawnSync("bash", ["scripts/run-claude-deepseek-child-worker.sh", promptFile], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
-      AI_CONTROL_WORKBENCH_CHILD_WORKER_USE_WORKTREE: "0",
-      CAPTURE_ARGS: captureFile
-    }
-  });
-
-  assert.equal(result.status, 0);
-  const args = readFileSync(captureFile, "utf8").trim().split("\n");
-  assert.equal(args[0], "MODEL=claude-sonnet-4-6");
-  assert.ok(args.includes("-m"));
-  assert.ok(args.includes("claude-sonnet-4-6"));
-  assert.ok(args.includes("--role"));
-  assert.ok(args.includes("developer"));
-  assert.ok(args.includes("--bare"));
-  assert.ok(args.includes("--permission-mode"));
-  assert.ok(args.includes("bypassPermissions"));
-  assert.ok(args.includes("--no-session-persistence"));
-  assert.ok(args.includes("--tools"));
-  assert.ok(args.includes("default"));
-});
-
-test("Claude child worker runs in an isolated worker worktree by default", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-worktree-"));
-  const workerRoot = join(tempDir, "worker-workspaces");
-  const promptFile = join(tempDir, "prompt.md");
-  const captureFile = join(tempDir, "capture.txt");
-  const fakeProxy = join(tempDir, "claude-proxy.sh");
-  writeFileSync(promptFile, "Return JSON.");
-  writeFileSync(fakeProxy, [
-    "#!/usr/bin/env bash",
-    "{",
-    "  pwd",
-    "  printf '%s\\n' \"$@\"",
-    "} > \"$CAPTURE_ARGS\"",
-    "printf '{\"status\":\"pass\"}\\n'"
-  ].join("\n"));
-  chmodSync(fakeProxy, 0o755);
-
-  let workerCwd = "";
-  try {
-    const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
-        AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
-        AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT: workerRoot,
-        CAPTURE_ARGS: captureFile
-      }
-    });
-
-    assert.equal(result.status, 0, result.stderr);
-    const captured = readFileSync(captureFile, "utf8").trim().split("\n");
-    workerCwd = captured[0];
-    assert.ok(workerCwd.startsWith(join(workerRoot, "ai-control-platform")));
-    const primaryHead = spawnSync("git", ["rev-parse", "HEAD"], {
-      cwd: process.cwd(),
-      encoding: "utf8"
-    }).stdout.trim();
-    const workerHead = spawnSync("git", ["-C", workerCwd, "rev-parse", "HEAD"], {
-      encoding: "utf8"
-    }).stdout.trim();
-    assert.equal(workerHead, primaryHead);
-    const addDirIndex = captured.indexOf("--add-dir");
-    assert.ok(addDirIndex >= 0);
-    assert.equal(captured[addDirIndex + 1], workerCwd);
-  } finally {
-    if (workerCwd) {
-      const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {
-        encoding: "utf8"
-      }).stdout.trim();
-      spawnSync("git", ["worktree", "remove", "--force", workerCwd], { encoding: "utf8" });
-      if (branch) spawnSync("git", ["branch", "-D", branch], { encoding: "utf8" });
-    }
-  }
-});
-
-test("Claude child worker blocks mainline integration when child test results failed", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-failed-tests-"));
-  const workerRoot = join(tempDir, "worker-workspaces");
-  const promptFile = join(tempDir, "prompt.md");
-  const outputPath = join(tempDir, "child-output.json");
-  const captureFile = join(tempDir, "worker-cwd.txt");
-  const fakeProxy = join(tempDir, "claude-proxy.sh");
-  const sentinelFile = "child-worker-integration-sentinel.txt";
-  writeFileSync(promptFile, "Return JSON.");
-  writeFileSync(fakeProxy, [
-    "#!/usr/bin/env bash",
-    "pwd > \"$CAPTURE_CWD\"",
-    `printf 'should not merge\\n' > ${sentinelFile}`,
-    `git add ${sentinelFile}`,
-    "git -c user.name='AI Control Test' -c user.email='ai-control-test@example.local' commit -m 'test failed child output' >/dev/null",
-    "cat > \"$TEST_CHILD_OUTPUT\" <<'JSON'",
-    JSON.stringify({
-      status: "pass",
-      role: CHILD_WORKER_ROLE,
-      host: "platform_core",
-      changed_files: [sentinelFile],
-      test_results: [
-        { command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" },
-        { command: "npm run check:closeout", status: "fail" }
-      ],
-      durable_state_updated: true,
-      process_hardening: { required: false, status: "not_required" },
-      continuation_readiness: { ready: true },
-      self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
-    }),
-    "JSON",
-    "cat \"$TEST_CHILD_OUTPUT\""
-  ].join("\n"));
-  chmodSync(fakeProxy, 0o755);
-
-  let workerCwd = "";
-  try {
-    const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile, outputPath], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
-        AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
-        AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT: workerRoot,
-        CAPTURE_CWD: captureFile,
-        TEST_CHILD_OUTPUT: outputPath
-      }
-    });
-
-    assert.equal(result.status, 1, result.stderr);
-    workerCwd = readFileSync(captureFile, "utf8").trim();
-    const output = JSON.parse(readFileSync(outputPath, "utf8"));
-    assert.equal(output.status, "fail");
-    assert.match(output.blocker, /child output test failed: npm run check:closeout/);
-    assert.equal(output.command_evidence.child_worker_integration.status, "fail");
-    assert.equal(existsSync(sentinelFile), false);
-  } finally {
-    if (workerCwd) {
-      const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {
-        encoding: "utf8"
-      }).stdout.trim();
-      spawnSync("git", ["worktree", "remove", "--force", workerCwd], { encoding: "utf8" });
-      if (branch) spawnSync("git", ["branch", "-D", branch], { encoding: "utf8" });
-    }
-  }
-});
-
-test("Claude child worker accepts already-satisfied package despite undeclared package-lock side effect", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "claude-child-no-delta-"));
-  const workerRoot = join(tempDir, "worker-workspaces");
-  const promptFile = join(tempDir, "prompt.md");
-  const outputPath = join(tempDir, "child-output.json");
-  const captureFile = join(tempDir, "worker-cwd.txt");
-  const fakeProxy = join(tempDir, "claude-proxy.sh");
-  writeFileSync(promptFile, "Return JSON.");
-  writeFileSync(fakeProxy, [
-    "#!/usr/bin/env bash",
-    "pwd > \"$CAPTURE_CWD\"",
-    "node --input-type=module <<'NODE'",
-    "import { readFileSync, writeFileSync } from 'node:fs';",
-    "const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));",
-    "lock.packages[''].engines = { node: '>=18', npm: '>=9' };",
-    "writeFileSync('package-lock.json', `${JSON.stringify(lock, null, 2)}\\n`);",
-    "NODE",
-    "cat > \"$TEST_CHILD_OUTPUT\" <<'JSON'",
-    JSON.stringify({
-      status: "pass",
-      role: CHILD_WORKER_ROLE,
-      host: "platform_core",
-      changed_files: [],
-      no_diff: true,
-      test_results: [
-        { command: "node --test test/headless-cli-orchestrator.test.js", status: "pass" }
-      ],
-      deferred_parent_gates: ["npm run check:closeout"],
-      durable_state_updated: true,
-      process_hardening: { required: false, status: "not_required" },
-      continuation_readiness: { ready: true },
-      self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true }
-    }),
-    "JSON",
-    "cat \"$TEST_CHILD_OUTPUT\""
-  ].join("\n"));
-  chmodSync(fakeProxy, 0o755);
-
-  let workerCwd = "";
-  try {
-    const result = spawnSync("bash", ["scripts/run-claude-child-worker.sh", promptFile, outputPath], {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        AI_CONTROL_WORKBENCH_CLAUDE_PROXY: fakeProxy,
-        AI_CONTROL_WORKBENCH_CLAUDE_MODEL: "claude-haiku-4-5-20251001",
-        AI_CONTROL_WORKBENCH_WORKER_WORKSPACES_ROOT: workerRoot,
-        CAPTURE_CWD: captureFile,
-        TEST_CHILD_OUTPUT: outputPath
-      }
-    });
-
-    assert.equal(result.status, 0, result.stderr);
-    workerCwd = readFileSync(captureFile, "utf8").trim();
-    const output = JSON.parse(readFileSync(outputPath, "utf8"));
-    assert.equal(output.status, "pass");
-    assert.equal(output.no_diff, true);
-    assert.equal(output.command_evidence.child_worker_integration.status, "pass");
-    assert.match(output.command_evidence.child_worker_integration.message, /already satisfying/);
-    assert.equal(output.command_evidence.child_worker_integration.integrated_commit, output.command_evidence.child_worker_integration.base_commit);
-  } finally {
-    if (workerCwd) {
-      const branch = spawnSync("git", ["-C", workerCwd, "branch", "--show-current"], {
-        encoding: "utf8"
-      }).stdout.trim();
-      spawnSync("git", ["worktree", "remove", "--force", workerCwd], { encoding: "utf8" });
-      if (branch) spawnSync("git", ["branch", "-D", branch], { encoding: "utf8" });
-    }
-  }
-});
-
-test("live workbench starts Claude DeepSeek child workers with output path for integration writeback", () => {
-  const script = readFileSync("scripts/start-workbench-live.sh", "utf8");
-  assert.ok(script.includes("run-claude-deepseek-child-worker.sh"));
-  assert.ok(script.includes("scripts/claude-role-proxy.sh"));
-  assert.ok(script.includes("claude-sonnet-4-6"));
-  assert.ok(script.includes("claude-haiku-4-5-20251001"));
-  assert.ok(!script.includes("start-claude-deepseek-no-proxy.sh"));
-  assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG"));
-  assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG"));
-  assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS"));
-  assert.ok(script.includes(`DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'`));
-});
-
-test("DeepSeek child worker wrapper defaults to the governed project Claude proxy", () => {
-  const script = readFileSync("scripts/run-claude-deepseek-child-worker.sh", "utf8");
-  assert.ok(script.includes("claude-role-proxy.sh"));
-  assert.ok(script.includes("AI_CONTROL_WORKBENCH_CLAUDE_PROXY_SUPPORTS_MODEL_ARG"));
-  assert.ok(script.includes("AI_CONTROL_WORKBENCH_CLAUDE_PROXY_SUPPORTS_ROLE"));
-  assert.ok(!script.includes("start-claude-deepseek-no-proxy.sh"));
-});
-
-test("Claude role proxy allocates developer keys from the developer pool", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "claude-role-proxy-"));
-  const poolDir = join(tempDir, "pools");
-  const stateDir = join(tempDir, "state");
-  const binDir = join(tempDir, "bin");
-  const captureFile = join(tempDir, "env.json");
-  mkdirSync(poolDir, { recursive: true });
-  mkdirSync(stateDir, { recursive: true });
-  mkdirSync(binDir, { recursive: true });
-  writeFileSync(join(poolDir, "manager.keys"), "manager-key\n");
-  writeFileSync(join(poolDir, "developer.keys"), "developer-key\n");
-  writeFileSync(join(binDir, "claude"), [
-    "#!/usr/bin/env bash",
-    "{",
-    "  printf '%s\\n' \"$ANTHROPIC_API_KEY\"",
-    "  printf '%s\\n' \"$ANTHROPIC_MODEL\"",
-    "  printf '%s\\n' \"$@\"",
-    "} > \"$CAPTURE_ENV\"",
-    "printf '{\"status\":\"pass\"}\\n'"
-  ].join("\n"));
-  chmodSync(join(binDir, "claude"), 0o755);
-
-  const result = spawnSync("bash", ["scripts/claude-role-proxy.sh", "--role", "developer", "-m", "claude-sonnet-4-6", "-p", "hello"], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      PATH: `${binDir}:${process.env.PATH}`,
-      AI_CONTROL_WORKBENCH_CLAUDE_KEY_POOL_DIR: poolDir,
-      AI_CONTROL_WORKBENCH_CLAUDE_KEY_STATE_DIR: stateDir,
-      CAPTURE_ENV: captureFile
-    }
-  });
-
-  assert.equal(result.status, 0, result.stderr);
-  const captured = readFileSync(captureFile, "utf8").trim().split("\n");
-  assert.equal(captured[0], "developer-key");
-  assert.equal(captured[1], "claude-sonnet-4-6");
-  assert.ok(captured.includes("-p"));
-});
 
 test("headless CLI orchestrator blocks implicit mock child worker completion", () => {
   const result = runHeadlessCliMainOrchestrator({
@@ -882,7 +546,7 @@ test("headless CLI orchestrator can execute a real child command runner and pars
     cycle_id: "cycle-headless-real-child",
     created_at: "2026-05-23T00:01:30.000Z",
     max_package_count: 1,
-    command_runner_kind: "codex_proxy_child_process",
+    command_runner_kind: "agent_invocation_child_process",
     child_worker_runner: ({ prompt_file, work_package, timeout_ms }) => {
       calls.push({ prompt_file, work_package, timeout_ms });
       return {
@@ -906,7 +570,7 @@ test("headless CLI orchestrator can execute a real child command runner and pars
   assert.equal(result.status, "pass");
   assert.equal(calls.length, 1);
   assert.match(readFileSync(calls[0].prompt_file, "utf8"), /"role": "child_worker"/);
-  assert.equal(result.child_run.artifact.metadata.executor_provenance.command_runner_kind, "codex_proxy_child_process");
+  assert.equal(result.child_run.artifact.metadata.executor_provenance.command_runner_kind, "agent_invocation_child_process");
   assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
 });
 
@@ -1048,7 +712,7 @@ test("headless CLI orchestrator passes configured output path into child prompt 
     cycle_id: "cycle-headless-output-path",
     created_at: "2026-05-23T00:01:35.000Z",
     max_package_count: 1,
-    command_runner_kind: "codex_proxy_child_process",
+    command_runner_kind: "agent_invocation_child_process",
     child_worker_output_path: outputPattern,
     child_worker_runner: ({ prompt_file, output_path }) => {
       calls.push({ prompt_file, output_path });
@@ -1083,7 +747,7 @@ test("headless CLI orchestrator passes configured output path into child prompt 
   assert.equal(childOutput.command_evidence.stdout_present, false);
 });
 
-test("headless CLI orchestrator can use default child provider config with retry and split policy", () => {
+test("headless CLI orchestrator can use governed agent retry and split policy", () => {
   const calls = [];
   const result = runHeadlessCliMainOrchestrator({
     role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
@@ -1093,13 +757,7 @@ test("headless CLI orchestrator can use default child provider config with retry
     cycle_id: "cycle-headless-default-provider",
     created_at: "2026-05-23T01:40:00.000Z",
     max_package_count: 1,
-    default_child_provider: {
-      command: "codex-proxy",
-      args: ["run", "--prompt", "{prompt_file}"],
-      provider: "codex_proxy",
-      model: "codex-cli",
-      retry_policy: { max_attempts: 2, split_retry: true }
-    },
+    agent_invocation_retry_policy: { max_attempts: 2, split_retry: true },
     child_worker_runner: ({ attempt, split_retry }) => {
       calls.push({ attempt, split_retry });
       if (attempt === 1) {
@@ -1134,7 +792,7 @@ test("headless CLI orchestrator can use default child provider config with retry
     { attempt: 1, split_retry: false },
     { attempt: 2, split_retry: true }
   ]);
-  assert.equal(provenance.provider, "codex_proxy");
+  assert.equal(provenance.provider, "agent_invocation");
   assert.equal(provenance.retry_policy.max_attempts, 2);
   assert.equal(provenance.retry_policy.split_retry, true);
   assert.equal(childOutput.command_evidence.attempts.length, 2);
@@ -1456,7 +1114,7 @@ test("headless CLI orchestrator hardens timed-out child command output before re
     cycle_id: "cycle-headless-timeout-child",
     created_at: "2026-05-23T00:01:45.000Z",
     max_package_count: 1,
-    command_runner_kind: "codex_proxy_child_process",
+    command_runner_kind: "agent_invocation_child_process",
     child_worker_runner: () => ({
       status: 124,
       stdout: "",

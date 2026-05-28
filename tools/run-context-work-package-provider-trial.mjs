@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
-import { createClaudeDeepSeekContextWorkPackageProviderExecutor } from "../src/workflow/context-work-package-provider-executor.js";
+import { createAgentContextWorkPackageProviderExecutor } from "../src/workflow/context-work-package-provider-executor.js";
 import {
   withProviderAttemptsInRunArtifact,
   withProviderAttemptsInWorkflowState
@@ -20,17 +20,15 @@ function usage() {
     "  --workflow-output <path>      Write resulting workflow_state when the run passes",
     "  --in-place                    Write resulting workflow_state back to --input when the run passes",
     "  --max-package-count <n>       Dispatch at most this many pending packages",
-    "  --cwd <path>                  Provider command cwd; defaults to current working directory",
-    "  --timeout-seconds <seconds>   Bounded provider command timeout",
+    "  --cwd <path>                  Provider agent cwd; defaults to current working directory",
+    "  --timeout-seconds <seconds>   Bounded provider agent timeout",
     "  --model <model>               Provider model; defaults to deepseek-v4-pro[1m]",
     "  --fallback-model <model>      Provider timeout fallback model; defaults to deepseek-v4-flash",
     "  --tools <tool-list>           Claude Code tools list, for example Read,Edit",
     "  --no-tools                    Pass an empty tools list to the provider command",
     "  --created-at <iso>            Stable timestamp for runner artifacts",
-    "  --script-path <path>          Claude+DeepSeek wrapper script override",
-    "  --python <path>               Python executable override",
     "  --effort <high|max>           Provider effort setting",
-    "  --max-budget-usd <amount>     Provider budget cap passed to wrapper"
+    "  --max-budget-usd <amount>     Provider budget cap"
   ].join("\n");
 }
 
@@ -98,15 +96,13 @@ try {
   process.exit(1);
 }
 
-const executor = createClaudeDeepSeekContextWorkPackageProviderExecutor({
+const executor = createAgentContextWorkPackageProviderExecutor({
   cwd: valueAfter("--cwd", args) || process.cwd(),
   timeout_seconds: valueAfter("--timeout-seconds", args),
   model: valueAfter("--model", args),
   fallback_model: valueAfter("--fallback-model", args),
   tools: valueAfter("--tools", args),
   no_tools: hasFlag("--no-tools", args),
-  script_path: valueAfter("--script-path", args),
-  python: valueAfter("--python", args),
   effort: valueAfter("--effort", args),
   max_budget_usd: valueAfter("--max-budget-usd", args),
   commandRunner: fakeRunner || undefined,

@@ -2,6 +2,8 @@
 import { pathToFileURL } from "node:url";
 
 import { writeDevelopmentFlowRealAcceptance } from "../src/workflow/development-flow-real.js";
+import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
+import { DEFAULT_LIVE_WORKBENCH_STATE_DB } from "../src/workflow/workbench-live-state-cleanliness.js";
 
 function valueAfter(flag, args) {
   const index = args.indexOf(flag);
@@ -18,12 +20,13 @@ function usage() {
     "",
     "Runs the dual real CLI development-flow acceptance gate:",
     "  - Codex CLI with gpt-5.3-codex-spark",
-    "  - Claude CLI via project-governed claude-role-proxy with claude-sonnet-4-6",
+    "  - Claude CLI through project-owned agent invocation profiles",
     "",
     "Optional overrides:",
     "  --codex-model MODEL",
     "  --claude-model MODEL",
     "  --timeout-ms N",
+    "  --state-db PATH",
     "  --manual-agent-config PATH"
   ].join("\n");
 }
@@ -34,12 +37,19 @@ export function runDevelopmentFlowRealCheck(argv = process.argv.slice(2)) {
     return 0;
   }
 
+  const stateDbPath = valueAfter("--state-db", argv) ||
+    process.env.AI_CONTROL_WORKBENCH_STATE_DB ||
+    DEFAULT_LIVE_WORKBENCH_STATE_DB;
   const result = writeDevelopmentFlowRealAcceptance({
     output_path: valueAfter("--output", argv) || "tmp/development-flow-real/latest.json",
     codex_model: valueAfter("--codex-model", argv),
     claude_model: valueAfter("--claude-model", argv),
     timeout_ms: valueAfter("--timeout-ms", argv),
-    manual_agent_config_path: valueAfter("--manual-agent-config", argv)
+    manual_agent_config_path: valueAfter("--manual-agent-config", argv),
+    stateStore: createSqliteWorkbenchStateStore({
+      dbPath: stateDbPath,
+      manualAgentConfigPath: valueAfter("--manual-agent-config", argv)
+    })
   });
 
   const summary = {

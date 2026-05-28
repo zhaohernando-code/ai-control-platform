@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
 import {
   applyGeneratedRequirementPlan,
@@ -14,16 +13,9 @@ import {
   DEVELOPMENT_FLOW_EVALUATION_VERSION,
   evaluateDevelopmentFlowArtifact
 } from "./development-flow-evaluation.js";
+import { createAgentInvocationPlan } from "./agent-invocation.js";
 
 export const DEVELOPMENT_FLOW_REAL_VERSION = "development-flow-real.v1";
-const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const DEFAULT_CODEX_MODEL = "gpt-5.3-codex-spark";
-const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6";
-const DEFAULT_CLAUDE_ROLE = "developer";
-const DEFAULT_GOVERNED_CLAUDE_PROXY = join(PROJECT_ROOT, "scripts", "claude-role-proxy.sh");
-const DEFAULT_MANUAL_AGENT_CLI = "/Users/hernando_zhao/manual_agent_cli";
-const DEFAULT_MANUAL_AGENT_CONFIG = "/Users/hernando_zhao/manual_agent_config.json";
-const DEFAULT_CODEX_CLI = "/Users/hernando_zhao/.nvm/versions/node/v22.16.0/bin/codex";
 const DEFAULT_TIMEOUT_MS = 240000;
 
 const OUTPUT_SCHEMA = {
@@ -130,15 +122,6 @@ function appendPhase(trace, phase, status = "pass", evidenceId = phase, metadata
     recorded_at: now(),
     ...metadata
   });
-}
-
-function loadManualAgentConfig(path = DEFAULT_MANUAL_AGENT_CONFIG) {
-  const parsed = safeJson(path);
-  return isObject(parsed) ? parsed : { channels: [] };
-}
-
-function channelById(config = {}, id = "") {
-  return asArray(config.channels).find((channel) => normalizeString(channel?.id) === id) || {};
 }
 
 function createFixture(root, runId) {
@@ -393,85 +376,86 @@ function buildRequirementFlow(runId, createdAt) {
 }
 
 function createCodexCommand({ fixtureDir, prompt, schemaPath, outputPath, options }) {
-  const config = loadManualAgentConfig(options.manual_agent_config_path);
-  const channel = channelById(config, "codex-account");
-  const command = normalizeString(options.codex_cli || process.env.DEV_FLOW_CODEX_CLI || channel.cli) || DEFAULT_CODEX_CLI;
-  const model = normalizeString(options.codex_model || process.env.DEV_FLOW_CODEX_MODEL) || DEFAULT_CODEX_MODEL;
+  const planned = createAgentInvocationPlan({
+    profile_id: "development_flow_codex",
+    prompt,
+    cwd: fixtureDir,
+    output_schema: schemaPath,
+    output_path: outputPath,
+    model: normalizeString(options.codex_model || process.env.DEV_FLOW_CODEX_MODEL),
+    invocation_id: "development-flow:codex"
+  }, {
+    stateStore: options.stateStore || options.state_store,
+    channels_path: options.agent_channels_path || options.agentChannelsPath,
+    profiles_path: options.agent_profiles_path || options.agentProfilesPath
+  });
+  if (planned.status !== "pass") {
+    return {
+      command: "",
+      args: [],
+      env: process.env,
+      model: null,
+      runner: "codex",
+      provider: "agent_invocation",
+      agent_id: "codex-account",
+      planning_status: planned.status,
+      planning_issues: planned.issues || []
+    };
+  }
+  const invocation = planned.invocation;
   return {
-    command,
-    args: [
-      "exec",
-      "-C", fixtureDir,
-      "-s", "workspace-write",
-      "--ephemeral",
-      "--color", "never",
-      "--output-schema", schemaPath,
-      "-o", outputPath,
-      "-m", model,
-      prompt
-    ],
-    model,
-    runner: "codex",
-    provider: "codex_account",
-    agent_id: "codex-account"
+    command: invocation.command,
+    args: invocation.args,
+    env: invocation.env,
+    model: invocation.model,
+    runner: invocation.runner,
+    provider: invocation.provider,
+    agent_id: invocation.agent_id,
+    profile_id: invocation.profile_id
   };
 }
 
 function createClaudeCommand({ fixtureDir, prompt, options }) {
-  const command = normalizeString(
-    options.claude_cli ||
-    process.env.DEV_FLOW_CLAUDE_CLI ||
-    options.manual_agent_cli ||
-    process.env.DEV_FLOW_MANUAL_AGENT_CLI
-  ) || DEFAULT_GOVERNED_CLAUDE_PROXY;
-  const model = normalizeString(options.claude_model || process.env.DEV_FLOW_CLAUDE_MODEL) || DEFAULT_CLAUDE_MODEL;
-  const role = normalizeString(options.claude_role || process.env.DEV_FLOW_CLAUDE_ROLE) || DEFAULT_CLAUDE_ROLE;
+  const model = normalizeString(options.claude_model || process.env.DEV_FLOW_CLAUDE_MODEL);
   const maxBudgetUsd = normalizeString(options.claude_max_budget_usd || process.env.DEV_FLOW_CLAUDE_MAX_BUDGET_USD) || "0.50";
-  const schema = JSON.stringify(OUTPUT_SCHEMA);
-  const usesGovernedProxy = /claude-role-proxy\.sh$/i.test(command);
-  if (usesGovernedProxy) {
+  const planned = createAgentInvocationPlan({
+    profile_id: "development_flow_claude",
+    prompt,
+    cwd: fixtureDir,
+    model,
+    max_budget_usd: maxBudgetUsd,
+    allowed_tools: "Read,Edit,Bash(node --test *)",
+    add_dir: fixtureDir,
+    json_schema: OUTPUT_SCHEMA,
+    invocation_id: "development-flow:claude"
+  }, {
+    stateStore: options.stateStore || options.state_store,
+    channels_path: options.agent_channels_path || options.agentChannelsPath,
+    profiles_path: options.agent_profiles_path || options.agentProfilesPath
+  });
+  if (planned.status !== "pass") {
     return {
-      command,
-      args: [
-        "--role", role,
-        "-m", model,
-        "--bare",
-        "--permission-mode", "bypassPermissions",
-        "-p",
-        "--output-format", "json",
-        "--no-session-persistence",
-        "--max-budget-usd", maxBudgetUsd,
-        "--effort", "high",
-        "--allowedTools", "Read,Edit,Bash(node --test *)",
-        "--add-dir", fixtureDir,
-        "--json-schema", schema,
-        prompt
-      ],
-      model,
+      command: "",
+      args: [],
+      env: process.env,
+      model: null,
       runner: "claude",
-      provider: "governed_claude_proxy",
-      agent_id: role
+      provider: "agent_invocation",
+      agent_id: "developer",
+      planning_status: planned.status,
+      planning_issues: planned.issues || []
     };
   }
+  const invocation = planned.invocation;
   return {
-    command,
-    args: [
-      "deepseek",
-      "--model", model,
-      "--",
-      "-p",
-      "--output-format", "json",
-      "--no-session-persistence",
-      "--max-budget-usd", maxBudgetUsd,
-      "--effort", "high",
-      "--tools", "Read,Edit,Bash(node --test *)",
-      "--json-schema", schema,
-      prompt
-    ],
-    model,
-    runner: "claude",
-    provider: "deepseek",
-    agent_id: "deepseek"
+    command: invocation.command,
+    args: invocation.args,
+    env: invocation.env,
+    model: invocation.model,
+    runner: invocation.runner,
+    provider: invocation.provider,
+    agent_id: invocation.agent_id,
+    profile_id: invocation.profile_id
   };
 }
 
@@ -485,17 +469,15 @@ function executeCommand(command, options = {}, context = {}) {
       timeout,
       run_id: context.runId,
       fixture_dir: context.fixtureDir,
-      prompt: context.prompt
+      prompt: context.prompt,
+      env: command.env
     });
   }
   return spawnSync(command.command, command.args, {
     cwd: context.fixtureDir,
     encoding: "utf8",
     timeout,
-    env: {
-      ...process.env,
-      ...(options.manual_agent_config_path ? { MANUAL_AGENT_CONFIG: options.manual_agent_config_path } : {})
-    }
+    env: command.env || process.env
   });
 }
 
@@ -551,17 +533,23 @@ export function runDevelopmentFlowCliChain(runId, options = {}) {
   const command = runId === "codex_cli"
     ? createCodexCommand({ fixtureDir, prompt, schemaPath, outputPath: codexOutputPath, options })
     : createClaudeCommand({ fixtureDir, prompt, options });
+  if (command.planning_status && command.planning_status !== "pass") {
+    issues.push(issue("agent_invocation_plan_failed", "development flow could not create a governed agent invocation plan", "agent_invocation"));
+  }
   const agentSelection = {
     agent_id: command.agent_id,
     runner: command.runner,
     provider: command.provider,
     model: command.model,
-    role: "code_landing"
+    role: "code_landing",
+    profile_id: command.profile_id || null
   };
   appendPhase(phaseTrace, "agent_selected", "pass", `${runId}:agent_selection`, agentSelection);
 
   const startedAt = Date.now();
-  const result = executeCommand(command, options, { runId, fixtureDir, prompt });
+  const result = command.planning_status && command.planning_status !== "pass"
+    ? { status: 1, stdout: "", stderr: JSON.stringify(command.planning_issues || []) }
+    : executeCommand(command, options, { runId, fixtureDir, prompt });
   const latencyMs = Date.now() - startedAt;
   const stdout = normalizeString(result?.stdout);
   const stderr = normalizeString(result?.stderr);

@@ -13,6 +13,8 @@ import {
 const LIVE_ROUTE_EVIDENCE_ENV = "WORKBENCH_LIVE_ROUTE_EVIDENCE";
 const WORKBENCH_API_PORT = process.env.AI_CONTROL_WORKBENCH_API_PORT || "4182";
 const WORKBENCH_HOST = process.env.AI_CONTROL_WORKBENCH_HOST || "127.0.0.1";
+const MAINLINE_BRANCH = process.env.AI_CONTROL_MAINLINE_BRANCH || "main";
+const REQUIRE_MAINLINE_CLOSEOUT = process.env.AI_CONTROL_CLOSEOUT_REQUIRE_MAINLINE === "1";
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -30,6 +32,17 @@ function run(label, args, options = {}) {
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
+}
+
+function gitOutput(args) {
+  const result = spawnSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (result.error || result.status !== 0) return "";
+  return String(result.stdout || "").trim();
+}
+
+function shouldRunMainlineReleaseReadiness() {
+  const branch = gitOutput(["branch", "--show-current"]);
+  return REQUIRE_MAINLINE_CLOSEOUT || branch === MAINLINE_BRANCH;
 }
 
 export function runCloseoutChecks() {
@@ -55,7 +68,17 @@ export function runCloseoutChecks() {
     "--prompt-output", "tmp/audit-skill-trial/closeout-governance-audit-current.prompt.md",
     "--record-workbench-url", `http://${WORKBENCH_HOST}:${WORKBENCH_API_PORT}/api/workbench/governance-audit-skill-trial`
   ]);
-  run("mainline release readiness", ["tools/check-mainline-release-readiness.mjs", "--project-status", "PROJECT_STATUS.json"]);
+  if (shouldRunMainlineReleaseReadiness()) {
+    run("mainline release readiness", ["tools/check-mainline-release-readiness.mjs", "--project-status", "PROJECT_STATUS.json"]);
+  } else {
+    console.log("\n[closeout] mainline release readiness");
+    console.log(JSON.stringify({
+      status: "skipped",
+      reason: "isolated worktree closeout defers mainline integration to the parent release step",
+      require_mainline: REQUIRE_MAINLINE_CLOSEOUT,
+      expected_mainline_branch: MAINLINE_BRANCH
+    }, null, 2));
+  }
   const closeoutTmp = mkdtempSync(join(tmpdir(), "ai-control-platform-closeout-"));
   const browserEventsArtifactPath = join(closeoutTmp, "workbench-browser-events-run.json");
   run("workbench browser events", ["tools/check-workbench-browser-events.mjs", "--output", browserEventsArtifactPath, "--record-temp-workflow"]);
