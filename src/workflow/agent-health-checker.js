@@ -279,8 +279,7 @@ export async function checkAgentAccountHealth(agent = {}, options = {}) {
     };
   }
   const doctorHealth = normalizeToken(agent.runner) === "codex" ? codexDoctorHealthFromResult(result) : null;
-  const ok = result.exitCode === 0;
-  if (ok && doctorHealth) {
+  if (doctorHealth) {
     return {
       status: doctorHealth.status,
       latency_ms: latencyMs,
@@ -295,6 +294,7 @@ export async function checkAgentAccountHealth(agent = {}, options = {}) {
       }
     };
   }
+  const ok = result.exitCode === 0;
   return {
     status: ok ? "success" : "error",
     latency_ms: latencyMs,

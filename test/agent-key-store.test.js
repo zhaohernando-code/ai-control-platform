@@ -246,6 +246,27 @@ test("account health checker uses command result for login-style agents", async 
   });
   assert.equal(authFailure.status, "error");
   assert.equal(authFailure.error_code, "auth_fail");
+
+  const nonAccountDoctorFailures = await checkAgentAccountHealth({
+    id: "codex-account",
+    runner: "codex",
+    auth_type: "codex_account",
+    cli: "/bin/codex"
+  }, {
+    accountHealthRunner: async () => ({
+      exitCode: 1,
+      stdout: JSON.stringify({
+        checks: {
+          "auth.credentials": { status: "ok", summary: "auth is configured" },
+          "network.provider_reachability": { status: "ok", summary: "active provider endpoints are reachable over HTTP" },
+          "updates.status": { status: "fail", summary: "update mismatch" }
+        }
+      }),
+      stderr: "",
+      latency_ms: 10
+    })
+  });
+  assert.equal(nonAccountDoctorFailures.status, "success");
 });
 
 test("runAgentHealthCheck records full registry refresh", async () => {
