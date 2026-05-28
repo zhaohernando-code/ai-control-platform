@@ -41,6 +41,7 @@ export interface AgentChannel {
   auth_type: string;
   default_model: string;
   account_login: boolean;
+  account_health: AgentKeyHealth | null;
   roles: Record<string, boolean>;
   keys: AgentApiKey[];
   key_counts: {
@@ -61,7 +62,8 @@ export interface HealthCheckResponse {
   status: string;
   checked_at: string;
   checked: Array<{
-    key_id: string;
+    kind?: "key" | "account";
+    key_id: string | null;
     agent_id: string;
     status: AgentHealthStatus;
     latency_ms: number | null;

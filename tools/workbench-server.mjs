@@ -1710,7 +1710,10 @@ export function createWorkbenchServer(options = {}) {
           ...input,
           include_fresh: input.include_fresh ?? true
         }, {
-          fetchImpl: options.agentHealthFetch || options.fetchImpl
+          fetchImpl: options.agentHealthFetch || options.fetchImpl,
+          accountHealthRunner: options.agentAccountHealthRunner,
+          accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
+          manualAgentCliPath: options.manualAgentCliPath
         });
         jsonResponse(res, result.status === "fail" ? 400 : 201, result);
         return;
@@ -1735,7 +1738,10 @@ export function createWorkbenchServer(options = {}) {
           agent_id: decodeURIComponent(agentHealthMatch[1]),
           include_fresh: input.include_fresh ?? true
         }, {
-          fetchImpl: options.agentHealthFetch || options.fetchImpl
+          fetchImpl: options.agentHealthFetch || options.fetchImpl,
+          accountHealthRunner: options.agentAccountHealthRunner,
+          accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
+          manualAgentCliPath: options.manualAgentCliPath
         });
         jsonResponse(res, result.status === "fail" ? 400 : 201, result);
         return;
@@ -1794,7 +1800,10 @@ export function createWorkbenchServer(options = {}) {
           ...input,
           key_id: decodeURIComponent(agentKeyHealthMatch[1])
         }, {
-          fetchImpl: options.agentHealthFetch || options.fetchImpl
+          fetchImpl: options.agentHealthFetch || options.fetchImpl,
+          accountHealthRunner: options.agentAccountHealthRunner,
+          accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
+          manualAgentCliPath: options.manualAgentCliPath
         });
         jsonResponse(res, result.status === "fail" ? 400 : 201, result);
         return;
@@ -3243,7 +3252,10 @@ export function createWorkbenchServer(options = {}) {
         ttl_ms: agentHealthIntervalMs,
         checked_at: new Date().toISOString()
       }, {
-        fetchImpl: options.agentHealthFetch || options.fetchImpl
+        fetchImpl: options.agentHealthFetch || options.fetchImpl,
+        accountHealthRunner: options.agentAccountHealthRunner,
+        accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
+        manualAgentCliPath: options.manualAgentCliPath
       }).catch(() => {});
     }, agentHealthIntervalMs);
     timer.unref?.();

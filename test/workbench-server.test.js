@@ -322,6 +322,7 @@ test("workbench server manages agent keys without returning raw secrets", async 
       assert.equal(initial.status, 200);
       assert.equal(initialJson.agents.find((agent) => agent.id === "codex-account").account_login, true);
       assert.equal(initialJson.agents.find((agent) => agent.id === "codex-account").keys.length, 0);
+      assert.equal(initialJson.agents.find((agent) => agent.id === "codex-account").account_health.status, "unknown");
 
       const created = await request(`${baseUrl}/api/workbench/agent-keys`, {
         method: "POST",
@@ -348,10 +349,21 @@ test("workbench server manages agent keys without returning raw secrets", async 
       assert.equal(health.status, 201);
       assert.equal(health.json().checked[0].status, "success");
 
+      const accountHealth = await request(`${baseUrl}/api/workbench/agents/codex-account/health-check`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ checked_at: "2026-05-28T02:01:30.000Z" })
+      });
+      assert.equal(accountHealth.status, 201);
+      assert.equal(accountHealth.json().checked[0].kind, "account");
+
       const afterHealth = (await request(`${baseUrl}/api/workbench/agents`)).json();
       const codexToken = afterHealth.agents.find((agent) => agent.id === "codex-token");
+      const codexAccount = afterHealth.agents.find((agent) => agent.id === "codex-account");
       assert.equal(codexToken.status, "success");
+      assert.equal(codexAccount.status, "success");
       assert.equal(codexToken.key_counts.available, 1);
+      assert.equal(codexAccount.key_counts.total, 0);
       assert.equal(JSON.stringify(afterHealth).includes("sk-server-secret-1234567890"), false);
 
       const roles = await request(`${baseUrl}/api/workbench/agents/codex-token/roles`, {
@@ -376,6 +388,7 @@ test("workbench server manages agent keys without returning raw secrets", async 
     }, {
       stateDbPath: join(dir, "workbench-state.sqlite"),
       agentHealthFetch: async () => ({ ok: true, status: 200, text: async () => "{}" }),
+      agentAccountHealthRunner: async () => ({ exitCode: 0, stdout: "{}", stderr: "", latency_ms: 6 }),
       disableAgentHealthTimer: true
     });
   } finally {

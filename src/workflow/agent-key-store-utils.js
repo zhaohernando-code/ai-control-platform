@@ -123,6 +123,18 @@ CREATE TABLE IF NOT EXISTS agent_key_health_checks (
   FOREIGN KEY(key_id) REFERENCES agent_api_keys(id)
 );
 CREATE INDEX IF NOT EXISTS agent_key_health_latest_idx ON agent_key_health_checks(key_id, checked_at);
+CREATE TABLE IF NOT EXISTS agent_account_health_checks (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  latency_ms INTEGER,
+  checked_at TEXT NOT NULL,
+  error_code TEXT,
+  error_summary TEXT,
+  raw_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(agent_id) REFERENCES agent_channels(id)
+);
+CREATE INDEX IF NOT EXISTS agent_account_health_latest_idx ON agent_account_health_checks(agent_id, checked_at);
 CREATE TABLE IF NOT EXISTS agent_key_locks (
   key_id TEXT PRIMARY KEY,
   lock_owner TEXT NOT NULL,
@@ -181,6 +193,22 @@ export function readManualChannels(configPath) {
   return asArray(parsed.channels).map(channelFromManualConfig).filter(Boolean);
 }
 
+export function readManualChannelHealthConfig(configPath, agentId) {
+  if (!configPath || !existsSync(configPath)) return null;
+  const parsed = JSON.parse(readFileSync(configPath, "utf8"));
+  const channel = asArray(parsed.channels).find((entry) => normalizeString(entry.id) === normalizeString(agentId));
+  if (!channel) return null;
+  const normalized = channelFromManualConfig(channel);
+  if (!normalized) return null;
+  return {
+    ...normalized,
+    cli: normalizeString(channel.cli),
+    codex_home: normalizeString(channel.codex_home || channel.codexHome),
+    fixed_args: asArray(channel.fixed_args || channel.args).map(normalizeString).filter(Boolean),
+    env: isObject(channel.env) ? channel.env : {}
+  };
+}
+
 export function roleDefaults() {
   return Object.fromEntries(AGENT_ROLE_DEFINITIONS.map((role) => [role.id, true]));
 }
@@ -204,6 +232,17 @@ export function latestHealthByKey(rows = []) {
     const existing = latest.get(row.key_id);
     if (!existing || normalizeString(existing.checked_at) < normalizeString(row.checked_at)) {
       latest.set(row.key_id, row);
+    }
+  }
+  return latest;
+}
+
+export function latestHealthByAgent(rows = []) {
+  const latest = new Map();
+  for (const row of rows) {
+    const existing = latest.get(row.agent_id);
+    if (!existing || normalizeString(existing.checked_at) < normalizeString(row.checked_at)) {
+      latest.set(row.agent_id, row);
     }
   }
   return latest;
@@ -259,5 +298,21 @@ export function publicKey(row = {}, health = null, lock = null) {
       locked_at: lock.locked_at,
       expires_at: lock.expires_at
     } : null
+  };
+}
+
+export function publicAccountHealth(health = null) {
+  return health ? {
+    status: health.status,
+    latency_ms: health.latency_ms,
+    checked_at: health.checked_at,
+    error_code: health.error_code || null,
+    error_summary: health.error_summary || null
+  } : {
+    status: "unknown",
+    latency_ms: null,
+    checked_at: null,
+    error_code: null,
+    error_summary: null
   };
 }

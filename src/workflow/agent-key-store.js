@@ -6,6 +6,7 @@ import {
   ROLE_IDS,
   agentStatus,
   issue,
+  latestHealthByAgent,
   latestHealthByKey,
   maskSecret,
   normalizeRoles,
@@ -13,10 +14,12 @@ import {
   normalizeToken,
   nowIso,
   parseJson,
+  publicAccountHealth,
   providerFromChannel,
   publicKey,
   queryRows,
   readManualChannels,
+  readManualChannelHealthConfig,
   roleDefaults,
   runSql,
   safeIdPart,
@@ -67,6 +70,7 @@ ON CONFLICT(id) DO UPDATE SET
     return queryRows(dbPath, `SELECT * FROM agent_api_keys WHERE deleted_at IS NULL ${where} ORDER BY created_at, id;`, { sqliteBin });
   };
   const readLatestHealthRows = () => queryRows(dbPath, "SELECT * FROM agent_key_health_checks ORDER BY checked_at;", { sqliteBin });
+  const readLatestAccountHealthRows = () => queryRows(dbPath, "SELECT * FROM agent_account_health_checks ORDER BY checked_at;", { sqliteBin });
   const readLocks = () => queryRows(dbPath, "SELECT * FROM agent_key_locks;", { sqliteBin });
   const readRoleRows = () => queryRows(dbPath, "SELECT * FROM agent_role_settings;", { sqliteBin });
   const readMeta = (key) => {
@@ -85,6 +89,7 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.upd
     syncAgentChannels();
     const keys = readActiveKeys();
     const healthByKey = latestHealthByKey(readLatestHealthRows());
+    const healthByAgent = latestHealthByAgent(readLatestAccountHealthRows());
     const locksByKey = new Map(readLocks().map((lock) => [lock.key_id, lock]));
     const rolesByAgent = new Map(readRoleRows().map((row) => [row.agent_id, normalizeRoles(parseJson(row.roles_json, {}))]));
     const agents = readChannels().map((channel) => {
@@ -92,6 +97,7 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.upd
         .filter((key) => key.agent_id === channel.id)
         .map((key) => publicKey(key, healthByKey.get(key.id), locksByKey.get(key.id)));
       const available = agentKeys.filter((key) => key.health.status === "success").length;
+      const accountHealth = Boolean(channel.account_login) ? publicAccountHealth(healthByAgent.get(channel.id)) : null;
       return {
         id: channel.id,
         label: channel.label,
@@ -101,13 +107,14 @@ ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.upd
         default_model: channel.default_model,
         models: parseJson(channel.models_json, []),
         account_login: Boolean(channel.account_login),
+        account_health: accountHealth,
         roles: rolesByAgent.get(channel.id) || roleDefaults(),
         keys: Boolean(channel.account_login) ? [] : agentKeys,
         key_counts: {
           available,
           total: Boolean(channel.account_login) ? 0 : agentKeys.length
         },
-        status: Boolean(channel.account_login) ? "unknown" : agentStatus(agentKeys)
+        status: Boolean(channel.account_login) ? accountHealth.status : agentStatus(agentKeys)
       };
     });
     return {
@@ -183,6 +190,21 @@ ON CONFLICT(agent_id) DO UPDATE SET roles_json = excluded.roles_json, updated_at
     return queryRows(dbPath, `SELECT * FROM agent_api_keys WHERE id = ${sqlString(id)} AND deleted_at IS NULL LIMIT 1;`, { sqliteBin })[0] || null;
   };
 
+  const readAgentAccountForHealth = (agentId) => {
+    const id = normalizeString(agentId);
+    const channel = readChannels().find((entry) => entry.id === id);
+    if (!channel || !channel.account_login) return null;
+    return readManualChannelHealthConfig(manualAgentConfigPath, id) || {
+      id: channel.id,
+      label: channel.label,
+      runner: channel.runner,
+      base_url: channel.base_url,
+      auth_type: channel.auth_type,
+      default_model: channel.default_model,
+      account_login: Boolean(channel.account_login)
+    };
+  };
+
   const recordAgentKeyHealth = (input = {}, checkedAt = nowIso()) => {
     const keyId = normalizeString(input.key_id || input.keyId);
     const key = readAgentKeyForHealth(keyId);
@@ -195,6 +217,20 @@ VALUES (${sqlString(id)}, ${sqlString(keyId)}, ${sqlString(key.agent_id)}, ${sql
 `, { sqliteBin });
     writeMeta("last_refresh_at", checkedAt, checkedAt);
     return { status: "recorded", key_id: keyId, health: publicKey(key, { ...input, status, checked_at: checkedAt }, null).health, issues: [] };
+  };
+
+  const recordAgentAccountHealth = (input = {}, checkedAt = nowIso()) => {
+    const agentId = normalizeString(input.agent_id || input.agentId);
+    const account = readAgentAccountForHealth(agentId);
+    if (!account) return { status: "fail", issues: [issue("unknown_account_agent", "account login agent not found", "agent_id")] };
+    const id = normalizeString(input.id) || `agent-account-health-${safeIdPart(agentId)}-${Date.now()}`;
+    const status = normalizeToken(input.status) || "unknown";
+    runSql(dbPath, `
+INSERT INTO agent_account_health_checks(id, agent_id, status, latency_ms, checked_at, error_code, error_summary, raw_json)
+VALUES (${sqlString(id)}, ${sqlString(agentId)}, ${sqlString(status)}, ${Number.isFinite(Number(input.latency_ms)) ? Math.round(Number(input.latency_ms)) : "NULL"}, ${sqlString(checkedAt)}, ${sqlString(input.error_code || input.errorCode || "")}, ${sqlString(input.error_summary || input.errorSummary || "")}, ${sqlString(JSON.stringify(input.raw || {}))});
+`, { sqliteBin });
+    writeMeta("last_refresh_at", checkedAt, checkedAt);
+    return { status: "recorded", agent_id: agentId, health: publicAccountHealth({ ...input, status, checked_at: checkedAt }), issues: [] };
   };
 
   const keysDueForHealthCheck = (options = {}) => {
@@ -211,23 +247,48 @@ VALUES (${sqlString(id)}, ${sqlString(keyId)}, ${sqlString(key.agent_id)}, ${sql
       });
   };
 
+  const accountAgentsDueForHealthCheck = (options = {}) => {
+    const agentId = normalizeString(options.agent_id || options.agentId);
+    const ttlMs = Number(options.ttl_ms || options.ttlMs || 10 * 60 * 1000);
+    const nowTime = Date.parse(options.now || nowIso());
+    const healthByAgent = latestHealthByAgent(readLatestAccountHealthRows());
+    return readChannels()
+      .filter((channel) => Boolean(channel.account_login))
+      .filter((channel) => !agentId || channel.id === agentId)
+      .map((channel) => readAgentAccountForHealth(channel.id))
+      .filter(Boolean)
+      .filter((agent) => {
+        if (options.include_fresh || options.includeFresh) return true;
+        const checkedAt = Date.parse(healthByAgent.get(agent.id)?.checked_at || "");
+        return !Number.isFinite(checkedAt) || nowTime - checkedAt >= ttlMs;
+      });
+  };
+
   const summarizeAgentRegistry = () => {
     const registry = listAgents();
-    const agents = registry.agents.filter((agent) => !agent.account_login);
-    const total = agents.reduce((sum, agent) => sum + agent.key_counts.total, 0);
-    const available = agents.reduce((sum, agent) => sum + agent.key_counts.available, 0);
+    const keyAgents = registry.agents.filter((agent) => !agent.account_login);
+    const accountAgents = registry.agents.filter((agent) => agent.account_login);
+    const total = keyAgents.reduce((sum, agent) => sum + agent.key_counts.total, 0);
+    const available = keyAgents.reduce((sum, agent) => sum + agent.key_counts.available, 0);
+    const availableAccounts = accountAgents.filter((agent) => agent.account_health?.status === "success").length;
+    const totalHealthSubjects = total + accountAgents.length;
+    const availableHealthSubjects = available + availableAccounts;
     return {
-      status: total === 0 ? "unknown" : available === total ? "success" : available > 0 ? "warning" : "error",
-      agent_count: agents.length,
+      status: totalHealthSubjects === 0 ? "unknown" : availableHealthSubjects === totalHealthSubjects ? "success" : availableHealthSubjects > 0 ? "warning" : "error",
+      agent_count: registry.agents.length,
       key_count: total,
       available_key_count: available,
+      account_agent_count: accountAgents.length,
+      available_account_agent_count: availableAccounts,
       last_refresh_at: registry.last_refresh_at,
-      agents: agents.map((agent) => ({
+      agents: registry.agents.map((agent) => ({
         id: agent.id,
         label: agent.label,
         status: agent.status,
         available_keys: agent.key_counts.available,
         total_keys: agent.key_counts.total,
+        account_login: agent.account_login,
+        account_health: agent.account_health,
         roles: agent.roles
       }))
     };
@@ -296,7 +357,10 @@ ON CONFLICT(key_id) DO UPDATE SET lock_owner = excluded.lock_owner, locked_at = 
     updateAgentRoles,
     readAgentKeyForHealth,
     recordAgentKeyHealth,
+    readAgentAccountForHealth,
+    recordAgentAccountHealth,
     keysDueForHealthCheck,
+    accountAgentsDueForHealthCheck,
     summarizeAgentRegistry,
     acquireAgentKeyForRole,
     releaseAgentKeyLock,

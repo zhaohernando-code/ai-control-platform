@@ -198,9 +198,15 @@ export default function AgentsPage() {
           <Space size="middle" wrap>
             {statusIcon(agent.status, agentTesting)}
             <Text strong>{agent.label}</Text>
-            <Tag color={agent.status === "success" ? "success" : agent.status === "warning" ? "warning" : agent.status === "error" ? "error" : "default"}>
-              {agent.key_counts.available}/{agent.key_counts.total}
-            </Tag>
+            {agent.account_login ? (
+              <Tag color={agent.status === "success" ? "success" : agent.status === "warning" ? "warning" : agent.status === "error" ? "error" : "default"}>
+                账号：{statusText(agent.status)}
+              </Tag>
+            ) : (
+              <Tag color={agent.status === "success" ? "success" : agent.status === "warning" ? "warning" : agent.status === "error" ? "error" : "default"}>
+                {agent.key_counts.available}/{agent.key_counts.total}
+              </Tag>
+            )}
             <Text type="secondary">{roleLabels(agent.roles, definitions)}</Text>
           </Space>
         ),
@@ -216,23 +222,68 @@ export default function AgentsPage() {
                 }}
               />
             </Tooltip>
-            {!agent.account_login && (
-              <Tooltip title="可用性测试">
-                <Button
-                  type="text"
-                  icon={<ReloadOutlined spin={agentTesting} />}
-                  loading={agentTesting}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    runCheck(`agent:${agent.id}`, () => runAgentHealthCheck(agent.id));
-                  }}
-                />
-              </Tooltip>
-            )}
+            <Tooltip title="可用性测试">
+              <Button
+                type="text"
+                icon={<ReloadOutlined spin={agentTesting} />}
+                loading={agentTesting}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  runCheck(`agent:${agent.id}`, () => runAgentHealthCheck(agent.id));
+                }}
+              />
+            </Tooltip>
           </Space>
         ),
         children: agent.account_login ? (
-          <Empty description="Codex 账号登录版不展示 API Key" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <List
+            dataSource={[agent]}
+            renderItem={(accountAgent) => {
+              const health = accountAgent.account_health || {
+                status: "unknown" as AgentHealthStatus,
+                latency_ms: null,
+                checked_at: null,
+                error_code: null,
+                error_summary: null
+              };
+              return (
+                <List.Item
+                  actions={[
+                    <Tooltip title="可用性测试" key="refresh">
+                      <Button
+                        type="text"
+                        icon={<ReloadOutlined spin={agentTesting} />}
+                        loading={agentTesting}
+                        onClick={() => runCheck(`agent:${agent.id}`, () => runAgentHealthCheck(agent.id))}
+                      />
+                    </Tooltip>
+                  ]}
+                >
+                  <List.Item.Meta
+                    avatar={statusIcon(health.status, agentTesting)}
+                    title={
+                      <Space wrap>
+                        <Text strong>账号登录状态</Text>
+                        <Tag color="purple">Codex account</Tag>
+                        <Tag>{statusText(health.status)}</Tag>
+                      </Space>
+                    }
+                    description={
+                      <Space direction="vertical" size={0}>
+                        <Text type="secondary">账号登录版不展示或管理 API Key，可用性测试会检查本机 CLI 与登录态。</Text>
+                        <Text type="secondary">
+                          {accountAgent.default_model || "默认模型"} · {formatTime(health.checked_at)}
+                        </Text>
+                        {health.error_summary && (
+                          <Text type="danger">{health.error_summary}</Text>
+                        )}
+                      </Space>
+                    }
+                  />
+                </List.Item>
+              );
+            }}
+          />
         ) : (
           <Space direction="vertical" size="middle" style={{ width: "100%" }}>
             <List

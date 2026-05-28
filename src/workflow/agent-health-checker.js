@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process";
+
 function normalizeString(value) {
   return String(value || "").trim();
 }
@@ -33,6 +35,10 @@ function redact(text = "", secret = "") {
   return value.split(token).join("[REDACTED]").slice(0, 300);
 }
 
+function truncateSummary(text = "") {
+  return normalizeString(text).slice(0, 300);
+}
+
 function healthStatusFromHttp(status) {
   if (status >= 200 && status < 300) return "success";
   if (status === 429 || status >= 500) return "warning";
@@ -46,6 +52,116 @@ async function responseSummary(response, secret) {
   } catch {
     return "";
   }
+}
+
+function runCommand(command, args = [], options = {}) {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const child = spawn(command, args, {
+      env: options.env || process.env,
+      cwd: options.cwd || process.cwd(),
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    const limit = Number(options.maxBuffer || 512 * 1024);
+    child.stdout.on("data", (chunk) => {
+      stdout = `${stdout}${chunk}`.slice(-limit);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr = `${stderr}${chunk}`.slice(-limit);
+    });
+    const timeoutMs = Number(options.timeout_ms || options.timeoutMs || 15000);
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      resolve({
+        exitCode: null,
+        timedOut: true,
+        stdout,
+        stderr,
+        latency_ms: Date.now() - startedAt
+      });
+    }, timeoutMs);
+    child.on("error", (error) => {
+      clearTimeout(timer);
+      resolve({
+        exitCode: null,
+        error,
+        stdout,
+        stderr,
+        latency_ms: Date.now() - startedAt
+      });
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve({
+        exitCode: code,
+        timedOut: false,
+        stdout,
+        stderr,
+        latency_ms: Date.now() - startedAt
+      });
+    });
+  });
+}
+
+function accountHealthCommand(agent = {}, options = {}) {
+  const runner = normalizeToken(agent.runner);
+  const cli = normalizeString(agent.cli) || (runner === "codex" ? "codex" : "");
+  if (runner === "codex" && cli) {
+    return {
+      command: cli,
+      args: ["doctor", "--json"],
+      env: {
+        ...process.env,
+        ...(agent.env && typeof agent.env === "object" ? agent.env : {}),
+        ...(normalizeString(agent.codex_home || agent.codexHome) ? { CODEX_HOME: normalizeString(agent.codex_home || agent.codexHome) } : {})
+      }
+    };
+  }
+  const manualCli = normalizeString(options.manualAgentCliPath || options.manual_agent_cli_path) || "/Users/hernando_zhao/manual_agent_cli";
+  return {
+    command: manualCli,
+    args: [normalizeString(agent.id), "--dry-run"],
+    env: {
+      ...process.env,
+      ...(agent.env && typeof agent.env === "object" ? agent.env : {})
+    }
+  };
+}
+
+function parseDoctorJson(stdout = "") {
+  try {
+    return JSON.parse(stdout);
+  } catch {
+    return null;
+  }
+}
+
+function codexDoctorHealthFromResult(result = {}) {
+  const report = parseDoctorJson(result.stdout || "");
+  if (!report?.checks || typeof report.checks !== "object") return null;
+  const auth = report.checks["auth.credentials"];
+  const network = report.checks["network.provider_reachability"];
+  if (auth && auth.status !== "ok") {
+    return {
+      status: "error",
+      error_code: `auth_${auth.status || "failed"}`,
+      error_summary: truncateSummary(auth.summary || "codex account authentication is not configured")
+    };
+  }
+  if (network && network.status !== "ok") {
+    return {
+      status: "warning",
+      error_code: `network_${network.status || "failed"}`,
+      error_summary: truncateSummary(network.summary || "codex provider reachability is degraded")
+    };
+  }
+  return {
+    status: "success",
+    error_code: "",
+    error_summary: ""
+  };
 }
 
 export async function checkAgentKeyHealth(key = {}, options = {}) {
@@ -120,6 +236,79 @@ export async function checkAgentKeyHealth(key = {}, options = {}) {
   }
 }
 
+export async function checkAgentAccountHealth(agent = {}, options = {}) {
+  if (typeof options.accountHealthCheckImpl === "function") {
+    return options.accountHealthCheckImpl(agent, options);
+  }
+  const startedAt = Date.now();
+  const runner = options.accountHealthRunner || runCommand;
+  const commandSpec = typeof options.accountHealthCommand === "function"
+    ? options.accountHealthCommand(agent, options)
+    : accountHealthCommand(agent, options);
+  if (!commandSpec?.command) {
+    return {
+      status: "error",
+      latency_ms: Date.now() - startedAt,
+      error_code: "account_health_command_unavailable",
+      error_summary: "account health command is not configured",
+      raw: { runner: normalizeToken(agent.runner), auth_type: normalizeToken(agent.auth_type || agent.authType) }
+    };
+  }
+  const result = await runner(commandSpec.command, commandSpec.args || [], {
+    env: commandSpec.env,
+    cwd: commandSpec.cwd,
+    timeout_ms: options.account_timeout_ms || options.accountTimeoutMs || options.timeout_ms || options.timeoutMs || 15000
+  });
+  const latencyMs = Number.isFinite(Number(result.latency_ms)) ? Number(result.latency_ms) : Date.now() - startedAt;
+  if (result.timedOut) {
+    return {
+      status: "error",
+      latency_ms: latencyMs,
+      error_code: "timeout",
+      error_summary: "account login health check timed out",
+      raw: { runner: normalizeToken(agent.runner), command: commandSpec.command }
+    };
+  }
+  if (result.error) {
+    return {
+      status: "error",
+      latency_ms: latencyMs,
+      error_code: "command_failed",
+      error_summary: truncateSummary(result.error.message || "account login health check failed"),
+      raw: { runner: normalizeToken(agent.runner), command: commandSpec.command }
+    };
+  }
+  const doctorHealth = normalizeToken(agent.runner) === "codex" ? codexDoctorHealthFromResult(result) : null;
+  const ok = result.exitCode === 0;
+  if (ok && doctorHealth) {
+    return {
+      status: doctorHealth.status,
+      latency_ms: latencyMs,
+      error_code: doctorHealth.error_code,
+      error_summary: doctorHealth.error_summary,
+      raw: {
+        runner: normalizeToken(agent.runner),
+        auth_type: normalizeToken(agent.auth_type || agent.authType),
+        command: commandSpec.command,
+        exit_code: result.exitCode,
+        doctor_status: doctorHealth.status
+      }
+    };
+  }
+  return {
+    status: ok ? "success" : "error",
+    latency_ms: latencyMs,
+    error_code: ok ? "" : `exit_${result.exitCode ?? "unknown"}`,
+    error_summary: ok ? "" : truncateSummary(result.stderr || result.stdout || "account login health check failed"),
+    raw: {
+      runner: normalizeToken(agent.runner),
+      auth_type: normalizeToken(agent.auth_type || agent.authType),
+      command: commandSpec.command,
+      exit_code: result.exitCode
+    }
+  };
+}
+
 export async function runAgentHealthCheck(store, input = {}, options = {}) {
   if (!store || typeof store.keysDueForHealthCheck !== "function") {
     return {
@@ -142,6 +331,14 @@ export async function runAgentHealthCheck(store, input = {}, options = {}) {
         ttl_ms: input.ttl_ms || input.ttlMs,
         now: checkedAt
       });
+  const accounts = !keyId && typeof store.accountAgentsDueForHealthCheck === "function"
+    ? store.accountAgentsDueForHealthCheck({
+        agent_id: agentId,
+        include_fresh: includeFresh,
+        ttl_ms: input.ttl_ms || input.ttlMs,
+        now: checkedAt
+      })
+    : [];
 
   if (keyId && keys.length === 0) {
     return {
@@ -161,6 +358,23 @@ export async function runAgentHealthCheck(store, input = {}, options = {}) {
     checked.push({
       key_id: key.id,
       agent_id: key.agent_id,
+      status: health.status,
+      latency_ms: health.latency_ms,
+      error_code: health.error_code || "",
+      error_summary: health.error_summary || "",
+      recorded_status: recorded.status
+    });
+  }
+  for (const account of accounts) {
+    const health = await checkAgentAccountHealth(account, options);
+    const recorded = store.recordAgentAccountHealth({
+      agent_id: account.id,
+      ...health
+    }, checkedAt);
+    checked.push({
+      kind: "account",
+      agent_id: account.id,
+      key_id: null,
       status: health.status,
       latency_ms: health.latency_ms,
       error_code: health.error_code || "",

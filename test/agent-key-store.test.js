@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { checkAgentKeyHealth, runAgentHealthCheck } from "../src/workflow/agent-health-checker.js";
+import { checkAgentAccountHealth, checkAgentKeyHealth, runAgentHealthCheck } from "../src/workflow/agent-health-checker.js";
 import { createAgentKeyStore, maskSecret } from "../src/workflow/agent-key-store.js";
 
 function tempStore() {
@@ -51,7 +51,30 @@ test("masks secrets and never imports manual config tokens as API keys", () => {
   assert.equal(maskSecret("sk-1234567890abcdef"), "sk-1...cdef");
   assert.equal(registry.agents.find((agent) => agent.id === "codex-account").account_login, true);
   assert.equal(registry.agents.find((agent) => agent.id === "codex-account").keys.length, 0);
+  assert.equal(registry.agents.find((agent) => agent.id === "codex-account").account_health.status, "unknown");
   assert.equal(registry.agents.find((agent) => agent.id === "codex-token").keys.length, 0);
+});
+
+test("records account-login agent health without creating API keys", () => {
+  const store = tempStore();
+  const recorded = store.recordAgentAccountHealth({
+    agent_id: "codex-account",
+    status: "success",
+    latency_ms: 31
+  }, "2026-05-28T01:00:00.000Z");
+
+  assert.equal(recorded.status, "recorded");
+  const account = store.listAgents().agents.find((agent) => agent.id === "codex-account");
+  assert.equal(account.status, "success");
+  assert.equal(account.account_health.status, "success");
+  assert.equal(account.key_counts.total, 0);
+  assert.equal(account.keys.length, 0);
+  assert.equal(store.addAgentKey({
+    id: "forbidden-account-key",
+    agent_id: "codex-account",
+    alias: "bad",
+    key: "sk-should-not-store"
+  }).status, "fail");
 });
 
 test("adds, soft-deletes, and aggregates agent key health without exposing secret", () => {
@@ -177,6 +200,54 @@ test("health checker uses provider-specific lightweight requests and redacts fai
   assert.equal(anthropic.error_summary.includes("sk-secret-anthropic"), false);
 });
 
+test("account health checker uses command result for login-style agents", async () => {
+  const success = await checkAgentAccountHealth({
+    id: "codex-account",
+    runner: "codex",
+    auth_type: "codex_account",
+    cli: "/bin/codex"
+  }, {
+    accountHealthRunner: async (command, args) => {
+      assert.equal(command, "/bin/codex");
+      assert.deepEqual(args, ["doctor", "--json"]);
+      return { exitCode: 0, stdout: "{}", stderr: "", latency_ms: 7 };
+    }
+  });
+  assert.equal(success.status, "success");
+  assert.equal(success.latency_ms, 7);
+
+  const failure = await checkAgentAccountHealth({
+    id: "codex-account",
+    runner: "codex",
+    auth_type: "codex_account",
+    cli: "/bin/codex"
+  }, {
+    accountHealthRunner: async () => ({ exitCode: 1, stdout: "", stderr: "not logged in", latency_ms: 8 })
+  });
+  assert.equal(failure.status, "error");
+  assert.equal(failure.error_summary, "not logged in");
+
+  const authFailure = await checkAgentAccountHealth({
+    id: "codex-account",
+    runner: "codex",
+    auth_type: "codex_account",
+    cli: "/bin/codex"
+  }, {
+    accountHealthRunner: async () => ({
+      exitCode: 0,
+      stdout: JSON.stringify({
+        checks: {
+          "auth.credentials": { status: "fail", summary: "auth is missing" }
+        }
+      }),
+      stderr: "",
+      latency_ms: 9
+    })
+  });
+  assert.equal(authFailure.status, "error");
+  assert.equal(authFailure.error_code, "auth_fail");
+});
+
 test("runAgentHealthCheck records full registry refresh", async () => {
   const store = tempStore();
   store.addAgentKey({ id: "key-run", agent_id: "codex-token", alias: "run", key: "sk-run", competitive: true }, "2026-05-28T01:00:00.000Z");
@@ -184,11 +255,13 @@ test("runAgentHealthCheck records full registry refresh", async () => {
   const result = await runAgentHealthCheck(store, {
     checked_at: "2026-05-28T01:05:00.000Z"
   }, {
-    fetchImpl: async () => ({ ok: true, status: 200, text: async () => "{}" })
+    fetchImpl: async () => ({ ok: true, status: 200, text: async () => "{}" }),
+    accountHealthRunner: async () => ({ exitCode: 0, stdout: "{}", stderr: "", latency_ms: 5 })
   });
 
   assert.equal(result.status, "completed");
-  assert.equal(result.checked.length, 1);
+  assert.equal(result.checked.length, 2);
   assert.equal(result.registry.last_refresh_at, "2026-05-28T01:05:00.000Z");
   assert.equal(result.registry.agents.find((agent) => agent.id === "codex-token").status, "success");
+  assert.equal(result.registry.agents.find((agent) => agent.id === "codex-account").status, "success");
 });
