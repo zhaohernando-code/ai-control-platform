@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI Control Platform">
+  <rect width="64" height="64" rx="14" fill="#101820" />
+  <path d="M15 45V19h9c8 0 13 5 13 13s-5 13-13 13h-9Zm8-7h1c4 0 6-2 6-6s-2-6-6-6h-1v12Z" fill="#f4f7f6" />
+  <path d="M42 19h8v26h-8V19Z" fill="#37c2a1" />
+  <path d="M42 19h8v8h-8v-8Z" fill="#ffd166" />
+</svg>

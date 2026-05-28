@@ -17,6 +17,14 @@ function normalizeString(value) {
   return String(value || "").trim();
 }
 
+function releasePreviewLock(stateStore, invocation = {}) {
+  const keyId = normalizeString(invocation.key?.id);
+  const lockOwner = normalizeString(invocation.lock?.lock_owner || invocation.lock?.lockOwner);
+  if (keyId && lockOwner && typeof stateStore?.releaseAgentKeyLock === "function") {
+    stateStore.releaseAgentKeyLock(keyId, lockOwner);
+  }
+}
+
 function toolString(shard = {}) {
   return asArray(shard.allowed_tools).map(normalizeString).filter(Boolean).join(",");
 }
@@ -73,9 +81,11 @@ export function createAgentReviewerShardCommand(input = {}) {
     invocation_id: input.invocation_id || input.invocationId || normalizeString(shard.id),
     candidate_index: input.candidate_index ?? input.candidateIndex
   }, {
+    stateStore: input.stateStore || input.state_store,
     channels_path: input.channels_path || input.channelsPath,
     profiles_path: input.profiles_path || input.profilesPath
   });
+  releasePreviewLock(input.stateStore || input.state_store, planned.invocation);
   const invocation = planned.invocation || {};
   return {
     status: planned.status,

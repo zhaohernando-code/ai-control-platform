@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { dirname } from "node:path";
 import test from "node:test";
 
 import {
@@ -7,6 +8,36 @@ import {
   redactInvocationText,
   runAgentInvocation
 } from "../src/workflow/agent-invocation.js";
+
+function availableAgentStateStore() {
+  return {
+    acquireAgentKeyForRole(role, options) {
+      return {
+        status: "acquired",
+        key: {
+          id: `key-${options.agent_id}`,
+          secret: `secret-${options.agent_id}-${role}`,
+          lock: { lock_owner: options.lock_owner }
+        }
+      };
+    },
+    releaseAgentKeyLock() {
+      return { status: "released" };
+    },
+    listAgents() {
+      return {
+        agents: [
+          {
+            id: "codex-account",
+            status: "success",
+            account_login: true,
+            account_health: { status: "success" }
+          }
+        ]
+      };
+    }
+  };
+}
 
 test("agent invocation config exposes project-owned channels and profiles", () => {
   const config = loadAgentInvocationConfig();
@@ -23,6 +54,8 @@ test("requirement plan invocation builds direct claude command without wrapper s
     profile_id: "requirement_plan_generation",
     prompt: "Return a plan.",
     candidate_index: 1
+  }, {
+    stateStore: availableAgentStateStore()
   });
 
   assert.equal(plan.status, "pass");
@@ -36,10 +69,85 @@ test("requirement plan invocation builds direct claude command without wrapper s
   assert.ok(!plan.invocation.args.join(" ").includes("run_claude"));
 });
 
+test("agent invocation blocks every configured agent without governed credential state", () => {
+  const cases = [
+    { profile_id: "development_flow_codex", agent_id: "codex-account" },
+    { profile_id: "development_flow_codex", agent_id: "codex-token" },
+    { profile_id: "requirement_plan_generation", agent_id: "claude" },
+    { profile_id: "requirement_plan_generation", agent_id: "deepseek" },
+    { profile_id: "requirement_plan_generation", agent_id: "xiaomi-mimo" }
+  ];
+
+  for (const item of cases) {
+    const plan = createAgentInvocationPlan({
+      profile_id: item.profile_id,
+      agent_id: item.agent_id,
+      prompt: "Return ok."
+    });
+    assert.equal(plan.status, "blocked", item.agent_id);
+    assert.ok(plan.issues.some((issue) => issue.code === "agent_state_store_required"), item.agent_id);
+  }
+});
+
+test("all configured available agents use the same governed credential chain", () => {
+  const cases = [
+    { profile_id: "development_flow_codex", agent_id: "codex-account", expected_env: null },
+    { profile_id: "development_flow_codex", agent_id: "codex-token", expected_env: "OPENAI_API_KEY" },
+    { profile_id: "requirement_plan_generation", agent_id: "claude", expected_env: "ANTHROPIC_API_KEY" },
+    { profile_id: "requirement_plan_generation", agent_id: "deepseek", expected_env: "ANTHROPIC_API_KEY" },
+    { profile_id: "requirement_plan_generation", agent_id: "xiaomi-mimo", expected_env: "ANTHROPIC_API_KEY" }
+  ];
+
+  for (const item of cases) {
+    const plan = createAgentInvocationPlan({
+      profile_id: item.profile_id,
+      agent_id: item.agent_id,
+      prompt: "Return ok.",
+      invocation_id: `agent-${item.agent_id}`
+    }, {
+      stateStore: availableAgentStateStore()
+    });
+    assert.equal(plan.status, "pass", item.agent_id);
+    assert.equal(plan.invocation.agent_id, item.agent_id);
+    if (item.expected_env) {
+      assert.match(plan.invocation.env[item.expected_env], new RegExp(`secret-${item.agent_id}`), item.agent_id);
+    } else {
+      assert.equal(plan.invocation.env.ANTHROPIC_API_KEY, undefined, item.agent_id);
+      assert.equal(plan.invocation.env.OPENAI_API_KEY, undefined, item.agent_id);
+    }
+  }
+});
+
+test("explicit model selection resolves to a channel that supports that model", () => {
+  const plan = createAgentInvocationPlan({
+    profile_id: "context_work_package_provider",
+    model: "deepseek-v4-flash",
+    prompt: "Return ok."
+  }, {
+    stateStore: availableAgentStateStore()
+  });
+
+  assert.equal(plan.status, "pass");
+  assert.equal(plan.invocation.agent_id, "deepseek");
+  assert.equal(plan.invocation.model, "deepseek-v4-flash");
+});
+
 test("codex account invocation uses codex exec profile without API key acquisition", () => {
   const stateStore = {
     acquireAgentKeyForRole() {
       throw new Error("codex account should not acquire API key");
+    },
+    listAgents() {
+      return {
+        agents: [
+          {
+            id: "codex-account",
+            status: "success",
+            account_login: true,
+            account_health: { status: "success" }
+          }
+        ]
+      };
     }
   };
   const plan = createAgentInvocationPlan({
@@ -54,6 +162,7 @@ test("codex account invocation uses codex exec profile without API key acquisiti
   assert.equal(plan.invocation.command, "codex");
   assert.equal(plan.invocation.runner, "codex");
   assert.equal(plan.invocation.agent_id, "codex-account");
+  assert.ok(plan.invocation.env.PATH.includes(dirname(process.execPath)));
   assert.ok(plan.invocation.args.includes("exec"));
   assert.ok(!plan.invocation.args.includes("--ephemeral"));
   assert.ok(plan.invocation.args.includes("--output-schema"));

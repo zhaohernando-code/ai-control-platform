@@ -10,6 +10,8 @@ import {
   evaluateAuditSkillTrialRun
 } from "../src/workflow/audit-skill-trial-run.js";
 import { runAgentInvocation } from "../src/workflow/agent-invocation.js";
+import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
+import { DEFAULT_LIVE_WORKBENCH_STATE_DB } from "../src/workflow/workbench-live-state-cleanliness.js";
 
 const DEFAULT_SKILL_PATH = "/Users/hernando_zhao/.codex/skills/governance-audit-orchestrator/SKILL.md";
 const DEFAULT_ROUTE = "http://127.0.0.1:4180/projects/ai-control-platform/";
@@ -24,6 +26,7 @@ function usage() {
     "                                           [--output PATH] [--raw-output PATH] [--prompt-output PATH]",
     "                                           [--record-workbench-url URL]",
     "                                           [--runner-command CMD --runner-arg ARG...]",
+    "                                           [--state-db PATH]",
     "                                           [--timeout-seconds N] [--no-fail-on-blocking-verdict]",
     "",
     "Invokes the governed agent invocation profile to read governance-audit-orchestrator/SKILL.md and produce an audit-skill-trial-run.v1 artifact."
@@ -48,6 +51,7 @@ function parseArgs(argv) {
     runnerCommand: "",
     runnerArgs: [],
     recordWorkbenchUrl: "",
+    stateDbPath: "",
     timeoutSeconds: 300,
     failOnBlockingVerdict: true
   };
@@ -77,6 +81,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === "--runner-command") {
       options.runnerCommand = requiredValue(argv, index, arg);
+      index += 1;
+    } else if (arg === "--state-db") {
+      options.stateDbPath = requiredValue(argv, index, arg);
       index += 1;
     } else if (arg === "--record-workbench-url") {
       options.recordWorkbenchUrl = requiredValue(argv, index, arg);
@@ -493,6 +500,12 @@ const result = customRunner
     cwd: options.projectRoot,
     timeout_ms: Number.isFinite(options.timeoutSeconds) ? options.timeoutSeconds * 1000 : 300000,
     invocation_id: `governance-audit-skill-trial:${invokedAt}`
+  }, {
+    stateStore: createSqliteWorkbenchStateStore({
+      dbPath: options.stateDbPath ||
+        process.env.AI_CONTROL_WORKBENCH_STATE_DB ||
+        DEFAULT_LIVE_WORKBENCH_STATE_DB
+    })
   });
 const command = customRunner?.command || result.invocation?.command || "agent_invocation";
 const args = customRunner?.args || result.invocation?.command_audit?.args || [];

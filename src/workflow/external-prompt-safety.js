@@ -75,6 +75,7 @@ export function promptSafeContextPack(contextPack = {}) {
     rollback_conditions: sanitizePromptArray(contextPack.rollback_conditions),
     subtasks: asArray(contextPack.subtasks).map((subtask, index) => ({
       task_ref: promptTaskRef(index),
+      work_package_id: normalizeString(subtask?.id || subtask?.work_package_id || subtask?.workPackageId),
       title: sanitizePromptText(subtask?.title || subtask?.summary || subtask?.id),
       action: sanitizePromptText(subtask?.action),
       reason: sanitizePromptText(subtask?.reason || subtask?.source?.reason || subtask?.source?.implementation_step),
@@ -89,6 +90,7 @@ export function promptSafeWorkPackage(workPackage = {}, index = 0) {
   const safeSource = promptSafeSource(workPackage.source);
   return {
     task_ref: promptTaskRef(index),
+    work_package_id: normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId),
     title: sanitizePromptText(workPackage.title || workPackage.summary || workPackage.id),
     action: sanitizePromptText(workPackage.action),
     reason: sanitizePromptText(workPackage.reason || workPackage.source?.reason || workPackage.source?.implementation_step),

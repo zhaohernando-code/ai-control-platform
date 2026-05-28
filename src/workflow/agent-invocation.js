@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
@@ -77,6 +77,19 @@ function issue(code, message, path = "") {
   return { code, message, path };
 }
 
+function channelModels(channel = {}) {
+  return asArray(channel.models || channel.model_ids || channel.modelIds).map(normalizeString).filter(Boolean);
+}
+
+function channelSupportsModel(channel = {}, candidate = {}, model = "") {
+  const value = normalizeString(model);
+  if (!value) return true;
+  const candidateModel = normalizeString(candidate.model);
+  return candidateModel === value ||
+    normalizeString(channel.default_model || channel.defaultModel) === value ||
+    channelModels(channel).includes(value);
+}
+
 function commandExists(command = "") {
   const value = normalizeString(command);
   if (!value) return false;
@@ -86,6 +99,18 @@ function commandExists(command = "") {
     timeout: 5000
   });
   return result.status === 0;
+}
+
+function agentCommandPath() {
+  return [
+    process.env.PATH,
+    dirname(process.execPath),
+    "/Users/hernando_zhao/.local/bin",
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin"
+  ].filter(Boolean).join(delimiter);
 }
 
 function modelProfileFor(model = "") {
@@ -111,20 +136,51 @@ function selectCandidate({ config, profile, options = {} }) {
   const explicitModel = normalizeString(options.model);
   const candidateIndex = Number(options.candidate_index ?? options.candidateIndex ?? 0);
   const candidates = asArray(profile.candidates)
-    .filter((candidate) => !explicitAgentId || normalizeString(candidate.agent_id || candidate.agentId) === explicitAgentId)
     .map((candidate) => ({
-      ...candidate,
-      model: explicitModel || normalizeString(candidate.model)
+      candidate,
+      channel: findChannel(config, candidate.agent_id || candidate.agentId)
+    }))
+    .filter(({ channel }) => channel)
+    .filter(({ candidate }) => !explicitAgentId || normalizeString(candidate.agent_id || candidate.agentId) === explicitAgentId)
+    .filter(({ candidate, channel }) => channelSupportsModel(channel, candidate, explicitModel))
+    .map(({ candidate, channel }) => ({
+      candidate: {
+        ...candidate,
+        model: explicitModel || normalizeString(candidate.model)
+      },
+      channel
     }));
   const candidate = candidates[Math.max(0, candidateIndex)] || null;
-  if (!candidate) return null;
-  const channel = findChannel(config, candidate.agent_id || candidate.agentId);
-  return channel ? { candidate, channel } : null;
+  return candidate || null;
 }
 
 function acquireKey(stateStore, profile = {}, channel = {}, input = {}) {
-  if (!stateStore || typeof stateStore.acquireAgentKeyForRole !== "function") return { status: "not_configured", key: null };
-  if (channelAuthType(channel) === "codex_account") return { status: "not_required", key: null };
+  const authType = channelAuthType(channel);
+  if (authType === "codex_account") {
+    if (!stateStore || typeof stateStore.listAgents !== "function") {
+      return {
+        status: "blocked",
+        key: null,
+        issues: [issue("agent_state_store_required", "account-login agents require a governed state store with latest account health", "state_store")]
+      };
+    }
+    const agent = asArray(stateStore.listAgents()?.agents).find((entry) => normalizeString(entry.id) === normalizeString(channel.id));
+    if (normalizeToken(agent?.account_health?.status || agent?.status) !== "success") {
+      return {
+        status: "blocked",
+        key: null,
+        issues: [issue("account_agent_not_healthy", `account-login agent is not healthy: ${channel.id}`, "agent_id")]
+      };
+    }
+    return { status: "not_required", key: null };
+  }
+  if (!stateStore || typeof stateStore.acquireAgentKeyForRole !== "function") {
+    return {
+      status: "blocked",
+      key: null,
+      issues: [issue("agent_state_store_required", "API-key agents require a governed state store for credential acquisition", "state_store")]
+    };
+  }
   return stateStore.acquireAgentKeyForRole(profile.role, {
     agent_id: channel.id,
     lock_owner: normalizeString(input.lock_owner || input.lockOwner || input.invocation_id || input.invocationId) || `agent-invocation-${Date.now()}`,
@@ -163,14 +219,7 @@ function claudeInvocationCommand({ channel, profile, candidate, input, key }) {
   args.push("--model", model, "-p", prompt);
   const env = {
     ...process.env,
-    PATH: [
-      process.env.PATH,
-      "/Users/hernando_zhao/.local/bin",
-      "/opt/homebrew/bin",
-      "/usr/local/bin",
-      "/usr/bin",
-      "/bin"
-    ].filter(Boolean).join(":"),
+    PATH: agentCommandPath(),
     ANTHROPIC_MODEL: model
   };
   if (channel.base_url || channel.baseUrl) env.ANTHROPIC_BASE_URL = normalizeString(channel.base_url || channel.baseUrl);
@@ -193,7 +242,16 @@ function codexInvocationCommand({ channel, profile, candidate, input, key }) {
   if (input.output_path || input.outputPath) args.push("-o", normalizeString(input.output_path || input.outputPath));
   if (model) args.push("-m", model);
   args.push(prompt);
-  const env = { ...process.env };
+  const env = {
+    ...process.env,
+    PATH: agentCommandPath()
+  };
+  // Do not leak unrelated provider credentials into the codex invocation env.
+  // For codex_account auth, no API key is injected, so ambient keys must be stripped.
+  if (!key?.secret) {
+    delete env.ANTHROPIC_API_KEY;
+    delete env.OPENAI_API_KEY;
+  }
   if (channel.base_url || channel.baseUrl) env.OPENAI_BASE_URL = normalizeString(channel.base_url || channel.baseUrl);
   if (key?.secret) env.OPENAI_API_KEY = key.secret;
   return { command, args, cwd, env, model, runner: "codex" };

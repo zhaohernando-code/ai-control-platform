@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { checkAgentAccountHealth, checkAgentKeyHealth, runAgentHealthCheck } from "../src/workflow/agent-health-checker.js";
@@ -207,9 +207,10 @@ test("account health checker uses command result for login-style agents", async 
     auth_type: "codex_account",
     cli: "/bin/codex"
   }, {
-    accountHealthRunner: async (command, args) => {
+    accountHealthRunner: async (command, args, options) => {
       assert.equal(command, "/bin/codex");
       assert.deepEqual(args, ["doctor", "--json"]);
+      assert.ok(options.env.PATH.includes(dirname(process.execPath)));
       return { exitCode: 0, stdout: "{}", stderr: "", latency_ms: 7 };
     }
   });

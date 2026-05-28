@@ -9,6 +9,36 @@ import {
   runDevelopmentFlowRealAcceptance
 } from "../src/workflow/development-flow-real.js";
 
+function governedAgentStateStore() {
+  return {
+    acquireAgentKeyForRole(role, options) {
+      return {
+        status: "acquired",
+        key: {
+          id: `test-key-${options.agent_id}`,
+          secret: `test-secret-${options.agent_id}-${role}`,
+          lock: { lock_owner: options.lock_owner }
+        }
+      };
+    },
+    releaseAgentKeyLock() {
+      return { status: "released" };
+    },
+    listAgents() {
+      return {
+        agents: [
+          {
+            id: "codex-account",
+            status: "success",
+            account_login: true,
+            account_health: { status: "success" }
+          }
+        ]
+      };
+    }
+  };
+}
+
 function fakeRealCliRunner({ fixture_dir }) {
   writeFileSync(join(fixture_dir, "src", "math.js"), [
     "export function sum(a, b) {",
@@ -32,6 +62,7 @@ function fakeRealCliRunner({ fixture_dir }) {
 test("development flow real harness validates both CLI chains with injected command runner", () => {
   const artifact = runDevelopmentFlowRealAcceptance({
     root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-test-")),
+    stateStore: governedAgentStateStore(),
     commandRunner: fakeRealCliRunner,
     timeout_ms: 10000
   });
@@ -49,6 +80,7 @@ test("development flow Claude chain defaults to project agent invocation profile
   let captured = null;
   const run = runDevelopmentFlowCliChain("claude_cli", {
     root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-proxy-test-")),
+    stateStore: governedAgentStateStore(),
     commandRunner: (command) => {
       captured = command;
       return fakeRealCliRunner(command);
@@ -67,6 +99,7 @@ test("development flow Claude chain defaults to project agent invocation profile
 test("development flow parses structured Claude JSON before fenced result text", () => {
   const run = runDevelopmentFlowCliChain("claude_cli", {
     root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-structured-test-")),
+    stateStore: governedAgentStateStore(),
     commandRunner: ({ fixture_dir }) => {
       writeFileSync(join(fixture_dir, "src", "math.js"), [
         "export function sum(a, b) {",
@@ -100,6 +133,7 @@ test("development flow parses structured Claude JSON before fenced result text",
 test("development flow real harness records output contract failure from CLI chain", () => {
   const artifact = runDevelopmentFlowRealAcceptance({
     root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-fail-test-")),
+    stateStore: governedAgentStateStore(),
     commandRunner: () => ({ status: 0, stdout: "not json", stderr: "" }),
     timeout_ms: 10000
   });

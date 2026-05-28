@@ -9,6 +9,8 @@ import {
   withProviderAttemptsInWorkflowState
 } from "../src/workflow/context-work-package-provider-trial-artifact.js";
 import { runContextWorkPackages } from "../src/workflow/context-work-package-runner.js";
+import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
+import { DEFAULT_LIVE_WORKBENCH_STATE_DB } from "../src/workflow/workbench-live-state-cleanliness.js";
 
 const TRIAL_ARTIFACT_VERSION = "context-work-package-provider-trial.v1";
 
@@ -24,6 +26,9 @@ function usage() {
     "  --timeout-seconds <seconds>   Bounded provider agent timeout",
     "  --model <model>               Provider model; defaults to deepseek-v4-pro[1m]",
     "  --fallback-model <model>      Provider timeout fallback model; defaults to deepseek-v4-flash",
+    "  --state-db <path>             SQLite workbench state DB for governed agent keys",
+    "  --channels-path <path>        Agent channels config",
+    "  --profiles-path <path>        Agent profiles config",
     "  --tools <tool-list>           Claude Code tools list, for example Read,Edit",
     "  --no-tools                    Pass an empty tools list to the provider command",
     "  --created-at <iso>            Stable timestamp for runner artifacts",
@@ -80,9 +85,15 @@ if (!inputPath || !outputPath) {
 
 let workflowState;
 let fakeRunner;
+let stateStore;
 try {
   workflowState = JSON.parse(readFileSync(resolve(inputPath), "utf8"));
   fakeRunner = fakeCommandRunnerFromEnv();
+  stateStore = createSqliteWorkbenchStateStore({
+    dbPath: valueAfter("--state-db", args) ||
+      process.env.AI_CONTROL_WORKBENCH_STATE_DB ||
+      DEFAULT_LIVE_WORKBENCH_STATE_DB
+  });
 } catch (error) {
   const artifact = {
     version: TRIAL_ARTIFACT_VERSION,
@@ -101,6 +112,9 @@ const executor = createAgentContextWorkPackageProviderExecutor({
   timeout_seconds: valueAfter("--timeout-seconds", args),
   model: valueAfter("--model", args),
   fallback_model: valueAfter("--fallback-model", args),
+  stateStore,
+  channels_path: valueAfter("--channels-path", args) || process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
+  profiles_path: valueAfter("--profiles-path", args) || process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH,
   tools: valueAfter("--tools", args),
   no_tools: hasFlag("--no-tools", args),
   effort: valueAfter("--effort", args),

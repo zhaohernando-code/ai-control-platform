@@ -87,7 +87,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2316,
+      "lines": 2337,
       "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -105,7 +105,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/context-work-package-provider-executor.test.js": {
-      "lines": 722,
+      "lines": 837,
       "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, and error paths.",
       "status": "accepted",
       "reviewed_at": "2026-05-28"

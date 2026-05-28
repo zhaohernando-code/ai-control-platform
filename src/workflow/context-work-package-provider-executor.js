@@ -57,10 +57,31 @@ function jsonCandidate(text) {
 }
 
 export function parseProviderExecutorOutput(stdout = "") {
+  const direct = normalizeString(stdout);
+  if (direct.startsWith("{") && direct.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(direct);
+      if (isObject(parsed?.structured_output || parsed?.structuredOutput)) {
+        return parsed.structured_output || parsed.structuredOutput;
+      }
+      if (isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string") {
+        return parseProviderExecutorOutput(parsed.result);
+      }
+      return isObject(parsed) ? parsed : null;
+    } catch {
+      // Fall through to fenced/object extraction for CLIs that wrap JSON in prose.
+    }
+  }
   const candidate = jsonCandidate(stdout);
   if (!candidate) return null;
   try {
     const parsed = JSON.parse(candidate);
+    if (isObject(parsed?.structured_output || parsed?.structuredOutput)) {
+      return parsed.structured_output || parsed.structuredOutput;
+    }
+    if (isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string") {
+      return parseProviderExecutorOutput(parsed.result);
+    }
     return isObject(parsed) ? parsed : null;
   } catch {
     return null;
@@ -109,6 +130,14 @@ function providerProvenance(command = {}, overrides = {}) {
     command_runner_kind: command.command_runner_kind,
     ...overrides
   };
+}
+
+function releasePreviewLock(stateStore, invocation = {}) {
+  const keyId = normalizeString(invocation.key?.id);
+  const lockOwner = normalizeString(invocation.lock?.lock_owner || invocation.lock?.lockOwner);
+  if (keyId && lockOwner && typeof stateStore?.releaseAgentKeyLock === "function") {
+    stateStore.releaseAgentKeyLock(keyId, lockOwner);
+  }
 }
 
 function packageFailureResults(selectedWorkPackages = [], reason, evidence = {}) {
@@ -226,6 +255,7 @@ export function promptForProviderExecution(input = {}) {
     "",
     "Completion rules:",
     "- Use status=pass only if the selected tasks were actually completed by this provider run.",
+    "- In package_results, use the exact work_package_id value shown in Selected tasks. Do not use task_ref as the package id.",
     "- Do not claim pass for local, mock, simulation, dry-run, planning-only, or unverified output.",
     "- If execution cannot complete, return status=fail with durable findings and evidence.",
     "- Every selected package must have a package_results entry with status and completion_evidence.",
@@ -286,9 +316,11 @@ export function createAgentContextWorkPackageProviderCommand(input = {}) {
     invocation_id: input.invocation_id || input.invocationId,
     candidate_index: input.candidate_index ?? input.candidateIndex
   }, {
+    stateStore: input.stateStore || input.state_store,
     channels_path: input.channels_path || input.channelsPath,
     profiles_path: input.profiles_path || input.profilesPath
   });
+  releasePreviewLock(input.stateStore || input.state_store, planned.invocation);
   const invocation = planned.invocation || {};
   return {
     status: planned.status,
@@ -306,6 +338,7 @@ export function createAgentContextWorkPackageProviderCommand(input = {}) {
     agent_id: invocation.agent_id || null,
     runner: invocation.runner || null,
     provider: invocation.provider || null,
+    candidate_index: input.candidate_index ?? input.candidateIndex ?? null,
     command_runner_kind: normalizeString(input.command_runner_kind || input.commandRunnerKind) || "spawn_sync"
   };
 }
@@ -341,7 +374,6 @@ export function createAgentContextWorkPackageProviderExecutor(options = {}) {
           ...options,
           model: fallbackModel,
           prompt,
-          candidate_index: 1,
           command_runner_kind: commandRunnerKind
         })
       ] : [])
@@ -379,7 +411,7 @@ export function createAgentContextWorkPackageProviderExecutor(options = {}) {
         max_budget_usd: command.max_budget_usd,
         timeout_ms: command.timeout_seconds * 1000,
         invocation_id: `${normalizeString(workflow_state?.run_id || workflow_state?.runId) || "context-work-package"}:${index}`,
-        candidate_index: index
+        candidate_index: command.candidate_index ?? undefined
       }, {
         stateStore: options.stateStore || options.state_store,
         channels_path: options.channels_path || options.channelsPath,

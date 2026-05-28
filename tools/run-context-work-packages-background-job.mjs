@@ -85,6 +85,7 @@ try {
   workflowState = stateStore.readWorkflowSnapshot(snapshotId);
   const executor = createAgentContextWorkPackageProviderExecutor({
     cwd: valueAfter("--cwd", args) || process.cwd(),
+    stateStore,
     timeout_seconds: valueAfter("--timeout-seconds", args) || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS,
     channels_path: valueAfter("--channels-path", args) || process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
     profiles_path: valueAfter("--profiles-path", args) || process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH

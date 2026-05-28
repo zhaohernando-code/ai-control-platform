@@ -17,11 +17,32 @@ function shard(overrides = {}) {
   };
 }
 
+function reviewerStateStore() {
+  return {
+    acquireAgentKeyForRole(role, options) {
+      assert.equal(role, "acceptance_check");
+      assert.equal(options.agent_id, "deepseek");
+      return {
+        status: "acquired",
+        key: {
+          id: "key-deepseek-reviewer",
+          secret: "sk-reviewer-secret",
+          lock: { lock_owner: options.lock_owner }
+        }
+      };
+    },
+    releaseAgentKeyLock() {
+      return { status: "released" };
+    }
+  };
+}
+
 test("agent reviewer shard command uses governed profile and shard limits", () => {
   const command = createAgentReviewerShardCommand({
     shard: shard({ allowed_tools: ["Read", "Grep"], timeout_seconds: 300 }),
     prompt: "review this shard",
-    cwd: "/repo"
+    cwd: "/repo",
+    stateStore: reviewerStateStore()
   });
 
   assert.equal(command.command, "claude");
@@ -31,6 +52,36 @@ test("agent reviewer shard command uses governed profile and shard limits", () =
   assert.ok(command.args.includes("--add-dir"));
   assert.ok(command.args.includes("/repo"));
   assert.equal(command.timeout_seconds, 300);
+});
+
+test("agent reviewer shard command preview releases governed key locks before real execution", () => {
+  const released = [];
+  const command = createAgentReviewerShardCommand({
+    shard: shard(),
+    prompt: "review this shard",
+    cwd: "/repo",
+    stateStore: {
+      acquireAgentKeyForRole(role, options) {
+        return {
+          status: "acquired",
+          key: {
+            id: "key-review-preview",
+            secret: `sk-${role}`,
+            lock: { lock_owner: options.lock_owner }
+          }
+        };
+      },
+      releaseAgentKeyLock(keyId, lockOwner) {
+        released.push({ keyId, lockOwner });
+        return { status: "released" };
+      }
+    }
+  });
+
+  assert.equal(command.status, "pass");
+  assert.equal(released.length, 1);
+  assert.equal(released[0].keyId, "key-review-preview");
+  assert.ok(released[0].lockOwner);
 });
 
 test("agent reviewer finding parser accepts arrays, objects, and fenced json", () => {
@@ -43,6 +94,7 @@ test("agent reviewer shard executor returns structured findings from stdout", as
   const calls = [];
   const executor = createAgentReviewerShardExecutor({
     cwd: "/repo",
+    stateStore: reviewerStateStore(),
     commandRunner: (command, args, options) => {
       calls.push({ command, args, options });
       return {
@@ -66,6 +118,7 @@ test("agent reviewer shard executor returns structured findings from stdout", as
 
 test("agent reviewer shard executor converts timeouts into reviewer timeout findings", async () => {
   const executor = createAgentReviewerShardExecutor({
+    stateStore: reviewerStateStore(),
     commandRunner: () => ({
       status: null,
       stdout: "",
@@ -84,6 +137,7 @@ test("agent reviewer shard executor converts timeouts into reviewer timeout find
 
 test("agent reviewer shard executor treats unstructured success as evidence gap failure", async () => {
   const executor = createAgentReviewerShardExecutor({
+    stateStore: reviewerStateStore(),
     commandRunner: () => ({
       status: 0,
       stdout: "没有发现问题",

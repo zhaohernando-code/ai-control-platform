@@ -100,6 +100,36 @@ function projectStatus(overrides = {}) {
   };
 }
 
+function governedAgentStateStore() {
+  return {
+    acquireAgentKeyForRole(role, options) {
+      return {
+        status: "acquired",
+        key: {
+          id: `test-key-${options.agent_id}`,
+          secret: `test-secret-${options.agent_id}-${role}`,
+          lock: { lock_owner: options.lock_owner }
+        }
+      };
+    },
+    releaseAgentKeyLock() {
+      return { status: "released" };
+    },
+    listAgents() {
+      return {
+        agents: [
+          {
+            id: "codex-account",
+            status: "success",
+            account_login: true,
+            account_health: { status: "success" }
+          }
+        ]
+      };
+    }
+  };
+}
+
 function sourceWorkflowState() {
   const contextPack = {
     requirement_summary: "Source workflow state for headless CLI orchestrator.",
@@ -256,6 +286,7 @@ test("headless governed agent invocation receives sanitized workbench child-work
   try {
     const executor = createHeadlessProviderExecutor({
       agent_invocation_profile: "development_flow_codex",
+      stateStore: governedAgentStateStore(),
       child_worker_timeout_ms: 10000,
       agent_invocation_max_attempts: 1,
       agent_invocation_command_runner: (_command, _args, runnerOptions) => {

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { delimiter, dirname } from "node:path";
 
 function normalizeString(value) {
   return String(value || "").trim();
@@ -37,6 +38,18 @@ function redact(text = "", secret = "") {
 
 function truncateSummary(text = "") {
   return normalizeString(text).slice(0, 300);
+}
+
+function agentCommandPath() {
+  return [
+    process.env.PATH,
+    dirname(process.execPath),
+    "/Users/hernando_zhao/.local/bin",
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin"
+  ].filter(Boolean).join(delimiter);
 }
 
 function healthStatusFromHttp(status) {
@@ -114,6 +127,7 @@ function accountHealthCommand(agent = {}, options = {}) {
       args: ["doctor", "--json"],
       env: {
         ...process.env,
+        PATH: agentCommandPath(),
         ...(agent.env && typeof agent.env === "object" ? agent.env : {}),
         ...(normalizeString(agent.codex_home || agent.codexHome) ? { CODEX_HOME: normalizeString(agent.codex_home || agent.codexHome) } : {})
       }
@@ -125,6 +139,7 @@ function accountHealthCommand(agent = {}, options = {}) {
     args: [normalizeString(agent.id), "--dry-run"],
     env: {
       ...process.env,
+      PATH: agentCommandPath(),
       ...(agent.env && typeof agent.env === "object" ? agent.env : {})
     }
   };
