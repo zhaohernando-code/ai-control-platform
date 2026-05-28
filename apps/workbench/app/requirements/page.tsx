@@ -65,7 +65,7 @@ export default function RequirementsPage() {
       } finally {
         setSubmitting(false);
       }
-    });
+    })();
   };
 
   return (

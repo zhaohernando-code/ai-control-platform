@@ -735,6 +735,7 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(requirements, /submitRequirement/);
   assert.match(requirements, /plan_review_requested:\s*true/);
   assert.match(requirements, /plan_generation_mode:\s*"model"/);
+  assert.match(requirements, /void\s*\(async\s*\(\)\s*=>\s*\{[\s\S]*submitRequirement[\s\S]*\}\)\(\);/);
   assert.match(requirements, /router\.push\(`\/flow\/\$\{encodeURIComponent\(taskId\)\}`\)/);
   assert.doesNotMatch(requirements, /desktop\.html|mobile\.html|占位页/);
 
