@@ -139,6 +139,15 @@ $HOME/codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite
 history 中的 workflow input seed 到 SQLite snapshot，之后 live 写入只更新
 SQLite，不回写 seed JSON。
 
+会写入上述 live SQLite 的验证必须使用可识别的测试标记（如 `WB_TEST_` 或
+`workbench-live-test`）并在验证结束后执行清理；`npm run check:closeout`
+会运行 `check:workbench:live-state-cleanliness`，发现残留测试任务时直接失败。
+需要修复已污染环境时，显式运行：
+
+```bash
+node tools/check-workbench-live-state-cleanliness.mjs --cleanup
+```
+
 ## 6. 验收门禁映射
 
 - `node --test test/workbench-shell.test.js` 既校验原生入口绑定不漂移，
