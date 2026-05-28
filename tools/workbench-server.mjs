@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createServer, request as httpRequest } from "node:http";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { dirname, extname, isAbsolute, normalize, relative, resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -289,6 +289,62 @@ function requirementPlanGenerationRequested(input = {}) {
     Boolean(input.generated_plan || input.generatedPlan);
 }
 
+function requirementPlanGenerationRunsInBackground(input = {}) {
+  if (!requirementPlanGenerationRequested(input)) return false;
+  if (input.generated_plan || input.generatedPlan) return false;
+  return input.wait_for_plan_generation !== true &&
+    input.waitForPlanGeneration !== true &&
+    input.plan_generation_mode !== "inline" &&
+    input.planGenerationMode !== "inline";
+}
+
+function runProcess(command, args = [], options = {}) {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const child = spawn(command, args, {
+      cwd: options.cwd || root,
+      env: options.env || process.env,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    const maxBuffer = Number(options.maxBuffer || 4 * 1024 * 1024);
+    const append = (current, chunk) => `${current}${chunk}`.slice(-maxBuffer);
+    child.stdout.on("data", (chunk) => {
+      stdout = append(stdout, chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr = append(stderr, chunk);
+    });
+    const timeoutMs = Number(options.timeout || options.timeoutMs || 180000);
+    const timer = Number.isFinite(timeoutMs) && timeoutMs > 0
+      ? setTimeout(() => child.kill("SIGTERM"), timeoutMs)
+      : null;
+    child.on("error", (error) => {
+      if (timer) clearTimeout(timer);
+      resolve({
+        status: null,
+        error,
+        stdout,
+        stderr: stderr || error?.message || "",
+        timed_out: false,
+        latency_ms: Date.now() - startedAt
+      });
+    });
+    child.on("close", (code, signal) => {
+      if (timer) clearTimeout(timer);
+      resolve({
+        status: code,
+        signal,
+        stdout,
+        stderr,
+        timed_out: signal === "SIGTERM",
+        latency_ms: Date.now() - startedAt
+      });
+    });
+  });
+}
+
 function defaultRequirementPlanGenerator(input = {}) {
   const script = normalizeString(
     input.requirement_plan_command ||
@@ -342,9 +398,8 @@ function defaultRequirementPlanGenerator(input = {}) {
     if (supportsModelArg) args.push("-m", model);
     if (supportsRoleArg) args.push("--role", role);
     args.push("-p", prompt);
-    const result = spawnSync(script, args, {
+    const result = await runProcess(script, args, {
       cwd: root,
-      encoding: "utf8",
       timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
       env: {
         ...process.env,
@@ -366,9 +421,67 @@ function defaultRequirementPlanGenerator(input = {}) {
         supports_model_arg: supportsModelArg,
         supports_role_arg: supportsRoleArg,
         exit_code: result.status ?? null,
-        timed_out: result.error?.code === "ETIMEDOUT"
+        timed_out: result.timed_out === true || result.error?.code === "ETIMEDOUT"
       }
     };
+  };
+}
+
+async function generateRequirementPlanOnly(submitted = {}, input = {}, options = {}) {
+  const generator = options.requirementPlanGenerator || defaultRequirementPlanGenerator(input);
+  if (typeof generator !== "function") {
+    const issues = [{ code: "requirement_plan_generator_unavailable", message: "model plan generator is not configured", path: "requirement_plan_generator" }];
+    return { status: "fail", issues };
+  }
+
+  let generation;
+  try {
+    generation = await generator({
+      requirement: submitted.requirement,
+      prompt: createRequirementPlanPrompt(submitted.requirement)
+    });
+  } catch (error) {
+    return {
+      status: "fail",
+      issues: [{
+        code: "requirement_plan_generation_failed",
+        message: error?.message || "model plan generation failed",
+        path: "plan_generation"
+      }],
+      stderr: error?.stack || error?.message || ""
+    };
+  }
+  if (generation?.status !== "pass") {
+    return {
+      status: "fail",
+      issues: [{
+        code: "requirement_plan_generation_failed",
+        message: "model plan generation failed",
+        path: "plan_generation",
+        stderr: normalizeString(generation?.stderr)
+      }],
+      stderr: normalizeString(generation?.stderr),
+      generator: generation?.generator || generation?.provenance || null
+    };
+  }
+
+  const parsed = generation.generated_plan || generation.generatedPlan
+    ? parseRequirementPlanGenerationOutput(submitted.requirement, generation.generated_plan || generation.generatedPlan)
+    : parseRequirementPlanGenerationOutput(submitted.requirement, generation.stdout);
+  if (parsed.status !== "pass") {
+    return {
+      status: "fail",
+      issues: parsed.issues,
+      stderr: normalizeString(generation?.stderr),
+      generator: generation?.generator || generation?.provenance || null
+    };
+  }
+
+  return {
+    status: "pass",
+    generated_plan: parsed,
+    generator: generation.generator || generation.provenance || { kind: "model_plan_generator" },
+    issues: []
   };
 }
 
@@ -413,69 +526,22 @@ async function generateRequirementPlanIfRequested(submitted = {}, input = {}, op
     };
   }
 
-  const generator = options.requirementPlanGenerator || defaultRequirementPlanGenerator(input);
-  if (typeof generator !== "function") {
-    const issues = [{ code: "requirement_plan_generator_unavailable", message: "model plan generator is not configured", path: "requirement_plan_generator" }];
+  const generated = await generateRequirementPlanOnly(submitted, input, options);
+  if (generated.status !== "pass") {
     return {
       status: "fail",
-      submission: failedSubmission(issues),
-      issues
-    };
-  }
-
-  let generation;
-  try {
-    generation = await generator({
-      requirement: submitted.requirement,
-      prompt: createRequirementPlanPrompt(submitted.requirement)
-    });
-  } catch (error) {
-    const issues = [{
-      code: "requirement_plan_generation_failed",
-      message: error?.message || "model plan generation failed",
-      path: "plan_generation"
-    }];
-    return {
-      status: "fail",
-      submission: failedSubmission(issues, { stderr: error?.stack || error?.message || "" }),
-      issues
-    };
-  }
-  if (generation?.status !== "pass") {
-    const issues = [{
-      code: "requirement_plan_generation_failed",
-      message: "model plan generation failed",
-      path: "plan_generation",
-      stderr: normalizeString(generation?.stderr)
-    }];
-    return {
-      status: "fail",
-      submission: failedSubmission(issues, {
-        stderr: normalizeString(generation?.stderr),
-        generator: generation?.generator || generation?.provenance || null
+      submission: failedSubmission(generated.issues, {
+        stderr: normalizeString(generated.stderr),
+        generator: generated.generator || null
       }),
-      issues
-    };
-  }
-
-  const parsed = generation.generated_plan || generation.generatedPlan
-    ? parseRequirementPlanGenerationOutput(submitted.requirement, generation.generated_plan || generation.generatedPlan)
-    : parseRequirementPlanGenerationOutput(submitted.requirement, generation.stdout);
-  if (parsed.status !== "pass") {
-    return {
-      status: "fail",
-      submission: failedSubmission(parsed.issues, {
-        stderr: normalizeString(generation?.stderr),
-        generator: generation?.generator || generation?.provenance || null
-      }),
-      issues: parsed.issues
+      issues: generated.issues || []
     };
   }
 
   const applied = applyGeneratedRequirementPlan(submitted.project_status, {
     requirement_id: submitted.requirement.id,
-    generated_plan: parsed,
-    generator: generation.generator || generation.provenance || { kind: "model_plan_generator" }
+    generated_plan: generated.generated_plan,
+    generator: generated.generator
   }, {
     created_at: input.created_at || input.createdAt
   });
@@ -486,6 +552,50 @@ async function generateRequirementPlanIfRequested(submitted = {}, input = {}, op
       : submitted,
     issues: applied.issues || []
   };
+}
+
+function startRequirementPlanGenerationInBackground({
+  submitted,
+  input,
+  item,
+  readWorkflowState,
+  writeWorkflowState,
+  projectStatusPath,
+  stateStore,
+  requirementPlanGenerator
+}) {
+  setTimeout(async () => {
+    try {
+      const generated = await generateRequirementPlanOnly(submitted, input, { requirementPlanGenerator });
+      const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || submitted.project_status;
+      const next = generated.status === "pass"
+        ? applyGeneratedRequirementPlan(currentProjectStatus || {}, {
+          requirement_id: submitted.requirement.id,
+          generated_plan: generated.generated_plan,
+          generator: generated.generator
+        }, {
+          created_at: input.created_at || input.createdAt
+        })
+        : markRequirementPlanGenerationFailed(currentProjectStatus || {}, {
+          requirement_id: submitted.requirement.id,
+          issues: generated.issues || [],
+          stderr: normalizeString(generated.stderr),
+          generator: generated.generator || null
+        }, {
+          created_at: input.created_at || input.createdAt
+        });
+      if (next.status !== "pass") {
+        console.error("[workbench-server] requirement plan background write failed", next.issues || []);
+        return;
+      }
+      const latestWorkflowState = readWorkflowState(item);
+      const nextWorkflowState = workflowStateWithProjectStatus(latestWorkflowState, next.project_status);
+      writeProjectStatusState(projectStatusPath, next.project_status, stateStore);
+      writeWorkflowState(item, nextWorkflowState);
+    } catch (error) {
+      console.error("[workbench-server] requirement plan background generation failed", error);
+    }
+  }, 0);
 }
 
 function requirementAutoAdvanceAllowedAfterPlanReview(input = {}) {
@@ -2279,6 +2389,42 @@ export function createWorkbenchServer(options = {}) {
         }
 
         writeWorkflowState(item, recordedWorkflowState);
+
+        if (requirementPlanGenerationRunsInBackground(input)) {
+          const projection = workbenchProjection(recordedWorkflowState);
+          startRequirementPlanGenerationInBackground({
+            submitted,
+            input,
+            item,
+            readWorkflowState,
+            writeWorkflowState,
+            projectStatusPath,
+            stateStore,
+            requirementPlanGenerator
+          });
+          jsonResponse(res, 201, {
+            status: "created",
+            item,
+            requirement: submitted.requirement,
+            plan_review: submitted.plan_review,
+            plan_generation: {
+              status: "scheduled",
+              issues: []
+            },
+            artifact: submittedRecorded.artifact,
+            next_action_readout: projection.next_action_readout,
+            projection,
+            submitted_projection: projection,
+            auto_advance: {
+              status: "waiting_for_plan_generation",
+              result: null,
+              artifact: null,
+              projection,
+              reason: "requirement plan generation is running in the task flow after task creation"
+            }
+          });
+          return;
+        }
 
         const planGeneration = await generateRequirementPlanIfRequested(submitted, input, {
           requirementPlanGenerator

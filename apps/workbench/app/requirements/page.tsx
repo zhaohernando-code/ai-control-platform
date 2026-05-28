@@ -13,7 +13,7 @@ import {
   Typography
 } from "antd";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState } from "react";
 
 import { submitRequirement } from "@/lib/api/requirements";
 import { useProjection } from "@/lib/hooks";
@@ -25,7 +25,7 @@ export default function RequirementsPage() {
   const router = useRouter();
   const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [isPending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
   const { projection, loading, error, refresh } = useProjection({
     pollIntervalMs: 0,
     immediate: true
@@ -38,7 +38,8 @@ export default function RequirementsPage() {
     problem_statement: string;
     constraints?: string;
   }) => {
-    startTransition(async () => {
+    setSubmitting(true);
+    void (async () => {
       try {
         const result = await submitRequirement({
           title: values.title,
@@ -52,7 +53,7 @@ export default function RequirementsPage() {
           created_at: new Date().toISOString()
         });
         const taskId = result.requirement?.id;
-        message.success("任务已提交，后续步骤已进入任务流");
+        message.success("任务已创建，计划生成已进入任务流");
         form.resetFields();
         if (taskId) {
           router.push(`/flow/${encodeURIComponent(taskId)}`);
@@ -61,6 +62,8 @@ export default function RequirementsPage() {
         }
       } catch (submitError) {
         message.error(submitError instanceof Error ? submitError.message : "任务提交失败");
+      } finally {
+        setSubmitting(false);
       }
     });
   };
@@ -145,7 +148,7 @@ export default function RequirementsPage() {
               type="primary"
               htmlType="submit"
               icon={<SendOutlined />}
-              loading={isPending}
+              loading={submitting}
             >
               提交
             </Button>

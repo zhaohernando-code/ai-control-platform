@@ -87,15 +87,27 @@ export function resolveWorkbenchUrl(path: string): string {
 }
 
 export async function fetchWorkbenchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(resolveWorkbenchUrl(path), {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers || {})
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), 30000);
+  try {
+    const response = await fetch(resolveWorkbenchUrl(path), {
+      ...init,
+      signal: init?.signal || controller.signal,
+      headers: {
+        Accept: "application/json",
+        ...(init?.headers || {})
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`workbench api ${path} failed: ${response.status}`);
     }
-  });
-  if (!response.ok) {
-    throw new Error(`workbench api ${path} failed: ${response.status}`);
+    return (await response.json()) as T;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`workbench api ${path} timed out`);
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
   }
-  return (await response.json()) as T;
 }

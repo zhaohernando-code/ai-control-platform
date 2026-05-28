@@ -181,6 +181,15 @@ function waitForOutput(child, pattern) {
   });
 }
 
+async function waitForCondition(predicate, description, timeoutMs = 5000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await predicate()) return;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 25));
+  }
+  throw new Error(`timed out waiting for ${description}`);
+}
+
 function providerContextWorkPackageWorkflowState() {
   const workPackages = [
     {
@@ -844,6 +853,7 @@ test("workbench server accepts frontend requirements into autonomous continuatio
         constraints: "不能绕过自动开发、验收和门禁流程。",
         plan_review_requested: true,
         generate_plan: true,
+        wait_for_plan_generation: true,
         created_at: "2026-05-25T09:00:00.000Z",
         requirement_id: "requirement-from-workbench"
       })
@@ -916,6 +926,10 @@ test("workbench server persists frontend requirement before model plan generatio
   }, null, 2));
 
   let observedPendingWrite = false;
+  let releaseGenerator;
+  const generatorMayFinish = new Promise((resolve) => {
+    releaseGenerator = resolve;
+  });
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/api/workbench/requirements?id=requirement-pending`, {
       method: "POST",
@@ -936,19 +950,26 @@ test("workbench server persists frontend requirement before model plan generatio
     const savedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
 
     assert.equal(response.status, 201);
-    assert.equal(observedPendingWrite, true);
-    assert.equal(payload.plan_generation.status, "fail");
-    assert.equal(payload.plan_review.phase, "plan_generation_failed");
-    assert.match(payload.plan_review.generation_error.message, /simulated model timeout/);
-    assert.equal(payload.auto_advance.status, "plan_generation_failed");
-    assert.equal(payload.projection.next_action_readout.action, "retry_requirement_plan_generation");
+    assert.equal(payload.plan_generation.status, "scheduled");
+    assert.equal(payload.plan_review.phase, "pending_plan_generation");
+    assert.equal(payload.auto_advance.status, "waiting_for_plan_generation");
+    assert.equal(payload.projection.next_action_readout.action, "generate_requirement_plan");
     assert.equal(payload.projection.project_management.plan_review.requirement_id, "requirement-frontend-refactor");
     assert.equal(savedProjectStatus.requirement_intake.latest_requirement_id, "requirement-frontend-refactor");
-    assert.equal(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].phase, "plan_generation_failed");
-    assert.match(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].generation_error.stderr, /simulated model timeout/);
+    assert.equal(savedProjectStatus.plan_reviews["requirement-frontend-refactor"].phase, "pending_plan_generation");
     assert.equal(savedWorkflowState.project_status.requirement_intake.latest_requirement_id, "requirement-frontend-refactor");
-    assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-frontend-refactor"].phase, "plan_generation_failed");
+    assert.equal(savedWorkflowState.project_status.plan_reviews["requirement-frontend-refactor"].phase, "pending_plan_generation");
     assert.ok(savedWorkflowState.manifest.events.some((event) => event.type === "requirement_intake_submitted"));
+    await waitForCondition(() => observedPendingWrite, "background generator sees pending write");
+    releaseGenerator();
+    await waitForCondition(() => {
+      const currentProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+      return currentProjectStatus.plan_reviews["requirement-frontend-refactor"].phase === "plan_generation_failed";
+    }, "background plan generation failure writeback");
+    const failedProjectStatus = JSON.parse(readFileSync(projectStatusPath, "utf8"));
+    const failedWorkflowState = JSON.parse(readFileSync(inputPath, "utf8"));
+    assert.match(failedProjectStatus.plan_reviews["requirement-frontend-refactor"].generation_error.stderr, /simulated model timeout/);
+    assert.equal(failedWorkflowState.project_status.plan_reviews["requirement-frontend-refactor"].phase, "plan_generation_failed");
   }, {
     historyPath,
     snapshotsRoot,
@@ -960,6 +981,7 @@ test("workbench server persists frontend requirement before model plan generatio
         pendingProjectStatus.requirement_intake.latest_requirement_id === "requirement-frontend-refactor" &&
         pendingProjectStatus.plan_reviews["requirement-frontend-refactor"].phase === "pending_plan_generation" &&
         pendingWorkflowState.project_status.requirement_intake.latest_requirement_id === "requirement-frontend-refactor";
+      await generatorMayFinish;
       return {
         status: "fail",
         stderr: "simulated model timeout"
