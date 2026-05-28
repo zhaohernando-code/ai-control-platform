@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -812,9 +812,46 @@ function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile 
   };
 }
 
+function createIsolatedWorktree(repoRoot, workPackageId) {
+  const branchName = `worker/${workPackageId}-${Date.now()}`;
+  const worktreeDir = mkdtempSync(join(tmpdir(), `worker-worktree-${workPackageId}-`));
+  const result = spawnSync("git", ["worktree", "add", "-b", branchName, worktreeDir], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 30000
+  });
+  if (result.status !== 0) {
+    try { rmSync(worktreeDir, { recursive: true, force: true }); } catch {}
+    return { status: "fail", error: normalizeString(result.stderr) || "git worktree add failed" };
+  }
+  return { status: "pass", branch: branchName, path: worktreeDir };
+}
+
+function cleanupIsolatedWorktree(repoRoot, worktreePath, branchName) {
+  try {
+    spawnSync("git", ["worktree", "remove", "--force", worktreePath], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      timeout: 15000
+    });
+  } catch {}
+  try {
+    spawnSync("git", ["branch", "-D", branchName], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      timeout: 10000
+    });
+  } catch {}
+}
+
 function executeRealChildWorker(workflowState = {}, workPackage = {}, options = {}) {
   const runner = childWorkerRunnerFrom(options);
   if (!runner) return null;
+
+  const repoRoot = normalizeString(options.repo_root || options.repoRoot || process.cwd());
+  const worktree = createIsolatedWorktree(repoRoot, workPackage.id);
+  const useWorktree = worktree.status === "pass";
+  const workerCwd = useWorktree ? worktree.path : resolve(normalizeString(options.agent_invocation_cwd || options.agentInvocationCwd) || process.cwd());
 
   const tempDir = mkdtempSync(join(tmpdir(), "headless-child-worker-"));
   const promptFile = join(tempDir, "bounded-implementation-task.md");
@@ -830,6 +867,9 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
   }));
 
   const timeoutMs = childWorkerTimeoutMs(options);
+  const runnerOptions = useWorktree
+    ? { ...options, agent_invocation_cwd: workerCwd, agentInvocationCwd: workerCwd }
+    : options;
   const attempts = [];
   let normalized = null;
   for (let attemptIndex = 0; attemptIndex < maxChildWorkerAttempts(options); attemptIndex += 1) {
@@ -843,7 +883,7 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
         timeout_ms: timeoutMs,
         attempt: attemptIndex + 1,
         split_retry: attemptIndex > 0 && splitRetryEnabled(options),
-        options
+        options: runnerOptions
       });
     } catch (error) {
       result = {
@@ -869,6 +909,43 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
       split_retry: attemptIndex > 0 && splitRetryEnabled(options)
     });
     if (evaluateHeadlessChildWorkerOutput(workPackage, normalized).status === "pass") break;
+  }
+
+  if (useWorktree) {
+    const evalResult = evaluateHeadlessChildWorkerOutput(workPackage, normalized);
+    if (evalResult.status === "pass") {
+      const mergeResult = spawnSync("git", ["-C", repoRoot, "merge", "--ff-only", worktree.branch], {
+        encoding: "utf8",
+        timeout: 15000
+      });
+      if (mergeResult.status !== 0) {
+        normalized = {
+          ...normalized,
+          status: "fail",
+          command_evidence: {
+            ...(normalized?.command_evidence || {}),
+            child_worker_integration: {
+              required: true,
+              status: "fail",
+              error: normalizeString(mergeResult.stderr) || "merge failed"
+            }
+          }
+        };
+      } else {
+        normalized = {
+          ...normalized,
+          command_evidence: {
+            ...(normalized?.command_evidence || {}),
+            child_worker_integration: {
+              required: true,
+              status: "pass",
+              branch: worktree.branch
+            }
+          }
+        };
+      }
+    }
+    cleanupIsolatedWorktree(repoRoot, worktree.path, worktree.branch);
   }
 
   return {
