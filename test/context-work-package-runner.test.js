@@ -996,3 +996,34 @@ test("context work package dispatch failure is persisted as failed", () => {
   assert.equal(runtime.failure_issues[0].code, "provider_executor_timeout");
   assert.ok(failed.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_dispatch_failed"));
 });
+
+test("context work package dispatch retries a failed package whose dependencies are complete", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const workPackages = workflowState.manifest.work_packages.map((workPackage) => {
+    if (workPackage.id === "runtime") return { ...workPackage, status: "completed" };
+    if (workPackage.id === "tests") return { ...workPackage, status: "failed", result: "dispatch_failed" };
+    return workPackage;
+  });
+  const stateWithFailedPackage = {
+    ...workflowState,
+    manifest: {
+      ...workflowState.manifest,
+      work_packages: workPackages
+    },
+    task_dag: workPackages
+  };
+
+  const staged = stageContextWorkPackageDispatch(stateWithFailedPackage, {
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    dispatch_run_id: "dispatch-retry-failed-001",
+    created_at: "2026-05-28T14:20:00.000Z"
+  });
+
+  assert.equal(staged.status, "pass");
+  assert.deepEqual(staged.selected_work_package_ids, ["tests"]);
+  const testsPackage = staged.workflow_state.manifest.work_packages.find((item) => item.id === "tests");
+  assert.equal(testsPackage.status, "running");
+  assert.equal(testsPackage.result, "dispatch_started");
+});

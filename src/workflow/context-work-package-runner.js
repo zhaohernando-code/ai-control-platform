@@ -54,6 +54,7 @@ function nextArtifactId(workflowState = {}, options = {}) {
 
 function runnableNodes(workflowState = {}, options = {}) {
   const taskDag = workflowState.task_dag || workflowState.taskDag || workflowState.manifest?.work_packages || [];
+  const rawWorkPackages = asArray(workflowState?.manifest?.work_packages);
   const dag = buildTaskDag(taskDag);
   const dispatchable = getDispatchableNodes(dag);
   const selectedIds = new Set(asArray(options.selected_work_package_ids || options.selectedWorkPackageIds).map(normalizeString).filter(Boolean));
@@ -65,11 +66,29 @@ function runnableNodes(workflowState = {}, options = {}) {
       selected: nodes
     };
   }
-  const maxPackageCount = Number(options.max_package_count || options.maxPackageCount || dispatchable.length || 1);
+  const rawById = new Map(
+    rawWorkPackages
+      .map((workPackage) => [normalizeString(workPackage?.id || workPackage?.work_package_id), workPackage])
+      .filter(([id]) => id)
+  );
+  const nodeById = new Map(asArray(dag.nodes).map((node) => [normalizeString(node.id), node]));
+  const recoverableFailed = asArray(dag.nodes).filter((node) => {
+    const raw = rawById.get(normalizeString(node.id));
+    const rawStatus = normalizeString(raw?.status || raw?.state || raw?.result || raw?.outcome).toLowerCase();
+    if (!["failed", "fail", "error", "errored", "timeout", "timed_out"].includes(rawStatus)) return false;
+    if (asArray(node.blocked_reasons).length > 0) return false;
+    return asArray(node.depends_on).every((dependencyId) => {
+      const dependency = rawById.get(dependencyId) || nodeById.get(dependencyId);
+      const dependencyStatus = normalizeString(dependency?.status || dependency?.state || dependency?.result || dependency?.outcome).toLowerCase();
+      return ["done", "completed", "complete", "pass", "passed", "ok", "success", "succeeded"].includes(dependencyStatus);
+    });
+  });
+  const runnable = recoverableFailed.length > 0 ? recoverableFailed : dispatchable;
+  const maxPackageCount = Number(options.max_package_count || options.maxPackageCount || runnable.length || 1);
   return {
     dag,
     dispatchable,
-    selected: dispatchable.slice(0, Math.max(1, maxPackageCount))
+    selected: runnable.slice(0, Math.max(1, maxPackageCount))
   };
 }
 

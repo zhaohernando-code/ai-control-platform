@@ -51,7 +51,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1042,
+      "lines": 1061,
       "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, and result normalization share one flow.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -111,7 +111,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/context-work-package-runner.test.js": {
-      "lines": 998,
+      "lines": 1029,
       "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
