@@ -346,7 +346,7 @@ test("Claude child worker runs in bare mode without workflow hook inheritance", 
   assert.ok(args.includes("--add-dir"));
 });
 
-test("Claude DeepSeek child worker omits role flag for canonical DeepSeek launcher", () => {
+test("Claude DeepSeek child worker uses governed proxy role and model defaults", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "claude-deepseek-child-worker-"));
   const promptFile = join(tempDir, "prompt.md");
   const captureFile = join(tempDir, "args.txt");
@@ -375,10 +375,11 @@ test("Claude DeepSeek child worker omits role flag for canonical DeepSeek launch
 
   assert.equal(result.status, 0);
   const args = readFileSync(captureFile, "utf8").trim().split("\n");
-  assert.equal(args[0], "MODEL=deepseek-v4-pro[1m]");
-  assert.equal(args.includes("-m"), false);
-  assert.equal(args.includes("deepseek-v4-pro[1m]"), false);
-  assert.equal(args.includes("--role"), false);
+  assert.equal(args[0], "MODEL=claude-sonnet-4-6");
+  assert.ok(args.includes("-m"));
+  assert.ok(args.includes("claude-sonnet-4-6"));
+  assert.ok(args.includes("--role"));
+  assert.ok(args.includes("developer"));
   assert.ok(args.includes("--bare"));
   assert.ok(args.includes("--permission-mode"));
   assert.ok(args.includes("bypassPermissions"));
@@ -587,11 +588,21 @@ test("Claude child worker accepts already-satisfied package despite undeclared p
 test("live workbench starts Claude DeepSeek child workers with output path for integration writeback", () => {
   const script = readFileSync("scripts/start-workbench-live.sh", "utf8");
   assert.ok(script.includes("run-claude-deepseek-child-worker.sh"));
-  assert.ok(script.includes("deepseek-v4-pro[1m]"));
-  assert.ok(script.includes("start-claude-deepseek-no-proxy.sh"));
+  assert.ok(script.includes("scripts/claude-role-proxy.sh"));
+  assert.ok(script.includes("claude-sonnet-4-6"));
+  assert.ok(!script.includes("start-claude-deepseek-no-proxy.sh"));
   assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG"));
   assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG"));
+  assert.ok(script.includes("AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS"));
   assert.ok(script.includes(`DEFAULT_CHILD_WORKER_ARGS_JSON='["{prompt_file}","{output_path}"]'`));
+});
+
+test("DeepSeek child worker wrapper defaults to the governed project Claude proxy", () => {
+  const script = readFileSync("scripts/run-claude-deepseek-child-worker.sh", "utf8");
+  assert.ok(script.includes("claude-role-proxy.sh"));
+  assert.ok(script.includes("AI_CONTROL_WORKBENCH_CLAUDE_PROXY_SUPPORTS_MODEL_ARG"));
+  assert.ok(script.includes("AI_CONTROL_WORKBENCH_CLAUDE_PROXY_SUPPORTS_ROLE"));
+  assert.ok(!script.includes("start-claude-deepseek-no-proxy.sh"));
 });
 
 test("Claude role proxy allocates developer keys from the developer pool", () => {

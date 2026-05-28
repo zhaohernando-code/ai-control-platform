@@ -489,6 +489,16 @@ runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚
 - 成功写回 workflow state；最后一个 shard 自动 aggregate。
 - 输入不可读或 shard 不可执行时非零退出。
 
+[2026-05-28T16:30:00+08:00] Workbench agent execution must use a project-governed runtime entry:
+`完成“项目”tab` 的计划生成在 180 秒后被工作台调用方终止，记录为 `exit_code=143` / `timed_out=true`。根因不是 UI 渲染，而是工作台默认直接调用用户个人目录下的 `start-claude-deepseek-no-proxy.sh`，该脚本同时承载个人交互习惯、provider 环境、model 和认证环境，平台无法统一管理 role、model、timeout、key pool 或失败恢复。
+
+决策：
+- Workbench 默认计划生成改走项目内 `scripts/claude-role-proxy.sh`，由平台脚本统一治理 role、model、key pool、锁和退出语义。
+- `scripts/start-workbench-live.sh` 不再默认指向个人 launcher；个人 launcher 只能通过显式环境变量覆盖。
+- 默认计划模型改为 `claude-sonnet-4-6`，计划生成 timeout 提升到 300 秒，并显式传递 `--role manager` / `-m`。
+- child worker wrapper 默认也使用项目内 governed proxy，避免计划生成、实现 worker 和 reviewer 各自拼不同启动器。
+- 外部 DeepSeek reviewer skill wrapper 仍可作为专项 reviewer adapter，但不再作为新建任务计划生成的默认 runtime。
+
 [2026-05-21T22:03:19+08:00] Runner-level timeout must publish provider health facts:
 真实 DS shard 试运行通过，说明 canonical launcher 在 no-tools shard 场景下可用。但 timeout 路径也必须被流程托管，否则 runner 会把 provider 问题降级为普通 review finding。
 

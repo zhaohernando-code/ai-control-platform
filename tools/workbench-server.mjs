@@ -352,14 +352,14 @@ function defaultRequirementPlanGenerator(input = {}) {
     input.requirement_plan_command ||
       input.requirementPlanCommand ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND ||
-      "/Users/hernando_zhao/codex/start-claude-deepseek-no-proxy.sh"
+      resolve(root, "scripts/claude-role-proxy.sh")
   );
   if (!script || !existsSync(script)) return null;
   const model = normalizeString(
     input.requirement_plan_model ||
       input.requirementPlanModel ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_MODEL ||
-      "deepseek-v4-pro[1m]"
+      "claude-sonnet-4-6"
   );
   const role = normalizeString(
     input.requirement_plan_role ||
@@ -371,7 +371,7 @@ function defaultRequirementPlanGenerator(input = {}) {
     input.requirement_plan_timeout_ms ||
       input.requirementPlanTimeoutMs ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_TIMEOUT_MS ||
-      180000
+      300000
   );
   const childPath = [
     process.env.PATH,
@@ -385,13 +385,13 @@ function defaultRequirementPlanGenerator(input = {}) {
     input.requirement_plan_command_supports_model_arg ||
       input.requirementPlanCommandSupportsModelArg ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_MODEL_ARG ||
-      (/start-claude-deepseek/i.test(script) ? "0" : "1")
+      "1"
   ) !== "0";
   const supportsRoleArg = normalizeString(
     input.requirement_plan_command_supports_role_arg ||
       input.requirementPlanCommandSupportsRoleArg ||
       process.env.AI_CONTROL_WORKBENCH_REQUIREMENT_PLAN_COMMAND_SUPPORTS_ROLE_ARG ||
-      (/start-claude-deepseek/i.test(script) ? "0" : "1")
+      "1"
   ) !== "0";
 
   return async ({ requirement }) => {
@@ -416,7 +416,7 @@ function defaultRequirementPlanGenerator(input = {}) {
       stdout,
       stderr,
       generator: {
-        kind: /start-claude-deepseek/i.test(script) ? "claude_deepseek_plan_mode" : "claude_plan_mode",
+        kind: script === resolve(root, "scripts/claude-role-proxy.sh") ? "governed_claude_plan_mode" : (/start-claude-deepseek/i.test(script) ? "legacy_external_claude_deepseek_plan_mode" : "claude_plan_mode"),
         command: script,
         role,
         model,
@@ -1097,7 +1097,12 @@ function envFlagEnabled(name) {
 
 function defaultChildProviderForCommand(command) {
   const normalizedCommand = normalizeString(command);
-  if (/run-claude-deepseek-child-worker\.sh$|start-claude-deepseek/i.test(normalizedCommand)) {
+  const configuredProxy = normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_PROXY);
+  const configuredBaseUrl = normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_BASE_URL);
+  const usesExternalDeepSeekLauncher = /start-claude-deepseek/i.test(normalizedCommand) ||
+    /start-claude-deepseek/i.test(configuredProxy) ||
+    /api\.deepseek\.com\/anthropic/i.test(configuredBaseUrl);
+  if (usesExternalDeepSeekLauncher) {
     return {
       command_runner_kind: "external_provider_child_process",
       executor_kind: "claude_deepseek_cli_worker",
@@ -1105,12 +1110,12 @@ function defaultChildProviderForCommand(command) {
       model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "deepseek-v4-pro[1m]"
     };
   }
-  if (/run-claude-child-worker\.sh$|claude/i.test(normalizedCommand)) {
+  if (/run-claude-deepseek-child-worker\.sh$|run-claude-child-worker\.sh$|claude/i.test(normalizedCommand)) {
     return {
       command_runner_kind: "external_provider_child_process",
-      executor_kind: "claude_proxy_cli_worker",
-      provider: "claude_proxy",
-      model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "claude-opus-4-7"
+      executor_kind: "governed_claude_proxy_cli_worker",
+      provider: "governed_claude_proxy",
+      model: normalizeString(process.env.AI_CONTROL_WORKBENCH_CLAUDE_MODEL) || "claude-sonnet-4-6"
     };
   }
   return {
