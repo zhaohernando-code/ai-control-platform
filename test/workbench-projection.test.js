@@ -212,7 +212,93 @@ test("workbench projection exposes task flow items for submitted requirements", 
   assert.equal(task.work_packages[0].id, "requirement-task-flow-plan-step-01");
   assert.equal(projection.project_management.human_decisions, 1);
   assert.equal(projection.one_screen.counters.human_decisions, 1);
+  assert.equal(projection.one_screen.counters.tasks_total, 1);
+  assert.equal(projection.one_screen.counters.active_tasks, 1);
+});
+
+test("workbench projection counts task flow items as the task source of truth", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    manifest: {
+      run_id: "run-task-counts",
+      cycle_id: "cycle-task-counts",
+      work_packages: [
+        { id: "stale-open-package", title: "Old package", status: "pending" }
+      ],
+      events: []
+    },
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-done-a",
+            title: "完成任务 A",
+            status: "completed",
+            submitted_at: "2026-05-28T02:00:00.000Z"
+          },
+          {
+            id: "requirement-done-b",
+            title: "完成任务 B",
+            status: "completed",
+            submitted_at: "2026-05-28T02:01:00.000Z"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-done-a": { phase: "completed" },
+        "requirement-done-b": { phase: "completed" }
+      }
+    }
+  }));
+
+  assert.equal(projection.project_management.tasks_total, 2);
+  assert.equal(projection.project_management.active_tasks, 0);
   assert.equal(projection.one_screen.counters.tasks_total, 2);
+  assert.equal(projection.one_screen.counters.active_tasks, 0);
+  assert.deepEqual(
+    projection.project_management.task_items.map((item) => item.status),
+    ["completed", "completed"]
+  );
+});
+
+test("workbench projection treats completed requirement goals as completed task flow items", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-goal-complete",
+            title: "目标已完成的需求",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-goal-complete": {
+          phase: "in_development",
+          status: "in_development"
+        }
+      },
+      global_goals: [
+        {
+          id: "requirement-goal-complete",
+          title: "目标已完成的需求",
+          status: "completed"
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "completed");
+  assert.equal(task.status_label, "完成");
+  assert.equal(task.phase_label, "验收完成");
+  assert.equal(projection.project_management.active_tasks, 0);
+  assert.equal(projection.one_screen.counters.active_tasks, 0);
 });
 
 test("workbench projection exposes governance audit repair as an automation next action", () => {

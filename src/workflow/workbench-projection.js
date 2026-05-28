@@ -205,16 +205,33 @@ function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "") 
     }));
 }
 
-function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}) {
+function requirementGoalCompleted(projectStatus = {}, requirementId = "") {
+  const id = normalizeString(requirementId);
+  if (!id) return false;
+  return asArray(projectStatus.global_goals || projectStatus.globalGoals)
+    .some((goal) => {
+      const goalId = normalizeString(goal?.id || goal?.goal_id || goal?.key);
+      const status = normalizeString(goal?.status).toLowerCase();
+      return goalId === id && ["completed", "complete", "accepted", "closed"].includes(status);
+    });
+}
+
+function taskStatusForPlanPhase(phase = "", review = {}, requirement = {}, projectStatus = {}) {
   const normalizedPhase = normalizeString(phase) || "pending_plan_generation";
   const requirementStatus = normalizeString(requirement.status).toLowerCase();
+  const reviewStatus = normalizeString(review.status).toLowerCase();
   const failureText = normalizeString(
     review?.generation_error?.message ||
       review?.generation_error?.stderr ||
       review?.failure_reason
   );
   const timedOut = /timeout|timed\s*out|超时/i.test(failureText);
-  if (["completed", "complete", "accepted", "closed"].includes(requirementStatus)) {
+  if (
+    ["completed", "complete", "accepted", "closed"].includes(requirementStatus) ||
+    ["completed", "complete", "accepted", "closed"].includes(reviewStatus) ||
+    normalizedPhase === "completed" ||
+    requirementGoalCompleted(projectStatus, requirement.id)
+  ) {
     return {
       status: "completed",
       status_label: "完成",
@@ -275,7 +292,7 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}) 
   return asArray(requirementIntake.items).map((requirement) => {
     const requirementId = normalizeString(requirement.id);
     const review = planReviews[requirementId] || {};
-    const status = taskStatusForPlanPhase(review.phase, review, requirement);
+    const status = taskStatusForPlanPhase(review.phase, review, requirement, projectStatus);
     return {
       task_id: requirementId,
       title: normalizeString(requirement.title) || requirementId,
@@ -316,6 +333,9 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const planReview = summarizePlanReview(projectStatus, requirementIntake);
   const taskItems = taskItemsFromProjectStatus(projectStatus, requirementIntake);
   const taskFlow = taskFlowFromDag(dagSummary);
+  const hasTaskItems = taskItems.length > 0;
+  const activeTaskItems = taskItems
+    .filter((item) => !["completed", "failed", "timeout"].includes(normalizeString(item.status)));
   const latestRequirement = requirementIntake.latest || null;
   const currentTask = normalizeString(
     latestRequirement?.summary ||
@@ -325,11 +345,14 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
       projectStatus.latest_update ||
       manifestSummary.goal
   ) || "等待下一步任务";
-  const activeTasks = Math.max(
+  const fallbackActiveTasks = Math.max(
     Number(dagSummary.total || 0) - Number(dagSummary.by_status?.done || dagSummary.by_status?.completed || 0),
-    asArray(dagSummary.dispatchable).length,
-    taskItems.filter((item) => !["completed", "failed", "timeout"].includes(normalizeString(item.status))).length
+    asArray(dagSummary.dispatchable).length
   );
+  const tasksTotal = hasTaskItems
+    ? taskItems.length
+    : Math.max(Number(dagSummary.total || manifestSummary.work_package_count || 0), 0);
+  const activeTasks = hasTaskItems ? activeTaskItems.length : fallbackActiveTasks;
   const humanDecisions = taskItems.filter((item) => item.reviewable).length;
   const progress = Number(globalGoalCompletion.total || 0) > 0
     ? Math.round((Number(globalGoalCompletion.completed || 0) / Number(globalGoalCompletion.total || 1)) * 100)
@@ -358,7 +381,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
     source: "project_status_and_workflow_projection",
     projects_total: 1,
     active_projects: project.status === "completed" ? 0 : 1,
-    tasks_total: Math.max(Number(dagSummary.total || manifestSummary.work_package_count || 0), taskItems.length),
+    tasks_total: tasksTotal,
     active_tasks: activeTasks,
     released_services: 0,
     human_decisions: humanDecisions,

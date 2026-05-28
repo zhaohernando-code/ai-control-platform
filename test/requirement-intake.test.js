@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   applyGeneratedRequirementPlan,
+  completeRequirementInProjectStatus,
   createRequirementPlanPrompt,
   markRequirementPlanGenerationFailed,
   normalizeRequirementPlanWorkPackageGranularity,
@@ -273,6 +274,58 @@ test("requirement plan review can be approved or returned for revision", () => {
   assert.equal(revised.plan_review.action_status, "已退回修订");
   assert.deepEqual(revised.plan_review.feedback_categories, ["acceptance_incomplete", "implementation_order"]);
   assert.equal(revised.plan_review.review_feedback.note, "补充验收边界后再执行");
+});
+
+test("completed requirement status closes intake, plan review, and related work packages", () => {
+  const submitted = submitRequirementToProjectStatus(workflowState().project_status, {
+    title: "归档任务流状态",
+    project_id: "ai-control-platform",
+    problem_statement: "实现完成后任务流应该显示完成。",
+    plan_review_requested: true
+  }, {
+    created_at: "2026-05-25T08:00:00.000Z",
+    requirement_id: "requirement-complete-flow"
+  });
+  const generated = applyGeneratedRequirementPlan(submitted.project_status, {
+    requirement_id: "requirement-complete-flow",
+    generated_plan: {
+      assessment_summary: "收口任务流。",
+      proposed_acceptance_plan: "## 验收\n任务显示完成。",
+      implementation_outline: ["实现收口"],
+      acceptance_gates: ["node --test test/requirement-intake.test.js"]
+    }
+  }, {
+    created_at: "2026-05-25T08:04:00.000Z"
+  });
+  const approved = updateRequirementPlanReview(generated.project_status, {
+    requirement_id: "requirement-complete-flow",
+    action: "approve"
+  }, {
+    created_at: "2026-05-25T08:05:00.000Z"
+  });
+  const completed = completeRequirementInProjectStatus(approved.project_status, {
+    requirement_id: "requirement-complete-flow"
+  }, {
+    completed_at: "2026-05-25T08:30:00.000Z"
+  });
+  const projection = createWorkbenchProjection({
+    ...workflowState(),
+    project_status: completed.project_status
+  });
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(completed.status, "pass");
+  assert.equal(completed.project_status.requirement_intake.open_count, 0);
+  assert.equal(completed.project_status.requirement_intake.active_requirement_id, null);
+  assert.equal(completed.project_status.requirement_intake.items[0].status, "completed");
+  assert.equal(completed.project_status.plan_reviews["requirement-complete-flow"].phase, "completed");
+  assert.equal(completed.project_status.global_goals[0].status, "completed");
+  assert.deepEqual(completed.project_status.next_work_packages, []);
+  assert.equal(task.status, "completed");
+  assert.equal(task.status_label, "完成");
+  assert.equal(task.phase_label, "验收完成");
+  assert.equal(projection.project_management.tasks_total, 1);
+  assert.equal(projection.project_management.active_tasks, 0);
 });
 
 test("frontend view migration plan step is split into bounded executable slices", () => {
