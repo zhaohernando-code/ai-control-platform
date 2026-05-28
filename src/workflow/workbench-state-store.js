@@ -8,6 +8,7 @@ import {
   projectionPublishIssues,
   snapshotIssues
 } from "./workbench-snapshots.js";
+import { createAgentKeyStore } from "./agent-key-store.js";
 
 export const WORKBENCH_STATE_STORE_VERSION = "workbench-state-store.sqlite.v1";
 export const SQLITE_SNAPSHOT_PREFIX = "sqlite://workflow-snapshot/";
@@ -108,6 +109,11 @@ export function createSqliteWorkbenchStateStore(options = {}) {
   const dbPath = resolve(options.dbPath || options.db_path);
   const sqliteBin = options.sqliteBin || options.sqlite_bin || "sqlite3";
   runSql(dbPath, schemaSql(), { sqliteBin });
+  const agentKeyStore = createAgentKeyStore({
+    dbPath,
+    sqliteBin,
+    manualAgentConfigPath: options.manualAgentConfigPath || options.manual_agent_config_path
+  });
 
   const readKey = (key, fallbackValue = null) => {
     const rows = queryRows(dbPath, `SELECT json FROM workbench_kv WHERE key = ${sqlString(key)} LIMIT 1;`, { sqliteBin });
@@ -256,6 +262,18 @@ ON CONFLICT(id) DO UPDATE SET
     writeEvents,
     readWorkflowSnapshot,
     writeWorkflowSnapshot,
-    publishSnapshot
+    publishSnapshot,
+    agent_keys: agentKeyStore,
+    listAgents: agentKeyStore.listAgents,
+    addAgentKey: agentKeyStore.addAgentKey,
+    deleteAgentKey: agentKeyStore.deleteAgentKey,
+    updateAgentRoles: agentKeyStore.updateAgentRoles,
+    readAgentKeyForHealth: agentKeyStore.readAgentKeyForHealth,
+    recordAgentKeyHealth: agentKeyStore.recordAgentKeyHealth,
+    keysDueForHealthCheck: agentKeyStore.keysDueForHealthCheck,
+    summarizeAgentRegistry: agentKeyStore.summarizeAgentRegistry,
+    acquireAgentKeyForRole: agentKeyStore.acquireAgentKeyForRole,
+    releaseAgentKeyLock: agentKeyStore.releaseAgentKeyLock,
+    markFullHealthCheck: agentKeyStore.markFullHealthCheck
   };
 }

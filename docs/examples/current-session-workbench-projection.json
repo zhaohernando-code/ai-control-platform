@@ -252,6 +252,14 @@
     "artifact_id": null,
     "created_at": null
   },
+  "agent_key_health": {
+    "status": "unknown",
+    "agent_count": 0,
+    "key_count": 0,
+    "available_key_count": 0,
+    "last_refresh_at": null,
+    "agents": []
+  },
   "self_governance": {
     "status": "available",
     "cadence": "weekly",
@@ -1946,6 +1954,8 @@
       "agent_lifecycle_completed": 0,
       "agent_lifecycle_evaluated": 0,
       "agent_lifecycle_closed": 0,
+      "agent_key_total": 0,
+      "agent_key_available": 0,
       "self_governance_findings": 1,
       "self_governance_auto_repairs": 0,
       "self_governance_evidence_tasks": 1,

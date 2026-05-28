@@ -69,6 +69,9 @@ export const WORKBENCH_API_ENDPOINTS: ReadonlyArray<WorkbenchEndpoint> = [
     path: "/api/workbench/agent-lifecycle-pool",
     description: "Agent 生命周期池写入"
   },
+  { method: "GET", path: "/api/workbench/agents", description: "Agent 与 API Key 健康状态" },
+  { method: "POST", path: "/api/workbench/agents/health-check", description: "全量 Agent Key 可用性测试" },
+  { method: "POST", path: "/api/workbench/agent-keys", description: "新增 Agent API Key" },
   {
     method: "POST",
     path: "/api/workbench/workbench-browser-events-run",

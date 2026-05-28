@@ -30,6 +30,38 @@ function normalizeString(value) {
   return String(value || "").trim();
 }
 
+function normalizeAgentKeyHealth(input = {}) {
+  const source = input.agent_key_health || input.agentKeyHealth || {};
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return {
+      status: "not_configured",
+      agent_count: 0,
+      key_count: 0,
+      available_key_count: 0,
+      last_refresh_at: null,
+      agents: []
+    };
+  }
+  const agents = asArray(source.agents).map((agent) => ({
+    id: normalizeString(agent.id),
+    label: normalizeString(agent.label || agent.id),
+    status: normalizeString(agent.status) || "unknown",
+    available_keys: Number(agent.available_keys || agent.availableKeys || 0),
+    total_keys: Number(agent.total_keys || agent.totalKeys || 0),
+    roles: agent.roles && typeof agent.roles === "object" && !Array.isArray(agent.roles) ? agent.roles : {}
+  }));
+  const keyCount = Number(source.key_count || source.keyCount || agents.reduce((sum, agent) => sum + agent.total_keys, 0));
+  const availableKeyCount = Number(source.available_key_count || source.availableKeyCount || agents.reduce((sum, agent) => sum + agent.available_keys, 0));
+  return {
+    status: normalizeString(source.status) || (keyCount === 0 ? "unknown" : availableKeyCount === keyCount ? "success" : availableKeyCount > 0 ? "warning" : "error"),
+    agent_count: Number(source.agent_count || source.agentCount || agents.length),
+    key_count: keyCount,
+    available_key_count: availableKeyCount,
+    last_refresh_at: normalizeString(source.last_refresh_at || source.lastRefreshAt) || null,
+    agents
+  };
+}
+
 function issue(code, message, path) {
   return { code, message, path };
 }
@@ -1785,6 +1817,7 @@ export function createWorkbenchProjection(input = {}) {
   const schedulerContinuation = summarizeSchedulerDispatchContinuation(manifest, artifactLedger);
   const schedulerLoop = summarizeAutonomousSchedulerLoop(manifest, artifactLedger);
   const agentLifecyclePool = summarizeAgentLifecyclePool(manifest, artifactLedger);
+  const agentKeyHealth = normalizeAgentKeyHealth(input);
   const selfGovernanceReport = createSelfGovernanceReport({
     ...input,
     generate_findings: true,
@@ -1873,6 +1906,7 @@ export function createWorkbenchProjection(input = {}) {
     scheduler_continuation: schedulerContinuation,
     scheduler_loop: schedulerLoop,
     agent_lifecycle_pool: agentLifecyclePool,
+    agent_key_health: agentKeyHealth,
     self_governance: {
       ...selfGovernance,
       report_status: selfGovernanceReport.status,
@@ -1945,6 +1979,8 @@ export function createWorkbenchProjection(input = {}) {
         agent_lifecycle_completed: agentLifecyclePool.completed || 0,
         agent_lifecycle_evaluated: agentLifecyclePool.evaluated || 0,
         agent_lifecycle_closed: agentLifecyclePool.closed || 0,
+        agent_key_total: agentKeyHealth.key_count || 0,
+        agent_key_available: agentKeyHealth.available_key_count || 0,
         self_governance_findings: selfGovernance.finding_count || 0,
         self_governance_auto_repairs: selfGovernance.auto_repair_count || 0,
         self_governance_evidence_tasks: selfGovernance.evidence_building_count || 0,
@@ -2127,6 +2163,14 @@ export function createMobileWorkbenchProjection(input = {}) {
       unclosed: projection.agent_lifecycle_pool.unclosed,
       next_action: projection.agent_lifecycle_pool.next_action,
       latest_issue: projection.agent_lifecycle_pool.latest_issue
+    },
+    agent_key_health: {
+      status: projection.agent_key_health.status,
+      agent_count: projection.agent_key_health.agent_count,
+      key_count: projection.agent_key_health.key_count,
+      available_key_count: projection.agent_key_health.available_key_count,
+      last_refresh_at: projection.agent_key_health.last_refresh_at,
+      agents: projection.agent_key_health.agents.slice(0, 8)
     },
     self_governance: {
       status: projection.self_governance.status,

@@ -48,6 +48,16 @@ function validateAgentLifecyclePool(projection, issues, path = "agent_lifecycle_
   }
 }
 
+function validateAgentKeyHealth(projection, issues, path = "agent_key_health") {
+  if (!hasObject(projection)) return;
+  for (const field of ["status", "agent_count", "key_count", "available_key_count", "agents"]) {
+    requireOwnField(projection, field, issues, path);
+  }
+  if (!Array.isArray(projection.agents)) {
+    issues.push(issue("missing_agent_key_health_agents", "agent_key_health.agents must be an array", `${path}.agents`));
+  }
+}
+
 function validateNextActionTerminal(projection, issues, path = "next_action_terminal") {
   if (!hasObject(projection)) return;
   for (const field of ["status", "terminal_action", "terminal_reason"]) {
@@ -116,6 +126,7 @@ function validatePcProjection(projection, issues) {
     "scheduler_continuation",
     "scheduler_loop",
     "agent_lifecycle_pool",
+    "agent_key_health",
     "self_governance",
     "project_management",
     "global_goal_completion",
@@ -141,6 +152,7 @@ function validatePcProjection(projection, issues) {
     requireArray(projection.one_screen, "next_actions", issues);
   }
   validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
+  validateAgentKeyHealth(projection.agent_key_health, issues);
   validateSelfGovernance(projection.self_governance, issues);
   validateProjectManagement(projection.project_management, issues);
   validateNextActionTerminal(projection.next_action_terminal, issues);
@@ -151,13 +163,14 @@ function validateMobileProjection(projection, issues) {
     requireString(projection, field, issues);
   }
 
-  for (const field of ["counters", "closeout", "frontend_acceptance", "project_management", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "self_governance", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
+  for (const field of ["counters", "closeout", "frontend_acceptance", "project_management", "resume_health", "provider_health", "scope_split", "shard_review", "headless_child_provider", "projected_action_progress", "scheduler_dispatch", "scheduler_continuation", "scheduler_loop", "agent_lifecycle_pool", "agent_key_health", "self_governance", "global_goal_completion", "operations_timeline", "next_action_readout", "next_action_terminal", "model", "reviewer"]) {
     requireObject(projection, field, issues);
   }
 
   requireArray(projection, "next_actions", issues);
   requireArray(projection, "blockers", issues);
   validateAgentLifecyclePool(projection.agent_lifecycle_pool, issues);
+  validateAgentKeyHealth(projection.agent_key_health, issues);
   validateSelfGovernance(projection.self_governance, issues);
   validateProjectManagement(projection.project_management, issues);
   validateNextActionTerminal(projection.next_action_terminal, issues);

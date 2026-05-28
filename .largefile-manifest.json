@@ -81,7 +81,7 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2207,
+      "lines": 2251,
       "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -135,7 +135,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-server.test.js": {
-      "lines": 3781,
+      "lines": 3883,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"

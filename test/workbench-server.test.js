@@ -66,6 +66,31 @@ function generatedRequirementPlan(overrides = {}) {
   };
 }
 
+function writeManualAgentConfig(dir) {
+  const configPath = join(dir, "manual_agent_config.json");
+  writeFileSync(configPath, `${JSON.stringify({
+    version: 1,
+    channels: [
+      {
+        id: "codex-account",
+        label: "Codex account login",
+        runner: "codex",
+        default_model: "gpt-5.5",
+        auth: { type: "codex_account" }
+      },
+      {
+        id: "codex-token",
+        label: "Codex token proxy API",
+        runner: "codex",
+        base_url: "https://proxy.example.test",
+        default_model: "gpt-5.5",
+        auth: { type: "openai_api_key" }
+      }
+    ]
+  }, null, 2)}\n`);
+  return configPath;
+}
+
 async function withServer(fn, options = {}) {
   const server = createWorkbenchServer({ allowFixtureFileState: true, ...options });
   server.listen(0, "127.0.0.1");
@@ -283,6 +308,83 @@ test("workbench server returns latest projection", async () => {
     assert.equal(projection.reviewer_provider_health.provider_health, "healthy");
     assert.equal(projection.reviewer_scope_split.shard_count, 2);
   });
+});
+
+test("workbench server manages agent keys without returning raw secrets", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-agent-api-"));
+  const previousManualConfig = process.env.MANUAL_AGENT_CONFIG;
+  process.env.MANUAL_AGENT_CONFIG = writeManualAgentConfig(dir);
+  try {
+    await withServer(async (baseUrl) => {
+      const initial = await request(`${baseUrl}/api/workbench/agents`);
+      const initialJson = initial.json();
+      assert.equal(initial.status, 200);
+      assert.equal(initialJson.agents.find((agent) => agent.id === "codex-account").account_login, true);
+      assert.equal(initialJson.agents.find((agent) => agent.id === "codex-account").keys.length, 0);
+
+      const created = await request(`${baseUrl}/api/workbench/agent-keys`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "key-server-main",
+          agent_id: "codex-token",
+          alias: "server-main",
+          key: "sk-server-secret-1234567890",
+          competitive: false,
+          created_at: "2026-05-28T02:00:00.000Z"
+        })
+      });
+      const createdBody = created.json();
+      assert.equal(created.status, 201);
+      assert.equal(JSON.stringify(createdBody).includes("sk-server-secret-1234567890"), false);
+      assert.equal(createdBody.registry.agents.find((agent) => agent.id === "codex-token").key_counts.total, 1);
+
+      const health = await request(`${baseUrl}/api/workbench/agent-keys/key-server-main/health-check`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ checked_at: "2026-05-28T02:01:00.000Z" })
+      });
+      assert.equal(health.status, 201);
+      assert.equal(health.json().checked[0].status, "success");
+
+      const afterHealth = (await request(`${baseUrl}/api/workbench/agents`)).json();
+      const codexToken = afterHealth.agents.find((agent) => agent.id === "codex-token");
+      assert.equal(codexToken.status, "success");
+      assert.equal(codexToken.key_counts.available, 1);
+      assert.equal(JSON.stringify(afterHealth).includes("sk-server-secret-1234567890"), false);
+
+      const roles = await request(`${baseUrl}/api/workbench/agents/codex-token/roles`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          roles: {
+            plan_generation: true,
+            task_scheduling: false,
+            code_implementation: true,
+            acceptance_check: false,
+            recovery_locator: true
+          }
+        })
+      });
+      assert.equal(roles.status, 200);
+      assert.equal(roles.json().registry.agents.find((agent) => agent.id === "codex-token").roles.task_scheduling, false);
+
+      const deleted = await request(`${baseUrl}/api/workbench/agent-keys/key-server-main`, { method: "DELETE" });
+      assert.equal(deleted.status, 200);
+      assert.equal(deleted.json().registry.agents.find((agent) => agent.id === "codex-token").key_counts.total, 0);
+    }, {
+      stateDbPath: join(dir, "workbench-state.sqlite"),
+      agentHealthFetch: async () => ({ ok: true, status: 200, text: async () => "{}" }),
+      disableAgentHealthTimer: true
+    });
+  } finally {
+    if (previousManualConfig === undefined) {
+      delete process.env.MANUAL_AGENT_CONFIG;
+    } else {
+      process.env.MANUAL_AGENT_CONFIG = previousManualConfig;
+    }
+  }
 });
 
 test("workbench server CLI can seed SQLite from isolated history and snapshot roots", async () => {

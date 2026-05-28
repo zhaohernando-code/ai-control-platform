@@ -21,6 +21,7 @@ import {
   cleanupAgentLifecyclePool,
   recordAgentLifecycleFact
 } from "../src/workflow/agent-lifecycle-pool.js";
+import { runAgentHealthCheck } from "../src/workflow/agent-health-checker.js";
 import {
   createSchedulerDispatchRunArtifact,
   recordSchedulerDispatchRunArtifact,
@@ -164,11 +165,15 @@ function createInitialWorkflowState(runId, cycleId, projectStatusPath = null, st
 
 function projectionInputWithProjectStatus(input = {}, projectStatusPath = null, stateStore = null) {
   const projectStatus = readProjectStatus(projectStatusPath, stateStore);
-  if (!projectStatus) return input;
+  const agentKeyHealth = stateStore && typeof stateStore.summarizeAgentRegistry === "function"
+    ? stateStore.summarizeAgentRegistry()
+    : input.agent_key_health || input.agentKeyHealth;
+  if (!projectStatus) return agentKeyHealth ? { ...input, agent_key_health: agentKeyHealth } : input;
   return {
     ...input,
     project_status: projectStatus,
-    global_goals: Array.isArray(projectStatus.global_goals) ? projectStatus.global_goals : input.global_goals
+    global_goals: Array.isArray(projectStatus.global_goals) ? projectStatus.global_goals : input.global_goals,
+    agent_key_health: agentKeyHealth
   };
 }
 
@@ -1645,7 +1650,7 @@ export function createWorkbenchServer(options = {}) {
   const serveLegacyStatic = options.serveLegacyStatic === true ||
     options.serve_legacy_static === true;
 
-  return createServer(async (req, res) => {
+  const server = createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
@@ -1676,6 +1681,148 @@ export function createWorkbenchServer(options = {}) {
       if (url.pathname === "/api/workbench/projections") {
         const history = readServerHistory();
         jsonResponse(res, 200, projectionHistoryWithReadiness(history, allowedHistoryRoots, projectStatusPath, stateStore));
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/agents" && req.method === "GET") {
+        if (!stateStore || typeof stateStore.listAgents !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        jsonResponse(res, 200, stateStore.listAgents());
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/agents/health-check" && req.method === "POST") {
+        if (!stateStore || typeof stateStore.listAgents !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const result = await runAgentHealthCheck(stateStore, {
+          ...input,
+          include_fresh: input.include_fresh ?? true
+        }, {
+          fetchImpl: options.agentHealthFetch || options.fetchImpl
+        });
+        jsonResponse(res, result.status === "fail" ? 400 : 201, result);
+        return;
+      }
+
+      const agentHealthMatch = url.pathname.match(/^\/api\/workbench\/agents\/([^/]+)\/health-check$/);
+      if (agentHealthMatch && req.method === "POST") {
+        if (!stateStore || typeof stateStore.listAgents !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const result = await runAgentHealthCheck(stateStore, {
+          ...input,
+          agent_id: decodeURIComponent(agentHealthMatch[1]),
+          include_fresh: input.include_fresh ?? true
+        }, {
+          fetchImpl: options.agentHealthFetch || options.fetchImpl
+        });
+        jsonResponse(res, result.status === "fail" ? 400 : 201, result);
+        return;
+      }
+
+      if (url.pathname === "/api/workbench/agent-keys" && req.method === "POST") {
+        if (!stateStore || typeof stateStore.addAgentKey !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const result = stateStore.addAgentKey(input, input.created_at || input.createdAt || new Date().toISOString());
+        jsonResponse(res, result.status === "created" ? 201 : 400, {
+          ...result,
+          registry: result.status === "created" ? stateStore.listAgents() : null
+        });
+        return;
+      }
+
+      const agentKeyDeleteMatch = url.pathname.match(/^\/api\/workbench\/agent-keys\/([^/]+)$/);
+      if (agentKeyDeleteMatch && req.method === "DELETE") {
+        if (!stateStore || typeof stateStore.deleteAgentKey !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        const result = stateStore.deleteAgentKey(decodeURIComponent(agentKeyDeleteMatch[1]), new Date().toISOString());
+        jsonResponse(res, result.status === "deleted" ? 200 : 404, {
+          ...result,
+          registry: result.status === "deleted" ? stateStore.listAgents() : null
+        });
+        return;
+      }
+
+      const agentKeyHealthMatch = url.pathname.match(/^\/api\/workbench\/agent-keys\/([^/]+)\/health-check$/);
+      if (agentKeyHealthMatch && req.method === "POST") {
+        if (!stateStore || typeof stateStore.readAgentKeyForHealth !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const result = await runAgentHealthCheck(stateStore, {
+          ...input,
+          key_id: decodeURIComponent(agentKeyHealthMatch[1])
+        }, {
+          fetchImpl: options.agentHealthFetch || options.fetchImpl
+        });
+        jsonResponse(res, result.status === "fail" ? 400 : 201, result);
+        return;
+      }
+
+      const agentRolesMatch = url.pathname.match(/^\/api\/workbench\/agents\/([^/]+)\/roles$/);
+      if (agentRolesMatch && req.method === "PUT") {
+        if (!stateStore || typeof stateStore.updateAgentRoles !== "function") {
+          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
+          return;
+        }
+        const body = await readBody(req);
+        let input = {};
+        try {
+          input = body ? JSON.parse(body) : {};
+        } catch {
+          jsonResponse(res, 400, { error: "invalid json" });
+          return;
+        }
+        const result = stateStore.updateAgentRoles(
+          decodeURIComponent(agentRolesMatch[1]),
+          input.roles || input,
+          input.created_at || input.createdAt || new Date().toISOString()
+        );
+        jsonResponse(res, result.status === "updated" ? 200 : 400, {
+          ...result,
+          registry: result.status === "updated" ? stateStore.listAgents() : null
+        });
         return;
       }
 
@@ -3087,6 +3234,23 @@ export function createWorkbenchServer(options = {}) {
       jsonResponse(res, 500, { error: error.message });
     }
   });
+
+  const agentHealthIntervalMs = Number(options.agentHealthIntervalMs || options.agent_health_interval_ms || 10 * 60 * 1000);
+  if (stateStore && agentHealthIntervalMs > 0 && options.disableAgentHealthTimer !== true) {
+    const timer = setInterval(() => {
+      runAgentHealthCheck(stateStore, {
+        include_fresh: false,
+        ttl_ms: agentHealthIntervalMs,
+        checked_at: new Date().toISOString()
+      }, {
+        fetchImpl: options.agentHealthFetch || options.fetchImpl
+      }).catch(() => {});
+    }, agentHealthIntervalMs);
+    timer.unref?.();
+    server.on("close", () => clearInterval(timer));
+  }
+
+  return server;
 }
 
 function valueAfter(flag, args = process.argv.slice(2)) {
