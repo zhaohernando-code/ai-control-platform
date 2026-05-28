@@ -21,6 +21,10 @@ function contaminatedProjectStatus() {
           title: "UI nonblocking submit 2026-05-28T07-12-48-536Z"
         },
         {
+          id: "requirement-Codex-loading-06-46-47-20260528064649",
+          title: "Codex复现任务流loading 06:46:47"
+        },
+        {
           id: "requirement-real-feature",
           title: "真实业务任务"
         }
@@ -32,6 +36,10 @@ function contaminatedProjectStatus() {
       "requirement-UI-nonblocking-submit-2026-05-28T07-12-48-536Z-20260528071248": {
         requirement_id: "requirement-UI-nonblocking-submit-2026-05-28T07-12-48-536Z-20260528071248",
         requirement_title: "UI nonblocking submit 2026-05-28T07-12-48-536Z"
+      },
+      "requirement-Codex-loading-06-46-47-20260528064649": {
+        requirement_id: "requirement-Codex-loading-06-46-47-20260528064649",
+        requirement_title: "Codex复现任务流loading 06:46:47"
       },
       "requirement-real-feature": {
         requirement_id: "requirement-real-feature",
@@ -45,6 +53,11 @@ function contaminatedProjectStatus() {
         status: "in_progress"
       },
       {
+        id: "requirement-Codex-loading-06-46-47-20260528064649",
+        title: "Codex复现任务流loading 06:46:47",
+        status: "pending_review"
+      },
+      {
         id: "requirement-real-feature",
         title: "真实业务任务",
         status: "in_progress"
@@ -56,6 +69,13 @@ function contaminatedProjectStatus() {
         title: "处理需求：UI nonblocking submit 2026-05-28T07-12-48-536Z",
         source: {
           requirement_id: "requirement-UI-nonblocking-submit-2026-05-28T07-12-48-536Z-20260528071248"
+        }
+      },
+      {
+        id: "requirement-Codex-loading-06-46-47-20260528064649-intake",
+        title: "处理需求：Codex复现任务流loading 06:46:47",
+        source: {
+          requirement_id: "requirement-Codex-loading-06-46-47-20260528064649"
         }
       },
       {
@@ -81,6 +101,11 @@ function workflowState(projectStatus) {
           requirement_id: "requirement-UI-nonblocking-submit-2026-05-28T07-12-48-536Z-20260528071248"
         },
         {
+          id: "event-requirement-Codex-loading",
+          type: "requirement_intake_submitted",
+          requirement_id: "requirement-Codex-loading-06-46-47-20260528064649"
+        },
+        {
           id: "event-real-feature",
           type: "requirement_intake_submitted",
           requirement_id: "requirement-real-feature"
@@ -90,6 +115,10 @@ function workflowState(projectStatus) {
         {
           id: "requirement-UI-nonblocking-submit-2026-05-28T07-12-48-536Z-20260528071248-intake",
           title: "处理需求：UI nonblocking submit 2026-05-28T07-12-48-536Z"
+        },
+        {
+          id: "requirement-Codex-loading-06-46-47-20260528064649-intake",
+          title: "处理需求：Codex复现任务流loading 06:46:47"
         },
         {
           id: "requirement-real-feature-intake",
@@ -102,6 +131,10 @@ function workflowState(projectStatus) {
         {
           id: "artifact-UI-nonblocking-submit",
           uri: "codex://test/UI nonblocking submit"
+        },
+        {
+          id: "artifact-Codex-loading",
+          uri: "codex://test/Codex复现任务流loading"
         },
         {
           id: "artifact-real-feature",

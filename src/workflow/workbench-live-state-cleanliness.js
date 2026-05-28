@@ -11,6 +11,8 @@ export const DEFAULT_FORBIDDEN_LIVE_TEST_PATTERNS = [
   "WB_TEST_",
   "workbench-live-test",
   "cleanup-test",
+  "Codex复现任务流loading",
+  "requirement-Codex-loading",
   "Direct nonblocking verify",
   "Proxy nonblocking verify",
   "UI nonblocking submit",
