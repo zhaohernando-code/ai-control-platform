@@ -18,7 +18,7 @@ function usage() {
     "",
     "Runs the dual real CLI development-flow acceptance gate:",
     "  - Codex CLI with gpt-5.3-codex-spark",
-    "  - Claude CLI via DeepSeek with deepseek-v4-flash",
+    "  - Claude CLI via project-governed claude-role-proxy with claude-sonnet-4-6",
     "",
     "Optional overrides:",
     "  --codex-model MODEL",

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  runDevelopmentFlowCliChain,
   runDevelopmentFlowRealAcceptance
 } from "../src/workflow/development-flow-real.js";
 
@@ -42,6 +43,59 @@ test("development flow real harness validates both CLI chains with injected comm
   assert.equal(artifact.runs.claude_cli.model_provenance.runner, "claude");
   assert.ok(artifact.runs.codex_cli.diff_summary.changed_files.includes("src/math.js"));
   assert.ok(artifact.runs.claude_cli.diff_summary.changed_files.includes("src/math.js"));
+});
+
+test("development flow Claude chain defaults to the project-governed proxy", () => {
+  let captured = null;
+  const run = runDevelopmentFlowCliChain("claude_cli", {
+    root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-proxy-test-")),
+    commandRunner: (command) => {
+      captured = command;
+      return fakeRealCliRunner(command);
+    },
+    timeout_ms: 10000
+  });
+
+  assert.equal(run.status, "pass");
+  assert.ok(captured.command.endsWith("scripts/claude-role-proxy.sh"));
+  assert.ok(captured.args.includes("--role"));
+  assert.ok(captured.args.includes("developer"));
+  assert.ok(captured.args.includes("-m"));
+  assert.ok(captured.args.includes("claude-sonnet-4-6"));
+  assert.ok(captured.args.includes("--json-schema"));
+});
+
+test("development flow parses structured Claude JSON before fenced result text", () => {
+  const run = runDevelopmentFlowCliChain("claude_cli", {
+    root_dir: mkdtempSync(join(tmpdir(), "development-flow-real-structured-test-")),
+    commandRunner: ({ fixture_dir }) => {
+      writeFileSync(join(fixture_dir, "src", "math.js"), [
+        "export function sum(a, b) {",
+        "  return a + b;",
+        "}",
+        ""
+      ].join("\n"));
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          type: "result",
+          result: "```json\n{\"status\":\"pass\"}\n```",
+          structured_output: {
+            status: "pass",
+            changed_files: ["src/math.js"],
+            test_results: [{ command: "node --test test/math.test.js", status: "pass" }],
+            completion_evidence: { summary: "structured output completed the fixture" },
+            self_evaluation: { aligned: true, skipped_steps: [] }
+          }
+        }),
+        stderr: ""
+      };
+    },
+    timeout_ms: 10000
+  });
+
+  assert.equal(run.status, "pass");
+  assert.equal(run.output_contract.status, "pass");
 });
 
 test("development flow real harness records output contract failure from CLI chain", () => {

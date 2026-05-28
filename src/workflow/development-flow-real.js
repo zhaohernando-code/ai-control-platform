@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import {
   applyGeneratedRequirementPlan,
@@ -15,8 +16,11 @@ import {
 } from "./development-flow-evaluation.js";
 
 export const DEVELOPMENT_FLOW_REAL_VERSION = "development-flow-real.v1";
+const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DEFAULT_CODEX_MODEL = "gpt-5.3-codex-spark";
-const DEFAULT_CLAUDE_MODEL = "deepseek-v4-flash";
+const DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6";
+const DEFAULT_CLAUDE_ROLE = "developer";
+const DEFAULT_GOVERNED_CLAUDE_PROXY = join(PROJECT_ROOT, "scripts", "claude-role-proxy.sh");
 const DEFAULT_MANUAL_AGENT_CLI = "/Users/hernando_zhao/manual_agent_cli";
 const DEFAULT_MANUAL_AGENT_CONFIG = "/Users/hernando_zhao/manual_agent_config.json";
 const DEFAULT_CODEX_CLI = "/Users/hernando_zhao/.nvm/versions/node/v22.16.0/bin/codex";
@@ -242,21 +246,29 @@ function jsonCandidate(text = "") {
   return "";
 }
 
+function normalizeParsedModelJson(parsed) {
+  if (!isObject(parsed)) return null;
+  if (isObject(parsed.structured_output || parsed.structuredOutput)) {
+    return parsed.structured_output || parsed.structuredOutput;
+  }
+  if (typeof parsed.result === "string") return parseModelJson(parsed.result) || parsed;
+  if (isObject(parsed.result)) return parsed.result;
+  return parsed;
+}
+
 function parseModelJson(text = "") {
-  const candidate = jsonCandidate(text);
-  if (!candidate) return null;
+  const value = normalizeString(text);
+  if (!value) return null;
   try {
-    const parsed = JSON.parse(candidate);
-    if (isObject(parsed) && isObject(parsed.structured_output || parsed.structuredOutput)) {
-      return parsed.structured_output || parsed.structuredOutput;
-    }
-    if (isObject(parsed) && typeof parsed.result === "string") {
-      return parseModelJson(parsed.result) || parsed;
-    }
-    if (isObject(parsed) && isObject(parsed.result)) return parsed.result;
-    return isObject(parsed) ? parsed : null;
+    return normalizeParsedModelJson(JSON.parse(value));
   } catch {
-    return null;
+    const candidate = jsonCandidate(value);
+    if (!candidate || candidate === value) return null;
+    try {
+      return normalizeParsedModelJson(JSON.parse(candidate));
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -406,8 +418,41 @@ function createCodexCommand({ fixtureDir, prompt, schemaPath, outputPath, option
 }
 
 function createClaudeCommand({ fixtureDir, prompt, options }) {
-  const command = normalizeString(options.manual_agent_cli || process.env.DEV_FLOW_MANUAL_AGENT_CLI) || DEFAULT_MANUAL_AGENT_CLI;
+  const command = normalizeString(
+    options.claude_cli ||
+    process.env.DEV_FLOW_CLAUDE_CLI ||
+    options.manual_agent_cli ||
+    process.env.DEV_FLOW_MANUAL_AGENT_CLI
+  ) || DEFAULT_GOVERNED_CLAUDE_PROXY;
   const model = normalizeString(options.claude_model || process.env.DEV_FLOW_CLAUDE_MODEL) || DEFAULT_CLAUDE_MODEL;
+  const role = normalizeString(options.claude_role || process.env.DEV_FLOW_CLAUDE_ROLE) || DEFAULT_CLAUDE_ROLE;
+  const maxBudgetUsd = normalizeString(options.claude_max_budget_usd || process.env.DEV_FLOW_CLAUDE_MAX_BUDGET_USD) || "0.50";
+  const schema = JSON.stringify(OUTPUT_SCHEMA);
+  const usesGovernedProxy = /claude-role-proxy\.sh$/i.test(command);
+  if (usesGovernedProxy) {
+    return {
+      command,
+      args: [
+        "--role", role,
+        "-m", model,
+        "--bare",
+        "--permission-mode", "bypassPermissions",
+        "-p",
+        "--output-format", "json",
+        "--no-session-persistence",
+        "--max-budget-usd", maxBudgetUsd,
+        "--effort", "high",
+        "--allowedTools", "Read,Edit,Bash(node --test *)",
+        "--add-dir", fixtureDir,
+        "--json-schema", schema,
+        prompt
+      ],
+      model,
+      runner: "claude",
+      provider: "governed_claude_proxy",
+      agent_id: role
+    };
+  }
   return {
     command,
     args: [
@@ -417,10 +462,10 @@ function createClaudeCommand({ fixtureDir, prompt, options }) {
       "-p",
       "--output-format", "json",
       "--no-session-persistence",
-      "--max-budget-usd", normalizeString(options.claude_max_budget_usd || process.env.DEV_FLOW_CLAUDE_MAX_BUDGET_USD) || "0.50",
+      "--max-budget-usd", maxBudgetUsd,
       "--effort", "high",
       "--tools", "Read,Edit,Bash(node --test *)",
-      "--json-schema", JSON.stringify(OUTPUT_SCHEMA),
+      "--json-schema", schema,
       prompt
     ],
     model,

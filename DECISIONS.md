@@ -497,6 +497,8 @@ runner 和 DeepSeek executor 只有模块接口还不够，调度器和恢复脚
 - `scripts/start-workbench-live.sh` 不再默认指向个人 launcher；个人 launcher 只能通过显式环境变量覆盖。
 - 默认计划模型改为 `claude-sonnet-4-6`，计划生成 timeout 提升到 300 秒，并显式传递 `--role manager` / `-m`。
 - child worker wrapper 默认也使用项目内 governed proxy，避免计划生成、实现 worker 和 reviewer 各自拼不同启动器。
+- `development-flow-real` closeout gate 的 Claude 分支默认也改走项目内 governed proxy；外部 manual agent CLI 只允许通过显式环境变量/参数覆盖。
+- Claude JSON contract 先解析 `--output-format json` 外层对象和 `structured_output`，再回退解析 result/fenced JSON，避免真实成功运行因输出包装格式被误判失败。
 - 外部 DeepSeek reviewer skill wrapper 仍可作为专项 reviewer adapter，但不再作为新建任务计划生成的默认 runtime。
 
 [2026-05-21T22:03:19+08:00] Runner-level timeout must publish provider health facts:
