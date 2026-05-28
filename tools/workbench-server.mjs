@@ -411,9 +411,15 @@ function defaultRequirementPlanGenerator(input = {}) {
       if (supportsModelArg) args.push("-m", selectedModel);
       if (supportsRoleArg) args.push("--role", role);
       args.push("-p", prompt);
+      // Primary attempt uses the configured (possibly short) timeout for fast-fail.
+      // Fallback attempt always uses the full default timeout so a tight primary
+      // timeout does not also kill the recovery path.
+      const attemptTimeout = attemptKind === "primary"
+        ? (Number.isFinite(timeoutMs) ? timeoutMs : 180000)
+        : 180000;
       const result = await runProcess(script, args, {
         cwd: root,
-        timeout: Number.isFinite(timeoutMs) ? timeoutMs : 180000,
+        timeout: attemptTimeout,
         env: {
           ...process.env,
           HOME: process.env.HOME || "/Users/hernando_zhao",
