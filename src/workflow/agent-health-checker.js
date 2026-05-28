@@ -257,7 +257,7 @@ export async function checkAgentAccountHealth(agent = {}, options = {}) {
   const result = await runner(commandSpec.command, commandSpec.args || [], {
     env: commandSpec.env,
     cwd: commandSpec.cwd,
-    timeout_ms: options.account_timeout_ms || options.accountTimeoutMs || options.timeout_ms || options.timeoutMs || 15000
+    timeout_ms: options.account_timeout_ms || options.accountTimeoutMs || options.timeout_ms || options.timeoutMs || 30000
   });
   const latencyMs = Number.isFinite(Number(result.latency_ms)) ? Number(result.latency_ms) : Date.now() - startedAt;
   if (result.timedOut) {
