@@ -1,0 +1,40 @@
+{
+  "version": "workbench-public-browser-evidence.v1",
+  "status": "pass",
+  "created_at": "2026-05-28T03:02:58.798Z",
+  "route_url": "https://hernando-zhao.cn/projects/ai-control-platform/agents",
+  "final_url": "https://hernando-zhao.cn/projects/ai-control-platform/agents",
+  "http_status": 200,
+  "title": "AI Control Platform Workbench",
+  "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n中台工作台\n单页 app · antd 骨架 · 与 workbench-server 联调\n/projects/ai-control-platform\nAgents\n查看任务流\n全量可用性测试\n最后刷新时间：暂无\nAPI Key 健康、竞争锁策略和 Agent 职能配置会参与后续任务流调度。",
+  "workbench_rendered": true,
+  "mounted_project_route": true,
+  "root_next_script_count": 0,
+  "mounted_next_script_count": 25,
+  "desktop_shell_count": 0,
+  "console_error_count": 0,
+  "failed_request_count": 0,
+  "navigation_error": null,
+  "responses": [
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/agents",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/css/61a733eac8bb6bcd.css",
+      "status": 200,
+      "content_type": "text/css; charset=UTF-8"
+    },
+    {
+      "url": "https://hernando-zhao.cn/projects/ai-control-platform/_next/static/chunks/webpack-44e4f189499aa9c2.js",
+      "status": 200,
+      "content_type": "application/javascript; charset=UTF-8"
+    }
+  ],
+  "request_header_names": [
+    "X-HZ-Dev-Auth-Bypass-Token"
+  ],
+  "secret_policy": "Only header names and browser metadata are stored; no cookies, tokens, authorization headers, session values, or secret values are stored.",
+  "issues": []
+}
