@@ -598,6 +598,7 @@ test("next.js + antd skeleton is durable: package, config, layout, providers, th
   assert.match(liveScript, /API_PORT=.*4182/);
   assert.match(liveScript, /next.*start/s);
   assert.doesNotMatch(liveScript, /NEXTJS_STANDALONE_PATH/);
+  assert.doesNotMatch(liveScript, /AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS=.*120/);
 });
 
 test("step 04/9: SSE/projection/snapshot React hooks infrastructure is durable", () => {
