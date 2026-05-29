@@ -418,6 +418,89 @@ test("approved requirements with failed work packages are projected as failed an
   assert.equal(task.latest_dispatch.latest_attempt.model, "deepseek-v4-flash");
   assert.equal(task.latest_dispatch.latest_attempt.issue, "provider_executor_timeout");
   assert.deepEqual(task.latest_dispatch.issue_codes, ["provider_executor_result_not_pass", "package_result_not_pass"]);
+  assert.equal(task.failure_reason, "外部模型执行超时，任务未完成。");
+  assert.ok(!task.failure_reason.includes("provider executor"));
+});
+
+test("failed provider budget cap is projected as a user-facing failure reason", () => {
+  const projection = createWorkbenchProjection(baseInput({
+    project_status: {
+      project: "ai-control-platform",
+      status: "in_progress",
+      requirement_intake: {
+        items: [
+          {
+            id: "requirement-project-tab-budget-failed",
+            title: "完成项目 tab",
+            project_id: "ai-control-platform",
+            status: "submitted",
+            submitted_at: "2026-05-28T02:00:00.000Z",
+            problem_statement: "项目 tab 需要接入项目治理。"
+          }
+        ]
+      },
+      plan_reviews: {
+        "requirement-project-tab-budget-failed": {
+          id: "plan-review-requirement-project-tab-budget-failed",
+          phase: "in_development",
+          status: "in_development",
+          reviewed_at: "2026-05-28T02:10:00.000Z"
+        }
+      },
+      next_work_packages: [
+        {
+          id: "requirement-project-tab-budget-failed-plan-step-02",
+          title: "完成项目 tab：实施步骤 02 / 2",
+          action: "execute_requirement_plan_step",
+          status: "failed",
+          result: "dispatch_failed",
+          dispatch_run_id: "dispatch-budget-failed-project-tab-001",
+          dispatch_started_at: "2026-05-29T02:34:55.942Z",
+          dispatch_failed_at: "2026-05-29T02:38:58.623Z",
+          dispatch_artifact: {
+            path: "tmp/context-work-package-background-jobs/dispatch-budget-failed-project-tab-001.json",
+            phase: "provider_model_routed_execution"
+          },
+          dispatch_executor_provenance: {
+            provider_attempts: [
+              { model: "gpt-5.3-codex-spark", status: "fail", issue: "provider_executor_command_failed", timed_out: false, exit_code: 1 }
+            ]
+          },
+          dispatch_package_results: [
+            {
+              work_package_id: "requirement-project-tab-budget-failed-plan-step-02",
+              status: "fail",
+              result: "fail",
+              completion_evidence: {
+                kind: "provider_execution_failure",
+                reason: "agent provider executor failed with exit code 1",
+                evidence: {
+                  issue_code: "provider_executor_command_failed",
+                  stderr: "Error: reached max budget of $1.00 before completion",
+                  exit_code: 1,
+                  command: {
+                    args: ["codex", "exec", "--max-budget-usd", "1"]
+                  }
+                }
+              }
+            }
+          ],
+          global_goal_id: "requirement-project-tab-budget-failed",
+          source: { requirement_id: "requirement-project-tab-budget-failed" },
+          failure_issues: [
+            { code: "provider_executor_result_not_pass", message: "provider executor top-level status must be pass" },
+            { code: "package_result_not_pass", message: "provider executor package result must be pass for requirement-project-tab-budget-failed-plan-step-02" }
+          ]
+        }
+      ]
+    }
+  }));
+  const task = projection.project_management.task_items[0];
+
+  assert.equal(task.status, "failed");
+  assert.equal(task.failure_reason, "外部模型调用到达 $1 预算上限，任务未完成。");
+  assert.ok(!task.failure_reason.includes("provider executor"));
+  assert.deepEqual(task.latest_dispatch.issue_codes, ["provider_executor_result_not_pass", "package_result_not_pass"]);
 });
 
 test("approved requirements with completed work packages are projected as completed", () => {

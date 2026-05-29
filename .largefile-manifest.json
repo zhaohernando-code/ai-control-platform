@@ -99,8 +99,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2451,
-      "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
+      "lines": 2573,
+      "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, public-route state, and user-facing provider failure attribution into one projection schema.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-29"
     },
@@ -147,8 +147,8 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 3092,
-      "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
+      "lines": 3175,
+      "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-29"
     },
