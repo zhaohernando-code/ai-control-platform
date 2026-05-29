@@ -813,8 +813,13 @@ function normalizeCommandRunnerResult(result = {}, workPackage = {}, promptFile 
 }
 
 function createIsolatedWorktree(repoRoot, workPackageId) {
+  const codexRoot = resolve(repoRoot, "..", "..");
+  const projectId = repoRoot.split("/").pop();
+  const workerBase = join(codexRoot, "worker-workspaces", projectId);
+  mkdirSync(workerBase, { recursive: true });
+  const slug = `child-worker-${workPackageId}-${Date.now()}`;
+  const worktreeDir = join(workerBase, slug);
   const branchName = `worker/${workPackageId}-${Date.now()}`;
-  const worktreeDir = mkdtempSync(join(tmpdir(), `worker-worktree-${workPackageId}-`));
   const result = spawnSync("git", ["worktree", "add", "-b", branchName, worktreeDir], {
     cwd: repoRoot,
     encoding: "utf8",
