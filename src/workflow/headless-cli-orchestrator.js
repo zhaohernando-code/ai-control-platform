@@ -845,34 +845,37 @@ function cleanupIsolatedWorktree(repoRoot, worktreePath, branchName) {
 }
 
 function executeRealChildWorker(workflowState = {}, workPackage = {}, options = {}) {
-  const runner = childWorkerRunnerFrom(options);
-  if (!runner) return null;
-
   const repoRoot = normalizeString(options.repo_root || options.repoRoot || process.cwd());
   const worktree = createIsolatedWorktree(repoRoot, workPackage.id);
   const useWorktree = worktree.status === "pass";
   const workerCwd = useWorktree ? worktree.path : resolve(normalizeString(options.agent_invocation_cwd || options.agentInvocationCwd) || process.cwd());
 
+  const effectiveOptions = useWorktree
+    ? { ...options, agent_invocation_cwd: workerCwd, agentInvocationCwd: workerCwd }
+    : options;
+  const runner = childWorkerRunnerFrom(effectiveOptions);
+  if (!runner) {
+    if (useWorktree) cleanupIsolatedWorktree(repoRoot, worktree.path, worktree.branch);
+    return null;
+  }
+
   const tempDir = mkdtempSync(join(tmpdir(), "headless-child-worker-"));
   const promptFile = join(tempDir, "bounded-implementation-task.md");
   const outputPath = resolvedChildWorkerOutputPath(childWorkerCommandOutputPath(workPackage, {
-    ...options,
+    ...effectiveOptions,
     run_id: workflowState?.manifest?.run_id,
     cycle_id: workflowState?.manifest?.cycle_id
   }));
   if (outputPath) mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(promptFile, headlessChildWorkerPrompt(workflowState, workPackage, {
-    ...options,
+    ...effectiveOptions,
     child_worker_output_path_resolved: outputPath
   }));
 
-  const timeoutMs = childWorkerTimeoutMs(options);
-  const runnerOptions = useWorktree
-    ? { ...options, agent_invocation_cwd: workerCwd, agentInvocationCwd: workerCwd }
-    : options;
+  const timeoutMs = childWorkerTimeoutMs(effectiveOptions);
   const attempts = [];
   let normalized = null;
-  for (let attemptIndex = 0; attemptIndex < maxChildWorkerAttempts(options); attemptIndex += 1) {
+  for (let attemptIndex = 0; attemptIndex < maxChildWorkerAttempts(effectiveOptions); attemptIndex += 1) {
     let result;
     try {
       result = runner({
@@ -882,8 +885,8 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
         output_path: outputPath,
         timeout_ms: timeoutMs,
         attempt: attemptIndex + 1,
-        split_retry: attemptIndex > 0 && splitRetryEnabled(options),
-        options: runnerOptions
+        split_retry: attemptIndex > 0 && splitRetryEnabled(effectiveOptions),
+        options: effectiveOptions
       });
     } catch (error) {
       result = {
@@ -894,7 +897,7 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
       };
     }
     normalized = normalizeCommandRunnerResult(result, workPackage, promptFile, outputPath);
-    const template = agentInvocationTemplateFrom(options);
+    const template = agentInvocationTemplateFrom(effectiveOptions);
     if ((template?.model || selectedModelFromResult(result)) && !normalizeString(normalized?.selected_model)) {
       normalized = {
         ...normalized,
@@ -906,7 +909,7 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
       status: normalized.status || "fail",
       exit_code: normalized.command_evidence?.exit_code ?? null,
       timed_out: normalized.command_evidence?.timed_out === true,
-      split_retry: attemptIndex > 0 && splitRetryEnabled(options)
+      split_retry: attemptIndex > 0 && splitRetryEnabled(effectiveOptions)
     });
     if (evaluateHeadlessChildWorkerOutput(workPackage, normalized).status === "pass") break;
   }
