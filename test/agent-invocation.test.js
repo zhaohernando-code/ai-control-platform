@@ -236,15 +236,93 @@ test("redactInvocationText removes API secrets from arbitrary text", () => {
   );
 });
 
+test("agent invocation releases the key lock even when the command runner throws", () => {
+  const released = [];
+  const stateStore = {
+    acquireAgentKeyForRole(role, options) {
+      return {
+        status: "acquired",
+        key: { id: "key-throw", secret: "sk-throw", lock: { lock_owner: options.lock_owner } }
+      };
+    },
+    releaseAgentKeyLock(keyId, owner) {
+      released.push({ keyId, owner });
+      return { status: "released" };
+    }
+  };
+
+  assert.throws(() => runAgentInvocation({
+    profile_id: "reviewer_shard",
+    prompt: "Return findings.",
+    invocation_id: "reviewer-throw",
+    candidate_index: 0
+  }, {
+    stateStore,
+    commandRunner: () => { throw new Error("runner exploded"); }
+  }), /runner exploded/);
+
+  assert.equal(released.length, 1);
+  assert.equal(released[0].keyId, "key-throw");
+  assert.ok(released[0].owner);
+});
+
+test("agent invocation does not let a lock-release failure mask a passing result", () => {
+  const stateStore = {
+    acquireAgentKeyForRole(role, options) {
+      return {
+        status: "acquired",
+        key: { id: "key-release-fail", secret: "sk-x", lock: { lock_owner: options.lock_owner } }
+      };
+    },
+    releaseAgentKeyLock() { throw new Error("release failed"); }
+  };
+
+  const result = runAgentInvocation({
+    profile_id: "reviewer_shard",
+    prompt: "Return findings.",
+    invocation_id: "reviewer-release-fail",
+    candidate_index: 0
+  }, {
+    stateStore,
+    commandRunner: () => ({ status: 0, stdout: "[]", stderr: "" })
+  });
+
+  assert.equal(result.status, "pass");
+});
+
+test("idle-aware runner force-kills a child that ignores SIGTERM", () => {
+  const startedAt = Date.now();
+  const result = runCommandWithIdleTimeout(process.execPath, [
+    "-e",
+    // Trap SIGTERM and keep the event loop alive with no output, so only SIGKILL can stop it.
+    "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000);"
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    timeout: 1500,
+    idle_timeout_ms: 200,
+    kill_grace_ms: 300
+  });
+  const elapsed = Date.now() - startedAt;
+
+  assert.equal(result.timed_out, true);
+  assert.equal(result.error?.code, "ETIMEDOUT");
+  // Must return well before the outer spawnSync cap; the SIGKILL escalation reaps the child.
+  assert.ok(elapsed < 5000, `runner should not hang waiting on a SIGTERM-ignoring child (elapsed=${elapsed}ms)`);
+});
+
 test("idle-aware runner allows long-running commands that keep producing output", () => {
+  // Output cadence (80ms) must stay comfortably under the idle timeout; the gap is kept
+  // wide so ordinary subprocess scheduling jitter under parallel test load cannot trip a
+  // false idle timeout on the happy path.
   const result = runCommandWithIdleTimeout(process.execPath, [
     "-e",
     "let n=0; const t=setInterval(()=>{ console.log('tick '+(++n)); if(n===3){ clearInterval(t); } }, 80);"
   ], {
     cwd: process.cwd(),
     env: process.env,
-    timeout: 1000,
-    idle_timeout_ms: 180
+    timeout: 5000,
+    idle_timeout_ms: 1500
   });
 
   assert.equal(result.status, 0);

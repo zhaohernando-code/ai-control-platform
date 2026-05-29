@@ -245,6 +245,24 @@ test("provider output parser requires structured JSON object", () => {
   assert.equal(parseProviderExecutorOutput("[1,2,3]"), null);
 });
 
+test("provider output parser fails closed on self-referential result wrappers", () => {
+  // A wrapper whose result re-encodes another wrapper must not recurse without bound.
+  // Build a chain deeper than the unwrap cap; parsing must return null instead of overflowing.
+  // (Each re-encode escapes the previous level, so keep the depth modest but past the cap.)
+  let payload = "still no terminal structured json";
+  for (let i = 0; i < 15; i += 1) {
+    payload = JSON.stringify({ type: "result", result: payload });
+  }
+  assert.equal(parseProviderExecutorOutput(payload), null);
+
+  // A valid structured payload nested a few levels deep still resolves.
+  let nested = providerPassJson();
+  for (let i = 0; i < 3; i += 1) {
+    nested = JSON.stringify({ type: "result", result: nested });
+  }
+  assert.deepEqual(parseProviderExecutorOutput(nested), JSON.parse(providerPassJson()));
+});
+
 test("provider execution prompt uses compact prompt-safe task context", () => {
   const state = workflowState();
   state.manifest.goal = "Run self-governance scanner through autonomous-continuation dispatch and code-review-coverage dispatch.";

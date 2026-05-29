@@ -27,8 +27,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/agent-invocation.js": {
-      "lines": 506,
-      "reason": "Agent invocation entrypoint: keeps provider profile resolution, CLI command construction, idle-aware process execution, and output normalization together for all model-backed flows.",
+      "lines": 544,
+      "reason": "Agent invocation entrypoint: keeps provider profile resolution, CLI command construction, idle-aware process execution (with guaranteed lock release and SIGKILL escalation), and output normalization together for all model-backed flows.",
       "status": "accepted",
       "reviewed_at": "2026-05-29"
     },
@@ -57,8 +57,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/context-work-package-provider-executor.js": {
-      "lines": 505,
-      "reason": "Context work package provider executor: maps provider CLI command construction, streamed result parsing, provenance, and package-level pass/fail evidence.",
+      "lines": 514,
+      "reason": "Context work package provider executor: maps provider CLI command construction, depth-bounded streamed result parsing, provenance, and package-level pass/fail evidence.",
       "status": "accepted",
       "reviewed_at": "2026-05-29"
     },
@@ -117,8 +117,8 @@
       "reviewed_at": "2026-05-28"
     },
     "test/context-work-package-provider-executor.test.js": {
-      "lines": 879,
-      "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, and error paths.",
+      "lines": 897,
+      "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, depth-bounded parsing, and error paths.",
       "status": "accepted",
       "reviewed_at": "2026-05-29"
     },

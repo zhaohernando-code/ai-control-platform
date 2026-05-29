@@ -59,7 +59,18 @@ function jsonCandidate(text) {
   return "";
 }
 
-export function parseProviderExecutorOutput(stdout = "") {
+// Some provider CLIs wrap structured output as {"type":"result","result":"<json string>"}.
+// We unwrap that recursively, but a malformed or self-referential payload (result that
+// re-encodes the same wrapper) could otherwise recurse without bound and crash the worker.
+// Cap the unwrap depth so parsing fails closed (returns null) instead of overflowing.
+export const PROVIDER_OUTPUT_MAX_UNWRAP_DEPTH = 8;
+
+function isResultWrapper(parsed) {
+  return isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string";
+}
+
+export function parseProviderExecutorOutput(stdout = "", depth = 0) {
+  if (depth > PROVIDER_OUTPUT_MAX_UNWRAP_DEPTH) return null;
   const direct = normalizeString(stdout);
   const lines = direct.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   for (const line of [...lines].reverse()) {
@@ -69,8 +80,8 @@ export function parseProviderExecutorOutput(stdout = "") {
       if (isObject(parsed?.structured_output || parsed?.structuredOutput)) {
         return parsed.structured_output || parsed.structuredOutput;
       }
-      if (isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string") {
-        return parseProviderExecutorOutput(parsed.result);
+      if (isResultWrapper(parsed)) {
+        return parseProviderExecutorOutput(parsed.result, depth + 1);
       }
       if (isObject(parsed) && normalizeString(parsed.status)) return parsed;
     } catch {
@@ -83,8 +94,8 @@ export function parseProviderExecutorOutput(stdout = "") {
       if (isObject(parsed?.structured_output || parsed?.structuredOutput)) {
         return parsed.structured_output || parsed.structuredOutput;
       }
-      if (isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string") {
-        return parseProviderExecutorOutput(parsed.result);
+      if (isResultWrapper(parsed)) {
+        return parseProviderExecutorOutput(parsed.result, depth + 1);
       }
       return isObject(parsed) ? parsed : null;
     } catch {
@@ -98,8 +109,8 @@ export function parseProviderExecutorOutput(stdout = "") {
     if (isObject(parsed?.structured_output || parsed?.structuredOutput)) {
       return parsed.structured_output || parsed.structuredOutput;
     }
-    if (isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string") {
-      return parseProviderExecutorOutput(parsed.result);
+    if (isResultWrapper(parsed)) {
+      return parseProviderExecutorOutput(parsed.result, depth + 1);
     }
     return isObject(parsed) ? parsed : null;
   } catch {

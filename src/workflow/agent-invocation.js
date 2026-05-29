@@ -343,6 +343,20 @@ export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}
     let settled = false;
     let timedOut = false;
     let truncated = false;
+    let killTimer = null;
+    // SIGTERM alone is not enough: the child's open stdio pipes keep this monitor
+    // process alive until the child actually exits, so a child that ignores SIGTERM
+    // would hang the monitor (forever when only an idle timeout is set, since the
+    // outer spawnSync then has no wall-clock cap). Escalate to SIGKILL after a grace
+    // window so the child is force-reaped and the monitor can exit promptly.
+    function killChild() {
+      try { child.kill("SIGTERM"); } catch {}
+      if (killTimer) return;
+      killTimer = setTimeout(() => {
+        try { child.kill("SIGKILL"); } catch {}
+      }, spec.killGraceMs || 2000);
+      if (killTimer.unref) killTimer.unref();
+    }
     function append(kind, chunk) {
       if (settled) return;
       const text = String(chunk || "");
@@ -352,7 +366,7 @@ export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}
         truncated = true;
         stderr += "\\nagent invocation output exceeded maxBuffer";
         finish(1, null, "MAXBUFFER");
-        try { child.kill("SIGTERM"); } catch {}
+        killChild();
         return;
       }
       resetIdleTimer();
@@ -365,7 +379,7 @@ export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}
       idleTimer = setTimeout(() => {
         timedOut = true;
         finish(1, null, "ETIMEDOUT");
-        try { child.kill("SIGTERM"); } catch {}
+        killChild();
       }, spec.idleTimeoutMs);
       if (idleTimer.unref) idleTimer.unref();
     }
@@ -388,7 +402,7 @@ export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}
       hardTimer = setTimeout(() => {
         timedOut = true;
         finish(1, null, "ETIMEDOUT");
-        try { child.kill("SIGTERM"); } catch {}
+        killChild();
       }, spec.timeoutMs);
       if (hardTimer.unref) hardTimer.unref();
     }
@@ -396,8 +410,9 @@ export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}
     child.stdout.on("data", (chunk) => append("stdout", chunk));
     child.stderr.on("data", (chunk) => append("stderr", chunk));
     child.on("error", (error) => finish(1, null, error && error.code ? error.code : "COMMAND_ERROR"));
-    child.on("close", (status, signal) => finish(status, signal, null));
+    child.on("close", (status, signal) => { clearTimeout(killTimer); finish(status, signal, null); });
   `;
+  const killGraceMs = Number(runnerOptions.kill_grace_ms || runnerOptions.killGraceMs || 2000);
   const monitor = spawnSync(process.execPath, [
     "-e",
     monitorScript,
@@ -408,11 +423,17 @@ export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}
       env: runnerOptions.env,
       timeoutMs,
       idleTimeoutMs,
-      maxBuffer
+      maxBuffer,
+      killGraceMs
     })
   ], {
     encoding: "utf8",
-    timeout: timeoutMs ? timeoutMs + 5000 : undefined,
+    // Outer safety net: the monitor settles after timeoutMs/idleTimeoutMs and force-kills
+    // the child after killGraceMs, so cap spawnSync just beyond the larger inner deadline
+    // (plus the kill grace) instead of leaving it uncapped when only an idle timeout is set.
+    timeout: (Math.max(timeoutMs, idleTimeoutMs) || 0)
+      ? Math.max(timeoutMs, idleTimeoutMs) + killGraceMs + 5000
+      : undefined,
     maxBuffer: maxBuffer + 1024 * 1024
   });
   if (monitor.status !== 0 && !normalizeString(monitor.stdout)) {
@@ -453,49 +474,66 @@ export function runAgentInvocation(input = {}, options = {}) {
   if (planned.status !== "pass") return planned;
   const invocation = planned.invocation;
   const runner = options.commandRunner || runCommandWithIdleTimeout;
+  const stateStore = options.stateStore || options.state_store;
   const startedAt = Date.now();
-  const result = runner(invocation.command, invocation.args, {
-    cwd: invocation.cwd,
-    env: invocation.env,
-    encoding: "utf8",
-    timeout: invocation.timeout_ms,
-    idle_timeout_ms: invocation.idle_timeout_ms,
-    maxBuffer: options.maxBuffer || 4 * 1024 * 1024
-  });
-  const latencyMs = Date.now() - startedAt;
-  const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
-  const timedOut = result?.error?.code === "ETIMEDOUT" || result?.signal === "SIGTERM" || exitCode === 124 || exitCode === 143;
-  const stdout = redactInvocationText(result?.stdout || "", invocation);
-  const stderr = redactInvocationText(result?.stderr || result?.error?.message || "", invocation);
-  const outputText = normalizeString(stdout);
-  const parsed = typeof options.parseOutput === "function" ? options.parseOutput(outputText) : null;
-  if (invocation.key?.id && invocation.lock && typeof (options.stateStore || options.state_store)?.releaseAgentKeyLock === "function") {
-    (options.stateStore || options.state_store).releaseAgentKeyLock(invocation.key.id, invocation.lock.lock_owner);
-  }
-  return {
-    status: exitCode === 0 && !timedOut && !result?.error ? "pass" : "fail",
-    stdout,
-    stderr,
-    parsed,
-    invocation: {
-      ...invocation,
-      env: undefined,
-      key: invocation.key ? { ...invocation.key, secret: undefined } : null,
-      command_audit: {
-        command: invocation.command,
-        args: invocation.args.map((arg) => normalizeString(arg).length > 500 ? `${normalizeString(arg).slice(0, 500)}...<truncated>` : arg),
-        timeout_ms: invocation.timeout_ms
+  // The key lock acquired during planning must always be released, even if the runner
+  // throws before completing. Without this, a thrown runner leaks the lock and the next
+  // caller can acquire the same API key concurrently (rate limits, auth conflicts).
+  let released = false;
+  const releaseLock = () => {
+    if (released) return;
+    if (invocation.key?.id && invocation.lock && typeof stateStore?.releaseAgentKeyLock === "function") {
+      released = true;
+      try {
+        stateStore.releaseAgentKeyLock(invocation.key.id, invocation.lock.lock_owner);
+      } catch {
+        // A release failure must not mask the invocation result or crash the caller.
       }
-    },
-    result: {
-      exit_code: exitCode,
-      signal: result?.signal || null,
-      timed_out: timedOut,
-      latency_ms: latencyMs,
-      failure_classification: exitCode === 0 && !timedOut && !result?.error ? null : classifyFailure({ stdout, stderr, timed_out: timedOut, error: result?.error }, parsed)
-    },
-    issues: []
+    }
   };
+  try {
+    const result = runner(invocation.command, invocation.args, {
+      cwd: invocation.cwd,
+      env: invocation.env,
+      encoding: "utf8",
+      timeout: invocation.timeout_ms,
+      idle_timeout_ms: invocation.idle_timeout_ms,
+      maxBuffer: options.maxBuffer || 4 * 1024 * 1024
+    });
+    const latencyMs = Date.now() - startedAt;
+    const exitCode = Number(result?.status ?? result?.exitCode ?? (result?.error ? 1 : 0));
+    const timedOut = result?.error?.code === "ETIMEDOUT" || result?.signal === "SIGTERM" || exitCode === 124 || exitCode === 143;
+    const stdout = redactInvocationText(result?.stdout || "", invocation);
+    const stderr = redactInvocationText(result?.stderr || result?.error?.message || "", invocation);
+    const outputText = normalizeString(stdout);
+    const parsed = typeof options.parseOutput === "function" ? options.parseOutput(outputText) : null;
+    return {
+      status: exitCode === 0 && !timedOut && !result?.error ? "pass" : "fail",
+      stdout,
+      stderr,
+      parsed,
+      invocation: {
+        ...invocation,
+        env: undefined,
+        key: invocation.key ? { ...invocation.key, secret: undefined } : null,
+        command_audit: {
+          command: invocation.command,
+          args: invocation.args.map((arg) => normalizeString(arg).length > 500 ? `${normalizeString(arg).slice(0, 500)}...<truncated>` : arg),
+          timeout_ms: invocation.timeout_ms
+        }
+      },
+      result: {
+        exit_code: exitCode,
+        signal: result?.signal || null,
+        timed_out: timedOut,
+        latency_ms: latencyMs,
+        failure_classification: exitCode === 0 && !timedOut && !result?.error ? null : classifyFailure({ stdout, stderr, timed_out: timedOut, error: result?.error }, parsed)
+      },
+      issues: []
+    };
+  } finally {
+    releaseLock();
+  }
 }
 
 export function writePromptTempFile(prompt = "", prefix = "agent-invocation-") {
