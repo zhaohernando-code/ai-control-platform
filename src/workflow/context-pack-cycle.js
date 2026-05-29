@@ -1,6 +1,7 @@
 import { createArtifactLedger, recordArtifact } from "./artifact-ledger.js";
 import { assertContextPackReady } from "./context-pack.js";
 import { appendRunEvent, createRunManifest, validateRunManifest } from "./run-manifest.js";
+import { WORK_ITEM_COMPLETE_SYNONYMS } from "./status-vocabulary.js";
 
 export const CONTEXT_PACK_CYCLE_VERSION = "context-pack-cycle.v1";
 
@@ -80,14 +81,16 @@ function completedGlobalGoalIdsFrom(workflowState = {}) {
     ...asArray(workflowState?.manifest?.work_packages),
     ...asArray(workflowState?.task_dag || workflowState?.taskDag)
   ]
-    .filter((workPackage) => ["complete", "completed", "done", "pass", "passed", "accepted", "closed"].includes(normalizeString(workPackage?.status || workPackage?.result).toLowerCase()))
+    .filter((workPackage) => WORK_ITEM_COMPLETE_SYNONYMS.includes(normalizeString(workPackage?.status || workPackage?.result).toLowerCase()))
     .map((workPackage) => normalizeString(workPackage?.global_goal_id || workPackage?.globalGoalId))
     .filter(Boolean));
 }
 
 function openRequirementGoalIdsFromProjectStatus(projectStatus = {}) {
   const planReviews = isObject(projectStatus?.plan_reviews) ? projectStatus.plan_reviews : {};
-  const completeStatuses = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed", "shipped"]);
+  // Requirement-item terminality: work-item-complete plus "shipped". Derived from the
+  // shared set so the pass/done core stays in sync (was a hand-typed list).
+  const completeStatuses = new Set([...WORK_ITEM_COMPLETE_SYNONYMS, "shipped"]);
   return new Set(asArray(projectStatus?.requirement_intake?.items)
     .filter((item) => {
       const id = normalizeString(item?.id);

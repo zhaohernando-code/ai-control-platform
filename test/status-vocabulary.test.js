@@ -9,6 +9,8 @@ import test from "node:test";
 import {
   PASS_SYNONYMS,
   COMPLETE_SYNONYMS,
+  WORK_ITEM_COMPLETE_SYNONYMS,
+  GOAL_COMPLETE_SYNONYMS,
   FAIL_SYNONYMS,
   RUNNING_SYNONYMS,
   PENDING_SYNONYMS,
@@ -31,6 +33,16 @@ test("golden: COMPLETE_SYNONYMS is exactly PASS_SYNONYMS + 'done'", () => {
   assert.deepEqual([...COMPLETE_SYNONYMS], [...PASS_SYNONYMS, "done"]);
 });
 
+test("golden: completion sets nest — COMPLETE ⊂ WORK_ITEM_COMPLETE ⊂ GOAL_COMPLETE", () => {
+  // every shared completion set must contain the full pass+done core (the drift bug was
+  // inline copies dropping ok/success/succeeded) — assert that core is present in all.
+  for (const set of [WORK_ITEM_COMPLETE_SYNONYMS, GOAL_COMPLETE_SYNONYMS]) {
+    for (const s of COMPLETE_SYNONYMS) assert.ok(set.includes(s), `${s} must be in the broader completion set`);
+  }
+  assert.deepEqual([...WORK_ITEM_COMPLETE_SYNONYMS], [...COMPLETE_SYNONYMS, "accepted", "closed"]);
+  assert.deepEqual([...GOAL_COMPLETE_SYNONYMS], [...WORK_ITEM_COMPLETE_SYNONYMS, "closed_failed", "canceled", "cancelled", "shipped"]);
+});
+
 test("golden: finding sets are a strict subset of the general sets (deliberately narrower)", () => {
   for (const s of FINDING_PASS_SYNONYMS) assert.ok(PASS_SYNONYMS.includes(s), `${s} should be in PASS_SYNONYMS`);
   for (const s of FINDING_FAIL_SYNONYMS) assert.ok(FAIL_SYNONYMS.includes(s), `${s} should be in FAIL_SYNONYMS`);
@@ -40,7 +52,7 @@ test("golden: finding sets are a strict subset of the general sets (deliberately
 });
 
 test("golden: exported arrays are frozen (no importer can mutate the shared source)", () => {
-  for (const arr of [PASS_SYNONYMS, COMPLETE_SYNONYMS, FAIL_SYNONYMS, RUNNING_SYNONYMS, PENDING_SYNONYMS, FINDING_PASS_SYNONYMS, FINDING_FAIL_SYNONYMS]) {
+  for (const arr of [PASS_SYNONYMS, COMPLETE_SYNONYMS, WORK_ITEM_COMPLETE_SYNONYMS, GOAL_COMPLETE_SYNONYMS, FAIL_SYNONYMS, RUNNING_SYNONYMS, PENDING_SYNONYMS, FINDING_PASS_SYNONYMS, FINDING_FAIL_SYNONYMS]) {
     assert.equal(Object.isFrozen(arr), true);
     assert.throws(() => arr.push("x"), TypeError);
   }

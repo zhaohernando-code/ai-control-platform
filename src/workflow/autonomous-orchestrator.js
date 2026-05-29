@@ -5,6 +5,7 @@ import { runCloseoutPlan } from "./closeout-runner.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
 import { validateWorkbenchProjectionSchema } from "./workbench-projection-schema.js";
 import { evaluateWorkPackageExecutionGovernance } from "./work-package-execution-governance.js";
+import { COMPLETE_SYNONYMS } from "./status-vocabulary.js";
 
 const AUTONOMOUS_LOOP_ARTIFACT_VERSION = "autonomous-closeout-loop-run.v1";
 
@@ -97,7 +98,7 @@ function updateProjectStatusFromExecution(input, closeoutResult) {
   const projectStatus = input.project_status;
   const manifestStatus = readWorkPackageStatusFromManifest(closeoutResult.closeout.workflow_state);
   
-  const completedStatuses = new Set(["completed", "complete", "done", "passed", "pass"]);
+  const completedStatuses = new Set(COMPLETE_SYNONYMS);
   const updated = asArray(projectStatus.next_work_packages).map(wp => ({
     ...wp,
     status: manifestStatus.get(wp.id) || wp.status || "queued"

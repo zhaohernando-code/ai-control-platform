@@ -9,10 +9,16 @@ import {
 import { evaluateFixedDevelopmentModeGate } from "./fixed-development-mode-gate.js";
 import { normalizeRequirementPlanWorkPackagesGranularity } from "./requirement-intake.js";
 import { appendRunEvent, validateRunManifest } from "./run-manifest.js";
+import { COMPLETE_SYNONYMS } from "./status-vocabulary.js";
 import { buildTaskDag, getDispatchableNodes } from "./task-dag.js";
 import { evaluateWorkPackageExecutionGovernance } from "./work-package-execution-governance.js";
 
 export const CONTEXT_WORK_PACKAGES_RUN_VERSION = "context-work-packages-run.v1";
+
+// Dependency-satisfied dispatch uses the shared "work item complete" verdict so a
+// dependency reported as ok/success/succeeded/done is recognized consistently with the
+// scheduler (was a hand-typed copy of COMPLETE_SYNONYMS).
+const DEPENDENCY_COMPLETE_STATUSES = new Set(COMPLETE_SYNONYMS);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -141,7 +147,7 @@ function runnableNodes(workflowState = {}, options = {}) {
     return asArray(node.depends_on).every((dependencyId) => {
       const dependency = rawById.get(dependencyId) || nodeById.get(dependencyId);
       const dependencyStatus = normalizeString(dependency?.status || dependency?.state || dependency?.result || dependency?.outcome).toLowerCase();
-      return ["done", "completed", "complete", "pass", "passed", "ok", "success", "succeeded"].includes(dependencyStatus);
+      return DEPENDENCY_COMPLETE_STATUSES.has(dependencyStatus);
     });
   });
   const runnable = recoverableFailed.length > 0 ? recoverableFailed : dispatchable;

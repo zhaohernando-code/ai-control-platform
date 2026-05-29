@@ -16,6 +16,7 @@ import {
   createRequirementPlanWorkPackages,
   normalizeRequirementPlanWorkPackagesGranularity
 } from "./requirement-intake.js";
+import { WORK_ITEM_COMPLETE_SYNONYMS } from "./status-vocabulary.js";
 
 const CONTINUE = "continue";
 const RERUN = "rerun";
@@ -164,10 +165,10 @@ function normalizeRequirementPlanWorkPackages(workPackages = []) {
 
 function completedWorkPackageIds(input = {}) {
   const workflowState = workflowStateFrom(input) || input;
-  // Work-package terminality: broader than a pass/fail verdict (accepted/closed count as
-  // done) but narrower than goal terminality (no canceled/shipped). Intentionally NOT the
-  // shared status-vocabulary set — see status-vocabulary.js + global-goal-completion.js.
-  const completeStatuses = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed"]);
+  // Work-package terminality = shared work-item-complete set (pass synonyms + done +
+  // accepted/closed). Shared so ok/success/succeeded agree with the scheduler — the old
+  // inline copy dropped them, leaving a "succeeded" package looking incomplete here.
+  const completeStatuses = new Set(WORK_ITEM_COMPLETE_SYNONYMS);
   return new Set([
     ...asArray(workflowState?.manifest?.work_packages),
     ...asArray(workflowState?.task_dag || workflowState?.taskDag)

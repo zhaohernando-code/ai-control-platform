@@ -24,6 +24,19 @@ export const PASS_SYNONYMS = Object.freeze(["pass", "passed", "ok", "success", "
 // "done" as finished. See the autonomous-run characterization net.
 export const COMPLETE_SYNONYMS = Object.freeze([...PASS_SYNONYMS, "done"]);
 
+// "Work item complete" = COMPLETE_SYNONYMS plus the lifecycle terminals a WORK PACKAGE can
+// carry beyond a pass verdict: it was accepted, or its requirement was closed. Used by the
+// continuation/dispatch/context-pack modules that ask "is this work package finished".
+// Deriving from COMPLETE_SYNONYMS (not a hand-typed list) keeps ok/success/succeeded/done
+// in sync — those were silently dropped by the old inline copies, which made e.g. a
+// "succeeded" package look incomplete to continuation while autonomous-run saw it done.
+export const WORK_ITEM_COMPLETE_SYNONYMS = Object.freeze([...COMPLETE_SYNONYMS, "accepted", "closed"]);
+
+// "Goal complete" = WORK_ITEM_COMPLETE_SYNONYMS plus GOAL-only terminals: a goal that was
+// closed_failed / canceled / shipped is terminal for completion purposes even though it is
+// not a pass. Broader than work-item terminality on purpose; do not use for pass/fail.
+export const GOAL_COMPLETE_SYNONYMS = Object.freeze([...WORK_ITEM_COMPLETE_SYNONYMS, "closed_failed", "canceled", "cancelled", "shipped"]);
+
 // Failure synonyms. task-dag folds these into "blocked"; autonomous-run folds them into
 // "fail". "blocked" itself is a member.
 export const FAIL_SYNONYMS = Object.freeze(["fail", "failed", "error", "errored", "blocked", "timeout", "timed_out"]);

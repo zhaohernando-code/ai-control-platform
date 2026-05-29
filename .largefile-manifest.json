@@ -33,16 +33,16 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/autonomous-continuation.js": {
-      "lines": 841,
+      "lines": 842,
       "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-30"
     },
     "src/workflow/autonomous-orchestrator.js": {
-      "lines": 656,
+      "lines": 657,
       "reason": "Autonomous orchestrator composition: wires scheduling, provider invocation, and durable run outputs through one bounded orchestration entry.",
       "status": "accepted",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-30"
     },
     "src/workflow/autonomous-scheduler-loop.js": {
       "lines": 869,
@@ -63,10 +63,10 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1195,
+      "lines": 1201,
       "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, execution-root provenance, and result normalization share one flow.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-05-30"
     },
     "src/workflow/development-flow-real.js": {
       "lines": 892,
