@@ -250,6 +250,24 @@ export default function FlowTaskDetailPage({
                     <Text type="danger">{task.failure_reason}</Text>
                   </Descriptions.Item>
                 )}
+                {task.latest_dispatch && (
+                  <Descriptions.Item label="最新派发" span={2}>
+                    <Space direction="vertical" size={2}>
+                      <Text code>{task.latest_dispatch.dispatch_run_id}</Text>
+                      <Text type="secondary">
+                        {[
+                          formatBeijingDateTime(task.latest_dispatch.dispatch_failed_at || task.latest_dispatch.dispatch_completed_at || task.latest_dispatch.dispatch_started_at),
+                          task.latest_dispatch.latest_attempt?.model,
+                          task.latest_dispatch.latest_attempt?.issue || task.latest_dispatch.issue_codes?.[0],
+                          task.latest_dispatch.attempt_count ? `${task.latest_dispatch.attempt_count} attempts` : null
+                        ].filter(Boolean).join(" · ")}
+                      </Text>
+                      {task.latest_dispatch.artifact_path && (
+                        <Text type="secondary">{task.latest_dispatch.artifact_path}</Text>
+                      )}
+                    </Space>
+                  </Descriptions.Item>
+                )}
               </Descriptions>
             </Card>
             <Card title="计划审视">

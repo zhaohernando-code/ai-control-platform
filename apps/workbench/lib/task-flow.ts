@@ -34,6 +34,27 @@ export interface TaskWorkPackage {
   acceptance_gates?: string[];
   source?: Record<string, unknown>;
   failure_reason?: string | null;
+  dispatch_summary?: TaskDispatchSummary | null;
+}
+
+export interface TaskDispatchSummary {
+  dispatch_run_id?: string | null;
+  dispatch_started_at?: string | null;
+  dispatch_completed_at?: string | null;
+  dispatch_failed_at?: string | null;
+  artifact_id?: string | null;
+  artifact_uri?: string | null;
+  artifact_path?: string | null;
+  phase?: string | null;
+  issue_codes?: string[];
+  attempt_count?: number;
+  latest_attempt?: {
+    model?: string | null;
+    issue?: string | null;
+    status?: string | null;
+    timed_out?: boolean;
+    exit_code?: number | null;
+  } | null;
 }
 
 export interface TaskFlowItem {
@@ -53,6 +74,7 @@ export interface TaskFlowItem {
   constraints?: string;
   reviewable?: boolean;
   failure_reason?: string | null;
+  latest_dispatch?: TaskDispatchSummary | null;
   recoverable?: boolean;
   plan_review?: PlanReview;
   work_packages?: TaskWorkPackage[];

@@ -216,13 +216,25 @@ export default function ProjectsPage() {
       title: "失败原因",
       dataIndex: "failure_reason",
       key: "failure_reason",
-      width: 200,
+      width: 260,
       ellipsis: true,
       render: (_, task) =>
         task.failure_reason ? (
-          <Text type="danger" ellipsis={{ tooltip: task.failure_reason }}>
-            {task.failure_reason}
-          </Text>
+          <Space direction="vertical" size={2}>
+            <Text type="danger" ellipsis={{ tooltip: task.failure_reason }}>
+              {task.failure_reason}
+            </Text>
+            {task.latest_dispatch ? (
+              <Text type="secondary" style={{ fontSize: 12 }} ellipsis={{ tooltip: task.latest_dispatch.artifact_path || task.latest_dispatch.dispatch_run_id || "" }}>
+                {[
+                  task.latest_dispatch.dispatch_run_id,
+                  task.latest_dispatch.latest_attempt?.model,
+                  task.latest_dispatch.latest_attempt?.issue || task.latest_dispatch.issue_codes?.[0],
+                  task.latest_dispatch.attempt_count ? `${task.latest_dispatch.attempt_count} attempts` : null
+                ].filter(Boolean).join(" · ")}
+              </Text>
+            ) : null}
+          </Space>
         ) : null
     },
     {

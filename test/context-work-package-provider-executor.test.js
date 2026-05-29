@@ -161,6 +161,29 @@ test("provider command records bounded audit fields", () => {
   assert.ok(command.args.includes("0.50"));
 });
 
+test("provider command no_tools emits real claude tool disablement", () => {
+  const command = createAgentContextWorkPackageProviderCommand({
+    cwd: process.cwd(),
+    stateStore: providerStateStore(),
+    prompt: "inspect only",
+    timeout_seconds: 45,
+    idle_timeout_seconds: 10,
+    model: "deepseek-v4-pro[1m]",
+    no_tools: true
+  });
+
+  assert.equal(command.no_tools, true);
+  assert.equal(command.tools, "");
+  assert.equal(command.idle_timeout_seconds, 10);
+  const toolsIndex = command.args.indexOf("--tools");
+  assert.ok(toolsIndex >= 0);
+  assert.equal(command.args[toolsIndex + 1], "");
+  assert.ok(!command.args.includes("--allowedTools"));
+  assert.ok(command.args.includes("--output-format"));
+  assert.ok(command.args.includes("stream-json"));
+  assert.ok(command.args.includes("--include-partial-messages"));
+});
+
 test("provider command preview releases governed key locks before real execution", () => {
   const released = [];
   const stateStore = {
@@ -199,6 +222,10 @@ test("provider output parser requires structured JSON object", () => {
     type: "result",
     result: `\`\`\`json\n${providerPassJson()}\n\`\`\``
   })), JSON.parse(providerPassJson()));
+  assert.deepEqual(parseProviderExecutorOutput([
+    JSON.stringify({ type: "assistant", message: { content: "working" } }),
+    JSON.stringify({ type: "result", result: providerPassJson() })
+  ].join("\n")), JSON.parse(providerPassJson()));
   assert.equal(parseProviderExecutorOutput("plain provider prose without json"), null);
   assert.equal(parseProviderExecutorOutput("[1,2,3]"), null);
 });

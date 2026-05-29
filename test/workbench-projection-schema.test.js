@@ -118,6 +118,39 @@ test("rejects projections missing project-management readout", () => {
   assert.ok(mobileValidation.issues.some((issue) => issue.code === "missing_platform_project"));
 });
 
+test("validates task latest dispatch shape", () => {
+  const projection = readJson("docs/examples/current-session-workbench-projection.json");
+  projection.project_management.task_items = [
+    {
+      task_id: "requirement-project-tab",
+      title: "完成项目 tab",
+      latest_dispatch: {
+        dispatch_run_id: "dispatch-001",
+        dispatch_failed_at: "2026-05-29T02:38:58.623Z",
+        issue_codes: ["provider_executor_timeout"],
+        attempt_count: 2,
+        latest_attempt: {
+          model: "deepseek-v4-flash",
+          issue: "provider_executor_timeout",
+          timed_out: true,
+          exit_code: 1
+        }
+      }
+    }
+  ];
+  assert.equal(validateWorkbenchProjectionSchema(projection).status, "pass");
+
+  projection.project_management.task_items[0].latest_dispatch = {
+    dispatch_run_id: "",
+    issue_codes: "provider_executor_timeout"
+  };
+  const validation = validateWorkbenchProjectionSchema(projection);
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((issue) => issue.code === "missing_task_latest_dispatch_run_id"));
+  assert.ok(validation.issues.some((issue) => issue.code === "missing_task_latest_dispatch_timestamp"));
+  assert.ok(validation.issues.some((issue) => issue.code === "invalid_task_latest_dispatch_issue_codes"));
+});
+
 test("rejects projections missing terminal next-action evidence", () => {
   const projection = readJson("docs/examples/current-session-workbench-projection.json");
   const mobileProjection = createMobileWorkbenchProjection(readJson("docs/examples/current-session-workbench-input.json"));

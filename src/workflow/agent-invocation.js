@@ -207,7 +207,11 @@ function claudeInvocationCommand({ channel, profile, candidate, input, key }) {
   const args = [];
   if (profile.bare !== false) args.push("--bare");
   args.push("--permission-mode", "bypassPermissions");
-  if (profile.output_format) args.push("--output-format", profile.output_format);
+  const outputFormat = normalizeString(input.output_format || input.outputFormat || profile.output_format);
+  if (outputFormat) args.push("--output-format", outputFormat);
+  if (input.include_partial_messages === true || input.includePartialMessages === true) {
+    args.push("--include-partial-messages");
+  }
   args.push("--no-session-persistence");
   if (profile.max_budget_usd || input.max_budget_usd || input.maxBudgetUsd) {
     args.push("--max-budget-usd", normalizeString(input.max_budget_usd || input.maxBudgetUsd || profile.max_budget_usd));
@@ -215,7 +219,12 @@ function claudeInvocationCommand({ channel, profile, candidate, input, key }) {
   if (profile.effort || input.effort) args.push("--effort", normalizeString(input.effort || profile.effort));
   const tools = input.tools !== undefined ? normalizeString(input.tools) : normalizeString(profile.tools);
   const allowedTools = normalizeString(input.allowed_tools || input.allowedTools || tools);
-  if (allowedTools) args.push("--allowedTools", allowedTools);
+  const noTools = input.no_tools === true || input.noTools === true;
+  if (noTools) {
+    args.push("--tools", "");
+  } else if (allowedTools) {
+    args.push("--allowedTools", allowedTools);
+  }
   const addDir = normalizeString(input.add_dir || input.addDir);
   if (addDir) args.push("--add-dir", addDir);
   if (input.json_schema || input.jsonSchema) args.push("--json-schema", typeof (input.json_schema || input.jsonSchema) === "string" ? input.json_schema || input.jsonSchema : JSON.stringify(input.json_schema || input.jsonSchema));
@@ -227,7 +236,7 @@ function claudeInvocationCommand({ channel, profile, candidate, input, key }) {
   };
   if (channel.base_url || channel.baseUrl) env.ANTHROPIC_BASE_URL = normalizeString(channel.base_url || channel.baseUrl);
   if (key?.secret) env.ANTHROPIC_API_KEY = key.secret;
-  return { command, args, cwd, env, model, runner: "claude" };
+  return { command, args, cwd, env, model, runner: "claude", no_tools: noTools };
 }
 
 function codexInvocationCommand({ channel, profile, candidate, input, key }) {
@@ -307,13 +316,124 @@ export function createAgentInvocationPlan(input = {}, options = {}) {
     env: commandSpec.env,
     key: keyResult.key || null,
     lock: keyResult.key?.lock || null,
-    timeout_ms: Number(input.timeout_ms || input.timeoutMs || profile.timeout_ms || profile.timeoutMs || 180000)
+    timeout_ms: Number(input.timeout_ms || input.timeoutMs || profile.timeout_ms || profile.timeoutMs || 180000),
+    idle_timeout_ms: Number(input.idle_timeout_ms || input.idleTimeoutMs || input.timeout_ms || input.timeoutMs || profile.idle_timeout_ms || profile.idleTimeoutMs || profile.timeout_ms || profile.timeoutMs || 180000)
   };
   return {
     status: "pass",
     invocation,
     issues: []
   };
+}
+
+export function runCommandWithIdleTimeout(command, args = [], runnerOptions = {}) {
+  const timeoutMs = Number(runnerOptions.timeout || runnerOptions.timeout_ms || runnerOptions.timeoutMs || 0);
+  const idleTimeoutMs = Number(runnerOptions.idle_timeout || runnerOptions.idle_timeout_ms || runnerOptions.idleTimeoutMs || timeoutMs || 0);
+  const maxBuffer = Number(runnerOptions.maxBuffer || runnerOptions.max_buffer || 4 * 1024 * 1024);
+  const monitorScript = `
+    const { spawn } = require("node:child_process");
+    const spec = JSON.parse(process.argv[1]);
+    const child = spawn(spec.command, spec.args, {
+      cwd: spec.cwd,
+      env: spec.env,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timedOut = false;
+    let truncated = false;
+    function append(kind, chunk) {
+      if (settled) return;
+      const text = String(chunk || "");
+      if (kind === "stdout") stdout += text;
+      else stderr += text;
+      if (stdout.length + stderr.length > spec.maxBuffer) {
+        truncated = true;
+        stderr += "\\nagent invocation output exceeded maxBuffer";
+        finish(1, null, "MAXBUFFER");
+        try { child.kill("SIGTERM"); } catch {}
+        return;
+      }
+      resetIdleTimer();
+    }
+    let idleTimer = null;
+    let hardTimer = null;
+    function resetIdleTimer() {
+      if (!spec.idleTimeoutMs) return;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        timedOut = true;
+        finish(1, null, "ETIMEDOUT");
+        try { child.kill("SIGTERM"); } catch {}
+      }, spec.idleTimeoutMs);
+      if (idleTimer.unref) idleTimer.unref();
+    }
+    function finish(status, signal, errorCode) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(idleTimer);
+      clearTimeout(hardTimer);
+      process.stdout.write(JSON.stringify({
+        status: Number.isFinite(status) ? status : (errorCode ? 1 : 0),
+        signal,
+        stdout,
+        stderr,
+        error: errorCode ? { code: errorCode, message: errorCode } : undefined,
+        timed_out: timedOut,
+        truncated
+      }));
+    }
+    if (spec.timeoutMs) {
+      hardTimer = setTimeout(() => {
+        timedOut = true;
+        finish(1, null, "ETIMEDOUT");
+        try { child.kill("SIGTERM"); } catch {}
+      }, spec.timeoutMs);
+      if (hardTimer.unref) hardTimer.unref();
+    }
+    resetIdleTimer();
+    child.stdout.on("data", (chunk) => append("stdout", chunk));
+    child.stderr.on("data", (chunk) => append("stderr", chunk));
+    child.on("error", (error) => finish(1, null, error && error.code ? error.code : "COMMAND_ERROR"));
+    child.on("close", (status, signal) => finish(status, signal, null));
+  `;
+  const monitor = spawnSync(process.execPath, [
+    "-e",
+    monitorScript,
+    JSON.stringify({
+      command,
+      args,
+      cwd: runnerOptions.cwd,
+      env: runnerOptions.env,
+      timeoutMs,
+      idleTimeoutMs,
+      maxBuffer
+    })
+  ], {
+    encoding: "utf8",
+    timeout: timeoutMs ? timeoutMs + 5000 : undefined,
+    maxBuffer: maxBuffer + 1024 * 1024
+  });
+  if (monitor.status !== 0 && !normalizeString(monitor.stdout)) {
+    return {
+      status: Number(monitor.status ?? 1),
+      stdout: "",
+      stderr: normalizeString(monitor.stderr || monitor.error?.message),
+      error: monitor.error,
+      signal: monitor.signal
+    };
+  }
+  try {
+    return JSON.parse(monitor.stdout || "{}");
+  } catch {
+    return {
+      status: 1,
+      stdout: monitor.stdout || "",
+      stderr: monitor.stderr || "agent invocation monitor returned invalid output",
+      error: { code: "MONITOR_OUTPUT_INVALID" }
+    };
+  }
 }
 
 function classifyFailure(result = {}, parsed = null) {
@@ -332,13 +452,14 @@ export function runAgentInvocation(input = {}, options = {}) {
   const planned = createAgentInvocationPlan(input, options);
   if (planned.status !== "pass") return planned;
   const invocation = planned.invocation;
-  const runner = options.commandRunner || ((command, args, runnerOptions) => spawnSync(command, args, runnerOptions));
+  const runner = options.commandRunner || runCommandWithIdleTimeout;
   const startedAt = Date.now();
   const result = runner(invocation.command, invocation.args, {
     cwd: invocation.cwd,
     env: invocation.env,
     encoding: "utf8",
     timeout: invocation.timeout_ms,
+    idle_timeout_ms: invocation.idle_timeout_ms,
     maxBuffer: options.maxBuffer || 4 * 1024 * 1024
   });
   const latencyMs = Date.now() - startedAt;

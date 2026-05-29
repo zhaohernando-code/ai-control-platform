@@ -1063,6 +1063,7 @@ function contextWorkPackageRunOptions(input = {}, projection = null) {
   return {
     max_package_count: input.max_package_count ?? input.maxPackageCount,
     created_at: input.created_at || input.createdAt,
+    idle_timeout_seconds: input.idle_timeout_seconds || input.idleTimeoutSeconds,
     execution_mode: executionMode || (shouldUseProviderDefault ? "provider_model_routed" : undefined),
     execution_profile: executionProfile || (shouldUseProviderDefault ? VERIFIED_PROVIDER_MULTI_AGENT_PROFILE : undefined),
     executor_profile: input.executor_profile || input.executorProfile,
@@ -1103,6 +1104,7 @@ function launchContextWorkPackageBackgroundJob(input = {}) {
     "--cwd", root
   ];
   if (input.timeout_seconds) args.push("--timeout-seconds", String(input.timeout_seconds));
+  if (input.idle_timeout_seconds) args.push("--idle-timeout-seconds", String(input.idle_timeout_seconds));
   if (input.channels_path) args.push("--channels-path", input.channels_path);
   if (input.profiles_path) args.push("--profiles-path", input.profiles_path);
   const child = spawn(process.execPath, args, {
@@ -1111,7 +1113,8 @@ function launchContextWorkPackageBackgroundJob(input = {}) {
     stdio: "ignore",
     env: {
       ...process.env,
-      AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS: String(input.timeout_seconds || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS || "")
+      AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS: String(input.timeout_seconds || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS || ""),
+      AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_IDLE_TIMEOUT_SECONDS: String(input.idle_timeout_seconds || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_IDLE_TIMEOUT_SECONDS || "")
     }
   });
   child.unref();
@@ -1721,6 +1724,9 @@ export function createWorkbenchServer(options = {}) {
         timeout_seconds: options.contextWorkPackageProviderTimeoutSeconds ||
           options.context_work_package_provider_timeout_seconds ||
           process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS,
+        idle_timeout_seconds: options.contextWorkPackageProviderIdleTimeoutSeconds ||
+          options.context_work_package_provider_idle_timeout_seconds ||
+          process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_IDLE_TIMEOUT_SECONDS,
         channels_path: options.agentChannelsPath ||
           options.agent_channels_path ||
           process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
@@ -2898,6 +2904,9 @@ export function createWorkbenchServer(options = {}) {
             timeout_seconds: options.contextWorkPackageProviderTimeoutSeconds ||
               options.context_work_package_provider_timeout_seconds ||
               process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS,
+            idle_timeout_seconds: options.contextWorkPackageProviderIdleTimeoutSeconds ||
+              options.context_work_package_provider_idle_timeout_seconds ||
+              process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_IDLE_TIMEOUT_SECONDS,
             channels_path: options.agentChannelsPath ||
               options.agent_channels_path ||
               process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,

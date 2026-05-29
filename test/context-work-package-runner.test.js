@@ -997,6 +997,146 @@ test("context work package dispatch failure is persisted as failed", () => {
   assert.ok(failed.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_dispatch_failed"));
 });
 
+test("no-code provider execution fails closed when it mutates the worktree", () => {
+  const workflowState = workflowStateWithContextCycle();
+  let statusCalls = 0;
+  const result = runContextWorkPackages(workflowState, {
+    selected_work_package_ids: ["runtime"],
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    execution_cwd: process.cwd(),
+    gitStatusProvider: () => {
+      statusCalls += 1;
+      return statusCalls === 1 ? "" : " M src/workflow/workbench-projection.js";
+    },
+    adapter_executor: (_workflowState, selected) => ({
+      status: "pass",
+      phase: "provider_executor_completed",
+      allows_work_package_completion: true,
+      completion_authority: {
+        allows_work_package_completion: true,
+        authority: "verified_provider_executor",
+        evidence_kind: "real_provider_execution"
+      },
+      package_results: selected.map((node) => ({
+        work_package_id: node.id,
+        status: "pass",
+        allows_work_package_completion: true,
+        completion_authority: { allows_work_package_completion: true }
+      })),
+      executor_provenance: {
+        executor_kind: "agent_invocation_provider_executor",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 1,
+        deterministic: false
+      }
+    })
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "workspace_mutation_guard");
+  assert.ok(result.issues.some((item) => item.code === "unexpected_workspace_mutation"));
+  assert.equal(result.workspace_mutation.before, "");
+  assert.match(result.workspace_mutation.after, /workbench-projection/);
+});
+
+test("code-output context work packages require an isolated worker worktree", () => {
+  const workflowState = workflowStateWithContextCycle();
+  workflowState.manifest.work_packages = workflowState.manifest.work_packages.map((workPackage) => (
+    workPackage.id === "runtime"
+      ? {
+        ...workPackage,
+        status: "pending",
+        action: "fix_code",
+        source: {
+          ...(workPackage.source || {}),
+          execution_governance: {
+            version: "work-package-execution-governance.v1",
+            granularity: "single_step",
+            decomposition: { required: false, status: "not_required" },
+            verification: { required: true, status: "defined", gate_count: 1 }
+          }
+        }
+      }
+      : workPackage
+  ));
+  workflowState.task_dag = workflowState.manifest.work_packages;
+  let adapterCalls = 0;
+
+  const result = runContextWorkPackages(workflowState, {
+    selected_work_package_ids: ["runtime"],
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    execution_cwd: "/Users/hernando_zhao/codex/projects/ai-control-platform",
+    primary_worktree_path: "/Users/hernando_zhao/codex/projects/ai-control-platform",
+    adapter_executor: () => {
+      adapterCalls += 1;
+      return { status: "pass" };
+    }
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.phase, "execution_worktree_isolation");
+  assert.ok(result.issues.some((item) => item.code === "code_output_requires_isolated_worktree"));
+  assert.equal(adapterCalls, 0);
+});
+
+test("code-output context work packages may run in an isolated worker worktree", () => {
+  const workflowState = workflowStateWithContextCycle();
+  workflowState.manifest.work_packages = workflowState.manifest.work_packages.map((workPackage) => (
+    workPackage.id === "runtime"
+      ? {
+        ...workPackage,
+        status: "pending",
+        action: "fix_code",
+        source: {
+          ...(workPackage.source || {}),
+          execution_governance: {
+            version: "work-package-execution-governance.v1",
+            granularity: "single_step",
+            decomposition: { required: false, status: "not_required" },
+            verification: { required: true, status: "defined", gate_count: 1 }
+          }
+        }
+      }
+      : workPackage
+  ));
+  workflowState.task_dag = workflowState.manifest.work_packages;
+
+  const result = runContextWorkPackages(workflowState, {
+    selected_work_package_ids: ["runtime"],
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    execution_cwd: "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/runtime",
+    primary_worktree_path: "/Users/hernando_zhao/codex/projects/ai-control-platform",
+    adapter_executor: (_workflowState, selected) => ({
+      status: "pass",
+      phase: "provider_executor_completed",
+      allows_work_package_completion: true,
+      completion_authority: {
+        allows_work_package_completion: true,
+        authority: "verified_provider_executor",
+        evidence_kind: "real_provider_execution"
+      },
+      package_results: selected.map((node) => ({
+        work_package_id: node.id,
+        status: "pass",
+        allows_work_package_completion: true,
+        completion_authority: { allows_work_package_completion: true }
+      })),
+      executor_provenance: {
+        executor_kind: "agent_invocation_provider_executor",
+        execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+        external_calls: 1,
+        deterministic: false
+      }
+    })
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.executed_count, 1);
+});
+
 test("context work package dispatch retries a failed package whose dependencies are complete", () => {
   const workflowState = workflowStateWithContextCycle();
   const workPackages = workflowState.manifest.work_packages.map((workPackage) => {

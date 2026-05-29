@@ -376,8 +376,26 @@ test("approved requirements with failed work packages are projected as failed an
           title: "完成项目 tab：实施步骤 01 / 2",
           action: "execute_requirement_plan_step",
           status: "failed",
+          result: "dispatch_failed",
+          dispatch_run_id: "dispatch-failed-project-tab-001",
+          dispatch_started_at: "2026-05-29T02:34:55.942Z",
+          dispatch_failed_at: "2026-05-29T02:38:58.623Z",
+          dispatch_artifact: {
+            path: "tmp/context-work-package-background-jobs/dispatch-failed-project-tab-001.json",
+            phase: "provider_model_routed_execution"
+          },
+          dispatch_executor_provenance: {
+            provider_attempts: [
+              { model: "deepseek-v4-pro[1m]", status: "fail", issue: "provider_executor_timeout", timed_out: true, exit_code: 1 },
+              { model: "deepseek-v4-flash", status: "fail", issue: "provider_executor_timeout", timed_out: true, exit_code: 1 }
+            ]
+          },
           global_goal_id: "requirement-project-tab-failed",
-          source: { requirement_id: "requirement-project-tab-failed" }
+          source: { requirement_id: "requirement-project-tab-failed" },
+          failure_issues: [
+            { code: "provider_executor_result_not_pass", message: "provider executor top-level status must be pass" },
+            { code: "package_result_not_pass", message: "provider executor package result must be pass" }
+          ]
         }
       ]
     }
@@ -388,6 +406,14 @@ test("approved requirements with failed work packages are projected as failed an
   assert.equal(task.status_label, "失败");
   assert.equal(task.phase_label, "执行失败");
   assert.equal(task.recoverable, true);
+  assert.equal(task.updated_at, "2026-05-29T02:38:58.623Z");
+  assert.equal(task.latest_dispatch.dispatch_run_id, "dispatch-failed-project-tab-001");
+  assert.equal(task.latest_dispatch.dispatch_failed_at, "2026-05-29T02:38:58.623Z");
+  assert.equal(task.latest_dispatch.artifact_path, "tmp/context-work-package-background-jobs/dispatch-failed-project-tab-001.json");
+  assert.equal(task.latest_dispatch.attempt_count, 2);
+  assert.equal(task.latest_dispatch.latest_attempt.model, "deepseek-v4-flash");
+  assert.equal(task.latest_dispatch.latest_attempt.issue, "provider_executor_timeout");
+  assert.deepEqual(task.latest_dispatch.issue_codes, ["provider_executor_result_not_pass", "package_result_not_pass"]);
 });
 
 test("approved requirements with completed work packages are projected as completed", () => {

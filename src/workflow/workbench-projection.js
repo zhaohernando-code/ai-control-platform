@@ -234,6 +234,41 @@ function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "", 
       const manifestWp = manifestById.get(packageId) || {};
       const merged = { ...manifestWp, ...workPackage };
       const failureIssues = asArray(merged.failure_issues || merged.failureIssues);
+      const dispatchExecutorProvenance = merged.dispatch_executor_provenance || merged.dispatchExecutorProvenance || {};
+      const dispatchPackageResults = asArray(merged.dispatch_package_results || merged.dispatchPackageResults);
+      const providerAttempts = asArray(dispatchExecutorProvenance.provider_attempts || dispatchExecutorProvenance.providerAttempts);
+      const latestAttempt = providerAttempts.at(-1) || null;
+      const dispatchArtifact = merged.dispatch_artifact || merged.dispatchArtifact || null;
+      const dispatchSummary = normalizeString(merged.dispatch_run_id || merged.dispatchRunId)
+        ? {
+          dispatch_run_id: normalizeString(merged.dispatch_run_id || merged.dispatchRunId),
+          dispatch_started_at: normalizeString(merged.dispatch_started_at || merged.dispatchStartedAt) || null,
+          dispatch_completed_at: normalizeString(merged.dispatch_completed_at || merged.dispatchCompletedAt || merged.completed_at || merged.completedAt) || null,
+          dispatch_failed_at: normalizeString(merged.dispatch_failed_at || merged.dispatchFailedAt) || null,
+          artifact_id: normalizeString(dispatchArtifact?.id || dispatchArtifact?.artifact_id || dispatchArtifact?.artifactId) || null,
+          artifact_uri: normalizeString(dispatchArtifact?.uri) || null,
+          artifact_path: normalizeString(dispatchArtifact?.path) || null,
+          phase: normalizeString(dispatchArtifact?.phase || merged.phase) || null,
+          issue_codes: failureIssues.map((fi) => normalizeString(fi.code)).filter(Boolean),
+          attempt_count: providerAttempts.length,
+          latest_attempt: latestAttempt
+            ? {
+              model: normalizeString(latestAttempt.model) || null,
+              issue: normalizeString(latestAttempt.issue) || null,
+              status: normalizeString(latestAttempt.status) || null,
+              timed_out: latestAttempt.timed_out === true || latestAttempt.timedOut === true,
+              exit_code: Number.isFinite(Number(latestAttempt.exit_code || latestAttempt.exitCode))
+                ? Number(latestAttempt.exit_code || latestAttempt.exitCode)
+                : null
+            }
+            : null,
+          package_results: dispatchPackageResults.map((result) => ({
+            work_package_id: normalizeString(result.work_package_id || result.workPackageId || result.id),
+            status: normalizeString(result.status),
+            result: normalizeString(result.result)
+          })).filter((result) => result.work_package_id)
+        }
+        : null;
       return {
         id: packageId,
         title: normalizeString(merged.title),
@@ -249,9 +284,18 @@ function taskWorkPackagesForRequirement(projectStatus = {}, requirementId = "", 
           failureIssues.map((fi) => fi.message).filter(Boolean).join("; ") ||
           merged.issues?.[0]?.message
         ) || null,
-        failure_issues: failureIssues
+        failure_issues: failureIssues,
+        ...(dispatchSummary ? { dispatch_summary: dispatchSummary } : {})
       };
     });
+}
+
+function latestDispatchSummary(workPackages = []) {
+  return asArray(workPackages)
+    .map((workPackage) => workPackage.dispatch_summary)
+    .filter(Boolean)
+    .sort((left, right) => normalizeString(right.dispatch_failed_at || right.dispatch_completed_at || right.dispatch_started_at)
+      .localeCompare(normalizeString(left.dispatch_failed_at || left.dispatch_completed_at || left.dispatch_started_at)))[0] || null;
 }
 
 function requirementGoalCompleted(projectStatus = {}, requirementId = "") {
@@ -405,7 +449,17 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}, 
     const requirementId = normalizeString(requirement.id);
     const review = planReviews[requirementId] || {};
     const workPackages = taskWorkPackagesForRequirement(projectStatus, requirementId, manifestWorkPackages);
+    const latestDispatch = latestDispatchSummary(workPackages);
     const status = taskStatusForPlanPhase(review.phase, review, requirement, projectStatus, workPackages);
+    const latestUpdate = normalizeString(
+      latestDispatch?.dispatch_failed_at ||
+      latestDispatch?.dispatch_completed_at ||
+      latestDispatch?.dispatch_started_at ||
+      review.reviewed_at ||
+      review.generated_at ||
+      review.created_at ||
+      requirement.submitted_at
+    );
     return {
       task_id: requirementId,
       title: normalizeString(requirement.title) || requirementId,
@@ -417,7 +471,7 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}, 
       phase_label: status.phase_label,
       location_label: status.location_label,
       submitted_at: normalizeString(requirement.submitted_at || requirement.created_at),
-      updated_at: normalizeString(review.reviewed_at || review.generated_at || review.created_at || requirement.submitted_at),
+      updated_at: latestUpdate,
       summary: normalizeString(requirement.summary),
       problem_statement: normalizeString(requirement.problem_statement || requirement.problemStatement),
       constraints: normalizeString(requirement.constraints),
@@ -427,6 +481,7 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}, 
         workPackages.filter((wp) => ["failed", "fail", "error", "timeout"].includes(normalizeString(wp.status).toLowerCase()))
           .map((wp) => wp.failure_reason || `${wp.title || wp.id} 执行失败`)
           .join("; ") || null,
+      ...(latestDispatch ? { latest_dispatch: latestDispatch } : {}),
       plan_review: {
         ...(review || {}),
         requirement_id: requirementId,

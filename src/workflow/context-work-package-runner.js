@@ -1,4 +1,6 @@
 import { recordArtifact } from "./artifact-ledger.js";
+import { spawnSync } from "node:child_process";
+import { isAbsolute, relative, resolve } from "node:path";
 import { recordAgentLifecycleFact } from "./agent-lifecycle-pool.js";
 import {
   executeContextWorkPackagesWithAdapter,
@@ -30,6 +32,65 @@ function issue(code, message, path) {
 
 function safeIdPart(value) {
   return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function normalizePath(value) {
+  const text = normalizeString(value);
+  return text ? resolve(text) : "";
+}
+
+function isSameOrInsidePath(candidatePath, rootPath) {
+  const candidate = normalizePath(candidatePath);
+  const root = normalizePath(rootPath);
+  if (!candidate || !root) return false;
+  const pathToCandidate = relative(root, candidate);
+  return pathToCandidate === "" || Boolean(pathToCandidate && !pathToCandidate.startsWith("..") && !isAbsolute(pathToCandidate));
+}
+
+function gitPorcelain(cwd = "", options = {}) {
+  if (typeof options.gitStatusProvider === "function") {
+    return normalizeString(options.gitStatusProvider({ cwd }));
+  }
+  if (typeof options.git_status_provider === "function") {
+    return normalizeString(options.git_status_provider({ cwd }));
+  }
+  const root = normalizePath(cwd || process.cwd());
+  const result = spawnSync("git", ["-C", root, "status", "--short", "--untracked-files=all"], {
+    encoding: "utf8",
+    timeout: 10000
+  });
+  if (result.status !== 0) return "";
+  return normalizeString(result.stdout);
+}
+
+function workPackageRequiresCodeOutput(workPackage = {}) {
+  const action = normalizeString(workPackage.action || workPackage.type).toLowerCase();
+  const title = normalizeString(workPackage.title || workPackage.reason).toLowerCase();
+  if (action === "execute_requirement_plan_step") return true;
+  if (/implement|implementation|repair|fix|code|generate|write|modify|refactor/.test(action)) return true;
+  if (/实施|修复|代码|生成|修改|重构|实现/.test(title)) return true;
+  return false;
+}
+
+function isWorkerWorktree(cwd = "", options = {}) {
+  const executionCwd = normalizePath(cwd);
+  const primary = normalizePath(
+    options.primary_worktree_path ||
+    options.primaryWorktreePath ||
+    process.env.AI_CONTROL_PLATFORM_PRIMARY_WORKTREE ||
+    "/Users/hernando_zhao/codex/projects/ai-control-platform"
+  );
+  if (!executionCwd) return false;
+  if (executionCwd.split(/[\\/]+/).includes("worker-workspaces")) return true;
+  return primary && !isSameOrInsidePath(executionCwd, primary);
+}
+
+function executionCwdFromOptions(options = {}) {
+  return normalizePath(options.execution_cwd || options.executionCwd || options.cwd || process.cwd());
+}
+
+function workspaceMutationBlocked(beforePorcelain, afterPorcelain) {
+  return normalizeString(beforePorcelain) !== normalizeString(afterPorcelain);
 }
 
 function nextArtifactId(workflowState = {}, options = {}) {
@@ -642,7 +703,10 @@ export function markContextWorkPackageDispatchFailed(workflowState = {}, options
     result: "dispatch_failed",
     dispatch_failed_at: createdAt,
     dispatch_run_id: dispatchRunId || workPackage.dispatch_run_id || null,
-    failure_issues: asArray(options.issues).slice(0, 12)
+    failure_issues: asArray(options.issues).slice(0, 12),
+    dispatch_artifact: options.dispatch_artifact || options.dispatchArtifact || workPackage.dispatch_artifact || null,
+    dispatch_package_results: asArray(options.package_results || options.packageResults).slice(0, 12),
+    dispatch_executor_provenance: options.executor_provenance || options.executorProvenance || null
   }));
   const manifest = appendRunEvent({
     ...workflowState.manifest,
@@ -656,7 +720,10 @@ export function markContextWorkPackageDispatchFailed(workflowState = {}, options
     metadata: {
       dispatch_run_id: dispatchRunId || null,
       selected_work_package_ids: [...selectedIds],
-      issues: asArray(options.issues).slice(0, 12)
+      issues: asArray(options.issues).slice(0, 12),
+      dispatch_artifact: options.dispatch_artifact || options.dispatchArtifact || null,
+      package_results: asArray(options.package_results || options.packageResults).slice(0, 12),
+      executor_provenance: options.executor_provenance || options.executorProvenance || null
     }
   });
 
@@ -769,6 +836,37 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
     };
   }
 
+  const executionCwd = executionCwdFromOptions(options);
+  const requiresCodeOutput = selected.some(workPackageRequiresCodeOutput);
+  if (requiresCodeOutput && !isWorkerWorktree(executionCwd, options)) {
+    return {
+      status: "blocked",
+      phase: "execution_worktree_isolation",
+      issues: [
+        issue(
+          "code_output_requires_isolated_worktree",
+          "code-output context work packages must execute in an isolated worker worktree, not the primary platform worktree",
+          "execution_cwd"
+        )
+      ],
+      dispatchable_count: dispatchable.length,
+      selected_work_package_ids: selected.map((node) => node.id),
+      fixed_development_mode_gate: fixedDevelopmentModeGate,
+      work_package_execution_governance: executionGovernanceGate,
+      execution_cwd: executionCwd,
+      allows_work_package_completion: false,
+      completion_authority: {
+        allows_work_package_completion: false,
+        authority: "worktree_isolation",
+        evidence_kind: "pre_dispatch_gate",
+        reason: "implementation work packages require isolated worker worktree execution"
+      }
+    };
+  }
+  const workspacePorcelainBefore = requiresCodeOutput || options.skip_workspace_mutation_check === true
+    ? null
+    : gitPorcelain(executionCwd, options);
+
   const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
   let executedNodes = selected;
   let executionOptions = {
@@ -871,8 +969,42 @@ export function runContextWorkPackages(workflowState = {}, options = {}) {
         : executeContextWorkPackagesWithAdapter;
     const adapterResult = adapterExecutor(normalizedWorkflowState, selected, {
       ...options,
-      created_at: createdAt
+      created_at: createdAt,
+      execution_cwd: executionCwd
     });
+    const workspacePorcelainAfter = requiresCodeOutput || options.skip_workspace_mutation_check === true
+      ? null
+      : gitPorcelain(executionCwd, options);
+    if (workspaceMutationBlocked(workspacePorcelainBefore, workspacePorcelainAfter)) {
+      return {
+        status: "blocked",
+        phase: "workspace_mutation_guard",
+        issues: [
+          issue(
+            "unexpected_workspace_mutation",
+            "no-code context work package execution changed the git worktree",
+            "git.status"
+          )
+        ],
+        dispatchable_count: dispatchable.length,
+        selected_work_package_ids: selected.map((node) => node.id),
+        fixed_development_mode_gate: fixedDevelopmentModeGate,
+        execution_plan: adapterResult.execution_plan,
+        package_results: adapterResult.package_results,
+        executor_provenance: adapterResult.executor_provenance || null,
+        workspace_mutation: {
+          before: workspacePorcelainBefore,
+          after: workspacePorcelainAfter
+        },
+        allows_work_package_completion: false,
+        completion_authority: {
+          allows_work_package_completion: false,
+          authority: "workspace_mutation_guard",
+          evidence_kind: "unexpected_workspace_mutation",
+          reason: "no-code execution cannot complete after mutating the worktree"
+        }
+      };
+    }
 
     if (adapterResult.status === "fail" || adapterResult.status === "blocked") {
       return {

@@ -6,6 +6,7 @@ import {
   createAgentInvocationPlan,
   loadAgentInvocationConfig,
   redactInvocationText,
+  runCommandWithIdleTimeout,
   runAgentInvocation
 } from "../src/workflow/agent-invocation.js";
 
@@ -216,4 +217,37 @@ test("redactInvocationText removes API secrets from arbitrary text", () => {
     redactInvocationText("before token after", { key: { secret: "token" } }),
     "before [REDACTED] after"
   );
+});
+
+test("idle-aware runner allows long-running commands that keep producing output", () => {
+  const result = runCommandWithIdleTimeout(process.execPath, [
+    "-e",
+    "let n=0; const t=setInterval(()=>{ console.log('tick '+(++n)); if(n===3){ clearInterval(t); } }, 80);"
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    timeout: 1000,
+    idle_timeout_ms: 180
+  });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /tick 3/);
+  assert.equal(result.timed_out, false);
+});
+
+test("idle-aware runner times out commands that produce no intermediate output", () => {
+  const result = runCommandWithIdleTimeout(process.execPath, [
+    "-e",
+    "setTimeout(()=>console.log('late'), 500);"
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    timeout: 2000,
+    idle_timeout_ms: 120
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.error?.code, "ETIMEDOUT");
+  assert.equal(result.timed_out, true);
+  assert.doesNotMatch(result.stdout, /late/);
 });

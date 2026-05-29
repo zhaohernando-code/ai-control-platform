@@ -96,6 +96,23 @@ function validateProjectManagement(projection, issues, path = "project_managemen
   if (!Array.isArray(projection.task_flow) || projection.task_flow.length < 7) {
     issues.push(issue("missing_project_management_task_flow", "project_management.task_flow must expose the project lifecycle", `${path}.task_flow`));
   }
+  asArray(projection.task_items).forEach((task, index) => {
+    const dispatch = task?.latest_dispatch;
+    if (!dispatch) return;
+    if (!normalizeString(dispatch.dispatch_run_id)) {
+      issues.push(issue("missing_task_latest_dispatch_run_id", "task latest_dispatch must include dispatch_run_id", `${path}.task_items[${index}].latest_dispatch.dispatch_run_id`));
+    }
+    if (
+      !normalizeString(dispatch.dispatch_started_at) &&
+      !normalizeString(dispatch.dispatch_failed_at) &&
+      !normalizeString(dispatch.dispatch_completed_at)
+    ) {
+      issues.push(issue("missing_task_latest_dispatch_timestamp", "task latest_dispatch must include a dispatch timestamp", `${path}.task_items[${index}].latest_dispatch`));
+    }
+    if (!Array.isArray(dispatch.issue_codes)) {
+      issues.push(issue("invalid_task_latest_dispatch_issue_codes", "task latest_dispatch.issue_codes must be an array", `${path}.task_items[${index}].latest_dispatch.issue_codes`));
+    }
+  });
 }
 
 function validateStatus(projection, issues) {

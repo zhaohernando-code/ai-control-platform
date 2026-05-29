@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { dirname, join, resolve } from "node:path";
 
 import { VERIFIED_PROVIDER_MULTI_AGENT_PROFILE } from "../src/workflow/context-work-package-execution-adapter.js";
 import { createAgentContextWorkPackageProviderExecutor } from "../src/workflow/context-work-package-provider-executor.js";
@@ -44,6 +45,56 @@ function csvValues(value) {
   return normalizeString(value).split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function safeIdPart(value) {
+  return normalizeString(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function selectedWorkPackages(workflowState = {}, selectedIds = []) {
+  const selected = new Set(selectedIds.map(normalizeString).filter(Boolean));
+  return (workflowState.manifest?.work_packages || [])
+    .filter((workPackage) => selected.has(normalizeString(workPackage?.id || workPackage?.work_package_id)));
+}
+
+function workPackageRequiresCodeOutput(workPackage = {}) {
+  const action = normalizeString(workPackage.action || workPackage.type).toLowerCase();
+  const title = normalizeString(workPackage.title || workPackage.reason).toLowerCase();
+  if (action === "execute_requirement_plan_step") return true;
+  if (/implement|implementation|repair|fix|code|generate|write|modify|refactor/.test(action)) return true;
+  if (/实施|修复|代码|生成|修改|重构|实现/.test(title)) return true;
+  return false;
+}
+
+function isWorkerWorktree(path = "") {
+  return resolve(path).split(/[\\/]+/).includes("worker-workspaces");
+}
+
+function createExecutionWorktree(repoRoot = "", dispatchRunId = "") {
+  const root = resolve(repoRoot || process.cwd());
+  if (isWorkerWorktree(root)) {
+    return { status: "pass", path: root, branch: null, reused: true };
+  }
+  const codexRoot = resolve(root, "..", "..");
+  const projectId = root.split(/[\\/]+/).pop() || "ai-control-platform";
+  const workerBase = join(codexRoot, "worker-workspaces", projectId);
+  mkdirSync(workerBase, { recursive: true });
+  const slug = safeIdPart(dispatchRunId || `context-work-package-${Date.now()}`).slice(0, 80);
+  const worktreePath = join(workerBase, slug);
+  const branchName = `worker/${slug}`;
+  const result = spawnSync("git", ["-C", root, "worktree", "add", "-b", branchName, worktreePath, "HEAD"], {
+    encoding: "utf8",
+    timeout: 30000
+  });
+  if (result.status !== 0) {
+    return {
+      status: "fail",
+      path: worktreePath,
+      branch: branchName,
+      error: normalizeString(result.stderr) || normalizeString(result.stdout) || "git worktree add failed"
+    };
+  }
+  return { status: "pass", path: worktreePath, branch: branchName, reused: false };
+}
+
 function writeJson(path, value) {
   const destination = resolve(path);
   mkdirSync(dirname(destination), { recursive: true });
@@ -83,10 +134,22 @@ let exitCode = 0;
 
 try {
   workflowState = stateStore.readWorkflowSnapshot(snapshotId);
+  const requestedCwd = resolve(valueAfter("--cwd", args) || process.cwd());
+  const selectedPackages = selectedWorkPackages(workflowState, selectedIds);
+  const requiresCodeOutput = selectedPackages.some(workPackageRequiresCodeOutput);
+  const executionWorktree = requiresCodeOutput
+    ? createExecutionWorktree(requestedCwd, dispatchRunId)
+    : { status: "pass", path: requestedCwd, branch: null, reused: true };
+  if (executionWorktree.status !== "pass") {
+    throw new Error(`failed to create isolated execution worktree: ${executionWorktree.error}`);
+  }
+  const providerCwd = executionWorktree.path;
   const executor = createAgentContextWorkPackageProviderExecutor({
-    cwd: valueAfter("--cwd", args) || process.cwd(),
+    cwd: providerCwd,
     stateStore,
     timeout_seconds: valueAfter("--timeout-seconds", args) || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_TIMEOUT_SECONDS,
+    idle_timeout_seconds: valueAfter("--idle-timeout-seconds", args) || process.env.AI_CONTROL_WORKBENCH_CONTEXT_PROVIDER_IDLE_TIMEOUT_SECONDS,
+    no_tools: !requiresCodeOutput,
     channels_path: valueAfter("--channels-path", args) || process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
     profiles_path: valueAfter("--profiles-path", args) || process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH
   });
@@ -96,6 +159,9 @@ try {
     execution_mode: "provider_model_routed",
     execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
     created_at: createdAt,
+    execution_cwd: providerCwd,
+    primary_worktree_path: requestedCwd,
+    worker_worktree: executionWorktree,
     provider_executor: executor
   });
 
@@ -110,7 +176,14 @@ try {
       selected_work_package_ids: selectedIds,
       dispatch_run_id: dispatchRunId,
       created_at: createdAt,
-      issues: result.issues || []
+      issues: result.issues || [],
+      package_results: result.package_results || result.artifact?.metadata?.package_results || [],
+      executor_provenance: result.executor_provenance || result.artifact?.metadata?.executor_provenance || null,
+      dispatch_artifact: {
+        path: resolve(outputPath),
+        status: result.status,
+        phase: result.phase
+      }
     });
     if (failed.status === "pass") {
       stateStore.writeWorkflowSnapshot(snapshotId, failed.workflow_state);
@@ -138,6 +211,7 @@ try {
       artifact: result.artifact || null,
       package_results: result.package_results || result.artifact?.metadata?.package_results || [],
       executor_provenance: result.executor_provenance || result.artifact?.metadata?.executor_provenance || null,
+      worker_worktree: executionWorktree,
       completion_authority: result.completion_authority || result.artifact?.metadata?.completion_authority || null
     }
   };

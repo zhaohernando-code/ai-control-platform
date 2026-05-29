@@ -43,7 +43,8 @@ function numberValue(value, fallback) {
 function toolsString(value, noTools = false) {
   if (noTools === true) return "";
   if (Array.isArray(value)) return value.map(normalizeString).filter(Boolean).join(",");
-  return normalizeString(value);
+  const normalized = normalizeString(value);
+  return normalized || undefined;
 }
 
 function jsonCandidate(text) {
@@ -58,6 +59,22 @@ function jsonCandidate(text) {
 
 export function parseProviderExecutorOutput(stdout = "") {
   const direct = normalizeString(stdout);
+  const lines = direct.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  for (const line of [...lines].reverse()) {
+    if (!line.startsWith("{") || !line.endsWith("}")) continue;
+    try {
+      const parsed = JSON.parse(line);
+      if (isObject(parsed?.structured_output || parsed?.structuredOutput)) {
+        return parsed.structured_output || parsed.structuredOutput;
+      }
+      if (isObject(parsed) && normalizeString(parsed.type) === "result" && typeof parsed.result === "string") {
+        return parseProviderExecutorOutput(parsed.result);
+      }
+      if (isObject(parsed) && normalizeString(parsed.status)) return parsed;
+    } catch {
+      // Continue scanning earlier stream-json records.
+    }
+  }
   if (direct.startsWith("{") && direct.endsWith("}")) {
     try {
       const parsed = JSON.parse(direct);
@@ -95,9 +112,10 @@ function commandAuditFor(command = {}) {
     cwd: command.cwd,
     prompt_file: null,
     timeout_seconds: command.timeout_seconds,
+    idle_timeout_seconds: command.idle_timeout_seconds,
     model: command.model,
     tools: command.tools,
-    no_tools: command.tools === "",
+    no_tools: command.no_tools === true,
     effort: command.effort,
     max_budget_usd: command.max_budget_usd,
     add_dir: command.add_dir,
@@ -120,8 +138,9 @@ function providerProvenance(command = {}, overrides = {}) {
     external_calls: 1,
     deterministic: false,
     timeout_seconds: command.timeout_seconds,
+    idle_timeout_seconds: command.idle_timeout_seconds,
     tools: command.tools,
-    no_tools: command.tools === "",
+    no_tools: command.no_tools === true,
     cwd: command.cwd,
     prompt_file: null,
     profile_id: command.profile_id,
@@ -298,8 +317,10 @@ export function promptForProviderExecution(input = {}) {
 export function createAgentContextWorkPackageProviderCommand(input = {}) {
   const cwd = resolve(normalizeString(input.cwd) || process.cwd());
   const timeoutSeconds = numberValue(input.timeout_seconds || input.timeoutSeconds, 120);
+  const idleTimeoutSeconds = numberValue(input.idle_timeout_seconds || input.idleTimeoutSeconds || input.idle_timeout || input.idleTimeout, timeoutSeconds);
   const model = normalizeString(input.model) || DEFAULT_MODEL;
-  const tools = toolsString(input.tools ?? input.allowed_tools ?? input.allowedTools, input.no_tools === true || input.noTools === true);
+  const noTools = input.no_tools === true || input.noTools === true;
+  const tools = toolsString(input.tools ?? input.allowed_tools ?? input.allowedTools, noTools);
   const addDir = normalizeString(input.add_dir || input.addDir) || cwd;
   const effort = normalizeToken(input.effort) || "high";
   const maxBudgetUsd = normalizeString(input.max_budget_usd || input.maxBudgetUsd) || "1";
@@ -309,10 +330,14 @@ export function createAgentContextWorkPackageProviderCommand(input = {}) {
     cwd,
     model,
     tools,
+    no_tools: noTools,
     add_dir: addDir,
     effort,
     max_budget_usd: maxBudgetUsd,
+    output_format: normalizeString(input.output_format || input.outputFormat) || "stream-json",
+    include_partial_messages: input.include_partial_messages !== false && input.includePartialMessages !== false,
     timeout_ms: timeoutSeconds * 1000,
+    idle_timeout_ms: idleTimeoutSeconds * 1000,
     invocation_id: input.invocation_id || input.invocationId,
     candidate_index: input.candidate_index ?? input.candidateIndex
   }, {
@@ -329,7 +354,9 @@ export function createAgentContextWorkPackageProviderCommand(input = {}) {
     args: invocation.args || [],
     cwd,
     timeout_seconds: timeoutSeconds,
+    idle_timeout_seconds: idleTimeoutSeconds,
     tools,
+    no_tools: noTools,
     model: invocation.model || model,
     effort,
     max_budget_usd: maxBudgetUsd,
@@ -410,6 +437,7 @@ export function createAgentContextWorkPackageProviderExecutor(options = {}) {
         effort: command.effort,
         max_budget_usd: command.max_budget_usd,
         timeout_ms: command.timeout_seconds * 1000,
+        idle_timeout_ms: command.idle_timeout_seconds * 1000,
         invocation_id: `${normalizeString(workflow_state?.run_id || workflow_state?.runId) || "context-work-package"}:${index}`,
         candidate_index: command.candidate_index ?? undefined
       }, {

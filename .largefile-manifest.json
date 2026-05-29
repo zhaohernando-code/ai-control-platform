@@ -26,6 +26,12 @@
       "status": "accepted",
       "reviewed_at": "2026-05-28"
     },
+    "src/workflow/agent-invocation.js": {
+      "lines": 506,
+      "reason": "Agent invocation entrypoint: keeps provider profile resolution, CLI command construction, idle-aware process execution, and output normalization together for all model-backed flows.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-29"
+    },
     "src/workflow/autonomous-continuation.js": {
       "lines": 838,
       "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
@@ -50,11 +56,17 @@
       "status": "accepted",
       "reviewed_at": "2026-05-28"
     },
+    "src/workflow/context-work-package-provider-executor.js": {
+      "lines": 505,
+      "reason": "Context work package provider executor: maps provider CLI command construction, streamed result parsing, provenance, and package-level pass/fail evidence.",
+      "status": "accepted",
+      "reviewed_at": "2026-05-29"
+    },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1061,
+      "lines": 1193,
       "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, and result normalization share one flow.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "src/workflow/development-flow-real.js": {
       "lines": 693,
@@ -69,10 +81,10 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 2133,
+      "lines": 2141,
       "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "src/workflow/live-route-acceptance.js": {
       "lines": 602,
@@ -87,10 +99,10 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2337,
+      "lines": 2392,
       "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, and public-route state into one projection schema.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "test/autonomous-continuation.test.js": {
       "lines": 1357,
@@ -105,16 +117,16 @@
       "reviewed_at": "2026-05-28"
     },
     "test/context-work-package-provider-executor.test.js": {
-      "lines": 837,
+      "lines": 864,
       "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, and error paths.",
       "status": "accepted",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "test/context-work-package-runner.test.js": {
-      "lines": 1029,
+      "lines": 1169,
       "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "test/frontend-acceptance.test.js": {
       "lines": 1595,
@@ -135,10 +147,10 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 3062,
+      "lines": 3088,
       "reason": "Workbench projection tests cover the full projection schema and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "test/workbench-server.test.js": {
       "lines": 4299,
