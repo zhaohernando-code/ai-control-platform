@@ -75,6 +75,7 @@ import {
 import {
   createSqliteWorkbenchStateStore,
   isSqliteSnapshotPath,
+  mergeProjectStatusHistory,
   sqliteSnapshotIdFromInputPath,
   sqliteSnapshotInputPath
 } from "../src/workflow/workbench-state-store.js";
@@ -169,16 +170,42 @@ function createInitialWorkflowState(runId, cycleId, projectStatusPath = null, st
   };
 }
 
-function projectionInputWithProjectStatus(input = {}, projectStatusPath = null, stateStore = null) {
+function projectStatusFromHistory(history = {}, selectedId = "", allowedRoots = [examplesRoot, defaultSnapshotsRoot], stateStore = null) {
+  const items = Array.isArray(history.items) ? [...history.items].reverse() : [];
+  const statuses = [];
+  for (const item of items) {
+    if (!item?.input_path) continue;
+    try {
+      const workflowState = readWorkflowStateFromItem(item, allowedRoots, stateStore);
+      if (workflowState?.project_status || workflowState?.projectStatus) {
+        statuses.push(workflowState.project_status || workflowState.projectStatus);
+      }
+    } catch {
+      // Stale history entries should not prevent the current projection from rendering.
+    }
+    if (selectedId && item.id === selectedId) break;
+  }
+  return mergeProjectStatusHistory(...statuses);
+}
+
+function projectionInputWithProjectStatus(input = {}, projectStatusPath = null, stateStore = null, context = {}) {
   const projectStatus = readProjectStatus(projectStatusPath, stateStore);
+  const historicalProjectStatus = context.history
+    ? projectStatusFromHistory(context.history, context.selectedId || context.selected_id, context.allowedRoots, stateStore)
+    : null;
+  const mergedProjectStatus = mergeProjectStatusHistory(
+    historicalProjectStatus,
+    input.project_status || input.projectStatus,
+    projectStatus
+  );
   const agentKeyHealth = stateStore && typeof stateStore.summarizeAgentRegistry === "function"
     ? stateStore.summarizeAgentRegistry()
     : input.agent_key_health || input.agentKeyHealth;
-  if (!projectStatus) return agentKeyHealth ? { ...input, agent_key_health: agentKeyHealth } : input;
+  if (Object.keys(mergedProjectStatus).length === 0) return agentKeyHealth ? { ...input, agent_key_health: agentKeyHealth } : input;
   return {
     ...input,
-    project_status: projectStatus,
-    global_goals: Array.isArray(projectStatus.global_goals) ? projectStatus.global_goals : input.global_goals,
+    project_status: mergedProjectStatus,
+    global_goals: Array.isArray(mergedProjectStatus.global_goals) ? mergedProjectStatus.global_goals : input.global_goals,
     agent_key_health: agentKeyHealth
   };
 }
@@ -254,7 +281,11 @@ function projectionById(id = null, history = readJson(historyPath), allowedRoots
     history,
     item,
     projection: item.input_path
-      ? createWorkbenchProjection(projectionInputWithProjectStatus(readWorkflowStateFromItem(item, allowedRoots, stateStore), projectStatusPath, stateStore))
+      ? createWorkbenchProjection(projectionInputWithProjectStatus(readWorkflowStateFromItem(item, allowedRoots, stateStore), projectStatusPath, stateStore, {
+        history,
+        selectedId,
+        allowedRoots
+      }))
       : stateStore
         ? requireSqliteWorkflowSnapshot()
         : readJson(historyItemPath(item.projection_path, "projection_path", allowedRoots))

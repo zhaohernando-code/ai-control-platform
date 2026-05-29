@@ -17,6 +17,67 @@ function normalizeString(value) {
   return String(value || "").trim();
 }
 
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function idFor(value = {}) {
+  return normalizeString(value.id || value.requirement_id || value.requirementId || value.work_package_id || value.workPackageId);
+}
+
+function mergeArrayById(left = [], right = []) {
+  const order = [];
+  const byId = new Map();
+  for (const entry of [...(Array.isArray(left) ? left : []), ...(Array.isArray(right) ? right : [])]) {
+    if (!isObject(entry)) continue;
+    const id = idFor(entry);
+    if (!id) continue;
+    if (!byId.has(id)) order.push(id);
+    byId.set(id, { ...(byId.get(id) || {}), ...entry });
+  }
+  return order.map((id) => byId.get(id));
+}
+
+function mergeObjectMap(left = {}, right = {}) {
+  return {
+    ...(isObject(left) ? left : {}),
+    ...(isObject(right) ? right : {})
+  };
+}
+
+export function mergeProjectStatusHistory(...projectStatuses) {
+  return projectStatuses
+    .filter(isObject)
+    .reduce((merged, next) => {
+      const mergedRequirementIntake = isObject(merged.requirement_intake) ? merged.requirement_intake : {};
+      const nextRequirementIntake = isObject(next.requirement_intake) ? next.requirement_intake : {};
+      const requirementItems = mergeArrayById(mergedRequirementIntake.items, nextRequirementIntake.items);
+      const globalGoals = mergeArrayById(merged.global_goals || merged.globalGoals, next.global_goals || next.globalGoals);
+      const nextWorkPackages = mergeArrayById(
+        merged.next_work_packages || merged.nextWorkPackages,
+        next.next_work_packages || next.nextWorkPackages
+      );
+      return {
+        ...merged,
+        ...next,
+        ...(globalGoals.length > 0 ? { global_goals: globalGoals } : {}),
+        ...(nextWorkPackages.length > 0 ? { next_work_packages: nextWorkPackages } : {}),
+        plan_reviews: mergeObjectMap(merged.plan_reviews, next.plan_reviews),
+        requirement_intake: {
+          ...mergedRequirementIntake,
+          ...nextRequirementIntake,
+          ...(requirementItems.length > 0 ? { items: requirementItems } : {}),
+          active_requirement_id: normalizeString(nextRequirementIntake.active_requirement_id) ||
+            normalizeString(mergedRequirementIntake.active_requirement_id) ||
+            null,
+          latest_requirement_id: normalizeString(nextRequirementIntake.latest_requirement_id) ||
+            normalizeString(mergedRequirementIntake.latest_requirement_id) ||
+            null
+        }
+      };
+    }, {});
+}
+
 function readJsonFile(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
@@ -135,7 +196,12 @@ ON CONFLICT(key) DO UPDATE SET json = excluded.json, updated_at = excluded.updat
   const readHistory = () => readKey("projection_history", defaultHistory());
   const writeHistory = (history) => writeKey("projection_history", history);
   const readProjectStatus = () => readKey("project_status", null);
-  const writeProjectStatus = (projectStatus) => writeKey("project_status", projectStatus);
+  const writeProjectStatus = (projectStatus, writeOptions = {}) => {
+    const nextProjectStatus = writeOptions.replace === true
+      ? projectStatus
+      : mergeProjectStatusHistory(readProjectStatus(), projectStatus);
+    return writeKey("project_status", nextProjectStatus);
+  };
   const readEvents = () => readKey("operator_events", defaultEvents());
   const writeEvents = (events) => writeKey("operator_events", events);
 
@@ -147,6 +213,24 @@ ON CONFLICT(key) DO UPDATE SET json = excluded.json, updated_at = excluded.updat
       throw error;
     }
     return JSON.parse(rows[0].workflow_json);
+  };
+
+  const projectStatusHistoryFromSnapshots = (history = readHistory(), selectedId = "") => {
+    const items = Array.isArray(history.items) ? [...history.items].reverse() : [];
+    const statuses = [];
+    for (const item of items) {
+      if (!item?.input_path || !isSqliteSnapshotPath(item.input_path)) continue;
+      try {
+        const workflowState = readWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path));
+        if (workflowState?.project_status || workflowState?.projectStatus) {
+          statuses.push(workflowState.project_status || workflowState.projectStatus);
+        }
+      } catch {
+        // History can contain stale entries during migrations; ignore unreadable snapshots.
+      }
+      if (selectedId && item.id === selectedId) break;
+    }
+    return mergeProjectStatusHistory(...statuses);
   };
 
   const writeWorkflowSnapshot = (id, workflowState, item = null, updatedAt = nowIso()) => {
@@ -217,12 +301,26 @@ ON CONFLICT(id) DO UPDATE SET
     if (issues.length > 0) {
       return { status: "fail", issues, item: null, projection: null };
     }
-    const workflowState = input.input || input.workflow_state || input.workflowState;
+    const rawWorkflowState = input.input || input.workflow_state || input.workflowState;
+    const projectStatus = mergeProjectStatusHistory(
+      projectStatusHistoryFromSnapshots(readHistory()),
+      rawWorkflowState?.project_status || rawWorkflowState?.projectStatus,
+      input.project_status || input.projectStatus
+    );
+    const workflowState = {
+      ...rawWorkflowState,
+      ...(Object.keys(projectStatus).length > 0
+        ? {
+          project_status: projectStatus,
+          global_goals: Array.isArray(projectStatus.global_goals) ? projectStatus.global_goals : rawWorkflowState?.global_goals
+        }
+        : {})
+    };
     // Merge model_plan and project_status into projection input for complete context
     const projectionInput = {
       ...workflowState,
       model_plan: input.model_plan || workflowState?.model_plan,
-      project_status: input.project_status || workflowState?.project_status
+      project_status: projectStatus
     };
     const projection = createWorkbenchProjection(projectionInput);
     const publishIssues = projectionPublishIssues(projection);

@@ -10,6 +10,7 @@ import {
   createSqliteWorkbenchStateStore,
   isSqliteSnapshotPath
 } from "../src/workflow/workbench-state-store.js";
+import { currentSessionWorkflowState } from "./helpers/current-session-workflow-state.js";
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -197,6 +198,134 @@ test("workbench server state-db mode keeps live writes out of seeded json files"
     assert.equal(readFileSync(projectStatusPath, "utf8"), originals.projectStatus);
     assert.equal(readFileSync(eventsPath, "utf8"), originals.events);
     assert.equal(readFileSync(inputPath, "utf8"), originals.input);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("workbench state-db projection preserves historical task items when latest status is narrower", async () => {
+  mkdirSync("tmp", { recursive: true });
+  const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-state-history-"));
+  const store = createSqliteWorkbenchStateStore({
+    dbPath: join(dir, "workbench-state.sqlite")
+  });
+  const baseWorkflowState = currentSessionWorkflowState({ withoutRequirementIntake: true });
+  const historicalProjectStatus = {
+    project: "ai-control-platform",
+    status: "in_progress",
+    updated_at: "2026-05-28T12:17:35.134Z",
+    requirement_intake: {
+      items: [
+        {
+          id: "requirement-tab-20260528064224",
+          title: "完成“项目”tab",
+          project_id: "ai-control-platform",
+          status: "submitted",
+          submitted_at: "2026-05-28T06:42:24.931Z",
+          problem_statement: "项目 tab 需要接入项目治理。"
+        }
+      ],
+      latest_requirement_id: "requirement-tab-20260528064224"
+    },
+    plan_reviews: {
+      "requirement-tab-20260528064224": {
+        id: "plan-review-requirement-tab-20260528064224",
+        requirement_id: "requirement-tab-20260528064224",
+        requirement_title: "完成“项目”tab",
+        phase: "in_development",
+        status: "approved"
+      }
+    },
+    global_goals: [
+      {
+        id: "requirement-tab-20260528064224",
+        title: "完成“项目”tab",
+        status: "in_progress"
+      }
+    ],
+    next_work_packages: [
+      {
+        id: "requirement-tab-20260528064224-plan-step-02",
+        title: "完成“项目”tab：实施步骤 02 / 6",
+        action: "execute_requirement_plan_step",
+        status: "failed",
+        global_goal_id: "requirement-tab-20260528064224",
+        source: { requirement_id: "requirement-tab-20260528064224" }
+      }
+    ]
+  };
+  const narrowProjectStatus = {
+    project: "ai-control-platform",
+    status: "in_progress",
+    updated_at: "2026-05-29T05:25:14.507Z",
+    requirement_intake: {
+      items: [
+        {
+          id: "requirement-unknown-20260526033003",
+          title: "前端重构",
+          project_id: "ai-control-platform",
+          status: "completed",
+          submitted_at: "2026-05-26T03:30:03.063Z"
+        }
+      ],
+      latest_requirement_id: "requirement-unknown-20260526033003"
+    },
+    global_goals: []
+  };
+  const oldItem = {
+    id: "old-with-project-tab",
+    label: "Old with project tab",
+    input_path: "sqlite://workflow-snapshot/old-with-project-tab",
+    projection_path: null,
+    created_at: "2026-05-28T12:17:35.134Z",
+    status: "pass"
+  };
+  const latestItem = {
+    id: "latest-narrow",
+    label: "Latest narrow",
+    input_path: "sqlite://workflow-snapshot/latest-narrow",
+    projection_path: null,
+    created_at: "2026-05-29T05:25:14.507Z",
+    status: "pass"
+  };
+  store.writeWorkflowSnapshot("old-with-project-tab", {
+    ...baseWorkflowState,
+    project_status: historicalProjectStatus,
+    global_goals: historicalProjectStatus.global_goals
+  }, oldItem);
+  store.writeWorkflowSnapshot("latest-narrow", {
+    ...baseWorkflowState,
+    project_status: narrowProjectStatus,
+    global_goals: narrowProjectStatus.global_goals
+  }, latestItem);
+  store.writeHistory({
+    version: "projection-history.v1",
+    latest: "latest-narrow",
+    items: [latestItem, oldItem]
+  });
+  store.writeProjectStatus(narrowProjectStatus);
+
+  const server = createWorkbenchServer({
+    stateStore: store,
+    projectStatusPath: null
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const { port } = server.address();
+
+  try {
+    const response = await request(`http://127.0.0.1:${port}/api/workbench/projection`);
+    const projection = response.json();
+    const taskIds = projection.project_management.task_items.map((task) => task.task_id);
+
+    assert.equal(response.status, 200);
+    assert.ok(taskIds.includes("requirement-tab-20260528064224"));
+    assert.ok(taskIds.includes("requirement-unknown-20260526033003"));
+    assert.equal(
+      projection.project_management.task_items.find((task) => task.task_id === "requirement-tab-20260528064224").failure_reason,
+      "完成“项目”tab：实施步骤 02 / 6 执行失败"
+    );
   } finally {
     server.close();
     await once(server, "close");

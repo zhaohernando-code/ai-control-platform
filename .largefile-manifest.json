@@ -159,8 +159,8 @@
       "reviewed_at": "2026-05-28"
     },
     "tools/workbench-server.mjs": {
-      "lines": 3752,
-      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, provider dispatch, and mounted public-route behavior while the server is still a single operational boundary.",
+      "lines": 3792,
+      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch, and mounted public-route behavior while the server is still a single operational boundary.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
