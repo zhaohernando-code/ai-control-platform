@@ -165,7 +165,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-shell.test.js": {
-      "lines": 815,
+      "lines": 816,
       "reason": "Workbench shell tests cover desktop/mobile shell invariants and mounted entry compatibility across shared fixtures.",
       "status": "accepted",
       "reviewed_at": "2026-05-28"
