@@ -72,7 +72,9 @@
       "hooks": ["development_flow", "fixture_acceptance"],
       "candidates": [
         { "agent_id": "codex-account", "model": "gpt-5.5" },
-        { "agent_id": "codex-token", "model": "gpt-5.5" }
+        { "agent_id": "codex-token", "model": "gpt-5.5" },
+        { "agent_id": "codex-account", "model": "gpt-5.3-codex-spark" },
+        { "agent_id": "codex-token", "model": "gpt-5.3-codex-spark" }
       ]
     },
     "development_flow_claude": {

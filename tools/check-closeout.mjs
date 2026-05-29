@@ -59,7 +59,7 @@ export function runCloseoutChecks() {
   run("workbench public browser route", ["tools/check-workbench-public-browser-route.mjs"]);
   run("workbench state boundary", ["tools/check-workbench-state-boundary.mjs"]);
   run("workbench live state cleanliness", ["tools/check-workbench-live-state-cleanliness.mjs"]);
-  run("development flow real dual CLI", ["tools/check-development-flow-real.mjs"]);
+  run("development flow provider C2C governance", ["tools/check-development-flow-real.mjs"]);
   run("governance audit skill trial", [
     "tools/run-governance-audit-skill-trial.mjs",
     "--route", `http://${WORKBENCH_HOST}:4180/projects/ai-control-platform/flow`,

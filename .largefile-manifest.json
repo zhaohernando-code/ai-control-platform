@@ -69,10 +69,10 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/development-flow-real.js": {
-      "lines": 683,
-      "reason": "Development flow real acceptance harness: fixture setup, dual CLI command construction, model-output contract parsing, and phase evidence aggregation are kept together for the first reusable gate.",
+      "lines": 892,
+      "reason": "Development flow real acceptance harness: fixture setup, dual CLI command construction, provider C2C dispatch governance, model-output contract parsing, and phase evidence aggregation are kept together for the reusable closeout gate.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "src/workflow/frontend-acceptance.js": {
       "lines": 801,

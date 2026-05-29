@@ -17,6 +17,13 @@ export const REQUIRED_DEVELOPMENT_FLOW_PHASES = [
   "final_evaluated"
 ];
 
+export const REQUIRED_DEVELOPMENT_FLOW_C2C_CHECKS = [
+  "context_provider_dispatch_chain",
+  "provider_command_contract",
+  "live_startup_timeout_policy",
+  "isolated_worker_worktree"
+];
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -169,6 +176,65 @@ function runnerContractIssues(runId, run = {}) {
   return [];
 }
 
+function c2cGovernanceIssues(artifact = {}) {
+  const issues = [];
+  const governance = artifact.c2c_governance || artifact.c2cGovernance;
+  if (!isObject(governance)) {
+    return [
+      issue(
+        "missing_development_flow_c2c_governance",
+        "development flow must include context provider C2C governance that exercises the real context work package dispatch chain",
+        "c2c_governance"
+      )
+    ];
+  }
+  if (!statusPass(governance.status)) {
+    issues.push(issue("development_flow_c2c_governance_not_passed", "context provider C2C governance must pass", "c2c_governance.status"));
+  }
+
+  const checks = governance.checks || {};
+  for (const check of REQUIRED_DEVELOPMENT_FLOW_C2C_CHECKS) {
+    if (!statusPass(checks[check])) {
+      issues.push(issue("development_flow_c2c_check_not_passed", `C2C governance check ${check} must pass`, `c2c_governance.checks.${check}`));
+    }
+  }
+
+  const dispatch = governance.context_provider_dispatch || governance.contextProviderDispatch || {};
+  if (!statusPass(dispatch.status)) {
+    issues.push(issue("provider_c2c_dispatch_not_passed", "context provider dispatch C2C result must pass", "c2c_governance.context_provider_dispatch.status"));
+  }
+  if (normalizeString(dispatch.same_chain_entrypoint) !== "runContextWorkPackages") {
+    issues.push(issue("provider_c2c_wrong_entrypoint", "context provider C2C must use runContextWorkPackages, the same entrypoint as actual dispatch", "c2c_governance.context_provider_dispatch.same_chain_entrypoint"));
+  }
+  if (normalizeString(dispatch.execution_mode) !== "provider_model_routed") {
+    issues.push(issue("provider_c2c_wrong_execution_mode", "context provider C2C must use provider_model_routed execution", "c2c_governance.context_provider_dispatch.execution_mode"));
+  }
+
+  const provenance = dispatch.executor_provenance || dispatch.executorProvenance || {};
+  if (normalizeString(provenance.executor_kind) !== "agent_invocation_provider_executor") {
+    issues.push(issue("provider_c2c_wrong_executor_kind", "context provider C2C must reach the agent invocation provider executor", "c2c_governance.context_provider_dispatch.executor_provenance.executor_kind"));
+  }
+  if (Number(provenance.timeout_seconds || provenance.timeoutSeconds) !== 7200) {
+    issues.push(issue("provider_c2c_timeout_not_idle_governed", "context provider C2C must preserve 7200s hard timeout", "c2c_governance.context_provider_dispatch.executor_provenance.timeout_seconds"));
+  }
+  if (Number(provenance.idle_timeout_seconds || provenance.idleTimeoutSeconds) !== 1800) {
+    issues.push(issue("provider_c2c_idle_timeout_missing", "context provider C2C must preserve 1800s idle timeout", "c2c_governance.context_provider_dispatch.executor_provenance.idle_timeout_seconds"));
+  }
+
+  const command = dispatch.command || {};
+  const args = asArray(command.args).map(normalizeString);
+  if (args.includes("--max-budget-usd") || command.max_budget_usd !== undefined || command.maxBudgetUsd !== undefined) {
+    issues.push(issue("provider_c2c_budget_cap_present", "context provider C2C command must not include --max-budget-usd", "c2c_governance.context_provider_dispatch.command.args"));
+  }
+  if (!args.includes("--include-partial-messages")) {
+    issues.push(issue("provider_c2c_partial_messages_missing", "context provider C2C command must request partial messages", "c2c_governance.context_provider_dispatch.command.args"));
+  }
+  if (!args.includes("stream-json")) {
+    issues.push(issue("provider_c2c_stream_json_missing", "context provider C2C command must use stream-json output", "c2c_governance.context_provider_dispatch.command.args"));
+  }
+  return issues;
+}
+
 export function evaluateDevelopmentFlowArtifact(artifact = {}) {
   const issues = [];
 
@@ -200,6 +266,8 @@ export function evaluateDevelopmentFlowArtifact(artifact = {}) {
     issues.push(...runEvidenceIssues(runId, run));
   }
 
+  issues.push(...c2cGovernanceIssues(artifact));
+
   for (const finding of secretLikeStrings(artifact)) {
     issues.push(issue("raw_secret_in_development_flow_artifact", "development flow artifact must not contain raw secrets", finding.path));
   }
@@ -209,6 +277,7 @@ export function evaluateDevelopmentFlowArtifact(artifact = {}) {
     status: issues.length === 0 ? "pass" : "fail",
     required_runs: DEVELOPMENT_FLOW_RUNS,
     required_phases: REQUIRED_DEVELOPMENT_FLOW_PHASES,
+    required_c2c_checks: REQUIRED_DEVELOPMENT_FLOW_C2C_CHECKS,
     issues
   };
 }
