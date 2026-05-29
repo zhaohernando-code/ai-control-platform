@@ -33,10 +33,10 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/autonomous-continuation.js": {
-      "lines": 838,
+      "lines": 841,
       "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-30"
     },
     "src/workflow/autonomous-orchestrator.js": {
       "lines": 656,

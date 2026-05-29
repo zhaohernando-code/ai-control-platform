@@ -1,3 +1,8 @@
+// DO NOT replace with the shared status-vocabulary sets. This is GOAL-level terminality,
+// which is deliberately broader than a pass/fail verdict: a goal that was canceled /
+// closed_failed / shipped is "done" for completion purposes, whereas autonomous-run's
+// PASS set and autonomous-continuation's work-package COMPLETE set both exclude those.
+// Merging these would reintroduce the exact status drift P0-1 set out to remove.
 const COMPLETE_STATUSES = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed", "closed_failed", "canceled", "cancelled", "shipped"]);
 const BLOCKED_STATUSES = new Set(["blocked", "human_intervention", "stop_for_human"]);
 

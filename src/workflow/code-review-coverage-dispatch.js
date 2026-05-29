@@ -1,3 +1,6 @@
+// Code-review-coverage domain vocabulary. "audited"/"covered"/"not_applicable" are
+// coverage-specific terminal states with no equivalent in the shared status-vocabulary —
+// do NOT replace with PASS_SYNONYMS, that would silently drop them and break coverage.
 const PASS_STATUSES = new Set(["pass", "passed", "audited", "completed", "covered", "not_applicable"]);
 const DISPATCH_STATUSES = new Set([
   "missing",

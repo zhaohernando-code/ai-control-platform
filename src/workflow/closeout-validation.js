@@ -7,6 +7,9 @@ export const FRONTEND_ACCEPTANCE_RUN_VERSION = "frontend-acceptance-run.v1";
 export const FRONTEND_ACCEPTANCE_RELEASE_TARGET = "latest_projection";
 export const PROJECTED_NEXT_ACTION_STRATEGY_LABEL = "按推荐动作推进";
 
+// Rendered/display closeout statuses, including the Chinese "通过" that appears in
+// human-authored closeout notes. Intentionally NOT the shared status-vocabulary set —
+// it carries a localized token the machine vocabularies must not absorb.
 const RENDERED_PASS_STATUSES = new Set(["pass", "passed", "ok", "success", "succeeded", "通过"]);
 
 export function isRenderedPassStatus(value) {

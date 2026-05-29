@@ -164,6 +164,9 @@ function normalizeRequirementPlanWorkPackages(workPackages = []) {
 
 function completedWorkPackageIds(input = {}) {
   const workflowState = workflowStateFrom(input) || input;
+  // Work-package terminality: broader than a pass/fail verdict (accepted/closed count as
+  // done) but narrower than goal terminality (no canceled/shipped). Intentionally NOT the
+  // shared status-vocabulary set — see status-vocabulary.js + global-goal-completion.js.
   const completeStatuses = new Set(["complete", "completed", "done", "pass", "passed", "accepted", "closed"]);
   return new Set([
     ...asArray(workflowState?.manifest?.work_packages),
