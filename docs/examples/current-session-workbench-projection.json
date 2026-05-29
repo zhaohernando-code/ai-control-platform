@@ -302,8 +302,8 @@
   "project_management": {
     "status": "available",
     "source": "project_status_and_workflow_projection",
-    "projects_total": 1,
-    "active_projects": 1,
+    "projects_total": 2,
+    "active_projects": 2,
     "tasks_total": 12,
     "active_tasks": 12,
     "released_services": 0,
@@ -366,6 +366,29 @@
             "count": 3
           }
         ]
+      },
+      {
+        "project_id": "stock_dashboard",
+        "display_name": "股票看板",
+        "type": "managed",
+        "status": "in_progress",
+        "phase": "状态确认",
+        "current_task": "等待业务项目状态更新",
+        "owner_agent": "platform_orchestrator",
+        "progress": 0,
+        "last_updated": "2026-05-25T16:10:00.000Z",
+        "risks": [],
+        "human_decisions": 0,
+        "latest_run_projection_id": null,
+        "task_flow": [
+          {"id": "requirements", "label": "需求", "status": "pending", "count": 0},
+          {"id": "breakdown", "label": "拆解", "status": "pending", "count": 0},
+          {"id": "subtasks", "label": "子任务", "status": "pending", "count": 0},
+          {"id": "review", "label": "Review", "status": "pending", "count": 0},
+          {"id": "release", "label": "发布", "status": "pending", "count": 0},
+          {"id": "live_validation", "label": "Live 验证", "status": "pending", "count": 0},
+          {"id": "acceptance", "label": "验收", "status": "pending", "count": 0}
+        ]
       }
     ],
     "active_work": [
@@ -425,6 +448,29 @@
             "status": "active",
             "count": 3
           }
+        ]
+      },
+      {
+        "project_id": "stock_dashboard",
+        "display_name": "股票看板",
+        "type": "managed",
+        "status": "in_progress",
+        "phase": "状态确认",
+        "current_task": "等待业务项目状态更新",
+        "owner_agent": "platform_orchestrator",
+        "progress": 0,
+        "last_updated": "2026-05-25T16:10:00.000Z",
+        "risks": [],
+        "human_decisions": 0,
+        "latest_run_projection_id": null,
+        "task_flow": [
+          {"id": "requirements", "label": "需求", "status": "pending", "count": 0},
+          {"id": "breakdown", "label": "拆解", "status": "pending", "count": 0},
+          {"id": "subtasks", "label": "子任务", "status": "pending", "count": 0},
+          {"id": "review", "label": "Review", "status": "pending", "count": 0},
+          {"id": "release", "label": "发布", "status": "pending", "count": 0},
+          {"id": "live_validation", "label": "Live 验证", "status": "pending", "count": 0},
+          {"id": "acceptance", "label": "验收", "status": "pending", "count": 0}
         ]
       }
     ],
@@ -1975,8 +2021,8 @@
       "self_governance_auto_repairs": 0,
       "self_governance_evidence_tasks": 1,
       "self_governance_user_decisions": 0,
-      "projects_total": 1,
-      "active_projects": 1,
+      "projects_total": 2,
+      "active_projects": 2,
       "tasks_total": 12,
       "active_tasks": 12,
       "released_services": 0,

@@ -30,6 +30,20 @@ function normalizeString(value) {
   return String(value || "").trim();
 }
 
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+const KNOWN_PROJECT_DISPLAY_NAMES = {
+  "ai-control-platform": "AI Control Platform",
+  "stock_dashboard": "股票看板",
+  "lobechat": "LobeChat"
+};
+
+function projectDisplayName(projectId = "") {
+  return KNOWN_PROJECT_DISPLAY_NAMES[normalizeString(projectId)] || projectId || "AI Control Platform";
+}
+
 function normalizeAgentKeyHealth(input = {}) {
   const source = input.agent_key_health || input.agentKeyHealth || {};
   if (!source || typeof source !== "object" || Array.isArray(source)) {
@@ -464,7 +478,8 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}, 
       task_id: requirementId,
       title: normalizeString(requirement.title) || requirementId,
       project_id: normalizeString(requirement.project_id || requirement.projectId) || "ai-control-platform",
-      project_name: "AI Control Platform",
+      project_name: normalizeString(requirement.project_name || requirement.projectName) ||
+        projectDisplayName(normalizeString(requirement.project_id || requirement.projectId)) || "AI Control Platform",
       status: status.status,
       status_label: status.status_label,
       phase: status.phase,
@@ -491,6 +506,45 @@ function taskItemsFromProjectStatus(projectStatus = {}, requirementIntake = {}, 
       work_packages: workPackages
     };
   });
+}
+
+function managedProjectRegistry(input = {}) {
+  const projectStatus = input.project_status || input.projectStatus || {};
+  const managed = asArray(projectStatus.managed_projects || projectStatus.managedProjects);
+  const projectManifest = input.project_manifest || input.projectManifest || {};
+  const manifestExamples = asArray(projectManifest.managed_project_examples || projectManifest.managedProjectExamples);
+  if (managed.length > 0) return managed;
+  if (manifestExamples.length > 0) {
+    return manifestExamples.map((projectId) => {
+      const id = normalizeString(projectId);
+      if (!id) return null;
+      return { project_id: id, display_name: id };
+    }).filter(Boolean);
+  }
+  return [{ project_id: "stock_dashboard", display_name: "股票看板" }];
+}
+
+function managedProjectEntry(managedProject = {}, projectStatus = {}) {
+  const projectId = normalizeString(managedProject.project_id || managedProject.projectId) || "stock_dashboard";
+  const displayName = normalizeString(managedProject.display_name || managedProject.displayName) || projectId;
+  const managedSpecificStatus = isObject(projectStatus.managed_project_status || projectStatus.managedProjectStatus)
+    ? (projectStatus.managed_project_status || projectStatus.managedProjectStatus)[projectId] || {}
+    : {};
+  return {
+    project_id: projectId,
+    display_name: displayName,
+    type: "managed",
+    status: normalizeString(managedProject.status || managedSpecificStatus.status) || "in_progress",
+    phase: normalizeString(managedProject.phase || managedSpecificStatus.phase) || "状态确认",
+    current_task: normalizeString(managedProject.current_task || managedProject.currentTask || managedSpecificStatus.current_task || managedSpecificStatus.next_step) || "等待业务项目状态更新",
+    owner_agent: normalizeString(managedProject.owner_agent || managedProject.ownerAgent) || "platform_orchestrator",
+    progress: Number(managedProject.progress || managedSpecificStatus.progress || 0),
+    last_updated: normalizeString(managedProject.updated_at || managedProject.updatedAt || managedSpecificStatus.updated_at || projectStatus.updated_at) || "等待更新时间",
+    risks: asArray(managedProject.risks || managedSpecificStatus.risks).filter(Boolean),
+    human_decisions: 0,
+    latest_run_projection_id: null,
+    task_flow: taskFlowFromDag(managedSpecificStatus.dag || managedProject.dag || {})
+  };
 }
 
 function summarizeProjectManagement(input = {}, summaries = {}) {
@@ -530,7 +584,7 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
   const progress = Number(globalGoalCompletion.total || 0) > 0
     ? Math.round((Number(globalGoalCompletion.completed || 0) / Number(globalGoalCompletion.total || 1)) * 100)
     : 0;
-  const project = {
+  const platformProject = {
     project_id: normalizeString(projectStatus.project) || "ai-control-platform",
     display_name: "AI Control Platform",
     type: "platform",
@@ -548,18 +602,23 @@ function summarizeProjectManagement(input = {}, summaries = {}) {
     latest_run_projection_id: input.projection_id || input.projectionId || null,
     task_flow: taskFlow
   };
+  const managedProjects = managedProjectRegistry(input).map((managedProject) =>
+    managedProjectEntry(managedProject, projectStatus)
+  );
+  const allProjects = [platformProject, ...managedProjects];
+  const activeProjectCount = allProjects.filter((project) => project.status !== "completed" && project.status !== "closed").length;
 
   return {
     status: "available",
     source: "project_status_and_workflow_projection",
-    projects_total: 1,
-    active_projects: project.status === "completed" ? 0 : 1,
+    projects_total: allProjects.length,
+    active_projects: activeProjectCount,
     tasks_total: tasksTotal,
     active_tasks: activeTasks,
     released_services: 0,
     human_decisions: humanDecisions,
-    projects: [project],
-    active_work: [project],
+    projects: allProjects,
+    active_work: allProjects.filter((project) => project.status !== "completed" && project.status !== "closed"),
     task_items: taskItems,
     task_flow: taskFlow,
     requirement_intake: requirementIntake,
