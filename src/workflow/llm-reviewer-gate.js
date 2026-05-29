@@ -1,3 +1,8 @@
+import { FINDING_PASS_SYNONYMS, FINDING_FAIL_SYNONYMS } from "./status-vocabulary.js";
+
+const FINDING_PASS_STATUSES = new Set(FINDING_PASS_SYNONYMS);
+const FINDING_FAIL_STATUSES = new Set(FINDING_FAIL_SYNONYMS);
+
 const DEFAULT_PROVIDER = {
   provider: "claude-code",
   model: "deepseek-v4-pro",
@@ -117,8 +122,8 @@ function findingSeverity(finding) {
 
 function findingStatus(finding) {
   const status = normalizeToken(finding.status || finding.result || finding.outcome);
-  if (["pass", "passed", "ok", "success", "succeeded"].includes(status)) return "pass";
-  if (["fail", "failed", "error", "blocked"].includes(status)) return "fail";
+  if (FINDING_PASS_STATUSES.has(status)) return "pass";
+  if (FINDING_FAIL_STATUSES.has(status)) return "fail";
   return status || "fail";
 }
 

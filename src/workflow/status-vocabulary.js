@@ -28,6 +28,14 @@ export const RUNNING_SYNONYMS = ["running", "active", "in_progress", "in-progres
 // Pending/not-started synonyms (used by task-dag's lifecycle mapping).
 export const PENDING_SYNONYMS = ["pending", "queued", "ready", "todo"];
 
+// Review-FINDING verdict vocabulary. Deliberately NARROWER than PASS/FAIL_SYNONYMS:
+// a finding has no "completed/timeout" lifecycle, and an unknown finding status
+// defaults to "fail" (fail-closed for review gates). Shared verbatim by
+// process-hardening.js and llm-reviewer-gate.js (previously byte-identical copies).
+// Do NOT merge into PASS/FAIL_SYNONYMS — the membership and fallback differ on purpose.
+export const FINDING_PASS_SYNONYMS = ["pass", "passed", "ok", "success", "succeeded"];
+export const FINDING_FAIL_SYNONYMS = ["fail", "failed", "error", "blocked"];
+
 export function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();
 }

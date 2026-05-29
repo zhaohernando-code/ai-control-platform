@@ -21,10 +21,10 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/agent-lifecycle-pool.js": {
-      "lines": 663,
+      "lines": 667,
       "reason": "Agent lifecycle pool domain module: records lifecycle facts, cleanup policy, and projection inputs across one state contract.",
       "status": "accepted",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-05-29"
     },
     "src/workflow/agent-invocation.js": {
       "lines": 544,

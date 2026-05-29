@@ -1,5 +1,9 @@
 import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
+import { PASS_SYNONYMS, FAIL_SYNONYMS } from "./status-vocabulary.js";
+
+const PASS_STATUSES = new Set(PASS_SYNONYMS);
+const FAIL_STATUSES = new Set(FAIL_SYNONYMS);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -228,8 +232,8 @@ function canonicalFactType(value) {
 
 function statusOf(input = {}) {
   const status = normalizeToken(input.status || input.result || input.outcome);
-  if (["pass", "passed", "ok", "success", "succeeded", "completed", "complete"].includes(status)) return "pass";
-  if (["fail", "failed", "error", "errored", "blocked", "timeout", "timed_out"].includes(status)) return "fail";
+  if (PASS_STATUSES.has(status)) return "pass";
+  if (FAIL_STATUSES.has(status)) return "fail";
   return status || "pass";
 }
 
