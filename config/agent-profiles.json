@@ -51,7 +51,6 @@
       "output_format": "json",
       "tools": "",
       "effort": "high",
-      "max_budget_usd": "1",
       "timeout_ms": 120000,
       "hooks": ["context_work_package", "completion_evidence"],
       "candidates": [

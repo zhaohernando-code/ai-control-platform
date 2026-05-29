@@ -117,7 +117,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/context-work-package-provider-executor.test.js": {
-      "lines": 864,
+      "lines": 879,
       "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, and error paths.",
       "status": "accepted",
       "reviewed_at": "2026-05-29"

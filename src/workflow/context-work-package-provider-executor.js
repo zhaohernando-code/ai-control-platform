@@ -18,6 +18,8 @@ import {
 export const CONTEXT_WORK_PACKAGE_PROVIDER_EXECUTOR_VERSION = "context-work-package-provider-executor.v1";
 export const DEFAULT_MODEL = "deepseek-v4-pro[1m]";
 export const DEFAULT_FALLBACK_MODEL = "deepseek-v4-flash";
+export const DEFAULT_HARD_TIMEOUT_SECONDS = 7200;
+export const DEFAULT_IDLE_TIMEOUT_SECONDS = 1800;
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -316,14 +318,13 @@ export function promptForProviderExecution(input = {}) {
 
 export function createAgentContextWorkPackageProviderCommand(input = {}) {
   const cwd = resolve(normalizeString(input.cwd) || process.cwd());
-  const timeoutSeconds = numberValue(input.timeout_seconds || input.timeoutSeconds, 120);
-  const idleTimeoutSeconds = numberValue(input.idle_timeout_seconds || input.idleTimeoutSeconds || input.idle_timeout || input.idleTimeout, timeoutSeconds);
+  const timeoutSeconds = numberValue(input.timeout_seconds || input.timeoutSeconds, DEFAULT_HARD_TIMEOUT_SECONDS);
+  const idleTimeoutSeconds = numberValue(input.idle_timeout_seconds || input.idleTimeoutSeconds || input.idle_timeout || input.idleTimeout, DEFAULT_IDLE_TIMEOUT_SECONDS);
   const model = normalizeString(input.model) || DEFAULT_MODEL;
   const noTools = input.no_tools === true || input.noTools === true;
   const tools = toolsString(input.tools ?? input.allowed_tools ?? input.allowedTools, noTools);
   const addDir = normalizeString(input.add_dir || input.addDir) || cwd;
   const effort = normalizeToken(input.effort) || "high";
-  const maxBudgetUsd = normalizeString(input.max_budget_usd || input.maxBudgetUsd) || "1";
   const planned = createAgentInvocationPlan({
     profile_id: "context_work_package_provider",
     prompt: normalizeString(input.prompt),
@@ -333,7 +334,6 @@ export function createAgentContextWorkPackageProviderCommand(input = {}) {
     no_tools: noTools,
     add_dir: addDir,
     effort,
-    max_budget_usd: maxBudgetUsd,
     output_format: normalizeString(input.output_format || input.outputFormat) || "stream-json",
     include_partial_messages: input.include_partial_messages !== false && input.includePartialMessages !== false,
     timeout_ms: timeoutSeconds * 1000,
@@ -359,7 +359,6 @@ export function createAgentContextWorkPackageProviderCommand(input = {}) {
     no_tools: noTools,
     model: invocation.model || model,
     effort,
-    max_budget_usd: maxBudgetUsd,
     add_dir: addDir,
     profile_id: invocation.profile_id || "context_work_package_provider",
     agent_id: invocation.agent_id || null,
@@ -435,7 +434,6 @@ export function createAgentContextWorkPackageProviderExecutor(options = {}) {
         tools: command.tools,
         add_dir: command.add_dir,
         effort: command.effort,
-        max_budget_usd: command.max_budget_usd,
         timeout_ms: command.timeout_seconds * 1000,
         idle_timeout_ms: command.idle_timeout_seconds * 1000,
         invocation_id: `${normalizeString(workflow_state?.run_id || workflow_state?.runId) || "context-work-package"}:${index}`,
