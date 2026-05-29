@@ -377,7 +377,10 @@ function extractJsonObject(text) {
   const fenced = [...String(text).matchAll(/```(?:json)?\s*([\s\S]*?)```/giu)].map((match) => match[1].trim());
   for (const candidate of fenced.reverse()) {
     try {
-      return JSON.parse(candidate);
+      const parsed = JSON.parse(candidate);
+      if (parsed?.version === "audit-skill-trial-run.v1") return parsed;
+      if (typeof parsed?.result === "string") return extractJsonObject(parsed.result);
+      return parsed;
     } catch {
       // Keep trying plain object extraction below.
     }
@@ -412,6 +415,7 @@ function extractJsonObject(text) {
           try {
             const parsed = JSON.parse(candidate);
             if (parsed?.version === "audit-skill-trial-run.v1") return parsed;
+            if (typeof parsed?.result === "string") return extractJsonObject(parsed.result);
             parsedObjects.push(parsed);
           } catch {
             break;

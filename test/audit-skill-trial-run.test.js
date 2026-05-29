@@ -305,6 +305,43 @@ test("governance audit skill runner invokes governed agent command before valida
   assert.match(readFileSync(rawPath, "utf8"), /audit-skill-trial-run\.v1/);
 });
 
+test("governance audit skill runner parses claude json result envelopes", () => {
+  const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-envelope-"));
+  const fakeRunner = join(dir, "fake-runner.sh");
+  const outputPath = join(dir, "out.json");
+  const rawPath = join(dir, "raw.txt");
+  const promptPath = join(dir, "prompt.md");
+  const compact = {
+    skill_used: true,
+    final_verdict: "通过",
+    findings: []
+  };
+  writeFileSync(fakeRunner, [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "node -e 'process.stdout.write(JSON.stringify({type:\"result\", subtype:\"success\", result: JSON.stringify(JSON.parse(process.env.FAKE_COMPACT_AUDIT))}))'"
+  ].join("\n"));
+  chmodSync(fakeRunner, 0o755);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-governance-audit-skill-trial.mjs",
+    "--runner-command", fakeRunner,
+    "--output", outputPath,
+    "--raw-output", rawPath,
+    "--prompt-output", promptPath
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FAKE_COMPACT_AUDIT: JSON.stringify(compact)
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(readFileSync(outputPath, "utf8"));
+  assert.equal(output.final_verdict, "通过");
+});
+
 test("governance audit skill runner blocks closeout when invoked skill returns a failing verdict", () => {
   const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-blocking-"));
   const fakeRunner = join(dir, "fake-runner.sh");

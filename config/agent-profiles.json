@@ -71,7 +71,7 @@
       "timeout_ms": 240000,
       "hooks": ["development_flow", "fixture_acceptance"],
       "candidates": [
-        { "agent_id": "codex-account", "model": "gpt-5.3-codex-spark" },
+        { "agent_id": "codex-account", "model": "gpt-5.5" },
         { "agent_id": "codex-token", "model": "gpt-5.5" }
       ]
     },
@@ -105,12 +105,11 @@
       "output_format": "json",
       "tools": "",
       "effort": "high",
-      "max_budget_usd": "1",
       "timeout_ms": 300000,
       "hooks": ["governance_audit_orchestrator", "closeout_gate"],
       "candidates": [
-        { "agent_id": "codex-account", "model": "gpt-5.5" },
         { "agent_id": "deepseek", "model": "deepseek-v4-flash" },
+        { "agent_id": "codex-account", "model": "gpt-5.5" },
         { "agent_id": "claude", "model": "claude-sonnet-4-6" }
       ]
     }

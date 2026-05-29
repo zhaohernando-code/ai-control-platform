@@ -49,6 +49,9 @@ test("agent invocation config exposes project-owned channels and profiles", () =
   assert.ok(config.profiles.reviewer_shard);
   assert.ok(config.profiles.context_work_package_provider);
   assert.equal(config.profiles.context_work_package_provider.max_budget_usd, undefined);
+  assert.equal(config.profiles.development_flow_codex.candidates[0].model, "gpt-5.5");
+  assert.equal(config.profiles.governance_audit_skill_trial.max_budget_usd, undefined);
+  assert.equal(config.profiles.governance_audit_skill_trial.candidates[0].agent_id, "deepseek");
 });
 
 test("requirement plan invocation builds direct claude command without wrapper scripts", () => {

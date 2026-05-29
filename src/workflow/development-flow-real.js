@@ -287,6 +287,8 @@ function promptFor(runId, fixtureDir) {
     "1. Inspect src/math.js and test/math.test.js if needed.",
     "2. Change sum(a, b) so it returns a + b.",
     "3. Run: node --test test/math.test.js",
+    "4. After the test passes, emit the final JSON object as your last response.",
+    "The run is not complete until that final JSON response is emitted.",
     "",
     "Return only one JSON object matching this shape:",
     JSON.stringify({

@@ -51,7 +51,7 @@ export function runCloseoutChecks() {
     .sort()
     .map((file) => join("test", file));
 
-  run("unit tests", ["--test", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
+  run("unit tests", ["--test", "--test-force-exit", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
   run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
   run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
   run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
