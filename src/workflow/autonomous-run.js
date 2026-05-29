@@ -1,10 +1,12 @@
+import { PASS_SYNONYMS, FAIL_SYNONYMS, normalizeToken } from "./status-vocabulary.js";
+
 const PASS = "pass";
 const RERUN = "rerun";
 const ROLLBACK = "rollback";
 const HUMAN_INTERVENTION = "human_intervention";
 
-const TERMINAL_PASS_STATUSES = new Set(["pass", "passed", "ok", "success", "succeeded", "complete", "completed"]);
-const TERMINAL_FAIL_STATUSES = new Set(["fail", "failed", "error", "errored", "blocked", "timeout", "timed_out"]);
+const TERMINAL_PASS_STATUSES = new Set(PASS_SYNONYMS);
+const TERMINAL_FAIL_STATUSES = new Set(FAIL_SYNONYMS);
 const CRITICAL_SEVERITIES = new Set(["critical", "fatal", "blocker", "p0", "p1"]);
 const ROLLBACK_CATEGORIES = new Set([
   "host_boundary",
@@ -32,10 +34,6 @@ const HUMAN_CATEGORIES = new Set([
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
-}
-
-function normalizeToken(value) {
-  return String(value || "").trim().toLowerCase();
 }
 
 function normalizeStatus(value) {

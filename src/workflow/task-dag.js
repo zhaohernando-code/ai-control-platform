@@ -1,5 +1,15 @@
+import { PASS_SYNONYMS, FAIL_SYNONYMS, RUNNING_SYNONYMS, PENDING_SYNONYMS } from "./status-vocabulary.js";
+
 const ALLOWED_STATUSES = new Set(["blocked", "done", "running", "pending", "rerun", "rollback"]);
 const NON_DISPATCHABLE_STATUSES = new Set(["blocked", "done", "running"]);
+
+// task-dag treats "done" as a success token IN ADDITION to the shared PASS_SYNONYMS
+// (autonomous-run intentionally does not — see status-vocabulary.js + the two
+// characterization nets). Keep this local addition so behavior is preserved exactly.
+const DONE_STATUSES = new Set(["done", ...PASS_SYNONYMS]);
+const BLOCKED_STATUSES = new Set(FAIL_SYNONYMS);
+const RUNNING_STATUSES = new Set(RUNNING_SYNONYMS);
+const PENDING_STATUSES = new Set(PENDING_SYNONYMS);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -44,10 +54,10 @@ function normalizeStatus(value, fallback = "pending") {
   const status = normalizeToken(value);
 
   if (!status) return fallback;
-  if (["done", "pass", "passed", "ok", "success", "succeeded", "complete", "completed"].includes(status)) return "done";
-  if (["running", "active", "in_progress", "in-progress"].includes(status)) return "running";
-  if (["blocked", "fail", "failed", "error", "errored", "timeout", "timed_out"].includes(status)) return "blocked";
-  if (["pending", "queued", "ready", "todo"].includes(status)) return "pending";
+  if (DONE_STATUSES.has(status)) return "done";
+  if (RUNNING_STATUSES.has(status)) return "running";
+  if (BLOCKED_STATUSES.has(status)) return "blocked";
+  if (PENDING_STATUSES.has(status)) return "pending";
   if (status === "rerun") return "rerun";
   if (status === "rollback") return "rollback";
 
