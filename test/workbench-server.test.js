@@ -66,6 +66,10 @@ function generatedRequirementPlan(overrides = {}) {
   };
 }
 
+function isolatedExecutionCwd(prefix) {
+  return mkdtempSync(join(tmpdir(), prefix));
+}
+
 function writeManualAgentConfig(dir) {
   const configPath = join(dir, "manual_agent_config.json");
   writeFileSync(configPath, `${JSON.stringify({
@@ -1327,6 +1331,7 @@ test("workbench server starts development automatically after plan review approv
   }, null, 2));
 
   await withServer(async (baseUrl) => {
+    const executionCwd = isolatedExecutionCwd("workbench-plan-review-auto-dev-");
     const submitted = await request(`${baseUrl}/api/workbench/requirements?id=plan-review-auto-dev`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -1344,12 +1349,14 @@ test("workbench server starts development automatically after plan review approv
     const response = await request(`${baseUrl}/api/workbench/plan-reviews?id=plan-review-auto-dev`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        requirement_id: "requirement-plan-review-auto-dev",
-        action: "approve",
-        created_at: "2026-05-25T09:15:00.000Z"
-      })
-    });
+        body: JSON.stringify({
+          requirement_id: "requirement-plan-review-auto-dev",
+          action: "approve",
+          execution_cwd: executionCwd,
+          primary_worktree_path: process.cwd(),
+          created_at: "2026-05-25T09:15:00.000Z"
+        })
+      });
     const payload = response.json();
     const savedHistory = JSON.parse(readFileSync(historyPath, "utf8"));
     const latestHistoryItem = savedHistory.items.find((entry) => entry.id === savedHistory.latest);
@@ -1370,6 +1377,8 @@ test("workbench server starts development automatically after plan review approv
     assert.ok(eventTypes.includes("context_work_packages_run"));
     assert.equal(latestWorkflowState.manifest.work_packages[0].status, "completed");
     assert.equal(contextRunArtifact.metadata.execution_profile, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE);
+    assert.equal(contextRunArtifact.metadata.execution_cwd, executionCwd);
+    assert.equal(contextRunArtifact.metadata.primary_worktree_path, process.cwd());
   }, {
     historyPath,
     snapshotsRoot,
@@ -1580,6 +1589,8 @@ test("workbench server completes requirement intake only with verified provider 
         constraints: "不能让 local bounded runner 写 completed。",
         generated_plan: generatedRequirementPlan(),
         auto_advance_after_plan_review: true,
+        execution_cwd: isolatedExecutionCwd("workbench-requirement-provider-"),
+        primary_worktree_path: process.cwd(),
         created_at: "2026-05-25T09:30:00.000Z",
         requirement_id: "requirement-provider-authorized"
       })
@@ -1679,6 +1690,8 @@ test("workbench server closes requirement when all approved implementation packa
           implementation_outline: ["完成实现并通过验证"]
         }),
         auto_advance_after_plan_review: true,
+        execution_cwd: isolatedExecutionCwd("workbench-requirement-closeout-"),
+        primary_worktree_path: process.cwd(),
         created_at: "2026-05-25T10:00:00.000Z",
         requirement_id: "requirement-auto-closeout"
       })
@@ -1775,6 +1788,8 @@ test("workbench server can complete requirement intake through configured govern
         constraints: "不能让 local bounded runner 写 completed。",
         generated_plan: generatedRequirementPlan(),
         auto_advance_after_plan_review: true,
+        execution_cwd: isolatedExecutionCwd("workbench-requirement-agent-executor-"),
+        primary_worktree_path: process.cwd(),
         created_at: "2026-05-25T09:45:00.000Z",
         requirement_id: "requirement-agent-executor-authorized"
       })

@@ -646,6 +646,10 @@ function requirementAutoAdvanceInput(selectedId, input = {}) {
     context_work_package_execution_profile: input.context_work_package_execution_profile ||
       input.contextWorkPackageExecutionProfile ||
       VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    execution_cwd: input.execution_cwd || input.executionCwd,
+    primary_worktree_path: input.primary_worktree_path || input.primaryWorktreePath,
+    worker_workspaces_root: input.worker_workspaces_root || input.workerWorkspacesRoot,
+    add_dir: input.add_dir || input.addDir,
     snapshot_prefix: input.snapshot_prefix || input.snapshotPrefix || "requirement-intake-auto",
     created_at: input.created_at || input.createdAt
   };
@@ -1107,7 +1111,11 @@ function contextWorkPackageRunOptions(input = {}, projection = null) {
     codex_plan_pressure: input.codex_plan_pressure ?? input.codexPlanPressure,
     cost_pressure: input.cost_pressure ?? input.costPressure,
     tags: Array.isArray(input.tags) ? input.tags : undefined,
-    stage: input.stage
+    stage: input.stage,
+    execution_cwd: input.execution_cwd || input.executionCwd,
+    primary_worktree_path: input.primary_worktree_path || input.primaryWorktreePath,
+    worker_workspaces_root: input.worker_workspaces_root || input.workerWorkspacesRoot,
+    add_dir: input.add_dir || input.addDir
   };
 }
 

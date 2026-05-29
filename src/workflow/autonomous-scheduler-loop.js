@@ -192,6 +192,10 @@ function projectedNextActionInput(action, input = {}, normalized = {}, currentPr
   return {
     ...body,
     max_package_count: input.max_package_count ?? input.maxPackageCount,
+    execution_cwd: input.execution_cwd || input.executionCwd,
+    primary_worktree_path: input.primary_worktree_path || input.primaryWorktreePath,
+    worker_workspaces_root: input.worker_workspaces_root || input.workerWorkspacesRoot,
+    add_dir: input.add_dir || input.addDir,
     execution_mode: input.context_work_package_execution_mode || input.contextWorkPackageExecutionMode,
     context_work_package_execution_profile: input.context_work_package_execution_profile || input.contextWorkPackageExecutionProfile,
     executor_profile: input.executor_profile || input.executorProfile,

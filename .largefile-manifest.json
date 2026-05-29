@@ -45,8 +45,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/autonomous-scheduler-loop.js": {
-      "lines": 865,
-      "reason": "Scheduler loop contract implementation: loop execution, recovery, projection reuse, and artifact validation are still tightly coupled.",
+      "lines": 869,
+      "reason": "Scheduler loop contract implementation: loop execution, recovery, projection reuse, artifact validation, and execution-root propagation are still tightly coupled.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
@@ -63,8 +63,8 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1193,
-      "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, and result normalization share one flow.",
+      "lines": 1195,
+      "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, execution-root provenance, and result normalization share one flow.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-29"
     },
@@ -153,14 +153,14 @@
       "reviewed_at": "2026-05-29"
     },
     "test/workbench-server.test.js": {
-      "lines": 4299,
-      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, public-route evidence, and event/snapshot flows over one server fixture.",
+      "lines": 4314,
+      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
     "tools/workbench-server.mjs": {
-      "lines": 3792,
-      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch, and mounted public-route behavior while the server is still a single operational boundary.",
+      "lines": 3800,
+      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },

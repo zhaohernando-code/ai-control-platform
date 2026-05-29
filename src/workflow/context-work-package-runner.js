@@ -321,6 +321,8 @@ function runArtifact(workflowState = {}, selected = [], options = {}) {
       execution_profile: normalizeString(options.execution_profile || options.executionProfile) ||
         normalizeString(options.executor_kind || options.executorKind) ||
         "local_bounded",
+      execution_cwd: normalizeString(options.execution_cwd || options.executionCwd || options.cwd),
+      primary_worktree_path: normalizeString(options.primary_worktree_path || options.primaryWorktreePath),
       fixed_development_mode_gate: options.fixed_development_mode_gate || options.fixedDevelopmentModeGate || null,
       work_package_execution_governance: options.work_package_execution_governance ||
         options.workPackageExecutionGovernance ||
