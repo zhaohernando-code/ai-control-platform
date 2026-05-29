@@ -138,7 +138,7 @@ function latestContextRunArtifact(workflowState = {}) {
     .find((artifact) => artifact?.metadata?.type === "context_work_packages_run");
 }
 
-test("provider command records bounded audit fields", () => {
+test("provider command records bounded audit fields without a local budget cap", () => {
   const command = createAgentContextWorkPackageProviderCommand({
     cwd: process.cwd(),
     stateStore: providerStateStore(),
@@ -157,8 +157,23 @@ test("provider command records bounded audit fields", () => {
   assert.equal(command.tools, "Read,Edit");
   assert.ok(command.args.includes("--allowedTools"));
   assert.ok(command.args.includes("Read,Edit"));
-  assert.ok(command.args.includes("--max-budget-usd"));
-  assert.ok(command.args.includes("0.50"));
+  assert.equal(command.max_budget_usd, undefined);
+  assert.ok(!command.args.includes("--max-budget-usd"));
+  assert.ok(!command.args.includes("0.50"));
+});
+
+test("provider command defaults to idle timeout instead of 120s total timeout", () => {
+  const command = createAgentContextWorkPackageProviderCommand({
+    cwd: process.cwd(),
+    stateStore: providerStateStore(),
+    prompt: "complete selected work package",
+    model: "deepseek-v4-pro[1m]"
+  });
+
+  assert.equal(command.timeout_seconds, 7200);
+  assert.equal(command.idle_timeout_seconds, 1800);
+  assert.ok(command.args.includes("--include-partial-messages"));
+  assert.ok(!command.args.includes("--max-budget-usd"));
 });
 
 test("provider command no_tools emits real claude tool disablement", () => {
