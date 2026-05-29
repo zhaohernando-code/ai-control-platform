@@ -29,13 +29,22 @@ test("characterize: autonomous-run fail synonyms (fail/failed/error/errored/bloc
   }
 });
 
-// THE divergence quirk: task-dag.js maps "done" -> done(success), but autonomous-run's
-// pass set does NOT include "done", so "done" is neither pass nor fail here -> unknown.
-test("characterize: DIVERGENCE — 'done' is NOT a pass synonym in autonomous-run (-> unknown)", () => {
+// The 'done' handling: task-dag emits "done" as its success label and 4 other modules
+// treat "done" as complete. autonomous-run MUST agree — a 'done' work package is a
+// completed one and must NOT be re-run. (This was previously a latent drift bug where
+// 'done' counted as incomplete and triggered a spurious rerun; now fixed + pinned here.)
+test("'done' work package counts as passed (aligned with task-dag + completion modules)", () => {
   const sum = summary([{ id: "w", status: "done" }]);
-  assert.equal(sum.work_packages.passed, 0, "'done' must NOT count as passed in autonomous-run");
-  assert.equal(sum.work_packages.failed, 0);
-  assert.equal(sum.work_packages.unknown, 1, "'done' falls through to unknown here");
+  assert.equal(sum.work_packages.passed, 1, "'done' must count as passed");
+  assert.equal(sum.work_packages.unknown, 0);
+});
+
+test("a 'done' work package does NOT trigger a spurious rerun", () => {
+  const decision = decideNextAction({ run_id: "r", work_packages: [{ id: "w", status: "done" }] });
+  assert.notEqual(decision.action, "rerun", "a completed (done) package must not be re-run");
+  // sibling check: 'completed' and 'done' must produce the SAME action (no drift)
+  const completedDecision = decideNextAction({ run_id: "r", work_packages: [{ id: "w", status: "completed" }] });
+  assert.equal(decision.action, completedDecision.action, "'done' and 'completed' must agree");
 });
 
 test("characterize: status field precedence is status || result || outcome", () => {
@@ -43,15 +52,6 @@ test("characterize: status field precedence is status || result || outcome", () 
   assert.equal(summary([{ id: "w", outcome: "fail" }]).work_packages.failed, 1);
   // status wins over result/outcome
   assert.equal(summary([{ id: "w", status: "pass", outcome: "fail" }]).work_packages.passed, 1);
-});
-
-test("characterize: a 'done' work package is treated as INCOMPLETE (not pass) by decideNextAction", () => {
-  // No failed gates/findings/artifacts; one work package marked 'done'. Because 'done'
-  // is not a pass synonym here, it is not counted complete — documents the latent quirk.
-  const decision = decideNextAction({ run_id: "r", work_packages: [{ id: "w", status: "done" }] });
-  // It does not crash and yields a decision; the point is 'done' != pass in this module.
-  assert.ok(decision.action, "decision is produced");
-  assert.notEqual(PASS, "done");
 });
 
 test("characterize: human escalation (missing_credentials) overrides everything -> human_intervention", () => {

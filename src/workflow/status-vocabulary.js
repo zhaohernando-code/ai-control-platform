@@ -1,40 +1,46 @@
 // Single source of truth for task/run status vocabulary.
 //
-// Historically the synonym sets were copy-defined in BOTH task-dag.js and
-// autonomous-run.js, and they DRIFTED (different members, different output tokens).
+// Historically the synonym sets were copy-defined across many modules and DRIFTED
+// (different members, different output tokens), which is the audit's root cause A.
 // This module centralizes the raw synonym sets so there is one place to edit. It does
-// NOT unify the two output vocabularies — those are intentionally different domains:
+// NOT unify the OUTPUT vocabularies — those are intentionally different domains:
 //   - task-dag.js maps to DAG lifecycle states: done | running | blocked | pending
 //   - autonomous-run.js maps to run verdicts:    pass | fail | unknown
 // Each consumer keeps its own mapping but builds it from these shared sets, so the
-// members stay in sync even though the output labels differ. See the characterization
-// tests (task-dag-status-characterization, autonomous-run-status-characterization)
-// which pin the exact current behavior this module must preserve.
+// members stay in sync even though the output labels differ. Arrays are frozen so a
+// stray mutation in one importer cannot silently poison every other consumer.
+// Behavior is pinned by the characterization nets (task-dag-status-characterization,
+// autonomous-run-status-characterization) and the golden membership test
+// (status-vocabulary.test.js) — any edit here must break those tests, on purpose.
 
-// Success/terminal-pass synonyms. NOTE: task-dag additionally treats "done" as success;
-// autonomous-run historically does NOT (a documented divergence). "done" is therefore
-// NOT in this shared set — task-dag adds it locally — so this extraction preserves both
-// behaviors exactly. Do not add "done" here without updating both characterization nets.
-export const PASS_SYNONYMS = ["pass", "passed", "ok", "success", "succeeded", "complete", "completed"];
+// Terminal-pass / success synonyms (NOT including "done").
+export const PASS_SYNONYMS = Object.freeze(["pass", "passed", "ok", "success", "succeeded", "complete", "completed"]);
 
-// Failure synonyms. task-dag also folds these into "blocked"; autonomous-run folds them
-// into "fail". "blocked" itself is a member (autonomous-run counts a blocked item as a
-// failure; task-dag's own output label is also "blocked").
-export const FAIL_SYNONYMS = ["fail", "failed", "error", "errored", "blocked", "timeout", "timed_out"];
+// "Completed work item" vocabulary = PASS_SYNONYMS plus "done" (task-dag's success label).
+// Use this where the question is "is this work item finished/succeeded", e.g. the
+// scheduler's autonomous-run verdict and task-dag's DONE mapping. Centralizing it fixed a
+// real drift bug: autonomous-run previously used PASS_SYNONYMS (no "done") and so re-ran
+// completed ("done") work packages, while task-dag and the completion modules treated
+// "done" as finished. See the autonomous-run characterization net.
+export const COMPLETE_SYNONYMS = Object.freeze([...PASS_SYNONYMS, "done"]);
+
+// Failure synonyms. task-dag folds these into "blocked"; autonomous-run folds them into
+// "fail". "blocked" itself is a member.
+export const FAIL_SYNONYMS = Object.freeze(["fail", "failed", "error", "errored", "blocked", "timeout", "timed_out"]);
 
 // Running/in-flight synonyms (used by task-dag's lifecycle mapping).
-export const RUNNING_SYNONYMS = ["running", "active", "in_progress", "in-progress"];
+export const RUNNING_SYNONYMS = Object.freeze(["running", "active", "in_progress", "in-progress"]);
 
 // Pending/not-started synonyms (used by task-dag's lifecycle mapping).
-export const PENDING_SYNONYMS = ["pending", "queued", "ready", "todo"];
+export const PENDING_SYNONYMS = Object.freeze(["pending", "queued", "ready", "todo"]);
 
 // Review-FINDING verdict vocabulary. Deliberately NARROWER than PASS/FAIL_SYNONYMS:
 // a finding has no "completed/timeout" lifecycle, and an unknown finding status
 // defaults to "fail" (fail-closed for review gates). Shared verbatim by
 // process-hardening.js and llm-reviewer-gate.js (previously byte-identical copies).
 // Do NOT merge into PASS/FAIL_SYNONYMS — the membership and fallback differ on purpose.
-export const FINDING_PASS_SYNONYMS = ["pass", "passed", "ok", "success", "succeeded"];
-export const FINDING_FAIL_SYNONYMS = ["fail", "failed", "error", "blocked"];
+export const FINDING_PASS_SYNONYMS = Object.freeze(["pass", "passed", "ok", "success", "succeeded"]);
+export const FINDING_FAIL_SYNONYMS = Object.freeze(["fail", "failed", "error", "blocked"]);
 
 export function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();

@@ -1,11 +1,14 @@
-import { PASS_SYNONYMS, FAIL_SYNONYMS, normalizeToken } from "./status-vocabulary.js";
+import { COMPLETE_SYNONYMS, FAIL_SYNONYMS, normalizeToken } from "./status-vocabulary.js";
 
 const PASS = "pass";
 const RERUN = "rerun";
 const ROLLBACK = "rollback";
 const HUMAN_INTERVENTION = "human_intervention";
 
-const TERMINAL_PASS_STATUSES = new Set(PASS_SYNONYMS);
+// A work item is "terminal pass" if it succeeded OR is marked done — "done" is task-dag's
+// success label and what the completion modules treat as finished. Including it here fixes
+// the drift where a 'done' work package was treated as incomplete and re-run.
+const TERMINAL_PASS_STATUSES = new Set(COMPLETE_SYNONYMS);
 const TERMINAL_FAIL_STATUSES = new Set(FAIL_SYNONYMS);
 const CRITICAL_SEVERITIES = new Set(["critical", "fatal", "blocker", "p0", "p1"]);
 const ROLLBACK_CATEGORIES = new Set([
