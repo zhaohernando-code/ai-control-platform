@@ -27,10 +27,10 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/agent-invocation.js": {
-      "lines": 544,
+      "lines": 567,
       "reason": "Agent invocation entrypoint: keeps provider profile resolution, CLI command construction, idle-aware process execution (with guaranteed lock release and SIGKILL escalation), and output normalization together for all model-backed flows.",
       "status": "accepted",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-05-30"
     },
     "src/workflow/autonomous-continuation.js": {
       "lines": 842,

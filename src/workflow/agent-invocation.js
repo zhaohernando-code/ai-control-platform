@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import { buildModelCollaborationPlan, MODEL_PROFILES } from "./model-router.js";
+import { resolveMs, lockTtlMsFor } from "./timeout-config.js";
 
 export const AGENT_INVOCATION_VERSION = "agent-invocation.v1";
 
@@ -184,12 +185,26 @@ function acquireKey(stateStore, profile = {}, channel = {}, input = {}) {
       issues: [issue("agent_state_store_required", "API-key agents require a governed state store for credential acquisition", "state_store")]
     };
   }
+  // Lock TTL must outlive the invocation it guards. Previously this fell back to
+  // profile.timeout_ms (2-5 min in config), so a lock could expire while a long invocation
+  // was still running near its own timeout. Derive it from the invocation hard timeout with
+  // grace, floored at 10 min — never shorter than the run.
+  const invocationTimeoutMs = resolveMs(input, profile, "timeout", 180000);
+  const lockTtlMs = firstFiniteTtl(input.lock_ttl_ms, input.lockTtlMs) ?? lockTtlMsFor(invocationTimeoutMs);
   return stateStore.acquireAgentKeyForRole(profile.role, {
     agent_id: channel.id,
     lock_owner: normalizeString(input.lock_owner || input.lockOwner || input.invocation_id || input.invocationId) || `agent-invocation-${Date.now()}`,
-    ttl_ms: input.lock_ttl_ms || input.lockTtlMs || profile.timeout_ms || profile.timeoutMs || 10 * 60 * 1000,
+    ttl_ms: lockTtlMs,
     now: input.created_at || input.createdAt
   });
+}
+
+function firstFiniteTtl(...values) {
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return undefined;
 }
 
 function promptFromInput(input = {}) {
@@ -316,8 +331,16 @@ export function createAgentInvocationPlan(input = {}, options = {}) {
     env: commandSpec.env,
     key: keyResult.key || null,
     lock: keyResult.key?.lock || null,
-    timeout_ms: Number(input.timeout_ms || input.timeoutMs || profile.timeout_ms || profile.timeoutMs || 180000),
-    idle_timeout_ms: Number(input.idle_timeout_ms || input.idleTimeoutMs || input.timeout_ms || input.timeoutMs || profile.idle_timeout_ms || profile.idleTimeoutMs || profile.timeout_ms || profile.timeoutMs || 180000)
+    timeout_ms: resolveMs(input, profile, "timeout", 180000),
+    // idle defaults to the HARD timeout when not given. Precedence preserved exactly from
+    // the original chain: input idle -> input hard -> profile idle -> profile hard -> default
+    // (input hard intentionally beats profile idle, so a caller-set hard cap bounds idle too).
+    idle_timeout_ms: Number(
+      input.idle_timeout_ms || input.idleTimeoutMs ||
+      input.timeout_ms || input.timeoutMs ||
+      profile.idle_timeout_ms || profile.idleTimeoutMs ||
+      profile.timeout_ms || profile.timeoutMs || 180000
+    )
   };
   return {
     status: "pass",
