@@ -1,0 +1,24 @@
+{
+  "comment": "Coverage baseline for src/workflow, captured 2026-05-31 from an isolated worktree (817/817 green) via `node --test --experimental-test-coverage --test-coverage-include='src/workflow/**'`. This is the phase-4 DoD artifact for the gate-governance finish goal. Coverage uses Node's built-in --experimental-test-coverage (NOT c8) — see DECISIONS.md.",
+  "captured_at": "2026-05-31",
+  "node_version": "v22.16.0",
+  "tool": "node --test --experimental-test-coverage",
+  "suite": { "tests": 817, "pass": 817, "fail": 0 },
+  "all_files": { "line_pct": 91.28, "branch_pct": 70.89, "funcs_pct": 96.88 },
+  "thresholds": {
+    "comment": "Conservative floors that guard against regression without forcing tautological tests on already-covered code. Branch is intentionally NOT gated (70.89% baseline is noisy across many defensive branches). Raise only when real coverage rises.",
+    "lines": 88,
+    "functions": 92
+  },
+  "real_gaps": {
+    "comment": "Modules genuinely worth new tests. NOT the 17 'no dedicated test file' modules — 16 of those are already ≥70% line via indirect coverage; writing dedicated tests for them would be tautological. These are the real low-coverage targets.",
+    "plan-generator.js": { "line_pct": 0, "note": "absent from coverage table = never loaded by any test; the one truly-zero-coverage module" },
+    "closeout-validation.js": { "line_pct": 53.66, "branch_pct": 50.0, "note": "lowest real covered module; it is a closeout gate validator, so the gap matters" }
+  },
+  "branch_gaps": {
+    "comment": "Lowest branch coverage — candidates for error-path tests in phase 6.",
+    "workbench-browser-events.js": { "line_pct": 76.57, "branch_pct": 27.45 },
+    "scheduler-dispatch-continuation.js": { "line_pct": 85.27, "branch_pct": 35.44 },
+    "mainline-release-readiness.js": { "line_pct": 86.49, "branch_pct": 41.94 }
+  }
+}

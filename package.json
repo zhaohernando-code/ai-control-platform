@@ -10,6 +10,7 @@
     "pretest": "node tools/check-test-location.mjs",
     "test": "node --test test/*.test.js",
     "test:affected": "node tools/run-affected-tests.mjs",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include='src/workflow/**' --test-coverage-exclude='test/**' --test-coverage-exclude='tools/**' --test-coverage-lines=88 --test-coverage-functions=92 test/*.test.js",
     "check:onboarding": "node tools/check-project-onboarding-sync.mjs project-manifest.json /Users/hernando_zhao/codex/WORKSPACE_INDEX.json",
     "check:git-worktree-isolation": "node tools/check-git-worktree-isolation.mjs",
     "check:worker-runtime-readiness": "node tools/check-worker-runtime-readiness.mjs",
