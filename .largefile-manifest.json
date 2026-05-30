@@ -99,10 +99,10 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2573,
-      "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, public-route state, and user-facing provider failure attribution into one projection schema.",
+      "lines": 2461,
+      "reason": "Workbench projection builder: aggregates run, scheduler, reviewer, lifecycle, recovery, public-route state into one projection schema. Provider-failure attribution extracted to provider-failure-reason.js (P2-8); further per-summarizer extraction planned.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-05-30"
     },
     "test/autonomous-continuation.test.js": {
       "lines": 1357,
