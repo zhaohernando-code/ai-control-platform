@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 
 import { createSqliteWorkbenchStateStore } from "../src/workflow/workbench-state-store.js";
+import { tempDir } from "./helpers/temp-dir.js";
 
 function freshStore() {
-  const dir = mkdtempSync(join(tmpdir(), "p02-order-"));
+  const dir = tempDir(null, "p02-order-");
   return createSqliteWorkbenchStateStore({ dbPath: join(dir, "s.sqlite") });
 }
 

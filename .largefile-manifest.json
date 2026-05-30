@@ -81,10 +81,10 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 2141,
+      "lines": 2149,
       "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-05-30"
     },
     "src/workflow/live-route-acceptance.js": {
       "lines": 602,

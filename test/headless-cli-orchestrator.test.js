@@ -579,7 +579,9 @@ test("headless CLI orchestrator can execute a real child command runner and pars
     max_package_count: 1,
     command_runner_kind: "agent_invocation_child_process",
     child_worker_runner: ({ prompt_file, work_package, timeout_ms }) => {
-      calls.push({ prompt_file, work_package, timeout_ms });
+      // Capture the prompt CONTENTS during the run — the scratch dir is cleaned up after
+      // dispatch (P2-9), so reading prompt_file afterward is no longer valid.
+      calls.push({ prompt_file, prompt: readFileSync(prompt_file, "utf8"), work_package, timeout_ms });
       return {
         status: 0,
         stdout: JSON.stringify({
@@ -600,7 +602,7 @@ test("headless CLI orchestrator can execute a real child command runner and pars
 
   assert.equal(result.status, "pass");
   assert.equal(calls.length, 1);
-  assert.match(readFileSync(calls[0].prompt_file, "utf8"), /"role": "child_worker"/);
+  assert.match(calls[0].prompt, /"role": "child_worker"/);
   assert.equal(result.child_run.artifact.metadata.executor_provenance.command_runner_kind, "agent_invocation_child_process");
   assert.equal(result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output.command_evidence.exit_code, 0);
 });
@@ -746,7 +748,7 @@ test("headless CLI orchestrator passes configured output path into child prompt 
     command_runner_kind: "agent_invocation_child_process",
     child_worker_output_path: outputPattern,
     child_worker_runner: ({ prompt_file, output_path }) => {
-      calls.push({ prompt_file, output_path });
+      calls.push({ prompt_file, prompt: readFileSync(prompt_file, "utf8"), output_path });
       writeFileSync(output_path, JSON.stringify({
         status: "pass",
         role: CHILD_WORKER_ROLE,
@@ -765,7 +767,7 @@ test("headless CLI orchestrator passes configured output path into child prompt 
       };
     }
   });
-  const prompt = readFileSync(calls[0].prompt_file, "utf8");
+  const prompt = calls[0].prompt;
   const childOutput = result.child_run.artifact.metadata.package_results[0].completion_evidence.child_output;
 
   assert.equal(result.status, "pass");

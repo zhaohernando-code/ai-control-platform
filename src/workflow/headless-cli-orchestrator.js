@@ -956,6 +956,14 @@ function executeRealChildWorker(workflowState = {}, workPackage = {}, options = 
     cleanupIsolatedWorktree(repoRoot, worktree.path, worktree.branch);
   }
 
+  // The child-worker scratch dir (prompt file) is no longer needed once the run is
+  // recorded; remove it so dispatches don't accumulate under the OS temp root (P2-9).
+  try {
+    rmSync(tempDir, { recursive: true, force: true });
+  } catch {
+    // best-effort; a missing dir is fine
+  }
+
   return {
     ...normalized,
     command_evidence: {
