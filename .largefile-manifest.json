@@ -99,8 +99,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 2211,
-      "reason": "Workbench projection builder: aggregates run, scheduler, lifecycle, recovery, public-route state into one projection schema. Provider-failure attribution + reviewer/headless summarizers extracted (P2-8); further per-summarizer extraction planned.",
+      "lines": 1985,
+      "reason": "Workbench projection builder: aggregates run, lifecycle, recovery, public-route, operations-timeline state into one projection schema. Provider-failure, reviewer/headless, and scheduler summarizers extracted (P2-8); further per-summarizer extraction planned.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-30"
     },
