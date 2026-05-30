@@ -1,5 +1,12 @@
 # DECISIONS
 
+[2026-05-31T00:00:00+08:00] Code coverage tooling + mature-over-reinvent principle (门禁治理 phase 4/7):
+门禁治理（gate/test governance）引入覆盖率量化时确认的两项 durable 决策。
+
+决策：
+- **代码覆盖率使用 Node 内置 `--experimental-test-coverage`，不引入 c8。** `npm run test:coverage` 直接用 Node v22 内置覆盖率（逐文件 line/branch/funcs 表、per-metric 阈值、include/exclude glob），scope 为 `src/workflow/**`。理由：内置已满足本地项目全部需求（逐文件 %、阈值门禁）；c8 会引入 11 个传递依赖（istanbul 栈 + yargs）仅为换取本项目用不到的 lcov/HTML 报告（无 CI 仪表盘）。手写 `NODE_V8_COVERAGE` JSON 解析器则是在重复实现一个 c8 的劣化版——同样不取。阈值设为保守回归地板（lines≥88、functions≥92，baseline 91.28/96.88），不强求高水位、不为刷数字写同义反复测试；branch 暂不设门禁（baseline 70.89%，跨大量防御性分支噪声大）。baseline 留档于 `docs/examples/coverage-baseline.json`。
+- **工程原则：成熟方案优先于重复造轮，门槛为"薄封装/标准库"。** 当需要某能力时，优先选用量级合适、功能符合、维护活跃、传递依赖少的成熟方案（典型如内置覆盖率 flag、或薄封装原生能力的库）；只有当成熟方案过重、依赖庞杂或杀鸡用牛刀时才自写薄实现。本项目**不存在**"禁止第三方依赖"的规则（devDependencies 已含 playwright、typescript）；此前误以为有的"弱依赖偏好"不成立。提出"自己写"方案前必须先核查是否有薄封装/标准方案并说明为何不适用。此原则与既有 TypeScript / npm 选型决策并列，适用于后续所有取舍（含 agent 自治流程）。
+
 [2026-05-27T20:59:00+08:00] Codify workbench frontend stack as a hard project rule (requirement-unknown-20260527043146, plan step 08 / 9):
 对应需求 "前端重构" 的计划步骤 08 / 9 "在 PROJECT_RULES.md 增订 antd 强制使用与设计规范条款，在 DECISIONS.md 留档技术选型"，将 `PROJECT_RULES.md#前端栈与组件约束antd--react--nextjs-app-router` 作为前端实现的项目级硬约束入口。
 

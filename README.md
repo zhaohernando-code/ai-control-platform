@@ -46,6 +46,8 @@ npm run install:git-hooks
 
 ```bash
 npm test
+npm run test:affected   # 开发期加速：只跑被改动传递影响的测试;无法静态判定时回退全套。合入仍以 npm test 为准
+npm run test:coverage   # 覆盖率(Node 内置,无第三方依赖),scope=src/workflow/**,阈值 lines>=88/functions>=92
 npm run check:onboarding
 npm run check:process-hardening
 npm run check:workbench:browser-events
@@ -53,6 +55,8 @@ node tools/build-workbench-projection.mjs docs/examples/current-session-workbenc
 node tools/check-workbench-projection.mjs docs/examples/current-session-workbench-projection.json
 scripts/start-workbench-live.sh
 ```
+
+> 注：`npm test` / `npm run test:*` 必须从隔离 task worktree 运行(`pretest` 守卫会拦主检出);覆盖率 baseline 留档于 `docs/examples/coverage-baseline.json`。
 
 ## Workbench
 

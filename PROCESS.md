@@ -36,6 +36,7 @@
 - **固定开发模式要 runtime gate 支撑**：AGENTS/PROCESS/合同用于恢复上下文；真正调度前必须由 runtime gate 校验宿主、Context Pack root owned files、subtasks owned files、selected package owned files 和 managed project 路径。
 - **执行前治理先于模型派发**：`run_context_work_packages` 不能把已审核方案步骤直接交给 child/provider。调度前必须先保留并校验 work package 的依赖、source 元数据和 `source.execution_governance`；需求实现包只有在结构化声明 `granularity`、`decomposition`、`verification` 均满足执行合同后才能派发。自然语言描述只能辅助生成或兼容旧数据，不能作为硬阻断条件。
 - **拆包必须重写依赖**：当一个计划步骤被拆成多个可执行切片时，后续依赖原步骤 id 的 work package 必须改为依赖最后一个切片，避免 DAG 在执行时才出现未知依赖或绕过未完成切片。
+- **覆盖率按缺口补，不按文件名补**："没有同名 test 文件" ≠ "未覆盖"——多数模块被其它测试间接拉到。补测前先用 `npm run test:coverage`（Node 内置覆盖率）看逐文件 line/branch%，只补真正低覆盖或完全未加载的模块和真实可达的 fail/错误分支；达到保守阈值即停。禁止为提覆盖率数字写同义反复测试（mock 回声、断言常量）；某分支若只能靠真实子进程/外部 CLI 命中，如实标注不测，不硬凑假覆盖。
 
 ## 多模型与 reviewer
 

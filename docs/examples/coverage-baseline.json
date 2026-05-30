@@ -5,6 +5,17 @@
   "tool": "node --test --experimental-test-coverage",
   "suite": { "tests": 817, "pass": 817, "fail": 0 },
   "all_files": { "line_pct": 91.28, "branch_pct": 70.89, "funcs_pct": 96.88 },
+  "after_gate_governance": {
+    "comment": "Coverage after phases 5-6 added real-gap + error-path tests (suite 817 -> 863). Proof the new tests drive real behavior, not tautologies: every targeted module's coverage rose materially.",
+    "suite": { "tests": 863, "pass": 863, "fail": 0 },
+    "all_files": { "line_pct": 91.80, "branch_pct": 72.07, "funcs_pct": 96.89 },
+    "per_module_before_after": {
+      "plan-generator.js": { "line": "0 -> 57.29", "note": "uncovered remainder 37-75 = the claude-code subprocess path, intentionally not unit-tested" },
+      "closeout-validation.js": { "line": "53.66 -> 94.31", "branch": "50.00 -> 82.76" },
+      "scheduler-dispatch-continuation.js": { "line": "85.27 -> 96.24", "branch": "35.44 -> 69.52" },
+      "mainline-release-readiness.js": { "line": "86.49 -> 100.00", "branch": "41.94 -> 89.83" }
+    }
+  },
   "thresholds": {
     "comment": "Conservative floors that guard against regression without forcing tautological tests on already-covered code. Branch is intentionally NOT gated (70.89% baseline is noisy across many defensive branches). Raise only when real coverage rises.",
     "lines": 88,
