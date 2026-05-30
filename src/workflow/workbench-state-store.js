@@ -216,9 +216,18 @@ ON CONFLICT(key) DO UPDATE SET json = excluded.json, updated_at = excluded.updat
   };
 
   const projectStatusHistoryFromSnapshots = (history = readHistory(), selectedId = "") => {
-    const items = Array.isArray(history.items) ? [...history.items].reverse() : [];
+    // Merge oldest -> newest so the latest snapshot wins per id (mergeProjectStatusHistory
+    // is right-wins). Order explicitly by created_at instead of trusting array order:
+    // history.items is conventionally newest-first, but seeding/migration paths can leave
+    // it unsorted, and a wrong order silently resurrects stale statuses (last-write-wins).
+    const rawItems = Array.isArray(history.items) ? history.items : [];
+    const ordered = [...rawItems].sort((a, b) => {
+      const at = Date.parse(a?.created_at || "") || 0;
+      const bt = Date.parse(b?.created_at || "") || 0;
+      return at - bt; // ascending: oldest first
+    });
     const statuses = [];
-    for (const item of items) {
+    for (const item of ordered) {
       if (!item?.input_path || !isSqliteSnapshotPath(item.input_path)) continue;
       try {
         const workflowState = readWorkflowSnapshot(sqliteSnapshotIdFromInputPath(item.input_path));
@@ -356,6 +365,7 @@ ON CONFLICT(id) DO UPDATE SET
     writeKey,
     readHistory,
     writeHistory,
+    projectStatusHistoryFromSnapshots,
     readProjectStatus,
     writeProjectStatus,
     readEvents,
