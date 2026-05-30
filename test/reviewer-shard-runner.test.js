@@ -448,3 +448,52 @@ test("run-reviewer-shard CLI fails closed on unreadable input", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /reviewer_shard_run_input_failed/);
 });
+
+// --- real-behavior error-path tests (P1-7): not "mock returns pass -> assert pass" ----
+
+test("P1-7: an executor that THROWS becomes a durable reviewer_executor fail finding (not a crash)", async () => {
+  const result = await runReviewerShard(workflowState(), {
+    shard_id: "reviewer-scope-shard-001",
+    created_at: "2026-05-21T21:01:00.000Z",
+    executor: async () => {
+      throw new Error("provider exploded mid-shard");
+    }
+  });
+
+  // runReviewerShard must CATCH and convert to a durable finding, not propagate the throw.
+  // (result.status === "pass" here means the RECORDING op succeeded — the failure lives in
+  // the recorded fact/finding, which is the behavior we pin.)
+  assert.equal(result.status, "pass", "the recording operation itself succeeds (no crash)");
+  const fact = result.result;
+  assert.equal(fact.status, "fail", "the recorded shard fact status is fail");
+  const execErr = (fact.findings || []).find((f) => f.category === "reviewer_executor");
+  assert.ok(execErr, "a reviewer_executor finding is recorded");
+  assert.match(execErr.message, /provider exploded mid-shard/, "the original error message is preserved");
+  assert.equal(execErr.finding_id, "reviewer-scope-shard-001-executor-error");
+  // and it is durably appended to the manifest, not just returned
+  assert.equal(result.workflow_state.manifest.events.at(-1).type, "reviewer_shard_result");
+});
+
+test("P1-7: an executor reporting status:fail with findings records a fail fact (real fail path)", async () => {
+  const result = await runReviewerShard(workflowState(), {
+    shard_id: "reviewer-scope-shard-001",
+    created_at: "2026-05-21T21:02:00.000Z",
+    executor: async () => ({
+      status: "fail",
+      findings: [{ id: "real-defect", status: "fail", severity: "high", category: "correctness", message: "off-by-one" }]
+    })
+  });
+  assert.equal(result.result.status, "fail", "an explicit fail with a fail finding is recorded as fail");
+  assert.ok((result.result.findings || []).some((f) => f.finding_id === "real-defect" || f.message === "off-by-one"));
+});
+
+test("P1-7: a missing executor fails closed with a clear issue (not a generic throw)", async () => {
+  const result = await runReviewerShard(workflowState(), {
+    shard_id: "reviewer-scope-shard-001",
+    created_at: "2026-05-21T21:03:00.000Z"
+    // no executor provided
+  });
+  assert.equal(result.status, "fail");
+  const issues = result.issues || [];
+  assert.ok(issues.some((i) => i.code === "missing_reviewer_shard_executor"), "explicit missing-executor issue");
+});
