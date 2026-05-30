@@ -55,6 +55,7 @@ export function runCloseoutChecks() {
   run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
   run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
   run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
+  run("api route contract", ["tools/check-api-route-contract.mjs"]);
   run("workbench live route acceptance", ["tools/check-workbench-live-route.mjs", "--project-status", "PROJECT_STATUS.json"]);
   run("workbench public browser route", ["tools/check-workbench-public-browser-route.mjs"]);
   run("workbench state boundary", ["tools/check-workbench-state-boundary.mjs"]);
