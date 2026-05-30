@@ -7,6 +7,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "pretest": "node tools/check-test-location.mjs",
     "test": "node --test test/*.test.js",
     "check:onboarding": "node tools/check-project-onboarding-sync.mjs project-manifest.json /Users/hernando_zhao/codex/WORKSPACE_INDEX.json",
     "check:git-worktree-isolation": "node tools/check-git-worktree-isolation.mjs",
