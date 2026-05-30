@@ -79,6 +79,7 @@ import {
   sqliteSnapshotIdFromInputPath,
   sqliteSnapshotInputPath
 } from "../src/workflow/workbench-state-store.js";
+import { mimeTypeFor } from "./workbench-mime-types.mjs";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -87,24 +88,6 @@ const defaultProjectStatusPath = resolve(root, "PROJECT_STATUS.json");
 const examplesRoot = resolve(root, "docs/examples");
 const defaultSnapshotsRoot = resolve(root, "tmp/workbench-snapshots");
 const defaultStateDbPath = resolve(process.env.HOME || "/Users/hernando_zhao", "codex/runtime/ai-control-platform/workbench-state/workbench-state.sqlite");
-
-const MIME_TYPES = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".map": "application/json; charset=utf-8",
-  ".woff2": "font/woff2",
-  ".woff": "font/woff",
-  ".ttf": "font/ttf",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".webp": "image/webp",
-  ".ico": "image/x-icon"
-};
 
 function jsonResponse(res, status, body) {
   res.writeHead(status, {
@@ -1694,7 +1677,7 @@ function sendStaticFile(res, filePath, options = {}) {
   const content = readFileSync(filePath);
   const transformed = typeof options.transform === "function" ? options.transform(content) : content;
   res.writeHead(200, {
-    "content-type": options.content_type || MIME_TYPES[extname(filePath)] || "application/octet-stream",
+    "content-type": options.content_type || mimeTypeFor(extname(filePath)),
     "cache-control": options.cache_control || "no-store"
   });
   res.end(transformed);
