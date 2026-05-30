@@ -82,7 +82,14 @@ function normalizeGoal(goal, index) {
   const id = normalizeString(goal.id || goal.goal_id || goal.key) || `global-goal-${index + 1}`;
   const title = normalizeString(goal.title || goal.label || goal.name || goal.description || goal.next_step);
   const status = statusOf(goal);
-  const blockers = asArray(goal.blockers).filter(Boolean);
+  // Blockers may arrive under the canonical `blockers` key or the legacy `reasons`/
+  // `blocked_reasons` aliases (older producers). Read all so a goal that reports its
+  // gating items under any of them is still recognized as blocked.
+  const blockers = [
+    ...asArray(goal.blockers),
+    ...asArray(goal.blocked_reasons),
+    ...asArray(goal.reasons)
+  ].filter(Boolean);
   const blocked = BLOCKED_STATUSES.has(status) || blockers.some((blocker) => blocker?.requires_human || blocker?.requiresHuman);
   const completed = COMPLETE_STATUSES.has(status);
 

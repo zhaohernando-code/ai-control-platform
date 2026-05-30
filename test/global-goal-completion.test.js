@@ -84,3 +84,15 @@ test("completed non-requirement goals still close from completed work packages",
   assert.equal(result.completed, 1);
   assert.equal(result.pending, 0);
 });
+
+test("P1-5: a goal reporting gating items under legacy 'reasons'/'blocked_reasons' is still blocked", () => {
+  const viaReasons = evaluateGlobalGoalCompletion({
+    project_status: { global_goals: [{ id: "g1", status: "pending", reasons: [{ requires_human: true, message: "need creds" }] }] }
+  });
+  assert.equal(viaReasons.blocked, 1, "goal blocked via legacy 'reasons' alias");
+
+  const viaBlockedReasons = evaluateGlobalGoalCompletion({
+    project_status: { global_goals: [{ id: "g2", status: "pending", blocked_reasons: [{ requiresHuman: true }] }] }
+  });
+  assert.equal(viaBlockedReasons.blocked, 1, "goal blocked via legacy 'blocked_reasons' alias");
+});
