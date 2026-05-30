@@ -265,15 +265,15 @@
     "cadence": "weekly",
     "next_trigger": "下一次周度治理窗口",
     "role_count": 4,
-    "finding_count": 1,
+    "finding_count": 2,
     "dimensions_checked": 12,
     "auto_repair_count": 0,
     "evidence_building_count": 1,
-    "user_decision_count": 0,
+    "user_decision_count": 1,
     "completed_improvement_count": 0,
     "next_work_package_count": 1,
     "top_dimension": "iteration_evolution",
-    "latest_decision_title": null,
+    "latest_decision_title": "PROJECT_STATUS 混入了运行期派生字段",
     "latest_auto_repair_title": null,
     "latest_evidence_title": "证据补强：项目状态仍有下一步但治理未形成闭环证据",
     "report_status": "available",
@@ -297,7 +297,88 @@
         "reason": "确认该 next_step 是否已经被 Context Pack、Work Package 或调度器接管，并记录可追踪证据。"
       }
     ],
-    "decision_packages": []
+    "decision_packages": [
+      {
+        "id": "self-governance-decision-project-status-carries-derived-runtime-fields",
+        "source_finding_id": "project-status-carries-derived-runtime-fields",
+        "title": "PROJECT_STATUS 混入了运行期派生字段",
+        "dimension": "iteration_evolution",
+        "severity": "low",
+        "recommendation": "PROJECT_STATUS.json 携带了 5 个运行期派生字段（updated_at, latest_update, workbench_live_route_evidence, latest_public_live_route_probe, latest_public_live_route_browser_evidence），每次运行都会被重写，使该文件被当作日志而非持久意图，产生噪声提交。",
+        "status": "waiting_for_user_decision",
+        "options": [
+          {
+            "id": "project-status-carries-derived-runtime-fields-lightweight",
+            "label": "轻量跟进",
+            "impact": "先用较小范围验证价值，成本低、上线快。",
+            "tradeoff": "覆盖面有限，可能遗漏深层问题。",
+            "recommended": true
+          },
+          {
+            "id": "project-status-carries-derived-runtime-fields-standard",
+            "label": "标准落地",
+            "impact": "纳入正式工作台和调度流程，形成稳定能力。",
+            "tradeoff": "需要更多实现和验收成本。",
+            "recommended": false
+          },
+          {
+            "id": "project-status-carries-derived-runtime-fields-defer",
+            "label": "暂缓观察",
+            "impact": "不立即投入开发，仅保留在治理观察池。",
+            "tradeoff": "问题可能继续由人工补位。",
+            "recommended": false
+          }
+        ],
+        "facets": {
+          "priority": [
+            "现在做",
+            "下轮做",
+            "暂缓"
+          ],
+          "scope": [
+            "只看平台本体",
+            "包含被纳管项目",
+            "只看工作台"
+          ],
+          "depth": [
+            "快速检查",
+            "标准检查",
+            "深度检查"
+          ],
+          "automation_authority": [
+            "只报告",
+            "可自动修复",
+            "修复前需确认"
+          ],
+          "cadence": [
+            "每日",
+            "每周",
+            "每次发布后",
+            "手动触发"
+          ],
+          "cost_ceiling": [
+            "低",
+            "中",
+            "高"
+          ],
+          "output": [
+            "工作台卡片",
+            "周报",
+            "待办队列",
+            "自动生成修复任务"
+          ]
+        },
+        "default_decision": {
+          "priority": "下轮做",
+          "scope": "只看平台本体",
+          "depth": "标准检查",
+          "automation_authority": "修复前需确认",
+          "cadence": "每周",
+          "cost_ceiling": "中",
+          "output": "工作台卡片"
+        }
+      }
+    ]
   },
   "project_management": {
     "status": "available",
@@ -381,13 +462,48 @@
         "human_decisions": 0,
         "latest_run_projection_id": null,
         "task_flow": [
-          {"id": "requirements", "label": "需求", "status": "pending", "count": 0},
-          {"id": "breakdown", "label": "拆解", "status": "pending", "count": 0},
-          {"id": "subtasks", "label": "子任务", "status": "pending", "count": 0},
-          {"id": "review", "label": "Review", "status": "pending", "count": 0},
-          {"id": "release", "label": "发布", "status": "pending", "count": 0},
-          {"id": "live_validation", "label": "Live 验证", "status": "pending", "count": 0},
-          {"id": "acceptance", "label": "验收", "status": "pending", "count": 0}
+          {
+            "id": "requirements",
+            "label": "需求",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "breakdown",
+            "label": "拆解",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "subtasks",
+            "label": "子任务",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "release",
+            "label": "发布",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "live_validation",
+            "label": "Live 验证",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "acceptance",
+            "label": "验收",
+            "status": "pending",
+            "count": 0
+          }
         ]
       }
     ],
@@ -464,13 +580,48 @@
         "human_decisions": 0,
         "latest_run_projection_id": null,
         "task_flow": [
-          {"id": "requirements", "label": "需求", "status": "pending", "count": 0},
-          {"id": "breakdown", "label": "拆解", "status": "pending", "count": 0},
-          {"id": "subtasks", "label": "子任务", "status": "pending", "count": 0},
-          {"id": "review", "label": "Review", "status": "pending", "count": 0},
-          {"id": "release", "label": "发布", "status": "pending", "count": 0},
-          {"id": "live_validation", "label": "Live 验证", "status": "pending", "count": 0},
-          {"id": "acceptance", "label": "验收", "status": "pending", "count": 0}
+          {
+            "id": "requirements",
+            "label": "需求",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "breakdown",
+            "label": "拆解",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "subtasks",
+            "label": "子任务",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "review",
+            "label": "Review",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "release",
+            "label": "发布",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "live_validation",
+            "label": "Live 验证",
+            "status": "pending",
+            "count": 0
+          },
+          {
+            "id": "acceptance",
+            "label": "验收",
+            "status": "pending",
+            "count": 0
+          }
         ]
       }
     ],
@@ -2017,10 +2168,10 @@
       "agent_lifecycle_closed": 0,
       "agent_key_total": 0,
       "agent_key_available": 0,
-      "self_governance_findings": 1,
+      "self_governance_findings": 2,
       "self_governance_auto_repairs": 0,
       "self_governance_evidence_tasks": 1,
-      "self_governance_user_decisions": 0,
+      "self_governance_user_decisions": 1,
       "projects_total": 2,
       "active_projects": 2,
       "tasks_total": 12,

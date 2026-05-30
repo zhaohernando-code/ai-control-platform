@@ -9,6 +9,7 @@
 - 每个子进程完成后必须自评需求是否跑偏、结果是否符合预期、证据是否足够；主进程必须把该自评纳入验收。
 - 不合格结果必须先改流程不变量、gate、schema、测试或 workbench projection，再重跑；禁止只写普通总结或口头提醒。
 - 上下文压缩或新会话恢复后，必须从 `AGENTS.md`、`PROCESS.md`、`PROJECT_STATUS.json`、global_goals、durable run/artifact/task DAG 状态和 workbench continuation 继续，不得依赖聊天记忆替代状态。
+- `PROJECT_STATUS.json` 只承载持久意图（goals/phase/blockers/next steps 等），不得当作运行日志：运行期派生字段（`updated_at`、`latest_update`、各类 `*_live_route_evidence`/`*_live_route_probe` 等）属于 run/artifact 账本，提交前用 `durableProjectStatus()`（`src/workflow/project-status-fields.js`）剥离；self-governance scan 会对混入派生字段发出 `project-status-carries-derived-runtime-fields` 提示。
 - 文档检查只证明恢复入口存在；`run_context_work_packages` 调度前必须通过 fixed-development-mode runtime gate，检查 Context Pack root/subtask/selected work package 的 `owned_files`，失败时不得把 work package 标记为 completed。
 - `run_context_work_packages` 还必须通过 work-package-execution-governance gate：需求实现类 work package 必须保留依赖和 source 元数据，并提供结构化 `source.execution_governance`。硬门禁只根据 `granularity`、`decomposition.required/status/evidence`、`verification.status/gate_count` 等结构化字段判定；自然语言步骤说明不得作为执行阻断依据。
 - 多模型协同必须经过 model routing plan、reviewer gate 和 durable findings/artifacts；禁止把某个模型或临时 skill 固定成绕过流程的默认实现者。

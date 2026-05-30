@@ -1,4 +1,5 @@
 import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
+import { hasDerivedStatusFields, DERIVED_STATUS_FIELDS } from "./project-status-fields.js";
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -91,6 +92,22 @@ function projectStatusFindings(projectStatus = {}) {
       evidence_needed: "确认该 next_step 是否已经被 Context Pack、Work Package 或调度器接管，并记录可追踪证据。",
       evidence: [projectStatus.next_step],
       owned_files: ["PROJECT_STATUS.json", "src/workflow/project-status-continuation.js"],
+      acceptance_gates: ["npm run check:closeout"]
+    }));
+  }
+
+  if (hasDerivedStatusFields(projectStatus)) {
+    const present = DERIVED_STATUS_FIELDS.filter((field) => field in (projectStatus || {}));
+    findings.push(finding({
+      id: "project-status-carries-derived-runtime-fields",
+      category: "evolution_opportunity",
+      dimension: "iteration_evolution",
+      severity: "low",
+      title: "PROJECT_STATUS 混入了运行期派生字段",
+      message: `PROJECT_STATUS.json 携带了 ${present.length} 个运行期派生字段（${present.join(", ")}），每次运行都会被重写，使该文件被当作日志而非持久意图，产生噪声提交。`,
+      recommended_fix: "用 durableProjectStatus()（src/workflow/project-status-fields.js）只提交持久意图字段，运行期证据写入 run/artifact 账本。",
+      evidence: present,
+      owned_files: ["PROJECT_STATUS.json", "src/workflow/project-status-fields.js"],
       acceptance_gates: ["npm run check:closeout"]
     }));
   }
