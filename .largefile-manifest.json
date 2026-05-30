@@ -81,8 +81,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 2149,
-      "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction.",
+      "lines": 2090,
+      "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction. Acceptance-gate classification extracted (P2-8); further extraction planned.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-30"
     },
