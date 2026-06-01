@@ -31,6 +31,7 @@ import {
   isPendingExecutionTask,
   isRecoverablePlanTask,
   recoveryActionLabel,
+  resumableWorkPackageIds,
   safeText,
   taskDetailHref,
   taskItemsFromProjection
@@ -101,6 +102,8 @@ export default function ProjectsPage() {
     setActionTaskId(task.task_id);
     try {
       await runContextWorkPackages({
+        requirement_id: task.task_id,
+        selected_work_package_ids: resumableWorkPackageIds(task),
         max_package_count: 1,
         dispatch_mode: "background",
         background: true,

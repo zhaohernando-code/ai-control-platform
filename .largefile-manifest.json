@@ -63,7 +63,7 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1201,
+      "lines": 1217,
       "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, execution-root provenance, and result normalization share one flow.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-30"
@@ -123,7 +123,7 @@
       "reviewed_at": "2026-05-29"
     },
     "test/context-work-package-runner.test.js": {
-      "lines": 1169,
+      "lines": 1242,
       "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-29"
@@ -153,7 +153,7 @@
       "reviewed_at": "2026-05-29"
     },
     "test/workbench-server.test.js": {
-      "lines": 4314,
+      "lines": 4333,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
@@ -165,7 +165,7 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-shell.test.js": {
-      "lines": 816,
+      "lines": 825,
       "reason": "Workbench shell tests cover desktop/mobile shell invariants and mounted entry compatibility across shared fixtures.",
       "status": "accepted",
       "reviewed_at": "2026-05-28"

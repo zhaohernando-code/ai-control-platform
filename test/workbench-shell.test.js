@@ -732,6 +732,9 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(flowDetail, /PlanReviewDrawer/);
   assert.match(flowDetail, /findTaskById/);
   assert.match(flowDetail, /runContextWorkPackages/);
+  assert.match(flowDetail, /resumableWorkPackageIds/);
+  assert.match(flowDetail, /requirement_id:\s*task\.task_id/);
+  assert.match(flowDetail, /selected_work_package_ids:\s*resumableWorkPackageIds\(task\)/);
   assert.match(flowDetail, /isPendingExecutionTask/);
   assert.match(flowDetail, /isRecoverablePlanTask/);
   assert.match(flowDetail, /recoveryActionLabel/);
@@ -756,6 +759,9 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(flow, /pending_plan_generation/);
   assert.match(flow, /pending_execution/);
   assert.match(flow, /runContextWorkPackages/);
+  assert.match(flow, /resumableWorkPackageIds/);
+  assert.match(flow, /requirement_id:\s*task\.task_id/);
+  assert.match(flow, /selected_work_package_ids:\s*resumableWorkPackageIds\(task\)/);
   assert.match(flow, /isPendingExecutionTask/);
   assert.match(flow, /isRecoverablePlanTask/);
   assert.match(flow, /recoveryActionLabel/);
@@ -770,6 +776,9 @@ test("step 05/9: overview uses useProjection + antd Statistic/Timeline + sub-rou
   assert.match(projects, /taskItemsFromProjection/);
   assert.match(projects, /retryRequirementPlan/);
   assert.match(projects, /runContextWorkPackages/);
+  assert.match(projects, /resumableWorkPackageIds/);
+  assert.match(projects, /requirement_id:\s*task\.task_id/);
+  assert.match(projects, /selected_work_package_ids:\s*resumableWorkPackageIds\(task\)/);
   assert.match(projects, /closeRequirementTask/);
   assert.match(projects, /isPendingExecutionTask/);
   assert.match(projects, /isRecoverablePlanTask/);

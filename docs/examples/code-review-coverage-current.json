@@ -3,53 +3,97 @@
   "id": "code-review-coverage-current",
   "status": "pass",
   "summary": {
-    "first_party_shards": 3,
+    "first_party_shards": 5,
     "missing_shard_count": 0,
     "denominator_files": [
-      "src/workflow/autonomous-continuation.js",
-      "src/workflow/self-governance-scanner.js",
+      "apps/workbench/app/projects/page.tsx",
+      "apps/workbench/app/flow/page.tsx",
+      "apps/workbench/app/flow/[taskId]/page.tsx",
+      "apps/workbench/lib/api/requirements.ts",
+      "apps/workbench/lib/task-flow.ts",
+      "tools/workbench-server.mjs",
+      "src/workflow/context-work-package-runner.js",
+      "src/workflow/context-work-package-execution-adapter.js",
+      "src/workflow/workbench-state-store.js",
+      "src/workflow/workbench-projection.js",
       "src/workflow/code-review-coverage-dispatch.js",
-      "test/code-review-coverage-dispatch.test.js",
-      "node_modules/some-package/index.js",
-      "tmp/generated-review.json",
-      "dist/app.bundle.js",
-      ".git/config"
+      "src/workflow/headless-cli-orchestrator.js",
+      "src/workflow/autonomous-scheduler-loop.js",
+      "test/workbench-shell.test.js",
+      "test/workbench-server.test.js",
+      "test/context-work-package-runner.test.js",
+      "test/context-work-package-provider-executor.test.js",
+      "test/headless-cli-orchestrator.test.js",
+      "test/workbench-projection.test.js",
+      "test/code-review-coverage-dispatch.test.js"
     ]
   },
   "shards": [
     {
-      "id": "workflow-continuation",
+      "id": "frontend-workbench-task-flow",
       "status": "audited",
       "files": [
-        "src/workflow/autonomous-continuation.js",
-        "node_modules/some-package/index.js"
+        "apps/workbench/app/projects/page.tsx",
+        "apps/workbench/app/flow/page.tsx",
+        "apps/workbench/app/flow/[taskId]/page.tsx",
+        "apps/workbench/lib/api/requirements.ts",
+        "apps/workbench/lib/task-flow.ts",
+        "test/workbench-shell.test.js"
       ],
       "evidence": [
-        "test/autonomous-continuation.test.js"
+        "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
+        "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build"
       ]
     },
     {
-      "id": "self-governance-scanner",
+      "id": "workbench-server-api",
       "status": "covered",
       "files": [
-        "src/workflow/self-governance-scanner.js",
-        "tmp/generated-review.json"
+        "tools/workbench-server.mjs",
+        "src/workflow/workbench-state-store.js",
+        "test/workbench-server.test.js"
       ],
       "evidence": [
-        "test/self-governance.test.js"
+        "node tools/run-with-node18.mjs --test test/workbench-server.test.js"
       ]
     },
     {
-      "id": "coverage-dispatch",
+      "id": "context-work-package-dispatch",
       "status": "passed",
       "files": [
-        "src/workflow/code-review-coverage-dispatch.js",
-        "test/code-review-coverage-dispatch.test.js",
-        "dist/app.bundle.js",
-        ".git/config"
+        "src/workflow/context-work-package-runner.js",
+        "src/workflow/context-work-package-execution-adapter.js",
+        "test/context-work-package-runner.test.js",
+        "test/context-work-package-provider-executor.test.js"
       ],
       "evidence": [
+        "node tools/run-with-node18.mjs --test test/context-work-package-runner.test.js test/context-work-package-provider-executor.test.js"
+      ]
+    },
+    {
+      "id": "headless-scheduler-loop",
+      "status": "audited",
+      "files": [
+        "src/workflow/headless-cli-orchestrator.js",
+        "src/workflow/autonomous-scheduler-loop.js",
+        "test/headless-cli-orchestrator.test.js"
+      ],
+      "evidence": [
+        "node tools/run-with-node18.mjs --test test/headless-cli-orchestrator.test.js"
+      ]
+    },
+    {
+      "id": "projection-and-coverage-gates",
+      "status": "covered",
+      "files": [
+        "src/workflow/workbench-projection.js",
+        "src/workflow/code-review-coverage-dispatch.js",
+        "test/workbench-projection.test.js",
         "test/code-review-coverage-dispatch.test.js"
+      ],
+      "evidence": [
+        "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/code-review-coverage-dispatch.test.js",
+        "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json"
       ]
     }
   ]

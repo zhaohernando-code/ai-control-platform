@@ -4222,6 +4222,25 @@ test("workbench server rejects malformed operator event json", async () => {
   }, { eventsPath });
 });
 
+test("workbench server rejects oversized json bodies before parsing", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-events-"));
+  const eventsPath = join(dir, "operator-events.json");
+  writeFileSync(eventsPath, JSON.stringify({ version: "operator-events.v1", events: [] }));
+
+  await withServer(async (baseUrl) => {
+    const response = await request(`${baseUrl}/api/workbench/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ note: "x".repeat(128) })
+    });
+    const payload = response.json();
+
+    assert.equal(response.status, 413);
+    assert.equal(payload.error, "request body too large");
+    assert.equal(payload.max_bytes, 64);
+  }, { eventsPath, jsonBodyLimitBytes: 64 });
+});
+
 test("workbench server CLI honors isolated history snapshots and events paths", async () => {
   const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-server-cli-isolated-"));
   const historyPath = join(dir, "projection-history.json");

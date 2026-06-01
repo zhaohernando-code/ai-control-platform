@@ -927,6 +927,79 @@ test("context work package dispatch can be staged as running before background p
   assert.ok(staged.workflow_state.manifest.events.some((event) => event.type === "context_work_packages_dispatch_started"));
 });
 
+test("context work package dispatch scopes implicit selection by requirement id", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const workPackages = [
+    {
+      id: "task-a-package",
+      title: "Task A package",
+      status: "pending",
+      owned_files: ["src/workflow/context-work-package-runner.js"],
+      acceptance_gates: ["node --test test/context-work-package-runner.test.js"],
+      source: { requirement_id: "task-a" }
+    },
+    {
+      id: "task-b-package",
+      title: "Task B package",
+      status: "pending",
+      owned_files: ["test/context-work-package-runner.test.js"],
+      acceptance_gates: ["node --test test/context-work-package-runner.test.js"],
+      source: { requirement_id: "task-b" }
+    }
+  ];
+  workflowState.manifest.work_packages = workPackages;
+  workflowState.manifest.context_pack.subtasks = workPackages;
+  workflowState.task_dag = workPackages;
+
+  const staged = stageContextWorkPackageDispatch(workflowState, {
+    requirement_id: "task-b",
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    dispatch_run_id: "dispatch-task-b-001",
+    created_at: "2026-05-28T13:30:30.000Z"
+  });
+
+  assert.equal(staged.status, "pass");
+  assert.deepEqual(staged.selected_work_package_ids, ["task-b-package"]);
+  assert.equal(
+    staged.workflow_state.manifest.work_packages.find((item) => item.id === "task-a-package").status,
+    "pending"
+  );
+  assert.equal(
+    staged.workflow_state.manifest.work_packages.find((item) => item.id === "task-b-package").status,
+    "running"
+  );
+});
+
+test("context work package dispatch does not fall back to another requirement", () => {
+  const workflowState = workflowStateWithContextCycle();
+  const workPackages = [{
+    id: "task-a-package",
+    title: "Task A package",
+    status: "pending",
+    owned_files: ["src/workflow/context-work-package-runner.js"],
+    acceptance_gates: ["node --test test/context-work-package-runner.test.js"],
+    source: { requirement_id: "task-a" }
+  }];
+  workflowState.manifest.work_packages = workPackages;
+  workflowState.manifest.context_pack.subtasks = workPackages;
+  workflowState.task_dag = workPackages;
+
+  const staged = stageContextWorkPackageDispatch(workflowState, {
+    requirement_id: "task-b",
+    max_package_count: 1,
+    execution_mode: "provider_model_routed",
+    execution_profile: VERIFIED_PROVIDER_MULTI_AGENT_PROFILE,
+    dispatch_run_id: "dispatch-task-b-empty-001",
+    created_at: "2026-05-28T13:30:40.000Z"
+  });
+
+  assert.equal(staged.status, "blocked");
+  assert.equal(staged.phase, "no_dispatchable_work_packages");
+  assert.ok(staged.issues.some((item) => item.code === "no_dispatchable_work_packages"));
+});
+
 test("context work package runner can complete a staged running package by explicit id", () => {
   const workflowState = workflowStateWithContextCycle();
   const staged = stageContextWorkPackageDispatch(workflowState, {

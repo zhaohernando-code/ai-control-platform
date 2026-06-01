@@ -125,6 +125,7 @@ function runnableNodes(workflowState = {}, options = {}) {
   const dag = buildTaskDag(taskDag);
   const dispatchable = getDispatchableNodes(dag);
   const selectedIds = new Set(asArray(options.selected_work_package_ids || options.selectedWorkPackageIds).map(normalizeString).filter(Boolean));
+  const requirementId = normalizeString(options.requirement_id || options.requirementId);
   if (selectedIds.size > 0) {
     const nodes = asArray(dag.nodes).filter((node) => selectedIds.has(normalizeString(node.id)));
     return {
@@ -151,16 +152,31 @@ function runnableNodes(workflowState = {}, options = {}) {
     });
   });
   const runnable = recoverableFailed.length > 0 ? recoverableFailed : dispatchable;
+  const requirementScopedRunnable = requirementId
+    ? runnable.filter((node) => {
+      const raw = rawById.get(normalizeString(node.id));
+      return workPackageRequirementId(raw || node) === requirementId;
+    })
+    : runnable;
   const maxPackageCount = Number(options.max_package_count || options.maxPackageCount || runnable.length || 1);
   return {
     dag,
     dispatchable,
-    selected: runnable.slice(0, Math.max(1, maxPackageCount))
+    selected: requirementScopedRunnable.slice(0, Math.max(1, maxPackageCount))
   };
 }
 
 function workPackageId(workPackage = {}) {
   return normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId);
+}
+
+function workPackageRequirementId(workPackage = {}) {
+  return normalizeString(
+    workPackage.requirement_id ||
+    workPackage.requirementId ||
+    workPackage.source?.requirement_id ||
+    workPackage.source?.requirementId
+  );
 }
 
 function sameWorkPackages(left = [], right = []) {

@@ -69,6 +69,8 @@ export interface RequirementTaskActionResponse {
 }
 
 export interface ContextWorkPackagesRunInput {
+  requirement_id?: string;
+  selected_work_package_ids?: string[];
   max_package_count?: number;
   created_at?: string;
   execution_profile?: string;

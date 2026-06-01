@@ -1084,6 +1084,12 @@ function contextWorkPackageRunOptions(input = {}, projection = null) {
     idle_timeout_seconds: input.idle_timeout_seconds || input.idleTimeoutSeconds,
     execution_mode: executionMode || (shouldUseProviderDefault ? "provider_model_routed" : undefined),
     execution_profile: executionProfile || (shouldUseProviderDefault ? VERIFIED_PROVIDER_MULTI_AGENT_PROFILE : undefined),
+    requirement_id: input.requirement_id || input.requirementId,
+    selected_work_package_ids: Array.isArray(input.selected_work_package_ids)
+      ? input.selected_work_package_ids
+      : Array.isArray(input.selectedWorkPackageIds)
+        ? input.selectedWorkPackageIds
+        : undefined,
     executor_profile: input.executor_profile || input.executorProfile,
     executor_kind: input.executor_kind || input.executorKind,
     adapter_profile: input.adapter_profile || input.adapterProfile,
@@ -1273,16 +1279,48 @@ function createMainlineAlreadySatisfiedEvaluator() {
   };
 }
 
-function readBody(req) {
+const DEFAULT_JSON_BODY_LIMIT_BYTES = 1024 * 1024;
+
+function codedError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function readBody(req, options = {}) {
+  const maxBytes = Number(options.maxBytes || options.max_bytes || DEFAULT_JSON_BODY_LIMIT_BYTES);
   return new Promise((resolveBody, reject) => {
     let body = "";
+    let bytes = 0;
+    let rejected = false;
     req.setEncoding("utf8");
     req.on("data", (chunk) => {
+      if (rejected) return;
+      bytes += Buffer.byteLength(chunk, "utf8");
+      if (Number.isFinite(maxBytes) && maxBytes > 0 && bytes > maxBytes) {
+        rejected = true;
+        reject(codedError("REQUEST_BODY_TOO_LARGE", `request body exceeds ${maxBytes} bytes`));
+        return;
+      }
       body += chunk;
     });
-    req.on("end", () => resolveBody(body));
-    req.on("error", reject);
+    req.on("end", () => {
+      if (!rejected) resolveBody(body);
+    });
+    req.on("error", (error) => {
+      if (!rejected) reject(error);
+    });
   });
+}
+
+async function readJsonBody(req, options = {}) {
+  const body = await readBody(req, options);
+  if (!body) return {};
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw codedError("INVALID_JSON_BODY", "invalid json");
+  }
 }
 
 function normalizeEvent(input = {}, projectionId = null) {
@@ -1699,6 +1737,7 @@ function projectMountRoutePathname(pathname) {
 
 export function createWorkbenchServer(options = {}) {
   const eventsPath = options.eventsPath || defaultEventsPath;
+  const jsonBodyLimitBytes = Number(options.jsonBodyLimitBytes || options.json_body_limit_bytes || DEFAULT_JSON_BODY_LIMIT_BYTES);
   const serverHistoryPath = options.historyPath || historyPath;
   const projectStatusPath = options.projectStatusPath === null
     ? null
@@ -1841,14 +1880,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
           return;
         }
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const result = await runAgentHealthCheck(stateStore, {
           ...input,
           include_fresh: input.include_fresh ?? true
@@ -1868,14 +1900,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
           return;
         }
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const result = await runAgentHealthCheck(stateStore, {
           ...input,
           agent_id: decodeURIComponent(agentHealthMatch[1]),
@@ -1895,14 +1920,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
           return;
         }
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const result = stateStore.addAgentKey(input, input.created_at || input.createdAt || new Date().toISOString());
         jsonResponse(res, result.status === "created" ? 201 : 400, {
           ...result,
@@ -1931,14 +1949,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
           return;
         }
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const result = await runAgentHealthCheck(stateStore, {
           ...input,
           key_id: decodeURIComponent(agentKeyHealthMatch[1])
@@ -1958,14 +1969,7 @@ export function createWorkbenchServer(options = {}) {
           jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
           return;
         }
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const result = stateStore.updateAgentRoles(
           decodeURIComponent(agentRolesMatch[1]),
           input.roles || input,
@@ -1991,14 +1995,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/snapshots" && req.method === "POST") {
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const issues = snapshotIssues(input);
         if (issues.length > 0) {
           jsonResponse(res, 400, { error: "invalid workflow state snapshot", issues });
@@ -2026,14 +2023,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const result = recordReviewerProviderHealthFact(workflowState, {
           request: workflowState.reviewer_gate?.request || workflowState.reviewerGate?.request || workflowState.reviewer_gate || workflowState.reviewerGate,
@@ -2065,14 +2055,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const result = recordReviewerShardResult(workflowState, {
           shard_id: input.shard_id || input.shardId,
@@ -2118,14 +2101,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const result = (input.cleanup_latest_pool || input.cleanupLatestPool)
           ? cleanupAgentLifecyclePool(workflowState, {
@@ -2169,14 +2145,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const result = recordWorkbenchBrowserEventsRunArtifact(
           workflowState,
@@ -2210,14 +2179,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const result = recordGovernanceAuditSkillTrialRunArtifact(
           workflowState,
@@ -2252,14 +2214,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         let executorSetup;
         try {
@@ -2315,14 +2270,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const projectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const prepared = prepareContinuationFromProjectStatus(projectStatus, { workflow_state: workflowState });
@@ -2347,14 +2295,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/requirements" && req.method === "POST") {
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
 
         // For independent requirement submissions, create or use initial workflow state
         const history = readServerHistory();
@@ -2564,14 +2505,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const reset = resetRequirementPlanGeneration(currentProjectStatus || {}, input, {
@@ -2679,14 +2613,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const closed = closeRequirementInProjectStatus(currentProjectStatus || {}, input, {
@@ -2720,14 +2647,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const currentProjectStatus = readProjectStatus(projectStatusPath, stateStore) || workflowState.project_status;
         const updated = updateRequirementPlanReview(currentProjectStatus || {}, input, {
@@ -2792,14 +2712,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const materialized = materializeContextPackCycleFromWorkflowState(workflowState, {
           cycle_id: input.cycle_id || input.cycleId,
@@ -2864,14 +2777,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const projection = workbenchProjection(workflowState);
         const runOptions = contextWorkPackageRunOptions(input, projection);
@@ -3000,14 +2906,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const plan = createSchedulerDispatchPlan(
           schedulerPlanInputFromWorkflowState(workflowState, input),
@@ -3035,14 +2934,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const normalizedControl = normalizeSchedulerDispatchControlRequest(input);
         if (normalizedControl.status !== "pass") {
           jsonResponse(res, 400, { error: "scheduler dispatch control request rejected", issues: normalizedControl.issues });
@@ -3165,14 +3057,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const latestRun = latestSchedulerDispatchRun(workflowState);
         if (!latestRun.metadata) {
@@ -3287,14 +3172,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
 
         const maxIterations = Number(input.max_iterations || input.maxIterations || 1);
         const loopInput = {
@@ -3348,14 +3226,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
 
         const sourceWorkflowState = readWorkflowState(item);
         const registry = buildSchedulerLoopRunRegistry(sourceWorkflowState);
@@ -3487,14 +3358,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const workflowState = readWorkflowState(item);
         const projection = workbenchProjection(workflowState);
         const executed = await executeProjectedNextAction({
@@ -3538,14 +3402,7 @@ export function createWorkbenchServer(options = {}) {
           return;
         }
 
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
 
         const issues = schedulerDispatchRunIssues(input);
         if (issues.length > 0) {
@@ -3579,14 +3436,7 @@ export function createWorkbenchServer(options = {}) {
       }
 
       if (url.pathname === "/api/workbench/events" && req.method === "POST") {
-        const body = await readBody(req);
-        let input = {};
-        try {
-          input = body ? JSON.parse(body) : {};
-        } catch {
-          jsonResponse(res, 400, { error: "invalid json" });
-          return;
-        }
+        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
         const issues = operatorEventIssues(input);
         if (issues.length > 0) {
           jsonResponse(res, 400, { error: "invalid operator event", issues });
@@ -3649,6 +3499,19 @@ export function createWorkbenchServer(options = {}) {
 
       if (error.code === "INVALID_CONTINUATION_PATH") {
         jsonResponse(res, 400, { error: error.message });
+        return;
+      }
+
+      if (error.code === "INVALID_JSON_BODY") {
+        jsonResponse(res, 400, { error: "invalid json" });
+        return;
+      }
+
+      if (error.code === "REQUEST_BODY_TOO_LARGE") {
+        jsonResponse(res, 413, {
+          error: "request body too large",
+          max_bytes: jsonBodyLimitBytes
+        });
         return;
       }
 

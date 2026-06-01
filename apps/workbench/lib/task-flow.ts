@@ -117,11 +117,34 @@ export function recoveryActionLabel(task: TaskFlowItem): string {
     : "重试计划";
 }
 
+const RESUMABLE_WORK_PACKAGE_STATUSES = new Set([
+  "pending",
+  "queued",
+  "ready",
+  "rerun",
+  "failed",
+  "fail",
+  "error",
+  "errored",
+  "timeout",
+  "timed_out"
+]);
+
+function isResumableWorkPackage(workPackage: TaskWorkPackage): boolean {
+  return RESUMABLE_WORK_PACKAGE_STATUSES.has(safeText(workPackage.status, "").toLowerCase());
+}
+
+export function resumableWorkPackageIds(task: TaskFlowItem): string[] {
+  return asArray<TaskWorkPackage>(task.work_packages)
+    .filter(isResumableWorkPackage)
+    .map((workPackage) => safeText(workPackage.id, ""))
+    .filter(Boolean);
+}
+
 export function isPendingExecutionTask(task: TaskFlowItem): boolean {
   if (task.status === "pending_execution") return true;
   if (task.phase !== "in_development") return false;
-  return asArray<TaskWorkPackage>(task.work_packages)
-    .some((workPackage) => ["pending", "queued", "ready", "rerun", "failed", "fail", "error", "errored", "timeout", "timed_out"].includes(safeText(workPackage.status, "").toLowerCase()));
+  return asArray<TaskWorkPackage>(task.work_packages).some(isResumableWorkPackage);
 }
 
 export function asRecord(value: unknown): Record<string, unknown> {
