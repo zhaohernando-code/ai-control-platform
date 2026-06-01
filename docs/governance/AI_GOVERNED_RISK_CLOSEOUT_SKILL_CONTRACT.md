@@ -43,6 +43,8 @@ The skill requires the agent to read:
 - Risks must not be removed, downgraded, or deferred merely to satisfy a gate.
 - Owner questions must ask for risk or business authorization, not code-detail review.
 - Auto-merge and auto-publish are forbidden unless policy permits them and all gates pass.
+- Every future phase-level deliverable for this capability must receive a read-only DeepSeek review before merge or acceptance.
+- The dry-run scheduled entrypoint is preflight only. It must not be described as having remediated or closed selected risks.
 
 ## Workflow Contract
 
@@ -76,6 +78,8 @@ The dry-run scheduled entrypoint is:
 ```bash
 npm run run:known-risk-closeout -- --max-risks 2
 ```
+
+This command can prove only that scheduling preflight completed. It cannot move a risk to `fixed`, merge, publish, or satisfy terminal closeout evidence until P7 write-mode orchestration exists.
 
 ## Final Output Contract
 

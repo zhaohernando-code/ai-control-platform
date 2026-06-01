@@ -53,6 +53,7 @@ The process assumes that the human owner may not be able to review implementatio
 - **AGR-A004**: The skeptic reviewer must be read-only and must receive the diff, risk entry, tests, and evidence. It must not rely on the repair agent's summary alone.
 - **AGR-A005**: High-risk scopes configured by policy require at least two independent model reviewer passes.
 - **AGR-A006**: Blocking reviewer findings must prevent merge, publish, and terminal `fixed` status.
+- **AGR-A007**: Every future phase-level deliverable for this closeout capability must receive a read-only DeepSeek reviewer pass before it is merged or treated as accepted.
 
 ### Policy and Authorization
 
@@ -71,6 +72,8 @@ The process assumes that the human owner may not be able to review implementatio
 - **AGR-G004**: `check-known-risk-closeout` must fail if dependency cycles exist.
 - **AGR-G005**: The closeout run must preserve raw verification evidence or a durable artifact that points to it.
 - **AGR-G006**: The closeout run must include a machine-readable run artifact with risk ids, attempted actions, gates, reviewer verdicts, release decision, and cleanup status.
+- **AGR-G007**: A dry-run or preflight artifact must not use language that implies risk closeout completion. It must distinguish ledger structure validation from terminal closeout validation.
+- **AGR-G008**: Actual risk remediation must execute each selected risk's `acceptance_gates` and record command-level evidence before a risk can become `fixed`.
 
 ### Concurrency, Recovery, and Cleanup
 
@@ -101,4 +104,3 @@ Expected result:
 Status: pending | pass | fail | blocked
 Evidence:
 ```
-

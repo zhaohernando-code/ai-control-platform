@@ -4,6 +4,10 @@
 
 This plan is intentionally phased. Each phase must be independently reviewable and must have explicit acceptance gates. Later phases may not claim completion for earlier phases unless the listed gates pass.
 
+Every future phase-level deliverable must receive a read-only DeepSeek review before merge or acceptance. If DeepSeek is unavailable or inconclusive, the phase must stop with an explicit blocker rather than proceed as accepted.
+
+P6 is a dry-run/preflight entrypoint only. Its `pass` result means "preflight completed", not "known risks closed". The seven seeded open risks must not be remediated by the scheduled runner until P7 or an equivalent write-mode orchestrator contract is implemented and reviewed.
+
 ## Phase P0: Governance Documents and Schemas
 
 | ID | Work item | Deliverable | Acceptance |
@@ -101,12 +105,36 @@ node tools/run-with-node18.mjs tools/scan-risk-closeout-worktrees.mjs
 | P6.2 | Bounded run mode | script | Can limit max risks per run. |
 | P6.3 | Run artifact | JSON artifact | Contains run id, risks attempted, gates, reviewers, release decision, cleanup status. |
 | P6.4 | Scheduling docs | docs | Documents how to invoke from a timer without interactive chat. |
+| P6.5 | Dry-run wording hardening | runner/docs | Dry-run artifacts cannot be mistaken for terminal closeout success. |
 
 Suggested verification:
 
 ```bash
 node tools/run-with-node18.mjs --test test/known-risk-closeout-runner.test.js
 npm run run:known-risk-closeout -- --max-risks 2
+```
+
+## Phase P7: Write-Mode Orchestrator Contract
+
+This phase is mandatory before using the scheduled runner to remediate the seven seeded open risks.
+
+| ID | Work item | Deliverable | Acceptance |
+| --- | --- | --- | --- |
+| P7.1 | Repair agent interface | contract + tests | Selected risks move to `in_progress` only inside an isolated worktree and owned-file scope. |
+| P7.2 | Evidence agent interface | contract + tests | Each selected risk's `acceptance_gates` run with command, exit code, and artifact evidence. |
+| P7.3 | Reviewer handoff | contract + tests | Reviewer prompts include risk, diff, evidence, and terminal claim; blocking findings stop closeout. |
+| P7.4 | Ledger transition engine | tool module + tests | `open -> in_progress -> fixed/invalidated/deferred/blocked/requires_owner_authorization` transitions are explicit and auditable. |
+| P7.5 | Write-mode runner guard | script/tests | `--write` is rejected until P7 passes; dry-run cannot mutate ledger, locks, branches, or worktrees. |
+| P7.6 | Per-phase DeepSeek gate | process + artifact | Every subsequent phase records a DeepSeek verdict before merge. |
+
+Suggested verification:
+
+```bash
+python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py \
+  --cwd /Users/hernando_zhao/codex/projects/ai-control-platform \
+  --bounded-review \
+  --tools Read \
+  --prompt-file /tmp/phase-review.md
 ```
 
 ## Current Seed Risks
