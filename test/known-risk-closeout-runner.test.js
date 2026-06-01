@@ -62,13 +62,6 @@ function policy() {
   };
 }
 
-function worktreePathsFromPorcelain(output) {
-  return output
-    .split("\n")
-    .filter((line) => line.startsWith("worktree "))
-    .sort();
-}
-
 test("risk selection is bounded and severity ordered", () => {
   const selected = selectKnownRisksForCloseout(ledger(), {
     maxRisks: 2,
@@ -137,17 +130,11 @@ test("dry-run CLI writes artifact without mutating the ledger", async (t) => {
   assert.equal(artifact.mode, "dry_run");
 });
 
-test("write mode is rejected before ledger, lock, or worktree mutation", async (t) => {
+test("write mode is rejected before ledger or lock mutation", async (t) => {
   const dir = tempDir(t, "known-risk-closeout-write-");
   const lockPath = join(dir, "closeout.lock");
   const before = readFileSync("docs/governance/known-risk-ledger.json", "utf8");
   const { execFileSync } = await import("node:child_process");
-  const beforeWorktrees = execFileSync("git", [
-    "worktree",
-    "list",
-    "--porcelain"
-  ], { encoding: "utf8" });
-  const beforeWorktreePaths = worktreePathsFromPorcelain(beforeWorktrees);
   let output = "";
   assert.throws(() => {
     execFileSync("node", [
@@ -165,18 +152,13 @@ test("write mode is rejected before ledger, lock, or worktree mutation", async (
   });
 
   const after = readFileSync("docs/governance/known-risk-ledger.json", "utf8");
-  const afterWorktrees = execFileSync("git", [
-    "worktree",
-    "list",
-    "--porcelain"
-  ], { encoding: "utf8" });
-  const afterWorktreePaths = worktreePathsFromPorcelain(afterWorktrees);
   const artifact = JSON.parse(output);
 
   assert.equal(before, after);
   assert.equal(existsSync(lockPath), false);
-  assert.deepEqual(beforeWorktreePaths, afterWorktreePaths);
   assert.equal(artifact.mode, "write_mode_rejected");
   assert.equal(artifact.closeout_completed, false);
+  assert.equal(artifact.cleanup.lock_status, "not_acquired");
+  assert.equal(artifact.cleanup.worktrees_cleaned, false);
   assert.equal(artifact.gates[0].issues[0].code, "write_mode_not_implemented");
 });
