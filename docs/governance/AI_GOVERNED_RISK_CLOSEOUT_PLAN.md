@@ -71,6 +71,12 @@ npm run check:known-risk-closeout:required
 | P4.3 | Publish eligibility checker | tests | User-visible changes require live verification policy. |
 | P4.4 | Owner authorization state | ledger support | Out-of-policy risks become `requires_owner_authorization`, not silently merged. |
 
+Suggested verification:
+
+```bash
+node tools/run-with-node18.mjs --test test/risk-closeout-policy.test.js
+```
+
 ## Phase P5: Recovery, Locking, and Cleanup
 
 | ID | Work item | Deliverable | Acceptance |
