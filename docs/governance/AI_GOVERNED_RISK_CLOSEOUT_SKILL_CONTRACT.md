@@ -31,7 +31,8 @@ The skill requires the agent to read:
 3. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md`
 4. the active risk closeout policy, defaulting to `docs/governance/ai-governed-risk-closeout-policy.example.json`
 5. `docs/governance/ai-reviewer-verdict.schema.json`
-6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, `tools/known-risk-reviewer-prompt.mjs`, `tools/risk-closeout-recovery.mjs`, and `tools/scan-risk-closeout-worktrees.mjs` when implementation details matter
+6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, `tools/known-risk-reviewer-prompt.mjs`, `tools/risk-closeout-recovery.mjs`, `tools/scan-risk-closeout-worktrees.mjs`, and `tools/run-known-risk-closeout.mjs` when implementation details matter
+7. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_SCHEDULING.md` when setting up timer-triggered runs
 
 ## Hard Rules
 
@@ -68,6 +69,12 @@ Closeout recovery state and candidate stale worktrees may be inspected with:
 
 ```bash
 node tools/run-with-node18.mjs tools/scan-risk-closeout-worktrees.mjs
+```
+
+The dry-run scheduled entrypoint is:
+
+```bash
+npm run run:known-risk-closeout -- --max-risks 2
 ```
 
 ## Final Output Contract

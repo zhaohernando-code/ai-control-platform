@@ -102,6 +102,13 @@ node tools/run-with-node18.mjs tools/scan-risk-closeout-worktrees.mjs
 | P6.3 | Run artifact | JSON artifact | Contains run id, risks attempted, gates, reviewers, release decision, cleanup status. |
 | P6.4 | Scheduling docs | docs | Documents how to invoke from a timer without interactive chat. |
 
+Suggested verification:
+
+```bash
+node tools/run-with-node18.mjs --test test/known-risk-closeout-runner.test.js
+npm run run:known-risk-closeout -- --max-risks 2
+```
+
 ## Current Seed Risks
 
 The initial ledger records these known risks for future closeout:
