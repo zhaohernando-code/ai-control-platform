@@ -62,6 +62,13 @@ function policy() {
   };
 }
 
+function worktreePathsFromPorcelain(output) {
+  return output
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .sort();
+}
+
 test("risk selection is bounded and severity ordered", () => {
   const selected = selectKnownRisksForCloseout(ledger(), {
     maxRisks: 2,
@@ -93,8 +100,10 @@ test("dry-run artifact records selected risks, gates, reviewers, release, and cl
   });
 
   assert.equal(artifact.version, "known-risk-closeout-run.v1");
-  assert.equal(artifact.status, "pass");
+  assert.equal(artifact.status, "preflight_pass");
   assert.equal(artifact.mode, "dry_run");
+  assert.equal(artifact.preflight_only, true);
+  assert.equal(artifact.closeout_completed, false);
   assert.deepEqual(artifact.selected_risks.map((item) => item.id), ["risk-high", "risk-medium"]);
   assert.equal(artifact.gates[0].name, "check-known-risk-closeout");
   assert.equal(Array.isArray(artifact.reviewers), true);
@@ -126,4 +135,48 @@ test("dry-run CLI writes artifact without mutating the ledger", async (t) => {
   assert.equal(existsSync(output), true);
   assert.equal(artifact.selected_risks.length, 1);
   assert.equal(artifact.mode, "dry_run");
+});
+
+test("write mode is rejected before ledger, lock, or worktree mutation", async (t) => {
+  const dir = tempDir(t, "known-risk-closeout-write-");
+  const lockPath = join(dir, "closeout.lock");
+  const before = readFileSync("docs/governance/known-risk-ledger.json", "utf8");
+  const { execFileSync } = await import("node:child_process");
+  const beforeWorktrees = execFileSync("git", [
+    "worktree",
+    "list",
+    "--porcelain"
+  ], { encoding: "utf8" });
+  const beforeWorktreePaths = worktreePathsFromPorcelain(beforeWorktrees);
+  let output = "";
+  assert.throws(() => {
+    execFileSync("node", [
+      "tools/run-with-node18.mjs",
+      "tools/run-known-risk-closeout.mjs",
+      "--write",
+      "--lock",
+      lockPath,
+      "--now",
+      NOW.toISOString()
+    ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  }, (error) => {
+    output = error.stdout;
+    return error.status === 2;
+  });
+
+  const after = readFileSync("docs/governance/known-risk-ledger.json", "utf8");
+  const afterWorktrees = execFileSync("git", [
+    "worktree",
+    "list",
+    "--porcelain"
+  ], { encoding: "utf8" });
+  const afterWorktreePaths = worktreePathsFromPorcelain(afterWorktrees);
+  const artifact = JSON.parse(output);
+
+  assert.equal(before, after);
+  assert.equal(existsSync(lockPath), false);
+  assert.deepEqual(beforeWorktreePaths, afterWorktreePaths);
+  assert.equal(artifact.mode, "write_mode_rejected");
+  assert.equal(artifact.closeout_completed, false);
+  assert.equal(artifact.gates[0].issues[0].code, "write_mode_not_implemented");
 });

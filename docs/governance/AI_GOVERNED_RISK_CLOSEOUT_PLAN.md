@@ -130,6 +130,8 @@ This phase is mandatory before using the scheduled runner to remediate the seven
 Suggested verification:
 
 ```bash
+node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js test/known-risk-closeout-runner.test.js
+node tools/run-with-node18.mjs tools/run-known-risk-closeout.mjs --write
 python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_review.py \
   --cwd /Users/hernando_zhao/codex/projects/ai-control-platform \
   --bounded-review \

@@ -31,7 +31,7 @@ The skill requires the agent to read:
 3. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md`
 4. the active risk closeout policy, defaulting to `docs/governance/ai-governed-risk-closeout-policy.example.json`
 5. `docs/governance/ai-reviewer-verdict.schema.json`
-6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, `tools/known-risk-reviewer-prompt.mjs`, `tools/risk-closeout-recovery.mjs`, `tools/scan-risk-closeout-worktrees.mjs`, and `tools/run-known-risk-closeout.mjs` when implementation details matter
+6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, `tools/known-risk-reviewer-prompt.mjs`, `tools/risk-closeout-recovery.mjs`, `tools/scan-risk-closeout-worktrees.mjs`, `tools/risk-closeout-orchestrator-contract.mjs`, and `tools/run-known-risk-closeout.mjs` when implementation details matter
 7. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_SCHEDULING.md` when setting up timer-triggered runs
 
 ## Hard Rules
@@ -45,6 +45,7 @@ The skill requires the agent to read:
 - Auto-merge and auto-publish are forbidden unless policy permits them and all gates pass.
 - Every future phase-level deliverable for this capability must receive a read-only DeepSeek review before merge or acceptance.
 - The dry-run scheduled entrypoint is preflight only. It must not be described as having remediated or closed selected risks.
+- `tools/run-known-risk-closeout.mjs --write` must be rejected before reading the ledger, acquiring locks, creating branches, or touching worktrees until the write-mode orchestrator is explicitly implemented and DeepSeek-reviewed.
 
 ## Workflow Contract
 
@@ -81,6 +82,14 @@ npm run run:known-risk-closeout -- --max-risks 2
 
 This command can prove only that scheduling preflight completed. It cannot move a risk to `fixed`, merge, publish, or satisfy terminal closeout evidence until P7 write-mode orchestration exists.
 
+The write-mode guard must be verified with:
+
+```bash
+node tools/run-with-node18.mjs tools/run-known-risk-closeout.mjs --write
+```
+
+Expected result: non-zero exit with `mode: "write_mode_rejected"` and no ledger, lock, branch, or worktree mutation.
+
 ## Final Output Contract
 
 Each run must end with a table containing:
@@ -112,3 +121,14 @@ The final response must also report:
 | P2.4 | Skill requires worktree isolation and run lock | inspect `Hard Rules` and `Workflow` in `SKILL.md` |
 | P2.5 | Skill forbids repair-agent self-verification | inspect `Hard Rules` and `Independent Review` in `SKILL.md` |
 | P2.6 | Skill defines final output contract | inspect `Final Response Contract` in `SKILL.md` |
+
+## P7 Acceptance
+
+| ID | Requirement | Verification |
+| --- | --- | --- |
+| P7.1 | Repair contract enforces isolated worktree and owned scope | `node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js` |
+| P7.2 | Evidence contract requires every acceptance gate command to pass | `node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js` |
+| P7.3 | Reviewer handoff requires risk, diff, evidence refs, changed files, and terminal claim | `node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js` |
+| P7.4 | Ledger transition composes repair/evidence/reviewer contracts | `node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js` |
+| P7.5 | Write mode is rejected before mutation | `node tools/run-with-node18.mjs --test test/known-risk-closeout-runner.test.js` |
+| P7.6 | DeepSeek phase gate blocks non-pass or blocking findings | `node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js` |

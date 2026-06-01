@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { evaluateKnownRiskLedger, readKnownRiskLedger } from "./risk-ledger.mjs";
 import { loadRiskCloseoutPolicy } from "./risk-closeout-policy.mjs";
+import { evaluateWriteModeOrchestratorReadiness } from "./risk-closeout-orchestrator-contract.mjs";
 import { inspectRiskCloseoutLock, staleInProgressRiskActions } from "./risk-closeout-recovery.mjs";
 
 const SEVERITY_RANK = {
@@ -46,7 +47,7 @@ export function selectKnownRisksForCloseout(ledger, options = {}) {
     status: risk.status,
     severity: risk.severity,
     title: risk.title,
-    action: options.dryRun === false ? "attempt_closeout" : "would_attempt_closeout"
+    action: options.dryRun === false ? "write_mode_blocked" : "would_attempt_closeout"
   }));
 }
 
@@ -77,7 +78,9 @@ export function createKnownRiskCloseoutRunArtifact(input = {}) {
     version: "known-risk-closeout-run.v1",
     run_id: input.runId || `known-risk-closeout-${now.toISOString()}`,
     mode: dryRun ? "dry_run" : "write_mode_not_implemented",
-    status: dryRun ? "pass" : "fail",
+    status: dryRun ? "preflight_pass" : "fail",
+    preflight_only: dryRun,
+    closeout_completed: false,
     started_at: now.toISOString(),
     ledger_path: input.ledgerPath || null,
     policy_path: input.policyPath || null,
@@ -173,6 +176,36 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
 
+  if (options.dryRun === false) {
+    const now = nowDate(options.now);
+    const readiness = evaluateWriteModeOrchestratorReadiness({
+      write_mode_enabled: false
+    });
+    const artifact = {
+      version: "known-risk-closeout-run.v1",
+      run_id: `known-risk-closeout-${now.toISOString()}`,
+      mode: "write_mode_rejected",
+      status: "fail",
+      preflight_only: false,
+      closeout_completed: false,
+      started_at: now.toISOString(),
+      ledger_path: options.ledgerPath,
+      policy_path: options.policyPath,
+      selected_risks: [],
+      stale_in_progress: [],
+      gates: [{
+        name: "write-mode-orchestrator-readiness",
+        status: readiness.status,
+        issues: readiness.issues
+      }],
+      reviewers: [],
+      release_decision: { status: "not_evaluated", merge_allowed: false, publish_allowed: false, owner_authorization_required: false },
+      cleanup: { lock_status: "not_acquired", worktrees_cleaned: false, reason: "write mode rejected before mutation" }
+    };
+    console.log(JSON.stringify(artifact, null, 2));
+    process.exit(2);
+  }
+
   const ledger = readKnownRiskLedger(options.ledgerPath);
   const policyResult = loadRiskCloseoutPolicy(options.policyPath);
   if (policyResult.status !== "pass") {
@@ -211,7 +244,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   console.log(JSON.stringify(artifact, null, 2));
 
-  if (artifact.status !== "pass") {
+  if (!["pass", "preflight_pass"].includes(artifact.status)) {
     process.exit(1);
   }
 }

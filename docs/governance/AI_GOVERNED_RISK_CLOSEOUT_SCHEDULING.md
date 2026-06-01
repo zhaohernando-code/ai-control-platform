@@ -33,7 +33,7 @@ node tools/run-with-node18.mjs tools/run-known-risk-closeout.mjs \
 
 ## Artifact Contract
 
-The run artifact uses `version: "known-risk-closeout-run.v1"` and includes:
+The run artifact uses `version: "known-risk-closeout-run.v1"`, `status: "preflight_pass"`, `preflight_only: true`, and `closeout_completed: false` for successful dry runs. It includes:
 
 - `run_id`
 - `mode`
