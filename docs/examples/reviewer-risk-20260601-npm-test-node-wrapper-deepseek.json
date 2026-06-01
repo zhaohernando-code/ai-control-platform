@@ -1,0 +1,33 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260601-npm-test-node-wrapper",
+  "reviewer_id": "deepseek-p7-closeout-review",
+  "model": "deepseek-v4-pro",
+  "reviewed_at": "2026-06-02T00:00:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "The known-risk-closeout-runner test changed from asserting git-worktree path diffs to asserting ledger/artifact state invariants. This is a stronger, concurrency-safe assertion pattern and acceptable, but the diff summary should be documented in the risk closeout notes for full traceability."
+  ],
+  "evidence_refs": [
+    "tools/run-with-node18.mjs: spawnSync preserves all Node CLI args (--test, --experimental-test-coverage, etc.); no argument swallowing",
+    "npm test output: 943/943 pass via wrapper",
+    "npm run test:coverage output: 943/943 pass + coverage gate pass",
+    "test/package-scripts.test.js: regression assertions lock wrapper usage in both scripts"
+  ],
+  "scope": {
+    "files": [
+      "package.json",
+      "test/package-scripts.test.js",
+      "test/known-risk-closeout-runner.test.js",
+      "tools/run-with-node18.mjs"
+    ],
+    "diff_summary": "npm test and test:coverage now run through Node18 wrapper; added script regression test; made write-mode guard test concurrency-safe by switching from worktree-path-diff to state-invariant assertions.",
+    "gates_reviewed": [
+      "targeted wrapper tests (8/8)",
+      "npm test (943/943)",
+      "npm run test:coverage (943/943 + coverage gate)"
+    ]
+  },
+  "notes": "Risk genuinely closed. Wrapper guarantees Node18+ execPath regardless of shell Node version. No gates weakened; test:coverage args pass through wrapper unchanged. Runner test adjustment is concurrency-safe and equivalently strict because it verifies write_mode_rejected state rather than global path diffs. No blocking findings."
+}

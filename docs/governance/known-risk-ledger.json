@@ -1,26 +1,30 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-01T16:00:00+08:00",
+  "updated_at": "2026-06-02T00:00:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
       "title": "Default npm test can run under Node 16 and create misleading failures",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T00:00:00+08:00",
+      "status": "fixed",
       "severity": "medium",
-      "scope": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js"],
-      "owned_files": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js"],
+      "scope": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js", "test/package-scripts.test.js", "test/known-risk-closeout-runner.test.js"],
+      "owned_files": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js", "test/package-scripts.test.js", "test/known-risk-closeout-runner.test.js", "docs/governance/known-risk-ledger.json", "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-deepseek.json", "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-final-deepseek.json"],
       "acceptance_gates": [
         "npm test must use the Node18 wrapper or fail early with a clear Node version message",
         "node tools/run-with-node18.mjs --test test/*.test.js"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-npm-test-node-wrapper",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "57308e78d794aa774a3bb0db6bf2d81017607fe4",
+        "test_added": true,
+        "summary": "Default npm test and test:coverage now run through tools/run-with-node18.mjs, with a regression test that locks wrapper usage."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -28,9 +32,65 @@
           "type": "analysis",
           "summary": "Current default shell reported Node v16.17.1 while Node18 wrapper path passed the full suite in the prior repair run.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Targeted script and runner tests passed after routing npm test/test:coverage through the Node18 wrapper.",
+          "command": "node tools/run-with-node18.mjs --test test/package-scripts.test.js test/temp-dir-helper.test.js test/known-risk-closeout-runner.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T00:00:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Default npm test entrypoint executed through tools/run-with-node18.mjs and passed the full suite.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T00:00:00+08:00"
+        },
+        {
+          "type": "coverage",
+          "summary": "Default npm test:coverage entrypoint executed through tools/run-with-node18.mjs and passed coverage thresholds.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T00:00:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek read-only review passed with no blocking findings.",
+          "artifact": "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-deepseek.json",
+          "created_at": "2026-06-02T00:00:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek final closeout review passed with no blocking findings; its non-blocking regex hardening recommendation was applied.",
+          "artifact": "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-final-deepseek.json",
+          "created_at": "2026-06-02T00:40:00+08:00"
         }
       ],
-      "review": null,
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "deepseek-p7-closeout-review",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "The known-risk-closeout-runner test changed from asserting git-worktree path diffs to asserting ledger/artifact state invariants. This is a stronger, concurrency-safe assertion pattern and acceptable, but the diff summary should be documented in the risk closeout notes for full traceability."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-deepseek.json"
+          },
+          {
+            "reviewer_id": "deepseek-final-closeout-review",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "The original test:coverage regex was start-anchored only. It still verified wrapper usage, but a trailing anchor would better detect suffix tampering. This was hardened before final commit."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-final-deepseek.json"
+          }
+        ]
+      },
       "release": null
     },
     {
