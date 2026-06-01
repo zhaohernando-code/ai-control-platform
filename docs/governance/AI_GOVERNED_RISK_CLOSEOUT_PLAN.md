@@ -86,6 +86,13 @@ node tools/run-with-node18.mjs --test test/risk-closeout-policy.test.js
 | P5.3 | Orphan worktree scan | script | Old closeout worktrees are reported before new work starts. |
 | P5.4 | Cleanup rules | script/tests | Successful runs clean temp worktrees; failed runs preserve evidence. |
 
+Suggested verification:
+
+```bash
+node tools/run-with-node18.mjs --test test/risk-closeout-recovery.test.js
+node tools/run-with-node18.mjs tools/scan-risk-closeout-worktrees.mjs
+```
+
 ## Phase P6: Scheduled Single-Run Entry
 
 | ID | Work item | Deliverable | Acceptance |

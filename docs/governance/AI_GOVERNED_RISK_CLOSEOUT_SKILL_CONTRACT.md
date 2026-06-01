@@ -31,7 +31,7 @@ The skill requires the agent to read:
 3. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md`
 4. the active risk closeout policy, defaulting to `docs/governance/ai-governed-risk-closeout-policy.example.json`
 5. `docs/governance/ai-reviewer-verdict.schema.json`
-6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, and `tools/known-risk-reviewer-prompt.mjs` when implementation details matter
+6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, `tools/known-risk-reviewer-prompt.mjs`, `tools/risk-closeout-recovery.mjs`, and `tools/scan-risk-closeout-worktrees.mjs` when implementation details matter
 
 ## Hard Rules
 
@@ -63,6 +63,12 @@ node tools/run-with-node18.mjs tools/known-risk-reviewer-prompt.mjs --risk-id <r
 ```
 
 Reviewer output must conform to `docs/governance/ai-reviewer-verdict.schema.json` before being copied into the ledger.
+
+Closeout recovery state and candidate stale worktrees may be inspected with:
+
+```bash
+node tools/run-with-node18.mjs tools/scan-risk-closeout-worktrees.mjs
+```
 
 ## Final Output Contract
 
