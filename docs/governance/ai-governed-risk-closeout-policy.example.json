@@ -1,0 +1,45 @@
+{
+  "version": "ai-governed-risk-closeout-policy.v1",
+  "auto_merge": false,
+  "auto_publish": false,
+  "max_severity_auto_merge": "medium",
+  "require_two_model_review_for": [
+    "critical",
+    "high",
+    "security",
+    "auth",
+    "payments",
+    "public-route",
+    "launchagent",
+    "edge-proxy"
+  ],
+  "require_live_verification_for_user_visible_changes": true,
+  "max_files_changed": 12,
+  "max_lines_changed": 800,
+  "allowed_paths": [
+    "apps/workbench/",
+    "docs/governance/",
+    "src/workflow/",
+    "test/",
+    "tools/",
+    "package.json"
+  ],
+  "forbidden_paths": [
+    ".git/",
+    "node_modules/",
+    "tmp/",
+    "coverage/",
+    "dist/",
+    "docs/examples/*.sqlite"
+  ],
+  "rollback_on_live_failure": true,
+  "stop_on_new_high_risk_discovery": true,
+  "owner_authorization_required_for": [
+    "critical",
+    "high",
+    "forbidden-path",
+    "policy-exceeded",
+    "destructive-operation"
+  ]
+}
+

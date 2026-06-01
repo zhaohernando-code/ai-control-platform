@@ -1,0 +1,225 @@
+{
+  "version": "known-risk-ledger.v1",
+  "updated_at": "2026-06-01T16:00:00+08:00",
+  "risks": [
+    {
+      "id": "risk-20260601-npm-test-node-wrapper",
+      "title": "Default npm test can run under Node 16 and create misleading failures",
+      "source": "code-quality-audit-followup",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js"],
+      "owned_files": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js"],
+      "acceptance_gates": [
+        "npm test must use the Node18 wrapper or fail early with a clear Node version message",
+        "node tools/run-with-node18.mjs --test test/*.test.js"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "Current default shell reported Node v16.17.1 while Node18 wrapper path passed the full suite in the prior repair run.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260601-workbench-server-route-boundary",
+      "title": "Workbench API server remains a mixed-responsibility route entrypoint",
+      "source": "code-quality-audit-followup",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": ["tools/workbench-server.mjs", ".largefile-manifest.json"],
+      "owned_files": ["tools/workbench-server.mjs", "test/workbench-server.test.js", ".largefile-manifest.json"],
+      "acceptance_gates": [
+        "Route handler extraction plan or first bounded extraction is implemented without reducing API coverage",
+        "node tools/run-with-node18.mjs --test test/workbench-server.test.js"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "tools/workbench-server.mjs is registered as planned_refactor and remains a large mixed HTTP/service boundary.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260601-workbench-projection-boundary",
+      "title": "Workbench projection aggregation layer remains a large cross-domain strategy module",
+      "source": "code-quality-audit-followup",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": ["src/workflow/workbench-projection.js", "test/workbench-projection.test.js"],
+      "owned_files": ["src/workflow/workbench-projection.js", "src/workflow/workbench-*.js", "test/workbench-projection.test.js"],
+      "acceptance_gates": [
+        "Project-management, next-action, or one-screen counter extraction is planned or implemented with behavior-preserving tests",
+        "node tools/run-with-node18.mjs --test test/workbench-projection.test.js"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "src/workflow/workbench-projection.js remains a broad aggregation module across project management, scheduler, reviewer, lifecycle, governance, and next-action readouts.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260601-workbench-api-error-diagnostics",
+      "title": "Frontend API client drops structured backend diagnostics on non-2xx responses",
+      "source": "code-quality-audit-followup",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": ["apps/workbench/lib/api/index.ts", "apps/workbench/app"],
+      "owned_files": ["apps/workbench/lib/api/index.ts", "apps/workbench/lib/api", "test/workbench-shell.test.js"],
+      "acceptance_gates": [
+        "Non-2xx JSON error bodies preserve error, phase, issues, and projection when present",
+        "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
+        "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "fetchWorkbenchJson currently throws only `workbench api <path> failed: <status>` for non-2xx responses.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260601-code-review-coverage-denominator",
+      "title": "Durable code-review coverage artifact does not cover all Workbench dashboard entrypoints",
+      "source": "code-quality-audit-followup",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": ["docs/examples/code-review-coverage-current.json", "apps/workbench/app", "apps/workbench/lib"],
+      "owned_files": ["docs/examples/code-review-coverage-current.json", "test/code-review-coverage-dispatch.test.js", "src/workflow/code-review-coverage-dispatch.js"],
+      "acceptance_gates": [
+        "Coverage denominator includes current Workbench page, shell, hooks, API base layer, and all dashboard subroutes or explicitly justified exclusions",
+        "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "Prior repair expanded the coverage artifact to 20 files but did not include every Workbench app entrypoint and shared hook/API layer.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260601-playwright-cli-artifact-cleanliness",
+      "title": "Playwright CLI verification can leave untracked .playwright-cli artifacts in canonical checkout",
+      "source": "closeout-discovery",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "low",
+      "scope": [".gitignore", ".playwright-cli", "PROJECT_RULES.md"],
+      "owned_files": [".gitignore", "PROJECT_RULES.md"],
+      "acceptance_gates": [
+        "Canonical checkout remains clean after Playwright CLI verification or .playwright-cli is ignored by policy",
+        "git status --short"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "A prior browser verification created `.playwright-cli/console-2026-06-01T06-25-17-467Z.log` in canonical checkout.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260601-use-projection-request-order",
+      "title": "useProjection can allow older overlapping refresh responses to overwrite newer data",
+      "source": "code-quality-audit-followup",
+      "created_at": "2026-06-01T16:00:00+08:00",
+      "updated_at": "2026-06-01T16:00:00+08:00",
+      "status": "open",
+      "severity": "low",
+      "scope": ["apps/workbench/lib/hooks/useProjection.ts"],
+      "owned_files": ["apps/workbench/lib/hooks/useProjection.ts", "test/workbench-shell.test.js"],
+      "acceptance_gates": [
+        "Polling/manual refresh uses AbortController or request sequence guard to prevent stale response overwrite",
+        "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
+        "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "useProjection currently starts fetches without aborting or sequencing overlapping refreshes.",
+          "created_at": "2026-06-01T16:00:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    }
+  ]
+}

@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hernando-zhao.cn/schemas/known-risk-ledger.schema.json",
+  "title": "Known Risk Ledger",
+  "type": "object",
+  "required": ["version", "updated_at", "risks"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": "known-risk-ledger.v1"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/risk"
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "summary"],
+      "properties": {
+        "type": {
+          "enum": ["command", "test", "build", "coverage", "live_check", "review", "analysis", "artifact"]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command": {
+          "type": "string"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "created_at": {
+          "type": "string"
+        }
+      }
+    },
+    "reviewerVerdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "model", "verdict", "blocking_findings"],
+      "properties": {
+        "reviewer_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verdict": {
+          "enum": ["pass", "fail", "inconclusive"]
+        },
+        "blocking_findings": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "non_blocking_findings": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "artifact": {
+          "type": "string"
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "source",
+        "created_at",
+        "updated_at",
+        "status",
+        "severity",
+        "scope",
+        "owned_files",
+        "acceptance_gates",
+        "attempted_count",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^risk-[a-zA-Z0-9._-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        },
+        "status": {
+          "enum": ["open", "in_progress", "fixed", "invalidated", "deferred", "blocked", "requires_owner_authorization"]
+        },
+        "severity": {
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "scope": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "owned_files": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "acceptance_gates": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "attempted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_agent_run_id": {
+          "type": ["string", "null"]
+        },
+        "depends_on": {
+          "$ref": "#/$defs/stringArray",
+          "default": []
+        },
+        "superseded_by": {
+          "type": ["string", "null"]
+        },
+        "resolution": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "fixed_by_commit": {
+              "type": "string"
+            },
+            "fix_strategy": {
+              "type": "string"
+            },
+            "test_added": {
+              "type": "boolean"
+            },
+            "test_ids": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "live_verified": {
+              "type": "boolean"
+            },
+            "verified_at": {
+              "type": ["string", "null"]
+            },
+            "verified_by": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "deferral": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "deferred_until": {
+              "type": "string"
+            },
+            "deferral_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "deferral_reason": {
+              "type": "string"
+            },
+            "priority": {
+              "enum": ["P0", "P1", "P2", "P3"]
+            }
+          }
+        },
+        "blockage": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "blocker_description": {
+              "type": "string"
+            },
+            "blocker_owner": {
+              "type": ["string", "null"]
+            },
+            "recovery_conditions": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "last_condition_check": {
+              "type": ["string", "null"]
+            },
+            "condition_met": {
+              "type": "boolean"
+            }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        },
+        "review": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reviewerVerdict"
+              }
+            }
+          }
+        },
+        "release": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "merged": {
+              "type": "boolean"
+            },
+            "published": {
+              "type": "boolean"
+            },
+            "rollback_commit": {
+              "type": ["string", "null"]
+            },
+            "published_at": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

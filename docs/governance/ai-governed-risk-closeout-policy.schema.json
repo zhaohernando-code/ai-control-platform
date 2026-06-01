@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hernando-zhao.cn/schemas/ai-governed-risk-closeout-policy.schema.json",
+  "title": "AI Governed Risk Closeout Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "auto_merge",
+    "auto_publish",
+    "max_severity_auto_merge",
+    "require_two_model_review_for",
+    "require_live_verification_for_user_visible_changes",
+    "max_files_changed",
+    "max_lines_changed",
+    "allowed_paths",
+    "forbidden_paths",
+    "rollback_on_live_failure",
+    "stop_on_new_high_risk_discovery"
+  ],
+  "properties": {
+    "version": {
+      "const": "ai-governed-risk-closeout-policy.v1"
+    },
+    "auto_merge": {
+      "type": "boolean"
+    },
+    "auto_publish": {
+      "type": "boolean"
+    },
+    "max_severity_auto_merge": {
+      "enum": ["critical", "high", "medium", "low", "none"]
+    },
+    "require_two_model_review_for": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "require_live_verification_for_user_visible_changes": {
+      "type": "boolean"
+    },
+    "max_files_changed": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_lines_changed": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "rollback_on_live_failure": {
+      "type": "boolean"
+    },
+    "stop_on_new_high_risk_discovery": {
+      "type": "boolean"
+    },
+    "owner_authorization_required_for": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  }
+}
+
