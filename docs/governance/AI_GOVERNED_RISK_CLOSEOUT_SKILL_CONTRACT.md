@@ -30,7 +30,8 @@ The skill requires the agent to read:
 2. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_REQUIREMENTS.md`
 3. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md`
 4. the active risk closeout policy, defaulting to `docs/governance/ai-governed-risk-closeout-policy.example.json`
-5. `tools/check-known-risk-closeout.mjs` and `tools/risk-ledger.mjs` when implementation details matter
+5. `docs/governance/ai-reviewer-verdict.schema.json`
+6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, and `tools/known-risk-reviewer-prompt.mjs` when implementation details matter
 
 ## Hard Rules
 
@@ -54,6 +55,14 @@ The skill workflow must include these steps:
 6. Write terminal status evidence for `fixed`, `invalidated`, `deferred`, `blocked`, or `requires_owner_authorization`.
 7. Merge/publish only when policy, gates, reviewers, and rollback conditions permit.
 8. Preserve run artifacts, clean worktrees, and release locks.
+
+Reviewer prompts may be generated with:
+
+```bash
+node tools/run-with-node18.mjs tools/known-risk-reviewer-prompt.mjs --risk-id <risk-id>
+```
+
+Reviewer output must conform to `docs/governance/ai-reviewer-verdict.schema.json` before being copied into the ledger.
 
 ## Final Output Contract
 
@@ -86,4 +95,3 @@ The final response must also report:
 | P2.4 | Skill requires worktree isolation and run lock | inspect `Hard Rules` and `Workflow` in `SKILL.md` |
 | P2.5 | Skill forbids repair-agent self-verification | inspect `Hard Rules` and `Independent Review` in `SKILL.md` |
 | P2.6 | Skill defines final output contract | inspect `Final Response Contract` in `SKILL.md` |
-

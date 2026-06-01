@@ -48,9 +48,19 @@ node -e 'for (const f of process.argv.slice(1)) JSON.parse(require("fs").readFil
 | ID | Work item | Deliverable | Acceptance |
 | --- | --- | --- | --- |
 | P3.1 | Reviewer artifact schema | `docs/governance/ai-reviewer-verdict.schema.json` | Reviewer results are machine-readable. |
-| P3.2 | DeepSeek/Claude review adapter | script or skill integration | Read-only reviewer can review diff and evidence. |
+| P3.2 | DeepSeek/Claude review adapter | `tools/known-risk-reviewer-prompt.mjs` plus skill integration | Read-only reviewer can review diff and evidence. |
 | P3.3 | Blocking finding handling | gate tests | Any blocking finding prevents `fixed` closeout. |
 | P3.4 | Two-model policy | policy + tests | High-risk scopes require two independent reviewer passes. |
+
+Suggested verification:
+
+```bash
+node tools/run-with-node18.mjs --test test/known-risk-ledger.test.js test/known-risk-reviewer-prompt.test.js
+npm run check:known-risk-closeout
+npm run check:known-risk-closeout:required
+```
+
+`check:known-risk-closeout:required` is expected to fail while seeded ledger risks remain `open`.
 
 ## Phase P4: Policy-Based Merge and Publish Controller
 
@@ -104,4 +114,3 @@ Status: pending | pass | fail | blocked
 Evidence:
 Reviewer verdict:
 ```
-

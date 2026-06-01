@@ -76,7 +76,31 @@
         "non_blocking_findings": {
           "$ref": "#/$defs/stringArray"
         },
+        "reviewed_at": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "files": {
+              "$ref": "#/$defs/stringArray"
+            },
+            "diff_summary": {
+              "type": "string"
+            },
+            "gates_reviewed": {
+              "$ref": "#/$defs/stringArray"
+            }
+          }
+        },
         "artifact": {
+          "type": "string"
+        },
+        "notes": {
           "type": "string"
         }
       }
@@ -253,4 +277,3 @@
     }
   }
 }
-

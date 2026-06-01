@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hernando-zhao.cn/schemas/ai-reviewer-verdict.schema.json",
+  "title": "AI Reviewer Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "risk_id",
+    "reviewer_id",
+    "model",
+    "reviewed_at",
+    "verdict",
+    "blocking_findings",
+    "non_blocking_findings",
+    "evidence_refs",
+    "scope"
+  ],
+  "properties": {
+    "version": {
+      "const": "ai-reviewer-verdict.v1"
+    },
+    "risk_id": {
+      "type": "string",
+      "pattern": "^risk-[a-zA-Z0-9._-]+$"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verdict": {
+      "enum": ["pass", "fail", "inconclusive"]
+    },
+    "blocking_findings": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "non_blocking_findings": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "evidence_refs": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "gates_reviewed"],
+      "properties": {
+        "files": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "diff_summary": {
+          "type": "string"
+        },
+        "gates_reviewed": {
+          "$ref": "#/$defs/stringArray"
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  }
+}

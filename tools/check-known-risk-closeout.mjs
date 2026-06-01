@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import {
   evaluateKnownRiskLedger,
-  readKnownRiskLedger
+  readKnownRiskLedger,
+  readRiskCloseoutPolicy
 } from "./risk-ledger.mjs";
 
 function parseArgs(argv) {
   const options = {
     ledgerPath: "docs/governance/known-risk-ledger.json",
+    policyPath: null,
     requireClosed: false,
     now: null
   };
@@ -14,6 +16,9 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === "--require-closed") {
       options.requireClosed = true;
+    } else if (arg === "--policy") {
+      options.policyPath = argv[index + 1];
+      index += 1;
     } else if (arg === "--now") {
       options.now = argv[index + 1];
       index += 1;
@@ -30,7 +35,7 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    "usage: check-known-risk-closeout.mjs [ledger.json] [--require-closed] [--now ISO_DATE]",
+    "usage: check-known-risk-closeout.mjs [ledger.json] [--policy policy.json] [--require-closed] [--now ISO_DATE]",
     "",
     "Default mode validates ledger structure and terminal-status evidence while allowing open risks.",
     "--require-closed mode is the closeout gate: open and in_progress risks fail."
@@ -52,7 +57,9 @@ if (options.help) {
 }
 
 const ledger = readKnownRiskLedger(options.ledgerPath);
+const policy = options.policyPath ? readRiskCloseoutPolicy(options.policyPath) : undefined;
 const result = evaluateKnownRiskLedger(ledger, {
+  policy,
   requireClosed: options.requireClosed,
   now: options.now || undefined
 });

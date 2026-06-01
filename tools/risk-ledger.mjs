@@ -13,6 +13,7 @@ const VALID_STATUSES = new Set([
 const VALID_SEVERITIES = new Set(["critical", "high", "medium", "low"]);
 const EVIDENCE_TYPES = new Set(["command", "test", "build", "coverage", "live_check", "review", "analysis", "artifact"]);
 const VERIFICATION_EVIDENCE_TYPES = new Set(["command", "test", "build", "coverage", "live_check"]);
+const VALID_REVIEW_VERDICTS = new Set(["pass", "fail", "inconclusive"]);
 
 function issue(code, message, path = "") {
   return { code, message, path };
@@ -44,9 +45,95 @@ function hasEvidence(risk, predicate = () => true) {
   return asArray(risk.evidence).some((entry) => isObject(entry) && predicate(entry));
 }
 
+function normalizePolicyToken(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function reviewerVerdicts(risk) {
+  return asArray(risk.review?.reviewers).filter(isObject);
+}
+
+function reviewerHasBlockingFindings(reviewer) {
+  return asArray(reviewer?.blocking_findings).some(nonEmptyString);
+}
+
 function reviewerBlockingFindings(risk) {
-  return asArray(risk.review?.reviewers)
+  return reviewerVerdicts(risk)
     .flatMap((reviewer) => asArray(reviewer?.blocking_findings).filter(nonEmptyString));
+}
+
+function passingReviewers(risk) {
+  return reviewerVerdicts(risk).filter((reviewer) => (
+    reviewer.verdict === "pass" &&
+    nonEmptyString(reviewer.reviewer_id) &&
+    nonEmptyString(reviewer.model) &&
+    !reviewerHasBlockingFindings(reviewer)
+  ));
+}
+
+function distinctPassingReviewerModels(risk) {
+  return new Set(passingReviewers(risk).map((reviewer) => normalizePolicyToken(reviewer.model)).filter(Boolean));
+}
+
+function riskPolicyText(risk) {
+  return [
+    risk.severity,
+    risk.title,
+    ...asArray(risk.scope),
+    ...asArray(risk.owned_files),
+    ...asArray(risk.acceptance_gates)
+  ].map(normalizePolicyToken).filter(Boolean).join(" ");
+}
+
+function requiresTwoModelReview(risk, policy) {
+  const requirements = asArray(policy?.require_two_model_review_for).map(normalizePolicyToken).filter(Boolean);
+  if (requirements.length === 0) return false;
+  const severity = normalizePolicyToken(risk.severity);
+  const searchableText = riskPolicyText(risk);
+  return requirements.some((requirement) => severity === requirement || searchableText.includes(requirement));
+}
+
+function validateReviewerVerdicts(risk, index) {
+  const path = `risks[${index}]`;
+  const issues = [];
+  if (risk.review == null) return issues;
+  if (!isObject(risk.review)) {
+    issues.push(issue("invalid_risk_review", "review must be an object or null", `${path}.review`));
+    return issues;
+  }
+  if (!Array.isArray(risk.review.reviewers)) {
+    issues.push(issue("invalid_risk_reviewers", "review.reviewers must be an array", `${path}.review.reviewers`));
+    return issues;
+  }
+  risk.review.reviewers.forEach((reviewer, reviewerIndex) => {
+    const reviewerPath = `${path}.review.reviewers[${reviewerIndex}]`;
+    if (!isObject(reviewer)) {
+      issues.push(issue("invalid_reviewer_verdict", "reviewer verdict must be an object", reviewerPath));
+      return;
+    }
+    if (!nonEmptyString(reviewer.reviewer_id)) {
+      issues.push(issue("reviewer_verdict_missing_id", "reviewer_id is required", `${reviewerPath}.reviewer_id`));
+    }
+    if (!nonEmptyString(reviewer.model)) {
+      issues.push(issue("reviewer_verdict_missing_model", "model is required", `${reviewerPath}.model`));
+    }
+    if (!VALID_REVIEW_VERDICTS.has(reviewer.verdict)) {
+      issues.push(issue("reviewer_verdict_invalid_result", `unknown reviewer verdict ${reviewer.verdict}`, `${reviewerPath}.verdict`));
+    }
+    if (!Array.isArray(reviewer.blocking_findings)) {
+      issues.push(issue("reviewer_verdict_missing_blocking_findings", "blocking_findings must be an array", `${reviewerPath}.blocking_findings`));
+    } else if (!reviewer.blocking_findings.every((finding) => typeof finding === "string")) {
+      issues.push(issue("reviewer_verdict_invalid_blocking_finding", "blocking_findings entries must be strings", `${reviewerPath}.blocking_findings`));
+    }
+    if ("non_blocking_findings" in reviewer && !Array.isArray(reviewer.non_blocking_findings)) {
+      issues.push(issue("reviewer_verdict_invalid_non_blocking_findings", "non_blocking_findings must be an array when present", `${reviewerPath}.non_blocking_findings`));
+    }
+  });
+  return issues;
 }
 
 function validateRequiredRiskFields(risk, index) {
@@ -103,6 +190,7 @@ function validateRequiredRiskFields(risk, index) {
       }
     });
   }
+  issues.push(...validateReviewerVerdicts(risk, index));
   return issues;
 }
 
@@ -123,6 +211,16 @@ function validateTerminalStatus(risk, index, options) {
     const blockingFindings = reviewerBlockingFindings(risk);
     if (blockingFindings.length > 0) {
       issues.push(issue("fixed_risk_has_blocking_review_findings", "fixed risk has blocking reviewer findings", `${path}.review.reviewers`));
+    }
+    const passedReviews = passingReviewers(risk);
+    if (passedReviews.length === 0) {
+      issues.push(issue("fixed_risk_missing_reviewer_pass", "fixed risk requires at least one independent reviewer pass", `${path}.review.reviewers`));
+    }
+    if (reviewerVerdicts(risk).some((reviewer) => reviewer.verdict !== "pass")) {
+      issues.push(issue("fixed_risk_has_nonpassing_reviewer", "fixed risk has fail or inconclusive reviewer verdicts", `${path}.review.reviewers`));
+    }
+    if (requiresTwoModelReview(risk, options.policy) && distinctPassingReviewerModels(risk).size < 2) {
+      issues.push(issue("fixed_risk_missing_two_model_review", "policy requires two distinct passing reviewer models for this risk", `${path}.review.reviewers`));
     }
   }
 
@@ -214,9 +312,14 @@ export function readKnownRiskLedger(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+export function readRiskCloseoutPolicy(path) {
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
 export function evaluateKnownRiskLedger(ledger = {}, options = {}) {
   const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
   const requireClosed = options.requireClosed === true;
+  const policy = isObject(options.policy) ? options.policy : null;
   const issues = [];
   if (!isObject(ledger)) {
     return {
@@ -248,7 +351,7 @@ export function evaluateKnownRiskLedger(ledger = {}, options = {}) {
     }
     seen.add(risk.id);
     issues.push(...validateRequiredRiskFields(risk, index));
-    issues.push(...validateTerminalStatus(risk, index, { now, requireClosed }));
+    issues.push(...validateTerminalStatus(risk, index, { now, requireClosed, policy }));
   });
   issues.push(...dependencyIssues(risks.filter(isObject)));
 
