@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T00:00:00+08:00",
+  "updated_at": "2026-06-02T09:03:32+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -10,8 +10,23 @@
       "updated_at": "2026-06-02T00:00:00+08:00",
       "status": "fixed",
       "severity": "medium",
-      "scope": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js", "test/package-scripts.test.js", "test/known-risk-closeout-runner.test.js"],
-      "owned_files": ["package.json", "tools/run-with-node18.mjs", "test/temp-dir-helper.test.js", "test/package-scripts.test.js", "test/known-risk-closeout-runner.test.js", "docs/governance/known-risk-ledger.json", "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-deepseek.json", "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-final-deepseek.json"],
+      "scope": [
+        "package.json",
+        "tools/run-with-node18.mjs",
+        "test/temp-dir-helper.test.js",
+        "test/package-scripts.test.js",
+        "test/known-risk-closeout-runner.test.js"
+      ],
+      "owned_files": [
+        "package.json",
+        "tools/run-with-node18.mjs",
+        "test/temp-dir-helper.test.js",
+        "test/package-scripts.test.js",
+        "test/known-risk-closeout-runner.test.js",
+        "docs/governance/known-risk-ledger.json",
+        "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-deepseek.json",
+        "docs/examples/reviewer-risk-20260601-npm-test-node-wrapper-final-deepseek.json"
+      ],
       "acceptance_gates": [
         "npm test must use the Node18 wrapper or fail early with a clear Node version message",
         "node tools/run-with-node18.mjs --test test/*.test.js"
@@ -98,20 +113,37 @@
       "title": "Workbench API server remains a mixed-responsibility route entrypoint",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T09:03:32+08:00",
+      "status": "fixed",
       "severity": "medium",
-      "scope": ["tools/workbench-server.mjs", ".largefile-manifest.json"],
-      "owned_files": ["tools/workbench-server.mjs", "test/workbench-server.test.js", ".largefile-manifest.json"],
+      "scope": [
+        "tools/workbench-server.mjs",
+        "tools/workbench-agent-key-routes.mjs",
+        ".largefile-manifest.json"
+      ],
+      "owned_files": [
+        "tools/workbench-server.mjs",
+        "tools/workbench-agent-key-routes.mjs",
+        "test/workbench-server.test.js",
+        ".largefile-manifest.json",
+        "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-deepseek.json",
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js",
+        "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json"
+      ],
       "acceptance_gates": [
         "Route handler extraction plan or first bounded extraction is implemented without reducing API coverage",
         "node tools/run-with-node18.mjs --test test/workbench-server.test.js"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-workbench-server-route-boundary",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "38051eede7856213ff450500d17f725715b2aae7",
+        "test_added": true,
+        "summary": "Extracted agent key and agent health API routes from the mixed Workbench server entrypoint into tools/workbench-agent-key-routes.mjs, preserved existing API coverage, added fail-closed coverage for missing SQLite state, and updated large-file governance metadata."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -119,10 +151,71 @@
           "type": "analysis",
           "summary": "tools/workbench-server.mjs is registered as planned_refactor and remains a large mixed HTTP/service boundary.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "First bounded route handler extraction completed for agent key CRUD, agent health checks, and agent role updates.",
+          "artifact": "tools/workbench-agent-key-routes.mjs",
+          "created_at": "2026-06-02T09:03:32+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Workbench server API regression suite passed after extraction.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-server.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:03:32+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk ledger structural gate passed before marking this scoped risk fixed; remaining open risks are outside this scoped closeout.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:03:32+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek sharded read-only review returned synthesis PASS with no blocking findings.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-deepseek.json",
+          "created_at": "2026-06-02T09:03:32+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek closeout record review passed with no blocking findings; its full-hash traceability recommendation was applied before final commit.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json",
+          "created_at": "2026-06-02T09:06:25+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "claude-deepseek-sharded-readonly",
+            "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "Shard-level inconclusive notes were caused by split file visibility; the synthesis verdict was PASS after reviewing both server/module and test/manifest shards.",
+              "The remaining projectionInputWithProjectStatus stateStore.summarizeAgentRegistry coupling was pre-existing and outside this bounded extraction."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-deepseek.json"
+          },
+          {
+            "reviewer_id": "claude-deepseek-closeout-readonly",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "resolution.fixed_by_commit used a short 7-character hash in the reviewed closeout record; the ledger was updated afterward to use the full 40-character commit hash.",
+              "The sharded reviewer artifact explains that shard-level inconclusive notes were resolved by synthesis PASS, which is acceptable for this bounded closeout.",
+              "release.required is recorded as false for an internal route-boundary refactor; future schema tests could cover release metadata."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "No user-visible runtime route changed; this is an internal server route-boundary refactor with preserved API behavior."
+      }
     },
     {
       "id": "risk-20260601-workbench-projection-boundary",
@@ -132,8 +225,15 @@
       "updated_at": "2026-06-01T16:00:00+08:00",
       "status": "open",
       "severity": "medium",
-      "scope": ["src/workflow/workbench-projection.js", "test/workbench-projection.test.js"],
-      "owned_files": ["src/workflow/workbench-projection.js", "src/workflow/workbench-*.js", "test/workbench-projection.test.js"],
+      "scope": [
+        "src/workflow/workbench-projection.js",
+        "test/workbench-projection.test.js"
+      ],
+      "owned_files": [
+        "src/workflow/workbench-projection.js",
+        "src/workflow/workbench-*.js",
+        "test/workbench-projection.test.js"
+      ],
       "acceptance_gates": [
         "Project-management, next-action, or one-screen counter extraction is planned or implemented with behavior-preserving tests",
         "node tools/run-with-node18.mjs --test test/workbench-projection.test.js"
@@ -163,8 +263,15 @@
       "updated_at": "2026-06-01T16:00:00+08:00",
       "status": "open",
       "severity": "medium",
-      "scope": ["apps/workbench/lib/api/index.ts", "apps/workbench/app"],
-      "owned_files": ["apps/workbench/lib/api/index.ts", "apps/workbench/lib/api", "test/workbench-shell.test.js"],
+      "scope": [
+        "apps/workbench/lib/api/index.ts",
+        "apps/workbench/app"
+      ],
+      "owned_files": [
+        "apps/workbench/lib/api/index.ts",
+        "apps/workbench/lib/api",
+        "test/workbench-shell.test.js"
+      ],
       "acceptance_gates": [
         "Non-2xx JSON error bodies preserve error, phase, issues, and projection when present",
         "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
@@ -195,8 +302,16 @@
       "updated_at": "2026-06-01T16:00:00+08:00",
       "status": "open",
       "severity": "medium",
-      "scope": ["docs/examples/code-review-coverage-current.json", "apps/workbench/app", "apps/workbench/lib"],
-      "owned_files": ["docs/examples/code-review-coverage-current.json", "test/code-review-coverage-dispatch.test.js", "src/workflow/code-review-coverage-dispatch.js"],
+      "scope": [
+        "docs/examples/code-review-coverage-current.json",
+        "apps/workbench/app",
+        "apps/workbench/lib"
+      ],
+      "owned_files": [
+        "docs/examples/code-review-coverage-current.json",
+        "test/code-review-coverage-dispatch.test.js",
+        "src/workflow/code-review-coverage-dispatch.js"
+      ],
       "acceptance_gates": [
         "Coverage denominator includes current Workbench page, shell, hooks, API base layer, and all dashboard subroutes or explicitly justified exclusions",
         "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json"
@@ -226,8 +341,15 @@
       "updated_at": "2026-06-01T16:00:00+08:00",
       "status": "open",
       "severity": "low",
-      "scope": [".gitignore", ".playwright-cli", "PROJECT_RULES.md"],
-      "owned_files": [".gitignore", "PROJECT_RULES.md"],
+      "scope": [
+        ".gitignore",
+        ".playwright-cli",
+        "PROJECT_RULES.md"
+      ],
+      "owned_files": [
+        ".gitignore",
+        "PROJECT_RULES.md"
+      ],
       "acceptance_gates": [
         "Canonical checkout remains clean after Playwright CLI verification or .playwright-cli is ignored by policy",
         "git status --short"
@@ -257,8 +379,13 @@
       "updated_at": "2026-06-01T16:00:00+08:00",
       "status": "open",
       "severity": "low",
-      "scope": ["apps/workbench/lib/hooks/useProjection.ts"],
-      "owned_files": ["apps/workbench/lib/hooks/useProjection.ts", "test/workbench-shell.test.js"],
+      "scope": [
+        "apps/workbench/lib/hooks/useProjection.ts"
+      ],
+      "owned_files": [
+        "apps/workbench/lib/hooks/useProjection.ts",
+        "test/workbench-shell.test.js"
+      ],
       "acceptance_gates": [
         "Polling/manual refresh uses AbortController or request sequence guard to prevent stale response overwrite",
         "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
