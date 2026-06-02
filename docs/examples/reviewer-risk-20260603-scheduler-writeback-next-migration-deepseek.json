@@ -1,0 +1,34 @@
+{
+  "version": "reviewer-risk-artifact.v1",
+  "review_id": "deepseek-scheduler-writeback-next-migration-20260603",
+  "created_at": "2026-06-03T04:10:00+08:00",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "scope": "LFG-P6.3 scheduler dispatch writeback migration to mounted Next.js App Router",
+  "status": "pass",
+  "summary": "DeepSeek confirmed scheduler dispatch writeback now writes scheduler facts through the Workbench API service and verifies desktop/mobile scheduler dispatch readouts through the mounted Next.js App Router runtime without legacy static shell markers. Raw CLI/projection semantics remain strict pass with exactly three scheduler steps, while the rendered UI may show the localized pass label.",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "code": "static_tests_are_not_runtime_proof",
+      "summary": "Some test shards validate file content rather than runtime behavior; the runtime proof is carried by docs/examples/scheduler-dispatch-writeback-evidence-20260603-next.json and the executed npm gate."
+    },
+    {
+      "code": "shell_tests_still_block_deletion",
+      "summary": "Legacy static deletion remains blocked by workbench shell tests and static opt-in quarantine, which is accurately recorded in the plan and inventory."
+    }
+  ],
+  "evidence": [
+    "tools/check-scheduler-dispatch-writeback.mjs",
+    "docs/examples/scheduler-dispatch-writeback-evidence-20260603-next.json",
+    "docs/governance/legacy-static-workbench-inventory.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "test/legacy-static-workbench-inventory.test.js",
+    "test/workbench-shell.test.js",
+    "tmp/deepseek-p6-3-scheduler-writeback-review.log"
+  ],
+  "remaining_legacy_static_deletion_blockers": [
+    "test/workbench-shell.test.js legacy DOM/CSS invariants",
+    "FRONTEND_REFACTOR_CONSTRAINTS.md and FRONTEND_MIGRATION_INVENTORY.md fallback-retention cleanup",
+    "tools/workbench-server.mjs/tools/workbench-static-routes.mjs legacy static opt-in quarantine"
+  ]
+}

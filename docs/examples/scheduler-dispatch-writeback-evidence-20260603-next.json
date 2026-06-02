@@ -1,0 +1,67 @@
+{
+  "status": "pass",
+  "route_family": "nextjs_app_router",
+  "legacy_static_shell_used": false,
+  "created_at": "2026-06-02T19:47:20.239Z",
+  "projection_id": "scheduler-writeback",
+  "cli": {
+    "status": "pass",
+    "artifact_status": "pass",
+    "phase": "completed",
+    "output": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260603-migrate-scheduler-writeback-next-b408d5/tmp/scheduler-dispatch-writeback-43aprg/scheduler-writeback-run.json",
+    "step_count": 3,
+    "continuation_status": "not_requested",
+    "continuation_output": null,
+    "continuation_next_work_packages": null,
+    "continuation_issues": [],
+    "record_status": "pass",
+    "record_response_status": 201,
+    "projection_scheduler_status": "pass",
+    "projection_scheduler_steps": 3,
+    "record_error": null
+  },
+  "projection": {
+    "scheduler_dispatch_status": "pass",
+    "scheduler_dispatch_steps": 3
+  },
+  "browser": {
+    "desktop": {
+      "path": "/projects/ai-control-platform/",
+      "route_family": "nextjs_app_router",
+      "viewport": "desktop",
+      "scheduler_dispatch_status": "通过",
+      "scheduler_dispatch_steps": "3",
+      "legacy_static_shell_used": false,
+      "inspection": {
+        "legacy_data_bind_count": 0,
+        "desktop_shell_count": 0,
+        "mobile_shell_count": 0,
+        "has_legacy_static_entry": false
+      },
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "screenshot": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260603-migrate-scheduler-writeback-next-b408d5/tmp/scheduler-dispatch-writeback-43aprg/desktop-next-scheduler-dispatch.png"
+    },
+    "mobile": {
+      "path": "/projects/ai-control-platform/",
+      "route_family": "nextjs_app_router",
+      "viewport": "mobile",
+      "scheduler_dispatch_status": "通过",
+      "scheduler_dispatch_steps": "3",
+      "legacy_static_shell_used": false,
+      "inspection": {
+        "legacy_data_bind_count": 0,
+        "desktop_shell_count": 0,
+        "mobile_shell_count": 0,
+        "has_legacy_static_entry": false
+      },
+      "dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      },
+      "screenshot": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260603-migrate-scheduler-writeback-next-b408d5/tmp/scheduler-dispatch-writeback-43aprg/mobile-next-scheduler-dispatch.png"
+    }
+  }
+}

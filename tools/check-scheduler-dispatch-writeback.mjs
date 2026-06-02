@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { once } from "node:events";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
-import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createSchedulerDispatchPlan } from "../src/workflow/scheduler-dispatch-plan.js";
-import { createWorkbenchServer } from "./workbench-server.mjs";
+import {
+  WORKBENCH_MOUNT_PREFIX,
+  withRuntime
+} from "./check-workbench-next-served-route.mjs";
 
 const RENDERED_SCHEDULER_DISPATCH_PASS_STATUSES = new Set(["pass", "通过"]);
 
@@ -16,6 +17,18 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function valueAfter(flag, args = process.argv.slice(2)) {
+  const index = args.indexOf(flag);
+  return index >= 0 && index + 1 < args.length ? args[index + 1] : "";
+}
+
+function writeArtifact(outputPath, artifact) {
+  if (!outputPath) return null;
+  mkdirSync(dirname(resolve(outputPath)), { recursive: true });
+  writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
+  return outputPath;
 }
 
 export function isRenderedSchedulerDispatchPassStatus(value) {
@@ -86,43 +99,48 @@ function removeReviewerShardCompletion(workflowState) {
     .filter((artifact) => !reviewerShardArtifactPrefixes.some((prefix) => String(artifact.id).startsWith(prefix)));
 }
 
-async function withWorkbenchServer(options, fn) {
-  const server = createWorkbenchServer(options);
-  server.listen(0, "127.0.0.1");
-  await once(server, "listening");
+async function verifyWorkbenchPage(browser, baseUrl, viewportName, contextOptions, expected) {
+  const page = await browser.newPage(contextOptions);
+  await page.goto(`${baseUrl}${WORKBENCH_MOUNT_PREFIX}/?workbench_event_controls=1`, { waitUntil: "domcontentloaded" });
+  await page.locator(".ant-layout").first().waitFor({ state: "visible", timeout: 30000 });
+  await page.locator('[data-component="workbench-nav"]').first().waitFor({ state: "visible", timeout: 30000 });
+  await page.locator('[data-next-readout="scheduler_dispatch_status"]').first().waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
 
-  try {
-    await fn(`http://127.0.0.1:${server.address().port}`);
-  } finally {
-    server.close();
-    await once(server, "close");
-  }
-}
-
-async function verifyWorkbenchPage(browser, baseUrl, pagePath, viewport, expected) {
-  const page = await browser.newPage(viewport);
-  const projectionUrl = encodeURIComponent(`/api/workbench/projection?id=${expected.projection_id}`);
-  const historyUrl = encodeURIComponent("/api/workbench/projections");
-  await page.goto(`${baseUrl}${pagePath}?projection=${projectionUrl}&history=${historyUrl}`, { waitUntil: "networkidle" });
-
-  const status = await page.textContent('[data-bind="scheduler_dispatch_status"]');
-  const steps = await page.textContent('[data-bind="scheduler_dispatch_steps"]');
+  const status = (await page.textContent('[data-next-readout="scheduler_dispatch_status"]'))?.trim();
+  const steps = (await page.textContent('[data-next-readout="scheduler_dispatch_steps"]'))?.trim();
+  const inspection = await page.evaluate(() => ({
+    legacy_data_bind_count: document.querySelectorAll("[data-bind]").length,
+    desktop_shell_count: document.querySelectorAll(".desktop-shell").length,
+    mobile_shell_count: document.querySelectorAll(".mobile-shell").length,
+    has_legacy_static_entry: document.documentElement.outerHTML.includes("apps/workbench/desktop.html") ||
+      document.documentElement.outerHTML.includes("apps/workbench/mobile.html") ||
+      document.documentElement.outerHTML.includes("workbench.js")
+  }));
   const dimensions = await page.evaluate(() => ({
     width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth
   }));
-  const screenshotPath = join(expected.screenshot_dir, pagePath.includes("mobile") ? "mobile-scheduler-dispatch.png" : "desktop-scheduler-dispatch.png");
+  const screenshotPath = join(expected.screenshot_dir, `${viewportName}-next-scheduler-dispatch.png`);
   await page.screenshot({ path: screenshotPath, fullPage: false });
   await page.close();
 
-  assertRenderedSchedulerDispatchPassStatus(status, pagePath);
-  assert(steps === "3", `${pagePath} must render scheduler dispatch step count`);
-  assert(dimensions.scrollWidth <= dimensions.width, `${pagePath} must not overflow horizontally`);
+  assertRenderedSchedulerDispatchPassStatus(status, viewportName);
+  assert(steps === "3", `${viewportName} must render scheduler dispatch step count`);
+  assert(inspection.legacy_data_bind_count === 0, `${viewportName} must not render legacy data-bind shell`);
+  assert(inspection.desktop_shell_count === 0, `${viewportName} must not render legacy desktop shell`);
+  assert(inspection.mobile_shell_count === 0, `${viewportName} must not render legacy mobile shell`);
+  assert(inspection.has_legacy_static_entry === false, `${viewportName} must not reference legacy static entry files`);
+  assert(dimensions.scrollWidth <= dimensions.width, `${viewportName} must not overflow horizontally`);
 
   return {
-    path: pagePath,
+    path: `${WORKBENCH_MOUNT_PREFIX}/`,
+    route_family: "nextjs_app_router",
+    viewport: viewportName,
     scheduler_dispatch_status: status,
     scheduler_dispatch_steps: steps,
+    legacy_static_shell_used: false,
+    inspection,
     dimensions,
     screenshot: screenshotPath
   };
@@ -154,7 +172,8 @@ export async function runSchedulerDispatchWritebackCheck() {
     ]
   }, null, 2));
 
-  await withWorkbenchServer({ historyPath, snapshotsRoot, stateDbPath, serveLegacyStatic: true }, async (baseUrl) => {
+  await withRuntime(async ({ baseUrl, apiPort }) => {
+    const apiBaseUrl = `http://127.0.0.1:${apiPort}`;
     const plan = createSchedulerDispatchPlan({
       project_status: {
         project: "ai-control-platform",
@@ -166,7 +185,7 @@ export async function runSchedulerDispatchWritebackCheck() {
     }, {
       workflow_state_input_path: relative(process.cwd(), inputPath),
       workbench_writeback_mode: "service",
-      workbench_base_url: baseUrl,
+      workbench_base_url: apiBaseUrl,
       projection_id: projectionId
     });
     writeFileSync(planPath, JSON.stringify(plan, null, 2));
@@ -185,7 +204,7 @@ export async function runSchedulerDispatchWritebackCheck() {
     assert(summary.projection_scheduler_status === "pass", "writeback projection must expose pass status");
     assert(summary.projection_scheduler_steps === 3, "writeback projection must expose 3 scheduler steps");
 
-    const projectionResponse = await request(`${baseUrl}/api/workbench/projection?id=${projectionId}`);
+    const projectionResponse = await request(`${apiBaseUrl}/api/workbench/projection?id=${projectionId}`);
     const projection = projectionResponse.json();
     assert(projectionResponse.status === 200, "projection response must be 200");
     assert(projection.scheduler_dispatch.status === "pass", "projection must persist scheduler dispatch pass");
@@ -194,17 +213,20 @@ export async function runSchedulerDispatchWritebackCheck() {
     const { chromium } = await import("playwright");
     const browser = await chromium.launch({ headless: true });
     try {
-      const desktop = await verifyWorkbenchPage(browser, baseUrl, "/apps/workbench/desktop.html", { viewport: { width: 1440, height: 900 } }, {
+      const desktop = await verifyWorkbenchPage(browser, baseUrl, "desktop", { viewport: { width: 1440, height: 900 } }, {
         projection_id: projectionId,
         screenshot_dir: snapshotsRoot
       });
-      const mobile = await verifyWorkbenchPage(browser, baseUrl, "/apps/workbench/mobile.html", { viewport: { width: 390, height: 844 }, isMobile: true }, {
+      const mobile = await verifyWorkbenchPage(browser, baseUrl, "mobile", { viewport: { width: 390, height: 844 }, isMobile: true }, {
         projection_id: projectionId,
         screenshot_dir: snapshotsRoot
       });
 
-      console.log(JSON.stringify({
+      const artifact = {
         status: "pass",
+        route_family: "nextjs_app_router",
+        legacy_static_shell_used: false,
+        created_at: new Date().toISOString(),
         projection_id: projectionId,
         cli: summary,
         projection: {
@@ -215,11 +237,14 @@ export async function runSchedulerDispatchWritebackCheck() {
           desktop,
           mobile
         }
-      }, null, 2));
+      };
+      const outputPath = valueAfter("--output") || "";
+      writeArtifact(outputPath, artifact);
+      console.log(JSON.stringify(outputPath ? { ...artifact, output: outputPath } : artifact, null, 2));
     } finally {
       await browser.close();
     }
-  });
+  }, { historyPath, snapshotsRoot, stateDbPath });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

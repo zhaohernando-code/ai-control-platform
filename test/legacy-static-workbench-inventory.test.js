@@ -109,8 +109,11 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   assert.match(frontendAcceptanceTests, /apps\/workbench\/desktop\.html/);
   assert.match(frontendAcceptanceTests, /apps\/workbench\/mobile\.html/);
   assert.match(frontendAcceptanceTests, /mounted_safe_favicon_count/);
-  assert.match(schedulerWriteback, /apps\/workbench\/desktop\.html/);
-  assert.match(schedulerWriteback, /apps\/workbench\/mobile\.html/);
+  assert.match(schedulerWriteback, /nextjs_app_router/);
+  assert.match(schedulerWriteback, /WORKBENCH_MOUNT_PREFIX/);
+  assert.doesNotMatch(schedulerWriteback, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(schedulerWriteback, /page\.goto\([^)]*desktop\.html/);
+  assert.doesNotMatch(schedulerWriteback, /page\.goto\([^)]*mobile\.html/);
   assert.match(shellTests, /apps\/workbench\/workbench\.js/);
   assert.match(shellTests, /apps\/workbench\/styles\.css/);
 });
@@ -130,7 +133,7 @@ test("legacy static workbench retirement remains blocked until Next served-route
   assert.doesNotMatch(requiredEvidence, /Next\.js Workbench served route verified/);
   assert.doesNotMatch(requiredEvidence, /Browser-events gate migrated/);
   assert.doesNotMatch(requiredEvidence, /Frontend-acceptance gate migrated/);
-  assert.match(requiredEvidence, /Scheduler dispatch writeback browser verification no longer depends/);
+  assert.doesNotMatch(requiredEvidence, /Scheduler dispatch writeback browser verification no longer depends/);
   assert.match(requiredEvidence, /FRONTEND_REFACTOR_CONSTRAINTS\.md/);
   assert.match(requiredEvidence, /FRONTEND_MIGRATION_INVENTORY\.md/);
   assert.match(requiredEvidence, /test\/workbench-shell\.test\.js/);

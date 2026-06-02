@@ -161,8 +161,9 @@
       "reviewed_at": "2026-06-02"
     },
     "test/workbench-shell.test.js": {
-      "lines": 845,
-      "reason": "Workbench shell tests cover desktop/mobile shell invariants, mounted entry compatibility, and Next.js hook/API regressions across shared fixtures.",
+      "lines": 850,
+      "reason": "Workbench shell tests cover desktop/mobile shell invariants, mounted entry compatibility, Next.js hook/API regressions, and scheduler writeback gate invariants across shared fixtures.",
+      "growth_justification": "LFG-P6.3 scheduler writeback migration adds assertions that the scheduler writeback gate verifies mounted Next.js runtime output and no longer opens legacy desktop/mobile shells.",
       "status": "accepted",
       "reviewed_at": "2026-06-02"
     },

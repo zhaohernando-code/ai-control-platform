@@ -275,6 +275,11 @@ test("scheduler dispatch writeback accepts translated rendered pass without weak
   assert.match(checker, /summary\.projection_scheduler_steps === 3/);
   assert.match(checker, /projection\.scheduler_dispatch\.status === "pass"/);
   assert.match(checker, /projection\.scheduler_dispatch\.step_count === 3/);
+  assert.match(checker, /nextjs_app_router/);
+  assert.match(checker, /legacy_static_shell_used:\s*false/);
+  assert.doesNotMatch(checker, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(checker, /page\.goto\([^)]*desktop\.html/);
+  assert.doesNotMatch(checker, /page\.goto\([^)]*mobile\.html/);
   assert.doesNotMatch(checker, /projection\.scheduler_dispatch\.status[\s\S]*isRenderedSchedulerDispatchPassStatus/);
 });
 
