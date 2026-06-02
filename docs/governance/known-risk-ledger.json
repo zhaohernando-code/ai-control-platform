@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T14:24:00+08:00",
+  "updated_at": "2026-06-02T14:30:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -900,7 +900,7 @@
       "title": "useProjection can allow older overlapping refresh responses to overwrite newer data",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-02T14:24:00+08:00",
+      "updated_at": "2026-06-02T14:30:00+08:00",
       "status": "fixed",
       "severity": "low",
       "scope": [
@@ -915,7 +915,8 @@
         ".largefile-manifest.json",
         "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json",
         "docs/governance/known-risk-ledger.json",
-        "test/known-risk-ledger.test.js"
+        "test/known-risk-ledger.test.js",
+        "docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json"
       ],
       "acceptance_gates": [
         "Polling/manual refresh uses AbortController or request sequence guard to prevent stale response overwrite",
@@ -1018,6 +1019,41 @@
           "summary": "DeepSeek compact delta review passed with no blocking or non-blocking findings after confirming both previous non-blocking items were resolved.",
           "artifact": "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json",
           "created_at": "2026-06-02T14:14:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Canonical Workbench LaunchAgent was restarted from the main checkout after fast-forward merge, publishing the updated Workbench client runtime.",
+          "command": "bash scripts/install-workbench-launchagent.sh",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:28:00+08:00"
+        },
+        {
+          "type": "live_check",
+          "summary": "Public mounted Workbench route probe passed against the expected /projects/ai-control-platform/projects/ route with HTTP 200, mounted workbench rendering, mounted API verification, no auth redirect, and non-loopback public route evidence.",
+          "command": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs --url https://hernando-zhao.cn/projects/ai-control-platform/projects/ --output docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json",
+          "exit_code": 0,
+          "artifact": "docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json",
+          "created_at": "2026-06-02T14:28:00+08:00"
+        },
+        {
+          "type": "live_check",
+          "summary": "Public browser route check passed after canonical publish: HTTP 200, Workbench rendered, root Next script count 0, console error count 0, and failed request count 0.",
+          "command": "node tools/run-with-node18.mjs tools/check-workbench-public-browser-route.mjs",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:28:00+08:00"
+        },
+        {
+          "type": "live_check",
+          "summary": "Live-route acceptance gate passed using the new post-merge public evidence artifact.",
+          "command": "node tools/run-with-node18.mjs tools/check-workbench-live-route.mjs --evidence docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:29:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek final post-merge closeout review passed with no blocking findings after evaluating canonical publish, public browser route verification, durable live-route evidence, known-risk required mode, and the remaining evidence commit scope.",
+          "artifact": "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json",
+          "created_at": "2026-06-02T14:30:00+08:00"
         }
       ],
       "review": {
@@ -1034,7 +1070,11 @@
       },
       "release": {
         "required": true,
-        "reason": "Workbench client runtime behavior changed; canonical mainline publish and served-route/browser verification must be completed after merge before final user-visible closeout."
+        "published": true,
+        "published_at": "2026-06-02T14:28:00+08:00",
+        "publish_command": "bash scripts/install-workbench-launchagent.sh",
+        "live_evidence": "docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json",
+        "reason": "Workbench client runtime behavior changed, so the canonical mainline Workbench LaunchAgent was restarted and the public mounted route plus browser route were verified after merge."
       }
     }
   ]

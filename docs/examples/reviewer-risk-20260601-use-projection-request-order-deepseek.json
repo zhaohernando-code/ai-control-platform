@@ -71,6 +71,22 @@
         "Post-merge canonical live publish and served-route/browser verification remain required because release.required=true is correctly recorded for this Workbench client runtime change."
       ],
       "summary": "DeepSeek confirmed the pre-merge ledger closeout can proceed to merge/live verification, and that the ledger does not pretend canonical live publish verification has already completed."
+    },
+    {
+      "id": "final-post-merge-closeout",
+      "created_at": "2026-06-02T14:30:00+08:00",
+      "mode": "no_tools_compact_evidence",
+      "focus_files": [
+        "docs/governance/known-risk-ledger.json",
+        "docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json",
+        "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json"
+      ],
+      "verdict": "pass",
+      "blocking_findings": [],
+      "non_blocking_findings": [
+        "The post-merge live evidence file and ledger update were uncommitted at review time and must be committed before pushing main."
+      ],
+      "summary": "DeepSeek confirmed the final post-merge closeout has no blocking findings: canonical publish was performed, public browser route and live-route probe passed, known-risk required mode passed with open_count 0, and the live evidence/ledger update can be committed and pushed."
     }
   ]
 }
