@@ -32,16 +32,38 @@ function compareRiskPriority(left, right) {
   return String(left.created_at || "").localeCompare(String(right.created_at || ""));
 }
 
+function dependencyFirstRisks(risks, allRisks = risks) {
+  const byId = new Map(allRisks.map((risk) => [risk.id, risk]));
+  const out = [];
+  const seen = new Set();
+  const visiting = new Set();
+
+  function visit(risk) {
+    if (!risk || seen.has(risk.id) || visiting.has(risk.id)) return;
+    visiting.add(risk.id);
+    for (const dependencyId of asArray(risk.depends_on).filter(nonEmptyString)) {
+      const dependency = byId.get(dependencyId);
+      if (dependency && ["open", "in_progress"].includes(dependency.status)) {
+        visit(dependency);
+      }
+    }
+    visiting.delete(risk.id);
+    seen.add(risk.id);
+    out.push(risk);
+  }
+
+  for (const risk of risks) visit(risk);
+  return out;
+}
+
 export function selectKnownRisksForCloseout(ledger, options = {}) {
   const maxRisks = Number.isInteger(options.maxRisks) && options.maxRisks > 0 ? options.maxRisks : 1;
   const explicitIds = asArray(options.riskIds).filter(nonEmptyString);
   const risks = asArray(ledger?.risks);
+  const openRisks = risks.filter((risk) => ["open", "in_progress"].includes(risk?.status));
   const selected = explicitIds.length > 0
-    ? explicitIds.map((id) => risks.find((risk) => risk?.id === id)).filter(Boolean)
-    : risks
-        .filter((risk) => ["open", "in_progress"].includes(risk?.status))
-        .sort(compareRiskPriority)
-        .slice(0, maxRisks);
+    ? dependencyFirstRisks(explicitIds.map((id) => openRisks.find((risk) => risk?.id === id)).filter(Boolean), openRisks).slice(0, maxRisks)
+    : dependencyFirstRisks(openRisks.sort(compareRiskPriority), openRisks).slice(0, maxRisks);
   return selected.map((risk) => ({
     id: risk.id,
     status: risk.status,

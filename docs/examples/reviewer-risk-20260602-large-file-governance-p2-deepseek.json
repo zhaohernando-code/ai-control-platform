@@ -1,0 +1,42 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-large-file-governance-p2",
+  "reviewer_id": "deepseek-large-file-governance-p2-review",
+  "model": "deepseek-v4-pro",
+  "reviewed_at": "2026-06-02T16:13:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "evidence_refs": [
+    "docs/governance/known-risk-ledger.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "tools/run-known-risk-closeout.mjs",
+    "test/known-risk-ledger.test.js",
+    "test/known-risk-closeout-runner.test.js",
+    "node tools/run-with-node18.mjs --test test/known-risk-ledger.test.js test/known-risk-closeout-runner.test.js test/governance-enrollment.test.js",
+    "npm run check:known-risk-closeout",
+    "npm run run:known-risk-closeout -- --max-risks 1",
+    "npm run check:large-files",
+    "npm run check:known-risk-closeout:required",
+    "git diff --check"
+  ],
+  "scope": {
+    "files": [
+      "docs/governance/known-risk-ledger.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "tools/run-known-risk-closeout.mjs",
+      "test/known-risk-ledger.test.js",
+      "test/known-risk-closeout-runner.test.js"
+    ],
+    "diff_summary": "Converted the first Workbench large-file governance candidates into open known-risk work packages, documented grouping and daily dry-run rules, made known-risk dry-run selection dependency-first, and added tests for open large-file risk package integrity and bounded dry-run selection.",
+    "gates_reviewed": [
+      "Four large-file risks are concrete, open, and include scope, owned files, acceptance gates, and evidence.",
+      "Server route extraction depends on server test sharding, and projection domain extraction depends on projection test sharding.",
+      "Daily dry-run selects one bounded risk and keeps preflight_only true and closeout_completed false.",
+      "Required closeout mode is expected to fail while the new large-file risks remain open.",
+      "Headless orchestrator work is explicitly deferred to LFG-P5 rather than mixed into Workbench P3/P4 scope.",
+      "Write mode remains rejected before ledger or lock mutation."
+    ]
+  },
+  "notes": "DeepSeek sharded review returned PASS with no blocking findings. Non-blocking feedback was addressed by documenting the headless-scope rationale, making dry-run selection dependency-first, and removing live-ledger coupling from runner tests. Final delta review returned PASS with no blocking or non-blocking findings."
+}

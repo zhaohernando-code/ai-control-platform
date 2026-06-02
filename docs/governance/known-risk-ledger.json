@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T14:30:00+08:00",
+  "updated_at": "2026-06-02T16:10:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -1076,6 +1076,218 @@
         "live_evidence": "docs/examples/public-live-route-evidence-20260602-use-projection-request-order.json",
         "reason": "Workbench client runtime behavior changed, so the canonical mainline Workbench LaunchAgent was restarted and the public mounted route plus browser route were verified after merge."
       }
+    },
+    {
+      "id": "risk-20260602-workbench-server-test-shards",
+      "title": "Workbench server test suite remains a broad large-file regression surface",
+      "source": "large-file-governance-p2",
+      "created_at": "2026-06-02T16:10:00+08:00",
+      "updated_at": "2026-06-02T16:10:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": [
+        "test/workbench-server.test.js",
+        "tools/workbench-server.mjs",
+        "tools/workbench-agent-key-routes.mjs"
+      ],
+      "owned_files": [
+        "test/workbench-server.test.js",
+        "test/workbench-server-*.test.js",
+        ".largefile-manifest.json",
+        "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+        "docs/governance/known-risk-ledger.json",
+        "docs/examples/reviewer-risk-20260602-workbench-server-test-shards-deepseek.json"
+      ],
+      "acceptance_gates": [
+        "Split one bounded route/state-store/static compatibility shard out of test/workbench-server.test.js without deleting behavioral assertions",
+        "test/workbench-server.test.js line count decreases while extracted shard test files stay below 500 lines",
+        "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-*.test.js test/api-route-contract.test.js",
+        "npm run check:large-files",
+        "DeepSeek read-only review confirms the split preserves server API/live/static/state-store behavior"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "LFG-Q01 records test/workbench-server.test.js at 4353 lines with planned_refactor status; broad server fixtures currently couple API, live route, static compatibility, state-store, and event/snapshot flows.",
+          "artifacts": [
+            "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+            ".largefile-manifest.json"
+          ],
+          "created_at": "2026-06-02T16:10:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260602-workbench-server-route-groups",
+      "title": "Workbench server entrypoint still owns too many route and runtime responsibilities",
+      "source": "large-file-governance-p2",
+      "created_at": "2026-06-02T16:10:00+08:00",
+      "updated_at": "2026-06-02T16:10:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": [
+        "tools/workbench-server.mjs",
+        "tools/workbench-agent-key-routes.mjs",
+        "test/workbench-server.test.js",
+        "test/api-route-contract.test.js"
+      ],
+      "owned_files": [
+        "tools/workbench-server.mjs",
+        "tools/workbench-*-routes.mjs",
+        "test/workbench-server.test.js",
+        "test/api-route-contract.test.js",
+        "src/workflow/api-route-contract.js",
+        ".largefile-manifest.json",
+        "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+        "docs/governance/known-risk-ledger.json",
+        "docs/examples/reviewer-risk-20260602-workbench-server-route-groups-deepseek.json"
+      ],
+      "acceptance_gates": [
+        "Extract one bounded Workbench server route group or runtime bridge from tools/workbench-server.mjs without reducing route coverage",
+        "tools/workbench-server.mjs line count decreases and any new route module stays below 500 lines",
+        "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/api-route-contract.test.js",
+        "node tools/run-with-node18.mjs tools/check-api-route-contract.mjs",
+        "npm run check:large-files",
+        "DeepSeek read-only review confirms no static compatibility, state-store, or route contract behavior was lost"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [
+        "risk-20260602-workbench-server-test-shards"
+      ],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "LFG-Q02 records tools/workbench-server.mjs at 3516 lines with planned_refactor status after the first agent-key route extraction; remaining route groups still require staged extraction.",
+          "artifacts": [
+            "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+            ".largefile-manifest.json"
+          ],
+          "created_at": "2026-06-02T16:10:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260602-workbench-projection-test-shards",
+      "title": "Workbench projection tests remain a large coupled schema regression suite",
+      "source": "large-file-governance-p2",
+      "created_at": "2026-06-02T16:10:00+08:00",
+      "updated_at": "2026-06-02T16:10:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": [
+        "test/workbench-projection.test.js",
+        "src/workflow/workbench-projection.js",
+        "test/workbench-projection-schema.test.js",
+        "test/workbench-shell.test.js"
+      ],
+      "owned_files": [
+        "test/workbench-projection.test.js",
+        "test/workbench-projection-*.test.js",
+        ".largefile-manifest.json",
+        "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+        "docs/governance/known-risk-ledger.json",
+        "docs/examples/reviewer-risk-20260602-workbench-projection-test-shards-deepseek.json"
+      ],
+      "acceptance_gates": [
+        "Split one bounded projection schema/domain shard out of test/workbench-projection.test.js without deleting behavior assertions",
+        "test/workbench-projection.test.js line count decreases while extracted shard test files stay below 500 lines",
+        "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-*.test.js test/workbench-shell.test.js",
+        "npm run check:large-files",
+        "DeepSeek read-only review confirms projection schema and one-screen/mobile behavior coverage was preserved"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "LFG-Q03 records test/workbench-projection.test.js at 3294 lines with planned_refactor status; projection schema, provider failure, one-screen helper, and regression fixtures remain coupled.",
+          "artifacts": [
+            "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+            ".largefile-manifest.json"
+          ],
+          "created_at": "2026-06-02T16:10:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
+    },
+    {
+      "id": "risk-20260602-workbench-projection-domain-splits",
+      "title": "Workbench projection builder still aggregates project-management and next-action domains",
+      "source": "large-file-governance-p2",
+      "created_at": "2026-06-02T16:10:00+08:00",
+      "updated_at": "2026-06-02T16:10:00+08:00",
+      "status": "open",
+      "severity": "medium",
+      "scope": [
+        "src/workflow/workbench-projection.js",
+        "test/workbench-projection.test.js",
+        "test/workbench-projection-schema.test.js",
+        "test/workbench-shell.test.js"
+      ],
+      "owned_files": [
+        "src/workflow/workbench-projection.js",
+        "src/workflow/workbench-project-management.js",
+        "src/workflow/workbench-next-action-readout.js",
+        "test/workbench-projection.test.js",
+        "test/workbench-projection-*.test.js",
+        "test/workbench-shell.test.js",
+        ".largefile-manifest.json",
+        "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+        "docs/governance/known-risk-ledger.json",
+        "docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json"
+      ],
+      "acceptance_gates": [
+        "Extract one bounded project-management or next-action readout projection helper without changing projection output shape",
+        "src/workflow/workbench-projection.js line count decreases and new module stays below 500 lines",
+        "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+        "npm run test:coverage",
+        "npm run check:large-files",
+        "DeepSeek read-only review confirms extraction is behavior-preserving and does not just move complexity"
+      ],
+      "attempted_count": 0,
+      "last_agent_run_id": null,
+      "depends_on": [
+        "risk-20260602-workbench-projection-test-shards"
+      ],
+      "superseded_by": null,
+      "resolution": null,
+      "deferral": null,
+      "blockage": null,
+      "evidence": [
+        {
+          "type": "analysis",
+          "summary": "LFG-Q05 records src/workflow/workbench-projection.js at 1944 lines with planned_refactor status; project-management and next-action readout extraction remains planned.",
+          "artifacts": [
+            "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+            ".largefile-manifest.json"
+          ],
+          "created_at": "2026-06-02T16:10:00+08:00"
+        }
+      ],
+      "review": null,
+      "release": null
     }
   ]
 }

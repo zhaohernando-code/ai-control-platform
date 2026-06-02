@@ -2,7 +2,7 @@
 
 Status: pending  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T15:55:00+08:00
+Updated at: 2026-06-02T16:13:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -117,16 +117,16 @@ npm run check:known-risk-closeout
 
 ### Phase LFG-P2: Convert Queue Items into Known-Risk Work Packages
 
-Status: pending
+Status: pass
 
 Goal: make large-file items selectable by the same known-risk closeout process used for prior risk repair.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFG-P2.1 | Add large-file risk entries for top candidates | `known-risk-ledger.json` | Each entry has scope, owned files, acceptance gates, and status `open`. | pending |
-| LFG-P2.2 | Add risk grouping policy | Governance docs | Test files and source files can be grouped only when a common extraction owns both. | pending |
-| LFG-P2.3 | Add dry-run selection rule | Runner or docs | Daily run can select one bounded large-file risk without broad refactor. | pending |
-| LFG-P2.4 | DeepSeek phase review | Reviewer artifact | DS confirms large-file risks are actionable and not vague refactor wishes. | pending |
+| LFG-P2.1 | Add large-file risk entries for top candidates | `known-risk-ledger.json` | Each entry has scope, owned files, acceptance gates, and status `open`. | pass |
+| LFG-P2.2 | Add risk grouping policy | This document | Test files and source files can be grouped only when a common extraction owns both. | pass |
+| LFG-P2.3 | Add dry-run selection rule | `test/known-risk-closeout-runner.test.js` plus Daily Run Shape | Daily run can select one bounded large-file risk without broad refactor. | pass |
+| LFG-P2.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-large-file-governance-p2-deepseek.json` | DS confirms large-file risks are actionable and not vague refactor wishes. | pass |
 
 Initial recommended risk entries:
 
@@ -134,6 +134,28 @@ Initial recommended risk entries:
 - `risk-20260602-workbench-server-route-groups`
 - `risk-20260602-workbench-projection-test-shards`
 - `risk-20260602-workbench-projection-domain-splits`
+
+These four entries intentionally cover the Workbench server/projection clusters first. `src/workflow/headless-cli-orchestrator.js` is larger than `src/workflow/workbench-projection.js`, but its source/test split belongs to LFG-P5 and is not mixed into the Workbench P3/P4 boundary package.
+
+LFG-P2 intentionally reopens the known-risk ledger. `npm run check:known-risk-closeout` must pass, but `npm run check:known-risk-closeout:required` is expected to fail until these newly queued large-file risks reach terminal states.
+
+#### Large-File Risk Grouping Policy
+
+- A test-file risk may include its source file in `scope` only to preserve behavior context; its default `owned_files` should keep source edits out unless the selected split requires fixture or route-contract changes.
+- A source-file risk may include test files in `owned_files` only when the extraction must preserve behavior through targeted regression tests.
+- A source-file risk that depends on a test-shard risk must list the test-shard risk in `depends_on`, so behavior-preserving tests are made smaller before source extraction broadens.
+- Static legacy Workbench files (`apps/workbench/workbench.js`, `apps/workbench/styles.css`) must stay separate from Next.js runtime route risks unless inventory evidence proves they share one retirement boundary.
+- One closeout run should select at most one large-file risk by default. Broader grouping requires an explicit risk entry with shared extraction rationale, owned files, and DeepSeek review.
+
+#### Daily Dry-Run Selection Rule
+
+The daily preflight command remains:
+
+```bash
+npm run run:known-risk-closeout -- --max-risks 1
+```
+
+With the current queue this selects `risk-20260602-workbench-server-test-shards` first. Selection is dependency-first: if a selected risk depends on another open or in-progress risk, the dependency is returned before the dependent risk. The dry-run artifact is a scheduler input only: it must show `preflight_only: true` and `closeout_completed: false`.
 
 ### Phase LFG-P3: Workbench Server Route and Test Boundary Split
 
@@ -222,6 +244,7 @@ Each scheduled large-file governance run should:
 | Delta review | `deepseek-v4-flash` no-tools | PASS | Confirmed the three non-blocking findings were closed and no new blocking or non-blocking findings remained. |
 | Closeout-plan archive review | `deepseek-v4-pro` bounded read-only review | PASS | No blocking findings. Non-blocking stale LFG-P0 item statuses were updated to `pass`; forward-reference note had no functional impact. |
 | LFG-P1 gate review | `deepseek-v4-pro` bounded + delta read-only reviews | PASS | Initial blocking findings on shrink hard-fail and missing-entry coverage were fixed. Final delta review returned PASS with no blocking or non-blocking findings. |
+| LFG-P2 risk package review | `deepseek-v4-pro` sharded + delta read-only reviews | PASS | No blocking findings. Non-blocking findings on headless scope rationale, live-ledger test coupling, and dependency-first selection were addressed; final delta returned PASS with no findings. |
 
 ## Current External Dependencies
 
@@ -237,7 +260,7 @@ Each scheduled large-file governance run should:
 | --- | --- | --- | --- |
 | LFG-P0 | pass | Plan created and non-blocking DS feedback incorporated. | DeepSeek PASS, no blocking findings |
 | LFG-P1 | pass | `tools/report-large-files.mjs` added; report gate, duplicate-key detection, growth/stale-up detection, shrink warnings, missing-entry detection, and planned-refactor growth guard pass local tests. | DeepSeek PASS, no blocking or non-blocking findings after delta |
-| LFG-P2 | pending | Not started. | pending |
+| LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P3 | pending | Not started. | pending |
 | LFG-P4 | pending | Not started. | pending |
 | LFG-P5 | pending | Not started. | pending |

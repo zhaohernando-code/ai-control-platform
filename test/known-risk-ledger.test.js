@@ -64,14 +64,41 @@ function issueCodes(result) {
   return result.issues.map((item) => item.code);
 }
 
-test("current known-risk ledger is structurally valid while open risks remain allowed before closeout", () => {
+test("current known-risk ledger is structurally valid while open large-file risks remain queued", () => {
   const current = JSON.parse(readFileSync("docs/governance/known-risk-ledger.json", "utf8"));
   const result = evaluateKnownRiskLedger(current, { now: NOW });
 
   assert.equal(result.status, "pass");
-  assert.equal(result.risk_count, 7);
-  assert.equal(result.open_count, 0);
+  assert.equal(result.risk_count, 11);
+  assert.equal(result.open_count, 4);
   assert.equal(result.terminal_count, 7);
+});
+
+test("large-file governance risks are open, bounded, and independently selectable", () => {
+  const current = JSON.parse(readFileSync("docs/governance/known-risk-ledger.json", "utf8"));
+  const largeFileRisks = current.risks.filter((risk) => risk.source === "large-file-governance-p2");
+
+  assert.deepEqual(largeFileRisks.map((risk) => risk.id), [
+    "risk-20260602-workbench-server-test-shards",
+    "risk-20260602-workbench-server-route-groups",
+    "risk-20260602-workbench-projection-test-shards",
+    "risk-20260602-workbench-projection-domain-splits"
+  ]);
+  for (const risk of largeFileRisks) {
+    assert.equal(risk.status, "open");
+    assert.ok(risk.scope.length > 0);
+    assert.ok(risk.owned_files.length > 0);
+    assert.ok(risk.acceptance_gates.some((gate) => gate.includes("DeepSeek read-only review")));
+    assert.ok(risk.acceptance_gates.some((gate) => gate.includes("npm run check:large-files")));
+  }
+  assert.deepEqual(
+    largeFileRisks.find((risk) => risk.id === "risk-20260602-workbench-server-route-groups").depends_on,
+    ["risk-20260602-workbench-server-test-shards"]
+  );
+  assert.deepEqual(
+    largeFileRisks.find((risk) => risk.id === "risk-20260602-workbench-projection-domain-splits").depends_on,
+    ["risk-20260602-workbench-projection-test-shards"]
+  );
 });
 
 test("require-closed mode fails while known risks are still open", () => {
