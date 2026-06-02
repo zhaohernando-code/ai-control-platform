@@ -2,7 +2,7 @@
 
 Status: in_progress  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T22:33:00+08:00
+Updated at: 2026-06-02T22:50:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -213,14 +213,14 @@ Goal: split long-running orchestration and execution files into auditable contra
 
 ### Phase LFG-P6: Legacy Static Workbench Retirement
 
-Status: pending
+Status: blocked
 
 Goal: remove or quarantine legacy static assets once Next.js mounted routes own the runtime.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFG-P6.1 | Inventory static shell dependencies | Report | Tests identify which legacy routes/assets still require `workbench.js` or `styles.css`. | pending |
-| LFG-P6.2 | Retire unused static code | Deletions or quarantine | Next.js routes, browser events, and frontend acceptance still pass. | pending |
+| LFG-P6.1 | Inventory static shell dependencies | `docs/governance/legacy-static-workbench-inventory.json`; `test/legacy-static-workbench-inventory.test.js` | Tests identify which legacy routes/assets still require `workbench.js` or `styles.css`. | pass |
+| LFG-P6.2 | Retire unused static code | Deletions or quarantine | Blocked until Next.js served-route gates replace legacy desktop/mobile browser-event, frontend-acceptance, and scheduler writeback gates. | blocked |
 | LFG-P6.3 | Update manifest | `.largefile-manifest.json` | Removed/retired files no longer appear as planned-refactor entries. | pending |
 | LFG-P6.4 | DeepSeek phase review | Reviewer artifact | DS confirms no public route or compatibility fixture was broken. | pending |
 
@@ -254,6 +254,7 @@ Each scheduled large-file governance run should:
 | LFG-P5.1 headless worker planning review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed work-package selection and child lifecycle spawn facts are behavior-preserving, child acceptance/owned-file/host-boundary/completion-authority/continuation/snapshot behavior was not weakened, tests cover the extracted boundary, and P5 metadata does not claim phase completion. |
 | LFG-P5.2 headless child acceptance review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed child worker acceptance extraction is behavior-preserving, host boundary, owned-file, no-diff/mainline integration, command evidence, durable state, process hardening, continuation readiness, and self-evaluation checks were not weakened, direct and orchestrator tests cover the boundary, and P5 metadata stays in_progress. |
 | LFG-P5.3/P5.4 context execution-scope review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed fixed owned_files gate ordering before provider execution, primary-worktree blocking for code-output packages, fail-closed no-code workspace mutation guard, direct and integration test coverage, and metadata consistency after delta clarification. |
+| LFG-P6.1 legacy static inventory review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis and delta | PASS | Confirmed server default API-only posture, explicit legacy static opt-in, browser-events/frontend-acceptance/scheduler-writeback/shell-test dependencies, and P6.2 blocked rationale. Non-blocking missing `test/frontend-acceptance.test.js` gate dependency was added and delta review passed. |
 
 ## Current External Dependencies
 
@@ -273,4 +274,4 @@ Each scheduled large-file governance run should:
 | LFG-P3 | pass | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; legacy static compatibility routing was extracted into `tools/workbench-static-routes.mjs`; `node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build`, `npm run check:closeout`, public browser route, state-boundary, live-state cleanliness, and governance audit skill trial passed. The state-boundary scanner now explicitly allows only the split server fixture shards while rejecting unapproved tests and tools. | DeepSeek PASS for test shard, route group, and live-route/state-boundary closeout |
 | LFG-P4 | pass | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; project-management readout policy was extracted into `src/workflow/workbench-project-management.js` and `src/workflow/workbench-project-task-items.js`; projection/schema/shell, coverage, large-file, and known-risk required gates passed. | DeepSeek PASS for test shard, next-action split, and project-management split |
 | LFG-P5 | pass | Worker planning was extracted into `src/workflow/headless-worker-planning.js`; child worker acceptance/default/missing/parse packaging was extracted into `src/workflow/headless-child-acceptance.js`; context execution-scope and workspace mutation guard logic was extracted into `src/workflow/context-work-package-execution-scope.js`; `node tools/run-with-node18.mjs --test test/context-work-package-execution-scope.test.js test/context-work-package-runner.test.js test/fixed-development-mode.test.js` passes and `src/workflow/context-work-package-runner.js` decreased from 1217 to 1135 lines. Large-file queue items such as `test/headless-cli-orchestrator.test.js` and the remaining `context-work-package-runner.js` flow are still tracked separately. | DeepSeek PASS for P5.1, P5.2, and P5.3/P5.4 |
-| LFG-P6 | pending | Not started. | pending |
+| LFG-P6 | blocked | Legacy static Workbench inventory shows `workbench.js` and `styles.css` are not default public server pages, but they remain explicit fallback and acceptance-gate dependencies for browser-events, frontend-acceptance, scheduler writeback browser verification, and workbench shell tests. | DeepSeek PASS for P6.1 inventory; P6.2 blocked until Next served-route gate migration evidence exists |

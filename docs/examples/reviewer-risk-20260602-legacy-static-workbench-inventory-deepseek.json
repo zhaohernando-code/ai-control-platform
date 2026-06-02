@@ -1,0 +1,57 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-legacy-static-workbench-inventory",
+  "reviewer_id": "deepseek-lfg-p6-legacy-static-inventory-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T22:50:00+08:00",
+  "verdict": "pass",
+  "delta_review": {
+    "reviewed_at": "2026-06-02T22:58:00+08:00",
+    "verdict": "pass",
+    "blocking_findings": [],
+    "summary": "DeepSeek confirmed the corrected test/frontend-acceptance.test.js dependency is recorded, covered by the regression test, and does not mark LFG-P6 complete while LFG-P6.2 remains blocked."
+  },
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "code": "frontend_acceptance_test_dependency_not_listed",
+      "summary": "DeepSeek noted that test/frontend-acceptance.test.js was referenced by favicon consumers but not listed as a separate acceptance-gate dependency; the inventory and regression test were updated to include it."
+    }
+  ],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/legacy-static-workbench-inventory.test.js test/workbench-shell.test.js test/workbench-server.test.js test/governance-enrollment.test.js",
+    "npm run check:large-files",
+    "docs/governance/legacy-static-workbench-inventory.json",
+    "test/legacy-static-workbench-inventory.test.js",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "tools/workbench-static-routes.mjs",
+    "tools/workbench-server.mjs",
+    "tools/check-workbench-browser-events.mjs",
+    "tools/check-workbench-frontend-acceptance.mjs",
+    "tools/check-scheduler-dispatch-writeback.mjs",
+    "test/frontend-acceptance.test.js",
+    "test/workbench-shell.test.js",
+    "test/workbench-server.test.js"
+  ],
+  "scope": {
+    "files": [
+      "docs/governance/legacy-static-workbench-inventory.json",
+      "test/legacy-static-workbench-inventory.test.js",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "tools/workbench-static-routes.mjs",
+      "tools/workbench-server.mjs",
+      "tools/check-workbench-browser-events.mjs",
+      "tools/check-workbench-frontend-acceptance.mjs",
+      "tools/check-scheduler-dispatch-writeback.mjs",
+      "test/frontend-acceptance.test.js",
+      "test/workbench-shell.test.js",
+      "test/workbench-server.test.js"
+    ],
+    "diff_summary": "Added a machine-readable legacy static Workbench inventory and regression test. The inventory records that tools/workbench-server.mjs is API-only by default while legacy desktop.html/mobile.html/workbench.js/styles.css/projection-source.js/favicon.svg remain explicit fallback and acceptance-gate dependencies. LFG-P6.1 is closed; LFG-P6.2 remains blocked until Next.js served-route gates replace legacy static browser-event, frontend-acceptance, and scheduler writeback gates.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/legacy-static-workbench-inventory.test.js test/workbench-shell.test.js test/workbench-server.test.js test/governance-enrollment.test.js",
+      "npm run check:large-files"
+    ]
+  },
+  "notes": "DeepSeek inventory, plan/static-route, server/browser-events, frontend-acceptance/shell, and server-test shards all returned PASS and synthesis returned PASS. The delta review for the added test/frontend-acceptance.test.js dependency also returned PASS. P6 remains blocked rather than complete; Q09 and Q12 remain planned_refactor in the large-file queue."
+}

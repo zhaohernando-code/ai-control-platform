@@ -1,0 +1,145 @@
+{
+  "version": "legacy-static-workbench-inventory.v1",
+  "reviewed_at": "2026-06-02T22:45:00+08:00",
+  "status": "retirement_blocked",
+  "summary": "Legacy static Workbench assets are no longer served by tools/workbench-server.mjs by default, but they are still explicit fallback and acceptance-gate inputs. They cannot be deleted until browser-events, frontend-acceptance, and served-route evidence move to the Next.js Workbench runtime.",
+  "legacy_static_files": [
+    {
+      "path": "apps/workbench/desktop.html",
+      "role": "legacy_desktop_shell",
+      "depends_on": [
+        "apps/workbench/styles.css",
+        "apps/workbench/workbench.js",
+        "apps/workbench/favicon.svg"
+      ],
+      "current_consumers": [
+        "test/workbench-shell.test.js",
+        "tools/check-workbench-browser-events.mjs",
+        "tools/check-workbench-frontend-acceptance.mjs",
+        "tools/check-scheduler-dispatch-writeback.mjs"
+      ]
+    },
+    {
+      "path": "apps/workbench/mobile.html",
+      "role": "legacy_mobile_shell",
+      "depends_on": [
+        "apps/workbench/styles.css",
+        "apps/workbench/workbench.js",
+        "apps/workbench/favicon.svg"
+      ],
+      "current_consumers": [
+        "test/workbench-shell.test.js",
+        "tools/check-workbench-browser-events.mjs",
+        "tools/check-workbench-frontend-acceptance.mjs",
+        "tools/check-scheduler-dispatch-writeback.mjs"
+      ]
+    },
+    {
+      "path": "apps/workbench/workbench.js",
+      "role": "legacy_dom_projection_renderer",
+      "depends_on": [
+        "apps/workbench/projection-source.js"
+      ],
+      "manifest_large_file_status": "planned_refactor",
+      "current_consumers": [
+        "apps/workbench/desktop.html",
+        "apps/workbench/mobile.html",
+        "test/workbench-shell.test.js",
+        "test/workbench-server.test.js"
+      ]
+    },
+    {
+      "path": "apps/workbench/styles.css",
+      "role": "legacy_dom_shell_styles",
+      "depends_on": [],
+      "manifest_large_file_status": "planned_refactor",
+      "current_consumers": [
+        "apps/workbench/desktop.html",
+        "apps/workbench/mobile.html",
+        "test/workbench-shell.test.js"
+      ]
+    },
+    {
+      "path": "apps/workbench/projection-source.js",
+      "role": "legacy_static_projection_api_adapter",
+      "depends_on": [],
+      "current_consumers": [
+        "apps/workbench/workbench.js",
+        "test/workbench-shell.test.js"
+      ]
+    },
+    {
+      "path": "apps/workbench/favicon.svg",
+      "role": "legacy_and_mounted_svg_favicon",
+      "depends_on": [],
+      "current_consumers": [
+        "apps/workbench/desktop.html",
+        "apps/workbench/mobile.html",
+        "test/workbench-shell.test.js",
+        "test/frontend-acceptance.test.js"
+      ]
+    }
+  ],
+  "runtime_routes": {
+    "tools/workbench-server.mjs": {
+      "default_static_page_behavior": "api_only_404",
+      "legacy_static_enabled_by": [
+        "--serve-legacy-static",
+        "AI_CONTROL_WORKBENCH_SERVE_LEGACY_STATIC=1",
+        "createWorkbenchServer({ serveLegacyStatic: true })"
+      ],
+      "evidence": [
+        "test/workbench-server.test.js: workbench server is API-only by default for page routes",
+        "test/workbench-server.test.js: workbench server can serve legacy static shell only when explicitly enabled"
+      ]
+    },
+    "tools/workbench-static-routes.mjs": {
+      "project_mount_root_when_legacy_disabled": "404 JSON: workbench pages are served by Next.js",
+      "project_mount_root_when_legacy_enabled": "302 to apps/workbench/desktop.html"
+    }
+  },
+  "acceptance_gate_dependencies": [
+    {
+      "gate": "npm run check:workbench:browser-events",
+      "file": "tools/check-workbench-browser-events.mjs",
+      "legacy_static_requirement": "starts workbench-server with serveLegacyStatic: true and drives apps/workbench/desktop.html plus mobile.html in Playwright"
+    },
+    {
+      "gate": "npm run check:workbench:frontend-acceptance",
+      "file": "tools/check-workbench-frontend-acceptance.mjs",
+      "legacy_static_requirement": "starts workbench-server with serveLegacyStatic: true and validates desktop.html/mobile.html mounted favicon and layout evidence"
+    },
+    {
+      "gate": "node --test test/frontend-acceptance.test.js",
+      "file": "test/frontend-acceptance.test.js",
+      "legacy_static_requirement": "fixture-level frontend acceptance assertions still encode mounted desktop.html/mobile.html routes and mounted SVG favicon evidence"
+    },
+    {
+      "gate": "scheduler dispatch writeback browser verification",
+      "file": "tools/check-scheduler-dispatch-writeback.mjs",
+      "legacy_static_requirement": "verifies scheduler dispatch writeback through legacy desktop.html and mobile.html"
+    },
+    {
+      "gate": "node --test test/workbench-shell.test.js",
+      "file": "test/workbench-shell.test.js",
+      "legacy_static_requirement": "asserts desktop/mobile DOM bindings, workbench.js projection rendering, styles.css mobile and overflow invariants"
+    }
+  ],
+  "retirement": {
+    "decision": "do_not_delete_in_p6_1",
+    "reason": "The assets are not the default server page route, but they remain acceptance-gate and rollback dependencies.",
+    "blocked_p6_items": [
+      "LFG-P6.2",
+      "LFG-P6.3"
+    ],
+    "required_evidence_before_delete": [
+      "Next.js Workbench served route verified at /projects/ai-control-platform/ for desktop and mobile viewports",
+      "Browser-events gate migrated from legacy desktop.html/mobile.html to Next.js routes or replaced by an equivalent Next.js interaction gate",
+      "Frontend-acceptance gate migrated from legacy desktop.html/mobile.html to Next.js routes or replaced by equivalent mounted-route evidence",
+      "Scheduler dispatch writeback browser verification no longer depends on legacy desktop.html/mobile.html",
+      "FRONTEND_REFACTOR_CONSTRAINTS.md and FRONTEND_MIGRATION_INVENTORY.md updated to remove fallback-retention requirements",
+      "test/workbench-shell.test.js no longer asserts legacy DOM/CSS invariants as current acceptance gates",
+      "tools/workbench-server.mjs and tools/workbench-static-routes.mjs no longer expose opt-in legacy static serving, or the opt-in route is explicitly quarantined outside public runtime"
+    ]
+  }
+}
