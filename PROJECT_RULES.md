@@ -17,6 +17,7 @@
 - 本项目必须纳入共享源码规模治理：首次 checkout 或发现 hook 未触发时运行 `npm run install:git-hooks` / `scripts/install-git-hooks.sh`，确保 `core.hooksPath=../../.githooks`。超过 500 行的 `.js/.ts/.tsx/.py/.css` 文件必须记录在 `.largefile-manifest.json`，新增或继续增长时优先拆分；manifest 只记录当前仍需治理的真实文件，不作为永久豁免。
 - `npm test` 必须从隔离 task worktree(`worker-workspaces/...`)运行,不能在 canonical 主检出里跑:headless orchestrator 测试会走真实子 worker 路径,该路径按设计拒绝在主 worktree 执行代码产出工作包,在主检出跑会产生 ~17 个误导性的 `blocked !== pass` 失败(并非真实缺陷)。`pretest`(`tools/check-test-location.mjs`)会在跑错位置时快速失败并给出明确指引;确需在 canonical 跑时设 `AI_CONTROL_PLATFORM_ALLOW_CANONICAL_TEST=1`。
 - `npm run test:affected` 是开发期加速器,只跑被改动传递影响的测试子集(基于 `tools/select-affected-tests.mjs` 的反向 import 图 + spawn/fixture 字面量边);无法静态证明影响范围时一律 fail-open 跑全套。它**不替代**收尾门禁:合入前仍须以全套 `npm test` 为准。
+- Playwright CLI 或浏览器验证生成的 `.playwright-cli/` 控制台日志属于本地临时诊断产物，必须保持 git ignored；任何浏览器验收、closeout 或 public route verification 后，canonical checkout 仍必须通过 `git status --short` 干净检查。
 - 前端相关任务默认同时覆盖 PC Web 与手机尺寸；手机端可以独立信息架构，不得默认压缩 PC 页面。
 - 用户可见功能完成前必须有真实渲染或服务验收；只通过源码或静态文档不算完成。
 - Ops Workbench、任务 DAG、调度锁、事件源状态、Recovery Engine、LLM reviewer、CI/CD 门禁、周期体检和快速定位 skill 都是平台基座能力；开发前必须先明确领域模型、状态真值、契约、失败恢复、测试边界和操作员可观测面。

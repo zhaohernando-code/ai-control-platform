@@ -3,6 +3,7 @@ node_modules/
 coverage/
 dist/
 tmp/
+.playwright-cli/
 .claude/
 *.sqlite
 *.sqlite-shm
