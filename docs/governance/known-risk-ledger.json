@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T09:23:20+08:00",
+  "updated_at": "2026-06-02T10:22:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -283,27 +283,39 @@
       "title": "Workbench projection aggregation layer remains a large cross-domain strategy module",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T10:22:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "src/workflow/workbench-projection.js",
-        "test/workbench-projection.test.js"
+        "src/workflow/workbench-one-screen.js",
+        "test/workbench-projection.test.js",
+        ".largefile-manifest.json"
       ],
       "owned_files": [
         "src/workflow/workbench-projection.js",
+        "src/workflow/workbench-one-screen.js",
         "src/workflow/workbench-*.js",
-        "test/workbench-projection.test.js"
+        "test/workbench-projection.test.js",
+        ".largefile-manifest.json",
+        "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-deepseek.json",
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js",
+        "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-closeout-deepseek.json"
       ],
       "acceptance_gates": [
         "Project-management, next-action, or one-screen counter extraction is planned or implemented with behavior-preserving tests",
         "node tools/run-with-node18.mjs --test test/workbench-projection.test.js"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-workbench-projection-boundary",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "5358efde46b5845baa3681655aa6a1bb654ce4ee",
+        "test_added": true,
+        "summary": "Extracted one-screen next_actions and counters generation from createWorkbenchProjection into src/workflow/workbench-one-screen.js, re-exported the helper, added focused counter/readout coverage, and updated large-file governance metadata while preserving the full projection and mobile contract tests."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -311,10 +323,107 @@
           "type": "analysis",
           "summary": "src/workflow/workbench-projection.js remains a broad aggregation module across project management, scheduler, reviewer, lifecycle, governance, and next-action readouts.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "One-screen counter and next-action projection was extracted into a dedicated helper module.",
+          "artifact": "src/workflow/workbench-one-screen.js",
+          "created_at": "2026-06-02T10:01:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Workbench projection regression suite passed after one-screen extraction; includes new direct one-screen helper counter/readout coverage.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-projection.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:01:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Projection source, schema, and purity tests passed after extracting one-screen generation.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-projection-source.test.js test/workbench-projection-schema.test.js test/workbench-projection-purity.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:02:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Large-file governance enrollment and known-risk ledger tests passed after metadata and counter updates.",
+          "command": "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js test/known-risk-ledger.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:03:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk ledger structural gate passed before final closeout; remaining open risks are outside this scoped risk.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:03:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek sharded read-only review returned final synthesis PASS with no blocking findings.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-deepseek.json",
+          "created_at": "2026-06-02T10:04:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek closeout review passed after sharded retry; it confirmed ledger fixed status, evidence chain, reviewer metadata, release.required false decision, and known-risk counts.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-closeout-deepseek.json",
+          "created_at": "2026-06-02T10:16:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Full npm test suite passed after one-screen projection extraction and ledger closeout updates.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:20:00+08:00"
+        },
+        {
+          "type": "coverage",
+          "summary": "Coverage gate passed after extraction; reported all-files line coverage 91.89% and function coverage 96.93%.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:21:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Full closeout gate passed after installing the worktree npm dependencies required by the public browser route check.",
+          "command": "npm run check:closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:22:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "claude-deepseek-sharded-readonly",
+            "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "Shard-level inconclusive notes were caused by split file visibility and a conditional large-file concern; the final synthesis resolved them as PASS after seeing the helper is 111 lines and the main projection delegates one_screen generation.",
+              "The new one-screen helper duplicates small local asArray/normalizeString utilities; this is acceptable for a bounded extraction but could be unified in a later projection cleanup.",
+              "test/workbench-projection.test.js remains a planned-refactor large test file; this pre-existing test-size debt is outside the bounded one-screen extraction."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-deepseek.json"
+          },
+          {
+            "reviewer_id": "claude-deepseek-closeout-readonly",
+            "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "The first closeout review attempt timed out at 90 seconds, so the review was rerun as one-file shards with synthesis.",
+              "Shard-level inconclusive notes were caused by file-local visibility; the ledger shard confirmed the fixed status, full commit, evidence chain, release.required false reason, and 7/4/3 ledger counts, while final synthesis returned PASS.",
+              "The reviewer artifact evidence_refs are command references rather than raw command output; the ledger also records command-level evidence with exit codes."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-closeout-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "No user-visible runtime route changed; this is an internal projection-boundary refactor with preserved projection and mobile contract behavior."
+      }
     },
     {
       "id": "risk-20260601-workbench-api-error-diagnostics",

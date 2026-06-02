@@ -1,0 +1,34 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260601-workbench-projection-boundary",
+  "reviewer_id": "claude-deepseek-closeout-readonly",
+  "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T10:16:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "The first closeout review attempt timed out at 90 seconds, so the review was rerun as one-file shards with synthesis.",
+    "Shard-level inconclusive notes were caused by file-local visibility; the ledger shard confirmed the fixed status, full commit, evidence chain, release.required false reason, and 7/4/3 ledger counts, while final synthesis returned PASS.",
+    "The reviewer artifact evidence_refs are command references rather than raw command output; the ledger also records command-level evidence with exit codes."
+  ],
+  "evidence_refs": [
+    "docs/governance/known-risk-ledger.json",
+    "test/known-risk-ledger.test.js",
+    "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-deepseek.json",
+    "npm run check:known-risk-closeout"
+  ],
+  "scope": {
+    "files": [
+      "docs/governance/known-risk-ledger.json",
+      "test/known-risk-ledger.test.js",
+      "docs/examples/reviewer-risk-20260601-workbench-projection-boundary-deepseek.json"
+    ],
+    "diff_summary": "Marked risk-20260601-workbench-projection-boundary fixed, recorded implementation commit 5358efde46b5845baa3681655aa6a1bb654ce4ee, added evidence and reviewer metadata, and updated known-risk counts from open 5/terminal 2 to open 4/terminal 3.",
+    "gates_reviewed": [
+      "Known-risk closeout structural gate passed with risk_count 7, open_count 4, terminal_count 3.",
+      "Required closeout gate failed only for the four remaining open risks outside this scoped closeout.",
+      "Known-risk ledger and governance enrollment tests passed 17/17."
+    ]
+  },
+  "notes": "DeepSeek reviewed the closeout ledger state and found no blocking issue. The fixed status, resolution commit, evidence chain, reviewer pass, release decision, and count update were consistent for this scoped risk."
+}
