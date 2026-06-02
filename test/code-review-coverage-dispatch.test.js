@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -6,6 +8,30 @@ import {
   createCodeReviewCoverageDispatch,
   evaluateCodeReviewCoverageDispatch
 } from "../src/workflow/code-review-coverage-dispatch.js";
+
+function currentCoverageArtifact() {
+  return JSON.parse(readFileSync("docs/examples/code-review-coverage-current.json", "utf8"));
+}
+
+const IGNORED_SOURCE_DIRS = new Set([".next", "node_modules", "tmp", "dist", "build"]);
+const SOURCE_FILE_PATTERN = /\.(css|[cm]?js|jsx|[cm]?ts|tsx)$/;
+
+function listSourceFiles(root) {
+  const files = [];
+  for (const entry of readdirSync(root)) {
+    if (IGNORED_SOURCE_DIRS.has(entry)) continue;
+    const path = join(root, entry);
+    const stat = statSync(path);
+    if (stat.isDirectory()) {
+      files.push(...listSourceFiles(path));
+      continue;
+    }
+    if (SOURCE_FILE_PATTERN.test(path)) {
+      files.push(path.replace(/\\/g, "/"));
+    }
+  }
+  return files.sort();
+}
 
 test("code review coverage excludes dependencies, VCS metadata, temp files, build output, and caches", () => {
   const excludedPaths = [
@@ -40,6 +66,10 @@ test("code review coverage excludes dependencies, VCS metadata, temp files, buil
   }
 
   assert.equal(codeReviewPathExclusion("src/workflow/self-governance.js").excluded, false);
+  assert.equal(codeReviewPathExclusion("src/workflow/module.mjs").excluded, false);
+  assert.equal(codeReviewPathExclusion("src/workflow/module.cjs").excluded, false);
+  assert.equal(codeReviewPathExclusion("src/workflow/module.mts").excluded, false);
+  assert.equal(codeReviewPathExclusion("src/workflow/module.cts").excluded, false);
   assert.equal(codeReviewPathExclusion("test/self-governance.test.js").excluded, false);
 });
 
@@ -178,4 +208,22 @@ test("manifest code_review_coverage event can drive coverage dispatch", () => {
 
   assert.equal(dispatch.status, "needs_dispatch");
   assert.equal(dispatch.package_ids[0], "code-review-coverage-manifest-shard");
+});
+
+test("current coverage artifact covers all Workbench app routes, hooks, and API base layer files", () => {
+  const result = evaluateCodeReviewCoverageDispatch(currentCoverageArtifact());
+  const covered = new Set(result.first_party_files);
+  const currentWorkbenchFiles = [
+    ...listSourceFiles("apps/workbench/app"),
+    ...listSourceFiles("apps/workbench/lib")
+  ];
+  const missing = currentWorkbenchFiles.filter((file) => !covered.has(file));
+
+  assert.equal(result.status, "pass");
+  assert.deepEqual(missing, []);
+  assert.ok(covered.has("apps/workbench/app/page.tsx"));
+  assert.ok(covered.has("apps/workbench/app/requirements/page.tsx"));
+  assert.ok(covered.has("apps/workbench/app/shell.tsx"));
+  assert.ok(covered.has("apps/workbench/lib/api/index.ts"));
+  assert.ok(covered.has("apps/workbench/lib/hooks/useProjection.ts"));
 });
