@@ -14,6 +14,39 @@ export interface WorkbenchEndpoint {
   description: string;
 }
 
+export interface WorkbenchApiErrorBody {
+  error?: unknown;
+  phase?: unknown;
+  issues?: unknown;
+  projection?: unknown;
+  [key: string]: unknown;
+}
+
+export class WorkbenchApiError extends Error {
+  readonly path: string;
+  readonly status: number;
+  readonly body: WorkbenchApiErrorBody | null;
+  readonly error?: unknown;
+  readonly phase?: unknown;
+  readonly issues?: unknown;
+  readonly projection?: unknown;
+
+  constructor(path: string, status: number, body: WorkbenchApiErrorBody | null = null) {
+    const errorMessage = typeof body?.error === "string" && body.error.trim()
+      ? `: ${body.error.trim()}`
+      : "";
+    super(`workbench api ${path} failed: ${status}${errorMessage}`);
+    this.name = "WorkbenchApiError";
+    this.path = path;
+    this.status = status;
+    this.body = body;
+    this.error = body?.error;
+    this.phase = body?.phase;
+    this.issues = body?.issues;
+    this.projection = body?.projection;
+  }
+}
+
 export const WORKBENCH_API_BASE: string =
   (typeof process !== "undefined" && process.env?.WORKBENCH_API_BASE) ||
   "";
@@ -88,6 +121,19 @@ export function resolveWorkbenchUrl(path: string): string {
   return `${WORKBENCH_API_BASE}${path}`;
 }
 
+function isRecord(value: unknown): value is WorkbenchApiErrorBody {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+async function readWorkbenchErrorBody(response: Response): Promise<WorkbenchApiErrorBody | null> {
+  try {
+    const body = await response.json();
+    return isRecord(body) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchWorkbenchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), 30000);
@@ -101,7 +147,7 @@ export async function fetchWorkbenchJson<T>(path: string, init?: RequestInit): P
       }
     });
     if (!response.ok) {
-      throw new Error(`workbench api ${path} failed: ${response.status}`);
+      throw new WorkbenchApiError(path, response.status, await readWorkbenchErrorBody(response));
     }
     return (await response.json()) as T;
   } catch (error) {

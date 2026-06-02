@@ -1,0 +1,29 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260601-workbench-api-error-diagnostics",
+  "reviewer_id": "claude-deepseek-implementation-readonly",
+  "model": "deepseek-v4-pro",
+  "reviewed_at": "2026-06-02T10:42:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "When init.signal is provided by the caller, the internal 30s AbortController timeout is bypassed because fetch listens to the caller signal; this pre-existing design behavior is outside this structured diagnostics risk.",
+    "DeepSeek suggested adding a partial-field JSON body test. The test was added and the delta review passed; the delta review noted message format is already covered by the full JSON-body test."
+  ],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-api-client.test.js test/workbench-shell.test.js",
+    "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build"
+  ],
+  "scope": {
+    "files": [
+      "apps/workbench/lib/api/index.ts",
+      "test/workbench-api-client.test.js"
+    ],
+    "diff_summary": "Added WorkbenchApiError with structured error body fields and updated fetchWorkbenchJson to preserve non-2xx JSON diagnostics. Added behavior tests for full JSON diagnostics, non-JSON errors, and partial JSON diagnostics.",
+    "gates_reviewed": [
+      "Targeted API client and workbench shell tests passed 16/16.",
+      "Next.js production build passed after installing apps/workbench dependencies in the isolated worktree."
+    ]
+  },
+  "notes": "DeepSeek implementation and delta reviews both passed with no blocking findings. The implementation preserves error, phase, issues, and projection as direct WorkbenchApiError fields instead of requiring message parsing."
+}
