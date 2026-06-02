@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T11:00:00+08:00",
+  "updated_at": "2026-06-02T11:22:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -614,28 +614,35 @@
       "title": "Durable code-review coverage artifact does not cover all Workbench dashboard entrypoints",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T11:22:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "docs/examples/code-review-coverage-current.json",
+        "test/code-review-coverage-dispatch.test.js",
         "apps/workbench/app",
         "apps/workbench/lib"
       ],
       "owned_files": [
         "docs/examples/code-review-coverage-current.json",
         "test/code-review-coverage-dispatch.test.js",
-        "src/workflow/code-review-coverage-dispatch.js"
+        "docs/examples/reviewer-risk-20260601-code-review-coverage-denominator-deepseek.json",
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js"
       ],
       "acceptance_gates": [
         "Coverage denominator includes current Workbench page, shell, hooks, API base layer, and all dashboard subroutes or explicitly justified exclusions",
         "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-code-review-coverage-denominator",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "8afe91b5c8198beab16b841b8e75751a037b3e55",
+        "test_added": true,
+        "summary": "Expanded the durable code-review coverage artifact from 20 to 43 first-party files so it includes all current Workbench app routes, shell, layout/provider/theme/error/loading/not-found files, dashboard subroutes, API clients, hooks, and task-flow layer. Added a regression test that enumerates the current apps/workbench/app and apps/workbench/lib source tree and fails when any Workbench source file is missing from the artifact denominator."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -643,10 +650,115 @@
           "type": "analysis",
           "summary": "Prior repair expanded the coverage artifact to 20 files but did not include every Workbench app entrypoint and shared hook/API layer.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "code-review-coverage-current now covers 43 first-party files across Workbench app/lib, server, workflow, and supporting tests, with 6 passing shards and no missing shard count.",
+          "artifact": "docs/examples/code-review-coverage-current.json",
+          "created_at": "2026-06-02T11:08:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Coverage dispatch tests passed, including the new current Workbench app/lib source tree denominator guard.",
+          "command": "node tools/run-with-node18.mjs --test test/code-review-coverage-dispatch.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:10:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Code-review coverage gate passed with first_party_file_count 43, shard_count 6, dispatch_shard_count 0, and no issues.",
+          "command": "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:10:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Workbench API client, shell, and coverage dispatch tests passed together after expanding the denominator.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-api-client.test.js test/workbench-shell.test.js test/code-review-coverage-dispatch.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:10:00+08:00"
+        },
+        {
+          "type": "build",
+          "summary": "Workbench Next.js production build passed after npm ci installed worktree-local app dependencies; routes included /, /agents, /flow, /flow/[taskId], /governance, /projects, /requirements, /risks, and /runs.",
+          "command": "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:11:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "The same read-only DeepSeek reviewer path passed implementation, delta, and final delta reviews with no blocking findings; two non-blocking guard gaps were addressed before closeout.",
+          "artifact": "docs/examples/reviewer-risk-20260601-code-review-coverage-denominator-deepseek.json",
+          "created_at": "2026-06-02T11:12:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk ledger structural gate passed after marking the code-review coverage denominator risk fixed; remaining open risks are outside this scoped closeout.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:14:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Full repository test suite passed under the Node wrapper after the denominator expansion.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:21:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Coverage gate passed with 950/950 tests, all-files line coverage 91.78%, and all-files function coverage 96.93%.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:21:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Repository closeout gate passed after installing worktree-local root dependencies for the Playwright-backed public browser route check.",
+          "command": "npm run check:closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:21:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk ledger gate passed with risk_count 7, open_count 2, terminal_count 5.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:21:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Required-closed mode failed only for the two remaining scoped-out open risks: risk-20260601-playwright-cli-artifact-cleanliness and risk-20260601-use-projection-request-order.",
+          "command": "npm run check:known-risk-closeout:required",
+          "exit_code": 1,
+          "created_at": "2026-06-02T11:21:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek precommit closeout review passed with no blocking findings after inspecting the ledger entry, reviewer artifact, and denominator drift regression test.",
+          "artifact": "docs/examples/reviewer-risk-20260601-code-review-coverage-denominator-deepseek.json",
+          "created_at": "2026-06-02T11:24:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "claude-deepseek-implementation-readonly",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "The dynamic Workbench source guard initially covered only css/ts/tsx and lacked build/dependency directory exclusions; final patch covers js/jsx/mjs/cjs/ts/tsx/mts/cts/css and skips .next, node_modules, tmp, dist, and build.",
+              "The broader src/tools/test denominator has no equivalent dynamic drift guard; this remains outside the scoped Workbench dashboard entrypoint risk."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-code-review-coverage-denominator-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "No user-visible runtime behavior changed; this is a durable governance coverage artifact and regression-test update."
+      }
     },
     {
       "id": "risk-20260601-playwright-cli-artifact-cleanliness",

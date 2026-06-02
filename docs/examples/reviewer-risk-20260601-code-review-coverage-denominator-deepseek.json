@@ -1,0 +1,45 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260601-code-review-coverage-denominator",
+  "reviewer_id": "claude-deepseek-implementation-readonly",
+  "model": "deepseek-v4-pro",
+  "reviewed_at": "2026-06-02T11:24:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "DeepSeek noted the dynamic Workbench source guard initially covered only css/ts/tsx and lacked build/dependency directory exclusions; the final test now covers js/jsx/mjs/cjs/ts/tsx/mts/cts/css and skips .next, node_modules, tmp, dist, and build.",
+    "DeepSeek noted the broader src/tools/test denominator has no equivalent dynamic drift guard. This remains outside the scoped Workbench dashboard entrypoint risk."
+  ],
+  "evidence_refs": [
+    "docs/examples/code-review-coverage-current.json",
+    "test/code-review-coverage-dispatch.test.js",
+    "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json",
+    "node tools/run-with-node18.mjs --test test/code-review-coverage-dispatch.test.js",
+    "node tools/run-with-node18.mjs --test test/workbench-api-client.test.js test/workbench-shell.test.js test/code-review-coverage-dispatch.test.js",
+    "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build",
+    "npm test",
+    "npm run test:coverage",
+    "npm run check:closeout",
+    "npm run check:known-risk-closeout",
+    "npm run check:known-risk-closeout:required"
+  ],
+  "scope": {
+    "files": [
+      "docs/examples/code-review-coverage-current.json",
+      "test/code-review-coverage-dispatch.test.js"
+    ],
+    "diff_summary": "Expanded the durable code-review coverage denominator from 20 to 43 first-party files, including all current apps/workbench/app routes, shell, layout/provider/theme/error/loading/not-found files, Workbench API clients, hooks, and task-flow layer. Added a regression test that enumerates the real Workbench app/lib source tree and fails if any current source file is missing from the coverage artifact.",
+    "gates_reviewed": [
+      "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json passed with first_party_file_count 43 and shard_count 6.",
+      "node tools/run-with-node18.mjs --test test/code-review-coverage-dispatch.test.js passed with 7/7 tests.",
+      "node tools/run-with-node18.mjs --test test/workbench-api-client.test.js test/workbench-shell.test.js test/code-review-coverage-dispatch.test.js passed with 23/23 tests.",
+      "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build passed for apps/workbench after npm ci installed worktree-local dependencies.",
+      "npm test passed with 950/950 tests.",
+      "npm run test:coverage passed with 950/950 tests, all-files line coverage 91.78%, and all-files function coverage 96.93%.",
+      "npm run check:closeout passed after installing worktree-local root dependencies for the Playwright-backed public browser route check.",
+      "npm run check:known-risk-closeout passed with risk_count 7, open_count 2, terminal_count 5.",
+      "npm run check:known-risk-closeout:required failed only for the two remaining scoped-out open risks."
+    ]
+  },
+  "notes": "Implementation review, delta review, final delta review, closeout ledger review, and precommit closeout review were all read-only DeepSeek reviews by the same reviewer path and passed with no blocking findings. Non-blocking extension and directory guard findings were addressed before closeout; the broader non-Workbench dynamic guard remains outside this risk scope."
+}
