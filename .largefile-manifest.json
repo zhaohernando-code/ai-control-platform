@@ -99,10 +99,10 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 1985,
-      "reason": "Workbench projection builder: aggregates run, lifecycle, recovery, public-route, operations-timeline state into one projection schema. Provider-failure, reviewer/headless, and scheduler summarizers extracted (P2-8); further per-summarizer extraction planned.",
+      "lines": 1944,
+      "reason": "Workbench projection builder: aggregates run, lifecycle, recovery, public-route, operations-timeline state into one projection schema. Provider-failure, reviewer/headless, scheduler summarizers, and one-screen counter/readout projection were extracted; further project-management and next-action readout extraction remains planned.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-30"
+      "reviewed_at": "2026-06-02"
     },
     "test/autonomous-continuation.test.js": {
       "lines": 1357,
@@ -147,10 +147,10 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 3175,
-      "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, and many regression fixtures; staged split should follow schema subdomains.",
+      "lines": 3294,
+      "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, one-screen helper counter coverage, and many regression fixtures; staged split should follow schema subdomains.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-06-02"
     },
     "test/workbench-server.test.js": {
       "lines": 4353,

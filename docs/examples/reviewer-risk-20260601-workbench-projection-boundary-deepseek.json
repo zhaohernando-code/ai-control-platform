@@ -1,0 +1,36 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260601-workbench-projection-boundary",
+  "reviewer_id": "claude-deepseek-sharded-readonly",
+  "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T10:04:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "Shard-level inconclusive notes were caused by split file visibility and a conditional large-file concern; the final synthesis resolved them as PASS after seeing the helper is 111 lines and the main projection delegates one_screen generation.",
+    "The new one-screen helper duplicates small local asArray/normalizeString utilities; this is acceptable for a bounded extraction but could be unified in a later projection cleanup.",
+    "test/workbench-projection.test.js remains a planned-refactor large test file; this pre-existing test-size debt is outside the bounded one-screen extraction."
+  ],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-projection.test.js",
+    "node tools/run-with-node18.mjs --test test/workbench-projection-source.test.js test/workbench-projection-schema.test.js test/workbench-projection-purity.test.js",
+    "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js test/known-risk-ledger.test.js",
+    "npm run check:known-risk-closeout"
+  ],
+  "scope": {
+    "files": [
+      "src/workflow/workbench-projection.js",
+      "src/workflow/workbench-one-screen.js",
+      "test/workbench-projection.test.js",
+      ".largefile-manifest.json"
+    ],
+    "diff_summary": "Extracted one_screen next_actions/counters generation from createWorkbenchProjection into src/workflow/workbench-one-screen.js, re-exported the helper, added direct counter/readout coverage, and updated large-file governance line counts.",
+    "gates_reviewed": [
+      "Projection target test passed 55/55.",
+      "Projection source/schema/purity tests passed 42/42.",
+      "Large-file governance and known-risk ledger tests passed 17/17.",
+      "Known-risk closeout structural gate passed."
+    ]
+  },
+  "notes": "DeepSeek reviewed the bounded one-screen extraction and found no blocking behavior, contract, or governance issue. The implementation preserves one_screen next_actions/counters through a helper and adds focused counter/readout coverage while keeping the existing projection and mobile tests."
+}
