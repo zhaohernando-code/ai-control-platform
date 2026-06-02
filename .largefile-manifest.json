@@ -99,8 +99,8 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 1944,
-      "reason": "Workbench projection builder: aggregates run, lifecycle, recovery, public-route, operations-timeline state into one projection schema. Provider-failure, reviewer/headless, scheduler summarizers, and one-screen counter/readout projection were extracted; further project-management and next-action readout extraction remains planned.",
+      "lines": 1463,
+      "reason": "Workbench projection composition: core aggregation remains while next-action readout policy has been extracted to src/workflow/workbench-next-action-readout.js; project-management extraction remains planned.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-02"
     },
@@ -168,6 +168,12 @@
       "lines": 3447,
       "reason": "Workbench server entrypoint wires API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; legacy static/mounted compatibility routing was extracted to tools/workbench-static-routes.mjs; remaining route groups still require staged extraction.",
       "status": "planned_refactor",
+      "reviewed_at": "2026-06-02"
+    },
+    "src/workflow/workbench-next-action-readout.js": {
+      "lines": 497,
+      "reason": "Extracted Workbench next-action readout domain helper kept below the large-file threshold while preserving projection output shape.",
+      "status": "accepted",
       "reviewed_at": "2026-06-02"
     }
   }

@@ -1423,8 +1423,8 @@
       "title": "Workbench projection builder still aggregates project-management and next-action domains",
       "source": "large-file-governance-p2",
       "created_at": "2026-06-02T16:10:00+08:00",
-      "updated_at": "2026-06-02T16:10:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T21:45:00+08:00",
+      "status": "in_progress",
       "severity": "medium",
       "scope": [
         "src/workflow/workbench-projection.js",
@@ -1452,8 +1452,8 @@
         "npm run check:large-files",
         "DeepSeek read-only review confirms extraction is behavior-preserving and does not just move complexity"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-workbench-projection-domain-splits",
       "depends_on": [
         "risk-20260602-workbench-projection-test-shards"
       ],
@@ -1470,6 +1470,31 @@
             ".largefile-manifest.json"
           ],
           "created_at": "2026-06-02T16:10:00+08:00"
+        },
+        {
+          "type": "analysis",
+          "summary": "Next-action readout policy was selected as the bounded domain split because it satisfies the risk acceptance gate while staying under the 500-line extracted-module threshold; project-management remains larger and is left for a separate phase item.",
+          "artifacts": [
+            "src/workflow/workbench-projection.js",
+            "src/workflow/workbench-next-action-readout.js"
+          ],
+          "created_at": "2026-06-02T21:45:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "Extracted createNextActionReadout and terminal next-action helper logic into src/workflow/workbench-next-action-readout.js, reducing src/workflow/workbench-projection.js from 1944 to 1463 lines while keeping the extracted module at 497 lines; AGENT_LIFECYCLE_EVENT_TYPES is passed from the projection composer so lifecycle behavior stays source-compatible without duplicating the event set.",
+          "artifacts": [
+            "src/workflow/workbench-projection.js",
+            "src/workflow/workbench-next-action-readout.js"
+          ],
+          "created_at": "2026-06-02T21:45:00+08:00"
+        },
+        {
+          "type": "test",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+          "summary": "Projection, schema, and shell regression gate passed: 79/79 tests.",
+          "created_at": "2026-06-02T21:45:00+08:00",
+          "exit_code": 0
         }
       ],
       "review": null,

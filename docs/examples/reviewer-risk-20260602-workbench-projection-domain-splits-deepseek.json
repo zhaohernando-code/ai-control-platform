@@ -1,0 +1,50 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-workbench-projection-domain-splits",
+  "reviewer_id": "deepseek-lfg-p4-workbench-projection-domain-splits-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T21:55:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "Delta review noted the command field appears before summary in one ledger test-evidence entry; this is cosmetic and does not affect gate parsing or closeout validity."
+  ],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+    "npm run test:coverage",
+    "npm run check:large-files",
+    "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json",
+    "node tools/run-with-node18.mjs --test test/known-risk-ledger.test.js",
+    "src/workflow/workbench-projection.js",
+    "src/workflow/workbench-next-action-readout.js",
+    "test/workbench-projection.test.js",
+    "test/workbench-projection-schema.test.js",
+    "test/workbench-shell.test.js",
+    "test/known-risk-ledger.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "docs/governance/known-risk-ledger.json"
+  ],
+  "scope": {
+    "files": [
+      "src/workflow/workbench-projection.js",
+      "src/workflow/workbench-next-action-readout.js",
+      "test/workbench-projection.test.js",
+      "test/workbench-projection-schema.test.js",
+      "test/workbench-shell.test.js",
+      "test/known-risk-ledger.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "docs/governance/known-risk-ledger.json"
+    ],
+    "diff_summary": "The Workbench next-action readout policy was extracted from src/workflow/workbench-projection.js into a 497-line src/workflow/workbench-next-action-readout.js module. The projection composer decreased from 1944 to 1463 lines, preserves imported output helpers, and passes AGENT_LIFECYCLE_EVENT_TYPES into the new helper instead of duplicating the lifecycle event set.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+      "npm run test:coverage",
+      "npm run check:large-files",
+      "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json",
+      "node tools/run-with-node18.mjs --test test/known-risk-ledger.test.js"
+    ]
+  },
+  "notes": "DeepSeek's source shard confirmed the next_action_readout and next_action_terminal output shapes were preserved, frontend acceptance and governance audit constants are imported without stale duplication, and lifecycle-driver handling uses the passed-in AGENT_LIFECYCLE_EVENT_TYPES set. Test shards confirmed scheduler, reviewer, lifecycle, plan-review, context-pack, global-goal, shell, and terminal next-action assertions remained intact. Metadata shards confirmed the large-file manifest and plan did not claim fixed before review. A delta ledger review confirmed the line-count evidence and exit_code test evidence were strengthened, then final synthesis returned PASS."
+}

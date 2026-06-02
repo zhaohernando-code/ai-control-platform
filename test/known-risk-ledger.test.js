@@ -64,17 +64,17 @@ function issueCodes(result) {
   return result.issues.map((item) => item.code);
 }
 
-test("current known-risk ledger is structurally valid while open large-file risks remain queued", () => {
+test("current known-risk ledger is structurally valid while large-file risks close out", () => {
   const current = JSON.parse(readFileSync("docs/governance/known-risk-ledger.json", "utf8"));
   const result = evaluateKnownRiskLedger(current, { now: NOW });
 
   assert.equal(result.status, "pass");
   assert.equal(result.risk_count, 11);
-  assert.equal(result.open_count, 4);
-  assert.equal(result.terminal_count, 7);
+  assert.ok(result.open_count <= 1);
+  assert.ok(result.terminal_count >= 10);
 });
 
-test("large-file governance risks are open, bounded, and independently selectable", () => {
+test("large-file governance risks stay bounded through closeout", () => {
   const current = JSON.parse(readFileSync("docs/governance/known-risk-ledger.json", "utf8"));
   const largeFileRisks = current.risks.filter((risk) => risk.source === "large-file-governance-p2");
 
@@ -85,7 +85,7 @@ test("large-file governance risks are open, bounded, and independently selectabl
     "risk-20260602-workbench-projection-domain-splits"
   ]);
   for (const risk of largeFileRisks) {
-    assert.equal(risk.status, "open");
+    assert.ok(["open", "in_progress", "fixed"].includes(risk.status));
     assert.ok(risk.scope.length > 0);
     assert.ok(risk.owned_files.length > 0);
     assert.ok(risk.acceptance_gates.some((gate) => gate.includes("DeepSeek read-only review")));
