@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T16:10:00+08:00",
+  "updated_at": "2026-06-02T22:05:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -1423,8 +1423,8 @@
       "title": "Workbench projection builder still aggregates project-management and next-action domains",
       "source": "large-file-governance-p2",
       "created_at": "2026-06-02T16:10:00+08:00",
-      "updated_at": "2026-06-02T21:45:00+08:00",
-      "status": "in_progress",
+      "updated_at": "2026-06-02T22:05:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "src/workflow/workbench-projection.js",
@@ -1458,7 +1458,18 @@
         "risk-20260602-workbench-projection-test-shards"
       ],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "cd75a2c5a2c9cec6bf4195e474dd511cf36bb994",
+        "summary": "Extracted the Workbench next-action readout domain into src/workflow/workbench-next-action-readout.js, reducing src/workflow/workbench-projection.js from 1944 to 1463 lines while preserving next_action_readout and next_action_terminal behavior.",
+        "test_added": false,
+        "verification": [
+          "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+          "npm run test:coverage",
+          "npm run check:large-files",
+          "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json",
+          "node tools/run-with-node18.mjs --test test/known-risk-ledger.test.js"
+        ]
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -1495,10 +1506,63 @@
           "summary": "Projection, schema, and shell regression gate passed: 79/79 tests.",
           "created_at": "2026-06-02T21:45:00+08:00",
           "exit_code": 0
+        },
+        {
+          "type": "coverage",
+          "command": "npm run test:coverage",
+          "summary": "Final full Node18 coverage gate passed after risk closeout: 969/969 tests, all files line coverage 91.87%, function coverage 96.93%.",
+          "exit_code": 0,
+          "created_at": "2026-06-02T22:05:00+08:00"
+        },
+        {
+          "type": "command",
+          "command": "npm run check:large-files",
+          "summary": "Large-file governance report passed with src/workflow/workbench-projection.js refreshed to 1463 lines and src/workflow/workbench-next-action-readout.js accepted at 497 lines.",
+          "exit_code": 0,
+          "created_at": "2026-06-02T22:05:00+08:00"
+        },
+        {
+          "type": "command",
+          "command": "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json",
+          "summary": "Known-risk ledger structural gate passed before final closeout: risk_count 11, open_count 1, terminal_count 10.",
+          "exit_code": 0,
+          "created_at": "2026-06-02T22:05:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek sharded review and focused delta review both returned PASS with no blocking findings; it confirmed output-shape preservation, lifecycle event pass-through, metadata consistency, and non-weakening staged-closeout tests.",
+          "artifacts": [
+            "docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json"
+          ],
+          "created_at": "2026-06-02T22:05:00+08:00"
+        },
+        {
+          "type": "command",
+          "command": "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json --require-closed",
+          "summary": "Final known-risk require-closed gate passed: risk_count 11, open_count 0, terminal_count 11.",
+          "exit_code": 0,
+          "created_at": "2026-06-02T22:12:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "required": true,
+        "reviewers": [
+          {
+            "reviewer_id": "deepseek-lfg-p4-workbench-projection-domain-splits-review",
+            "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "Delta review noted one cosmetic command/summary field-order difference in ledger test evidence; gate parsing and closeout validity are unaffected."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "Behavior-preserving source-module extraction only; no public route, edge proxy, LaunchAgent, or user-visible runtime entrypoint changed."
+      }
     }
   ]
 }

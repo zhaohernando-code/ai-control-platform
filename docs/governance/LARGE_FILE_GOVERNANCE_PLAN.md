@@ -188,8 +188,8 @@ Goal: reduce projection aggregation risk while preserving one-screen and mobile 
 | --- | --- | --- | --- | --- |
 | LFG-P4.1 | Split projection tests by schema domain | `test/workbench-projection-one-screen.test.js` | `test/workbench-projection.test.js` line count decreased from 3294 to 3175; extracted shard is 122 lines and projection/shell gates pass. | pass |
 | LFG-P4.2 | Extract project-management projection | `src/workflow/workbench-project-management.js` or equivalent | Existing project/task counters and readouts remain unchanged. | pending |
-| LFG-P4.3 | Extract next-action readout projection | `src/workflow/workbench-next-action-readout.js` | `src/workflow/workbench-projection.js` decreased from 1944 to 1463 lines; extracted helper is 497 lines and scheduler, lifecycle, reviewer, and terminal next-action tests pass. | review_pending |
-| LFG-P4.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json` | DS confirms extraction is behavior-preserving and does not just move complexity. | review_pending |
+| LFG-P4.3 | Extract next-action readout projection | `src/workflow/workbench-next-action-readout.js` | `src/workflow/workbench-projection.js` decreased from 1944 to 1463 lines; extracted helper is 497 lines and scheduler, lifecycle, reviewer, and terminal next-action tests pass. | pass |
+| LFG-P4.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json` | DS confirms extraction is behavior-preserving and does not just move complexity. | pass |
 
 Suggested gates:
 
@@ -248,7 +248,7 @@ Each scheduled large-file governance run should:
 | LFG-P3 test shard review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed the extracted agent-key shard preserved API, SQLite fail-closed, secret non-leak, health, roles, and delete assertions; final synthesis returned no blocking or non-blocking findings. |
 | LFG-P3 route group review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed static compatibility routing, mounted path rewriting, favicon/fallback handling, and non-static API route behavior were preserved. |
 | LFG-P4 test shard review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed one-screen next-action/counter assertions were preserved, schema/mobile/shell coverage remained present, and metadata was consistent. |
-| LFG-P4 source domain review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | pending | Awaiting review of next-action readout extraction, output-shape preservation, and metadata consistency. |
+| LFG-P4 source domain review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed next-action output-shape preservation, lifecycle event-set pass-through, test coverage continuity, non-weakening staged-closeout ledger tests, and metadata consistency. Delta ledger review also passed after evidence format and line-count details were strengthened. |
 
 ## Current External Dependencies
 
@@ -266,6 +266,6 @@ Each scheduled large-file governance run should:
 | LFG-P1 | pass | `tools/report-large-files.mjs` added; report gate, duplicate-key detection, growth/stale-up detection, shrink warnings, missing-entry detection, and planned-refactor growth guard pass local tests. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P3 | in_progress | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; legacy static compatibility routing was extracted into `tools/workbench-static-routes.mjs`; server/API route contract, large-file, known-risk, and governance enrollment gates passed. | DeepSeek PASS for test shard and route group; live-route preservation remains pending |
-| LFG-P4 | in_progress | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; targeted projection/schema/shell gate passed. | DeepSeek PASS for test shard; source domain split review pending |
+| LFG-P4 | in_progress | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; targeted projection/schema/shell, coverage, large-file, and known-risk gates passed. | DeepSeek PASS for test shard and source domain split; project-management extraction remains pending |
 | LFG-P5 | pending | Not started. | pending |
 | LFG-P6 | pending | Not started. | pending |
