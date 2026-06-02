@@ -165,8 +165,8 @@
       "reviewed_at": "2026-06-02"
     },
     "tools/workbench-server.mjs": {
-      "lines": 3516,
-      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; remaining route groups still require staged extraction.",
+      "lines": 3447,
+      "reason": "Workbench server entrypoint wires API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; legacy static/mounted compatibility routing was extracted to tools/workbench-static-routes.mjs; remaining route groups still require staged extraction.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-02"
     }

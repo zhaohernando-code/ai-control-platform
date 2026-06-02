@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createServer, request as httpRequest } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
-import { dirname, extname, isAbsolute, normalize, relative, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { createWorkbenchProjection } from "../src/workflow/workbench-projection.js";
@@ -80,7 +80,7 @@ import {
   sqliteSnapshotInputPath
 } from "../src/workflow/workbench-state-store.js";
 import { createAgentKeyRouteHandler } from "./workbench-agent-key-routes.mjs";
-import { mimeTypeFor } from "./workbench-mime-types.mjs";
+import { createWorkbenchStaticRouteHandler } from "./workbench-static-routes.mjs";
 
 const root = resolve(process.cwd());
 const historyPath = resolve(root, "docs/examples/projection-history.json");
@@ -1701,41 +1701,6 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
   return { status: "executed", action, result };
 }
 
-function safeStaticPath(pathname) {
-  const normalized = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
-  const filePath = resolve(root, normalized.replace(/^[/\\]/, ""));
-
-  if (!filePath.startsWith(root)) {
-    return null;
-  }
-
-  return filePath;
-}
-
-function sendStaticFile(res, filePath, options = {}) {
-  const content = readFileSync(filePath);
-  const transformed = typeof options.transform === "function" ? options.transform(content) : content;
-  res.writeHead(200, {
-    "content-type": options.content_type || mimeTypeFor(extname(filePath)),
-    "cache-control": options.cache_control || "no-store"
-  });
-  res.end(transformed);
-}
-
-function isProjectMountRoot(pathname) {
-  return /^\/projects\/ai-control-platform\/?$/.test(String(pathname || ""));
-}
-
-function projectMountRoutePathname(pathname) {
-  const mountPrefix = "/projects/ai-control-platform";
-  const routePathname = String(pathname || "");
-  if (routePathname === mountPrefix) return "/";
-  if (routePathname.startsWith(`${mountPrefix}/`)) {
-    return routePathname.slice(mountPrefix.length) || "/";
-  }
-  return routePathname;
-}
-
 export function createWorkbenchServer(options = {}) {
   const eventsPath = options.eventsPath || defaultEventsPath;
   const jsonBodyLimitBytes = Number(options.jsonBodyLimitBytes || options.json_body_limit_bytes || DEFAULT_JSON_BODY_LIMIT_BYTES);
@@ -1806,6 +1771,11 @@ export function createWorkbenchServer(options = {}) {
   );
   const serveLegacyStatic = options.serveLegacyStatic === true ||
     options.serve_legacy_static === true;
+  const handleStaticRoute = createWorkbenchStaticRouteHandler({
+    root,
+    serveLegacyStatic,
+    jsonResponse
+  });
   const handleAgentKeyRoute = createAgentKeyRouteHandler({
     stateStore,
     options,
@@ -1818,23 +1788,11 @@ export function createWorkbenchServer(options = {}) {
     const url = new URL(req.url || "/", "http://127.0.0.1");
 
     try {
-      if (isProjectMountRoot(url.pathname)) {
-        if (!serveLegacyStatic) {
-          jsonResponse(res, 404, {
-            error: "workbench pages are served by Next.js; this process only serves /api/workbench/*"
-          });
-          return;
-        }
-        const basePath = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
-        res.writeHead(302, {
-          location: `${basePath}apps/workbench/desktop.html${url.search}`,
-          "cache-control": "no-store"
-        });
-        res.end();
+      if (handleStaticRoute.handleProjectMountRoot(url, res)) {
         return;
       }
 
-      url.pathname = projectMountRoutePathname(url.pathname);
+      url.pathname = handleStaticRoute.routePathname(url.pathname);
 
       if (url.pathname === "/api/workbench/projection") {
         const { projection } = projectionById(url.searchParams.get("id"), readServerHistory(), allowedHistoryRoots, projectStatusPath, stateStore);
@@ -3318,34 +3276,7 @@ export function createWorkbenchServer(options = {}) {
         return;
       }
 
-      if (url.pathname === "/favicon.svg") {
-        if (!serveLegacyStatic) {
-          jsonResponse(res, 404, { error: "not found" });
-          return;
-        }
-        const faviconPath = safeStaticPath("/apps/workbench/favicon.svg");
-        if (faviconPath) {
-          sendStaticFile(res, faviconPath);
-          return;
-        }
-      }
-
-      if (!serveLegacyStatic) {
-        jsonResponse(res, 404, {
-          error: "workbench pages are served by Next.js; this process only serves /api/workbench/*"
-        });
-        return;
-      }
-
-      const resolvedPath = safeStaticPath(
-        url.pathname === "/" ? "/apps/workbench/desktop.html" : url.pathname
-      );
-      if (!resolvedPath) {
-        jsonResponse(res, 404, { error: "not found" });
-        return;
-      }
-
-      sendStaticFile(res, resolvedPath);
+      handleStaticRoute.handleFallback(url, res);
     } catch (error) {
       if (error.code === "ENOENT") {
         jsonResponse(res, 404, { error: "not found" });
