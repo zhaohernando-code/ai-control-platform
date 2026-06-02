@@ -242,6 +242,26 @@ test("workbench shell consumes projection json instead of logs", () => {
   assert.doesNotMatch(script, /console\.log|PROCESS\.md|PROJECT_STATUS\.json/);
 });
 
+test("useProjection hooks prevent stale overlapping refresh responses from overwriting newer data", () => {
+  const hook = read("apps/workbench/lib/hooks/useProjection.ts");
+  const api = read("apps/workbench/lib/api/projection.ts");
+
+  assert.match(api, /fetchCurrentProjection\(init\?: RequestInit\)/);
+  assert.match(api, /fetchProjectionHistory\(init\?: RequestInit\)/);
+  assert.match(hook, /projectionRequestSequenceRef = useRef\(0\)/);
+  assert.match(hook, /activeProjectionRequestRef = useRef<AbortController \| null>\(null\)/);
+  assert.match(hook, /activeProjectionRequestRef\.current\?\.abort\(\)/);
+  assert.match(hook, /fetchCurrentProjection\(\{ signal: controller\.signal \}\)/);
+  assert.match(hook, /requestId === projectionRequestSequenceRef\.current/);
+  assert.match(hook, /requestId === projectionRequestSequenceRef\.current\)[\s\S]*activeProjectionRequestRef\.current = null/);
+  assert.match(hook, /historyRequestSequenceRef = useRef\(0\)/);
+  assert.match(hook, /activeHistoryRequestRef = useRef<AbortController \| null>\(null\)/);
+  assert.match(hook, /activeHistoryRequestRef\.current\?\.abort\(\)/);
+  assert.match(hook, /fetchProjectionHistory\(\{ signal: controller\.signal \}\)/);
+  assert.match(hook, /requestId === historyRequestSequenceRef\.current/);
+  assert.match(hook, /requestId === historyRequestSequenceRef\.current\)[\s\S]*activeHistoryRequestRef\.current = null/);
+});
+
 test("scheduler dispatch writeback accepts translated rendered pass without weakening raw semantics", () => {
   const checker = read("tools/check-scheduler-dispatch-writeback.mjs");
 

@@ -50,12 +50,12 @@ export interface EventsResponse {
   count?: number;
 }
 
-export function fetchCurrentProjection(): Promise<ProjectionResponse> {
-  return fetchWorkbenchJson<ProjectionResponse>("/api/workbench/projection");
+export function fetchCurrentProjection(init?: RequestInit): Promise<ProjectionResponse> {
+  return fetchWorkbenchJson<ProjectionResponse>("/api/workbench/projection", init);
 }
 
-export function fetchProjectionHistory(): Promise<ProjectionHistoryResponse> {
-  return fetchWorkbenchJson<ProjectionHistoryResponse>("/api/workbench/projections");
+export function fetchProjectionHistory(init?: RequestInit): Promise<ProjectionHistoryResponse> {
+  return fetchWorkbenchJson<ProjectionHistoryResponse>("/api/workbench/projections", init);
 }
 
 export function fetchSnapshot(id: string): Promise<SnapshotResponse> {

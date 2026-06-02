@@ -140,6 +140,12 @@
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
+    "test/workbench-shell.test.js": {
+      "lines": 845,
+      "reason": "Workbench shell tests cover desktop/mobile shell invariants, mounted entry compatibility, and Next.js hook/API regressions across shared fixtures.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-02"
+    },
     "test/workbench-projection-source.test.js": {
       "lines": 584,
       "reason": "Projection source tests share fixture coverage for dynamic and static workbench projection inputs.",
@@ -163,12 +169,6 @@
       "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; remaining route groups still require staged extraction.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-02"
-    },
-    "test/workbench-shell.test.js": {
-      "lines": 825,
-      "reason": "Workbench shell tests cover desktop/mobile shell invariants and mounted entry compatibility across shared fixtures.",
-      "status": "accepted",
-      "reviewed_at": "2026-05-28"
     }
   }
 }

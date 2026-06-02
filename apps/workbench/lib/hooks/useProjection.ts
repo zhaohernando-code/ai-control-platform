@@ -42,21 +42,30 @@ export function useProjection(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mountedRef = useRef(true);
+  const projectionRequestSequenceRef = useRef(0);
+  const activeProjectionRequestRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(() => {
+    const requestId = projectionRequestSequenceRef.current + 1;
+    projectionRequestSequenceRef.current = requestId;
+    activeProjectionRequestRef.current?.abort();
+    const controller = new AbortController();
+    activeProjectionRequestRef.current = controller;
     setLoading(true);
     setError(null);
-    fetchCurrentProjection()
+    fetchCurrentProjection({ signal: controller.signal })
       .then((data) => {
-        if (mountedRef.current) {
+        if (mountedRef.current && requestId === projectionRequestSequenceRef.current) {
           setProjection(data);
           setLoading(false);
+          activeProjectionRequestRef.current = null;
         }
       })
       .catch((err: Error) => {
-        if (mountedRef.current) {
+        if (mountedRef.current && requestId === projectionRequestSequenceRef.current) {
           setError(err);
           setLoading(false);
+          activeProjectionRequestRef.current = null;
         }
       });
   }, []);
@@ -68,6 +77,8 @@ export function useProjection(
     }
     return () => {
       mountedRef.current = false;
+      activeProjectionRequestRef.current?.abort();
+      activeProjectionRequestRef.current = null;
     };
   }, [refresh, immediate]);
 
@@ -99,21 +110,30 @@ export function useProjectionHistory(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const mountedRef = useRef(true);
+  const historyRequestSequenceRef = useRef(0);
+  const activeHistoryRequestRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(() => {
+    const requestId = historyRequestSequenceRef.current + 1;
+    historyRequestSequenceRef.current = requestId;
+    activeHistoryRequestRef.current?.abort();
+    const controller = new AbortController();
+    activeHistoryRequestRef.current = controller;
     setLoading(true);
     setError(null);
-    fetchProjectionHistory()
+    fetchProjectionHistory({ signal: controller.signal })
       .then((data) => {
-        if (mountedRef.current) {
+        if (mountedRef.current && requestId === historyRequestSequenceRef.current) {
           setHistory(data);
           setLoading(false);
+          activeHistoryRequestRef.current = null;
         }
       })
       .catch((err: Error) => {
-        if (mountedRef.current) {
+        if (mountedRef.current && requestId === historyRequestSequenceRef.current) {
           setError(err);
           setLoading(false);
+          activeHistoryRequestRef.current = null;
         }
       });
   }, []);
@@ -123,6 +143,8 @@ export function useProjectionHistory(
     if (immediate) refresh();
     return () => {
       mountedRef.current = false;
+      activeHistoryRequestRef.current?.abort();
+      activeHistoryRequestRef.current = null;
     };
   }, [refresh, immediate]);
 
