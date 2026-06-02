@@ -70,8 +70,8 @@ test("current known-risk ledger is structurally valid while open risks remain al
 
   assert.equal(result.status, "pass");
   assert.equal(result.risk_count, 7);
-  assert.equal(result.open_count, 1);
-  assert.equal(result.terminal_count, 6);
+  assert.equal(result.open_count, 0);
+  assert.equal(result.terminal_count, 7);
 });
 
 test("require-closed mode fails while known risks are still open", () => {

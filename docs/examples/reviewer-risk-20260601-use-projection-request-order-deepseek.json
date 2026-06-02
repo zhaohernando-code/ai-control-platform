@@ -1,0 +1,76 @@
+{
+  "schema": "known-risk-reviewer-artifact.v1",
+  "risk_id": "risk-20260601-use-projection-request-order",
+  "reviewer_id": "claude-deepseek-readonly",
+  "model": "deepseek-v4-pro",
+  "created_at": "2026-06-02T14:15:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "reviews": [
+    {
+      "id": "implementation-readonly",
+      "created_at": "2026-06-02T14:05:00+08:00",
+      "mode": "bounded_readonly",
+      "focus_files": [
+        "apps/workbench/lib/hooks/useProjection.ts",
+        "apps/workbench/lib/api/projection.ts",
+        "test/workbench-shell.test.js"
+      ],
+      "verdict": "pass",
+      "blocking_findings": [],
+      "non_blocking_findings": [
+        "The first static regression assertion did not prove that activeProjectionRequestRef.current = null lived inside the request-id guard.",
+        "useProjectionHistory had the same stale-overlap shape but was outside the original narrow risk scope."
+      ],
+      "follow_up_result": "Both non-blocking findings were addressed before closeout: the static regression now checks guarded null cleanup for projection and history hooks, and useProjectionHistory now uses the same AbortController plus request-sequence guard as useProjection."
+    },
+    {
+      "id": "delta-readonly-timeout",
+      "created_at": "2026-06-02T14:12:00+08:00",
+      "mode": "bounded_readonly",
+      "focus_files": [
+        "apps/workbench/lib/hooks/useProjection.ts",
+        "apps/workbench/lib/api/projection.ts",
+        "test/workbench-shell.test.js"
+      ],
+      "verdict": "inconclusive",
+      "blocking_findings": [],
+      "non_blocking_findings": [
+        "Timed out while thinking after reading the focused files; no PASS/FAIL verdict was emitted."
+      ],
+      "follow_up_result": "The delta was rerun as a no-tools compact evidence review to avoid a file-read loop."
+    },
+    {
+      "id": "delta-compact-evidence",
+      "created_at": "2026-06-02T14:14:00+08:00",
+      "mode": "no_tools_compact_evidence",
+      "focus_files": [
+        "apps/workbench/lib/hooks/useProjection.ts",
+        "apps/workbench/lib/api/projection.ts",
+        "test/workbench-shell.test.js"
+      ],
+      "verdict": "pass",
+      "blocking_findings": [],
+      "non_blocking_findings": [],
+      "summary": "DeepSeek confirmed the guarded null-cleanup assertion and the useProjectionHistory AbortController/request-sequence guard resolved the previous non-blocking findings, with no newly introduced blocking issues."
+    },
+    {
+      "id": "pre-merge-ledger-closeout",
+      "created_at": "2026-06-02T14:25:00+08:00",
+      "mode": "no_tools_compact_evidence",
+      "focus_files": [
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js",
+        "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json"
+      ],
+      "verdict": "pass",
+      "blocking_findings": [],
+      "non_blocking_findings": [
+        "Reviewer artifact was still untracked at review time and must be included in the closeout commit.",
+        "Post-merge canonical live publish and served-route/browser verification remain required because release.required=true is correctly recorded for this Workbench client runtime change."
+      ],
+      "summary": "DeepSeek confirmed the pre-merge ledger closeout can proceed to merge/live verification, and that the ledger does not pretend canonical live publish verification has already completed."
+    }
+  ]
+}

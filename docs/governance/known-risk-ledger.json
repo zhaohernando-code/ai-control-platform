@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T11:57:00+08:00",
+  "updated_at": "2026-06-02T14:24:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -900,26 +900,37 @@
       "title": "useProjection can allow older overlapping refresh responses to overwrite newer data",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T14:24:00+08:00",
+      "status": "fixed",
       "severity": "low",
       "scope": [
-        "apps/workbench/lib/hooks/useProjection.ts"
+        "apps/workbench/lib/hooks/useProjection.ts",
+        "apps/workbench/lib/api/projection.ts",
+        ".largefile-manifest.json"
       ],
       "owned_files": [
         "apps/workbench/lib/hooks/useProjection.ts",
-        "test/workbench-shell.test.js"
+        "apps/workbench/lib/api/projection.ts",
+        "test/workbench-shell.test.js",
+        ".largefile-manifest.json",
+        "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json",
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js"
       ],
       "acceptance_gates": [
         "Polling/manual refresh uses AbortController or request sequence guard to prevent stale response overwrite",
         "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
         "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-use-projection-request-order",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "431f61e0abd68081839340d771d3d1351f96cc3a",
+        "test_added": true,
+        "summary": "Added AbortController plus request-sequence guards to useProjection and useProjectionHistory, threaded RequestInit through projection API fetchers for AbortSignal support, and added regression assertions for the guarded projection/history request ordering behavior. The Workbench shell large-file manifest was updated after the new regression increased its line count."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -927,10 +938,104 @@
           "type": "analysis",
           "summary": "useProjection currently starts fetches without aborting or sequencing overlapping refreshes.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "useProjection and useProjectionHistory now abort stale in-flight requests, assign monotonically increasing request ids, and only update state or clear the active controller when the completing request is still current.",
+          "artifact": "apps/workbench/lib/hooks/useProjection.ts",
+          "created_at": "2026-06-02T14:05:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "Projection API fetchers now accept RequestInit so hook callers can pass AbortSignal without changing the shared fetchWorkbenchJson behavior.",
+          "artifact": "apps/workbench/lib/api/projection.ts",
+          "created_at": "2026-06-02T14:05:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Workbench shell regression test passed, including static assertions for projection/history AbortController usage, request-id guards, RequestInit API signatures, and guarded null cleanup.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:07:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Related API client and code-review coverage dispatch tests passed after threading RequestInit through the projection API layer.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-api-client.test.js test/code-review-coverage-dispatch.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:07:00+08:00"
+        },
+        {
+          "type": "build",
+          "summary": "Next.js Workbench production build passed after installing worktree-local app dependencies.",
+          "command": "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:08:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Governance enrollment test passed after updating the Workbench shell large-file manifest entry to the new 845-line count and removing the duplicate stale entry.",
+          "command": "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:18:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Full repository test suite passed under the Node18 wrapper after the request-ordering fix and manifest correction.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:19:00+08:00"
+        },
+        {
+          "type": "coverage",
+          "summary": "Coverage gate passed with 953/953 tests, all-files line coverage 91.88%, and all-files function coverage 96.93%.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:20:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Code-review coverage artifact gate passed with 43 first-party files covered by six shards and no supplemental dispatch packages.",
+          "command": "npm run check:code-review-coverage -- docs/examples/code-review-coverage-current.json",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:20:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Repository closeout gate passed after installing root worktree dependencies needed for the Playwright-backed public browser route check; public browser route rendered with HTTP 200 and no console errors. Canonical publish verification is still required after merge because this risk changes Workbench client runtime code.",
+          "command": "npm run check:closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T14:23:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek implementation review passed with no blocking findings; its two non-blocking findings were addressed by strengthening the regression assertion and applying the same stale-response guard to useProjectionHistory.",
+          "artifact": "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json",
+          "created_at": "2026-06-02T14:14:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek compact delta review passed with no blocking or non-blocking findings after confirming both previous non-blocking items were resolved.",
+          "artifact": "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json",
+          "created_at": "2026-06-02T14:14:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "claude-deepseek-implementation-readonly",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [],
+            "artifact": "docs/examples/reviewer-risk-20260601-use-projection-request-order-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": true,
+        "reason": "Workbench client runtime behavior changed; canonical mainline publish and served-route/browser verification must be completed after merge before final user-visible closeout."
+      }
     }
   ]
 }
