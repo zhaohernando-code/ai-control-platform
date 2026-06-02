@@ -1311,8 +1311,8 @@
       "title": "Workbench projection tests remain a large coupled schema regression suite",
       "source": "large-file-governance-p2",
       "created_at": "2026-06-02T16:10:00+08:00",
-      "updated_at": "2026-06-02T18:58:00+08:00",
-      "status": "in_progress",
+      "updated_at": "2026-06-02T19:04:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "test/workbench-projection.test.js",
@@ -1339,7 +1339,11 @@
       "last_agent_run_id": "manual-closeout-20260602-workbench-projection-test-shards",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "cf40c71eb41caa7ba83aaf69f6a12d5fb24f1e15",
+        "test_added": true,
+        "summary": "One-screen helper next-action and counter contract assertions were extracted into test/workbench-projection-one-screen.test.js while preserving coverage and reducing test/workbench-projection.test.js from 3294 to 3175 lines."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -1389,10 +1393,30 @@
           "command": "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
           "exit_code": 0,
           "created_at": "2026-06-02T18:58:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek sharded read-only review passed with no blocking or non-blocking findings after confirming one-screen assertion preservation, schema/mobile/shell coverage, and metadata consistency.",
+          "artifact": "docs/examples/reviewer-risk-20260602-workbench-projection-test-shards-deepseek.json",
+          "created_at": "2026-06-02T19:03:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "deepseek-lfg-p4-workbench-projection-test-shard-review",
+            "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [],
+            "artifact": "docs/examples/reviewer-risk-20260602-workbench-projection-test-shards-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "Test-only projection shard split; no user-visible runtime or public route behavior changed."
+      }
     },
     {
       "id": "risk-20260602-workbench-projection-domain-splits",

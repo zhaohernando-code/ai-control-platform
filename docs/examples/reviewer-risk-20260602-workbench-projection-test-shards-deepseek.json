@@ -1,0 +1,42 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-workbench-projection-test-shards",
+  "reviewer_id": "deepseek-lfg-p4-workbench-projection-test-shard-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T19:03:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-*.test.js test/workbench-shell.test.js",
+    "npm run check:large-files",
+    "npm run check:known-risk-closeout",
+    "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+    "test/workbench-projection.test.js",
+    "test/workbench-projection-one-screen.test.js",
+    "test/workbench-projection-schema.test.js",
+    "test/workbench-shell.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "docs/governance/known-risk-ledger.json"
+  ],
+  "scope": {
+    "files": [
+      "test/workbench-projection.test.js",
+      "test/workbench-projection-one-screen.test.js",
+      "test/workbench-projection-schema.test.js",
+      "test/workbench-shell.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "docs/governance/known-risk-ledger.json"
+    ],
+    "diff_summary": "The one-screen helper next-action and counter contract test was moved from test/workbench-projection.test.js into a 122-line test/workbench-projection-one-screen.test.js shard. The original projection test file decreased from 3294 to 3175 lines without changing src/workflow/workbench-projection.js.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-*.test.js test/workbench-shell.test.js",
+      "npm run check:large-files",
+      "npm run check:known-risk-closeout",
+      "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js"
+    ]
+  },
+  "notes": "DeepSeek's test shard confirmed the one-screen next_actions, recommended_action, and counter assertions were preserved in the new shard without baseInput/contextPack fixture dependency or cross-test pollution. Schema and shell shards confirmed mobile/schema/shell coverage remains present. Metadata shards confirmed manifest, plan, and ledger state aligned with the bounded split. Final synthesis returned pass with no blocking or non-blocking findings."
+}
