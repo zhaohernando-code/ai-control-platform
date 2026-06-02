@@ -1082,8 +1082,8 @@
       "title": "Workbench server test suite remains a broad large-file regression surface",
       "source": "large-file-governance-p2",
       "created_at": "2026-06-02T16:10:00+08:00",
-      "updated_at": "2026-06-02T16:10:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T16:24:00+08:00",
+      "status": "in_progress",
       "severity": "medium",
       "scope": [
         "test/workbench-server.test.js",
@@ -1105,8 +1105,8 @@
         "npm run check:large-files",
         "DeepSeek read-only review confirms the split preserves server API/live/static/state-store behavior"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-workbench-server-test-shards",
       "depends_on": [],
       "superseded_by": null,
       "resolution": null,
@@ -1121,6 +1121,23 @@
             ".largefile-manifest.json"
           ],
           "created_at": "2026-06-02T16:10:00+08:00"
+        },
+        {
+          "type": "analysis",
+          "summary": "Extracted agent key route and SQLite fail-closed assertions from test/workbench-server.test.js into test/workbench-server-agent-key-routes.test.js without changing tools/workbench-server.mjs.",
+          "artifacts": [
+            "test/workbench-server-agent-key-routes.test.js",
+            "test/workbench-server.test.js",
+            ".largefile-manifest.json"
+          ],
+          "created_at": "2026-06-02T16:24:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Server shard, extracted route tests, wildcard server test shards, and API route contract tests passed after the split.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-*.test.js test/api-route-contract.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T16:24:00+08:00"
         }
       ],
       "review": null,

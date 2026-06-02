@@ -159,8 +159,8 @@
       "reviewed_at": "2026-06-02"
     },
     "test/workbench-server.test.js": {
-      "lines": 4353,
-      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture. Agent key route boundary coverage was added with the first route extraction.",
+      "lines": 4218,
+      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture. Agent key route coverage was extracted to test/workbench-server-agent-key-routes.test.js as the first test shard; remaining route/state/static domains still require staged splitting.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-02"
     },
