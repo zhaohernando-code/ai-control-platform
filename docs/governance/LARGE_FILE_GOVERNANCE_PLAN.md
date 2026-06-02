@@ -2,7 +2,7 @@
 
 Status: in_progress  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T19:04:00+08:00
+Updated at: 2026-06-02T20:35:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -66,15 +66,15 @@ Priority order is current line count first. Runtime/contract blast radius is use
 | LFG-Q02 | `tools/workbench-server.mjs` | 3447 | `planned_refactor` | Continue extracting route groups and runtime service bridges. Legacy static compatibility routing extracted. |
 | LFG-Q03 | `test/workbench-projection.test.js` | 3175 | `planned_refactor` | Split projection schema/domain regression suites. One-screen helper shard extracted. |
 | LFG-Q04 | `src/workflow/headless-cli-orchestrator.js` | 2090 | `planned_refactor` | Extract worker planning, acceptance, and continuation packaging. |
-| LFG-Q05 | `src/workflow/workbench-projection.js` | 1463 | `planned_refactor` | Next-action readout domain extracted; project-management split remains planned. |
-| LFG-Q06 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split orchestrator tests along extracted domains. |
-| LFG-Q07 | `test/frontend-acceptance.test.js` | 1595 | `planned_refactor` | Split content, browser error, route, and command-architecture validators. |
-| LFG-Q08 | `test/autonomous-continuation.test.js` | 1357 | `planned_refactor` | Split continuation recovery, reviewer, and work-package fixtures. |
-| LFG-Q09 | `src/workflow/requirement-intake.js` | 1318 | `planned_refactor` | Extract plan review, validation, and work-package generation. |
-| LFG-Q10 | `apps/workbench/workbench.js` | 1289 | `planned_refactor` | Retire or quarantine legacy static shell once Next.js routes are complete. |
-| LFG-Q11 | `test/context-work-package-runner.test.js` | 1242 | `planned_refactor` | Split owned-file, dependency, and execution-governance tests. |
-| LFG-Q12 | `src/workflow/context-work-package-runner.js` | 1217 | `planned_refactor` | Extract owned-file enforcement and execution-result normalization. |
-| LFG-Q13 | `apps/workbench/styles.css` | 963 | `planned_refactor` | Retire or split legacy static-shell styles. |
+| LFG-Q05 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split orchestrator tests along extracted domains. |
+| LFG-Q06 | `test/frontend-acceptance.test.js` | 1595 | `planned_refactor` | Split content, browser error, route, and command-architecture validators. |
+| LFG-Q07 | `test/autonomous-continuation.test.js` | 1357 | `planned_refactor` | Split continuation recovery, reviewer, and work-package fixtures. |
+| LFG-Q08 | `src/workflow/requirement-intake.js` | 1318 | `planned_refactor` | Extract plan review, validation, and work-package generation. |
+| LFG-Q09 | `apps/workbench/workbench.js` | 1289 | `planned_refactor` | Retire or quarantine legacy static shell once Next.js routes are complete. |
+| LFG-Q10 | `test/context-work-package-runner.test.js` | 1242 | `planned_refactor` | Split owned-file, dependency, and execution-governance tests. |
+| LFG-Q11 | `src/workflow/context-work-package-runner.js` | 1217 | `planned_refactor` | Split owned-file enforcement, execution governance, worker dispatch, and result normalization. |
+| LFG-Q12 | `apps/workbench/styles.css` | 963 | `planned_refactor` | Retire or quarantine legacy static shell styling once Next.js routes are complete. |
+| LFG-Q13 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Next-action readout and project-management readout domains extracted; remaining logic is projection composition. |
 | LFG-Q14 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance and phase evidence aggregation. |
 | LFG-Q15 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay and recovery fixtures. |
 | LFG-Q16 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract recovery, projection reuse, and execution-root propagation. |
@@ -159,7 +159,7 @@ With the current queue this selects `risk-20260602-workbench-server-test-shards`
 
 ### Phase LFG-P3: Workbench Server Route and Test Boundary Split
 
-Status: in_progress
+Status: pass
 
 Goal: reduce the highest-impact server boundary without breaking public route, state-store, or API behavior.
 
@@ -180,16 +180,16 @@ npm run check:closeout
 
 ### Phase LFG-P4: Workbench Projection Domain Split
 
-Status: in_progress
+Status: pass
 
 Goal: reduce projection aggregation risk while preserving one-screen and mobile contracts.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
 | LFG-P4.1 | Split projection tests by schema domain | `test/workbench-projection-one-screen.test.js` | `test/workbench-projection.test.js` line count decreased from 3294 to 3175; extracted shard is 122 lines and projection/shell gates pass. | pass |
-| LFG-P4.2 | Extract project-management projection | `src/workflow/workbench-project-management.js` or equivalent | Existing project/task counters and readouts remain unchanged. | pending |
+| LFG-P4.2 | Extract project-management projection | `src/workflow/workbench-project-management.js`; `src/workflow/workbench-project-task-items.js` | `src/workflow/workbench-projection.js` decreased from 1463 to 923 lines; extracted modules are 167 and 393 lines, and project/task counters plus plan-review/task-flow tests pass. | pass |
 | LFG-P4.3 | Extract next-action readout projection | `src/workflow/workbench-next-action-readout.js` | `src/workflow/workbench-projection.js` decreased from 1944 to 1463 lines; extracted helper is 497 lines and scheduler, lifecycle, reviewer, and terminal next-action tests pass. | pass |
-| LFG-P4.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json` | DS confirms extraction is behavior-preserving and does not just move complexity. | pass |
+| LFG-P4.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-workbench-projection-domain-splits-deepseek.json`; `docs/examples/reviewer-risk-20260602-workbench-project-management-split-deepseek.json` | DS confirms extraction is behavior-preserving and does not just move complexity. | pass |
 
 Suggested gates:
 
@@ -249,6 +249,7 @@ Each scheduled large-file governance run should:
 | LFG-P3 route group review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed static compatibility routing, mounted path rewriting, favicon/fallback handling, and non-static API route behavior were preserved. |
 | LFG-P4 test shard review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed one-screen next-action/counter assertions were preserved, schema/mobile/shell coverage remained present, and metadata was consistent. |
 | LFG-P4 source domain review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed next-action output-shape preservation, lifecycle event-set pass-through, test coverage continuity, non-weakening staged-closeout ledger tests, and metadata consistency. Delta ledger review also passed after evidence format and line-count details were strengthened. |
+| LFG-P4 project-management review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed projection composer delegation, two-call nextActionReadout dependency handling, project/task counter preservation, plan-review/task-flow coverage, mobile/schema/shell consumer compatibility, below-threshold extracted modules, and metadata consistency. |
 
 ## Current External Dependencies
 
@@ -266,6 +267,6 @@ Each scheduled large-file governance run should:
 | LFG-P1 | pass | `tools/report-large-files.mjs` added; report gate, duplicate-key detection, growth/stale-up detection, shrink warnings, missing-entry detection, and planned-refactor growth guard pass local tests. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P3 | in_progress | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; legacy static compatibility routing was extracted into `tools/workbench-static-routes.mjs`; server/API route contract, large-file, known-risk, and governance enrollment gates passed. | DeepSeek PASS for test shard and route group; live-route preservation remains pending |
-| LFG-P4 | in_progress | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; targeted projection/schema/shell, coverage, large-file, and known-risk gates passed. | DeepSeek PASS for test shard and source domain split; project-management extraction remains pending |
+| LFG-P4 | pass | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; project-management readout policy was extracted into `src/workflow/workbench-project-management.js` and `src/workflow/workbench-project-task-items.js`; projection/schema/shell, coverage, large-file, and known-risk required gates passed. | DeepSeek PASS for test shard, next-action split, and project-management split |
 | LFG-P5 | pending | Not started. | pending |
 | LFG-P6 | pending | Not started. | pending |

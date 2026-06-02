@@ -1,0 +1,48 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-workbench-project-management-split",
+  "reviewer_id": "deepseek-lfg-p4-workbench-project-management-split-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T20:30:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "Pre-final plan metadata showed LFG-P4.4 as pass while LFG-P4.2 was still review_pending; this artifact is recorded with the final plan update that resolves the inconsistency."
+  ],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+    "npm run test:coverage",
+    "npm run check:large-files",
+    "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json --require-closed",
+    "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+    "src/workflow/workbench-projection.js",
+    "src/workflow/workbench-project-management.js",
+    "src/workflow/workbench-project-task-items.js",
+    "test/workbench-projection.test.js",
+    "test/workbench-projection-schema.test.js",
+    "test/workbench-shell.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+  ],
+  "scope": {
+    "files": [
+      "src/workflow/workbench-projection.js",
+      "src/workflow/workbench-project-management.js",
+      "src/workflow/workbench-project-task-items.js",
+      "test/workbench-projection.test.js",
+      "test/workbench-projection-schema.test.js",
+      "test/workbench-shell.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+    ],
+    "diff_summary": "Project-management readout logic was extracted from src/workflow/workbench-projection.js into src/workflow/workbench-project-management.js and src/workflow/workbench-project-task-items.js. The projection composer decreased from 1463 to 923 lines; the extracted modules are 167 and 393 lines.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-schema.test.js test/workbench-shell.test.js",
+      "npm run test:coverage",
+      "npm run check:large-files",
+      "node tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json --require-closed",
+      "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js"
+    ]
+  },
+  "notes": "DeepSeek source shards confirmed the projection composer delegates to summarizeProjectManagement without stale local helpers, preserves the two-call base/final nextActionReadout dependency pattern, keeps mobile project_management consumers compatible, and leaves task-item semantics in a bounded 393-line helper. Test shards confirmed project counters, task_items, task_flow, plan_review bindings, latest_dispatch shape, mobile/schema/shell consumers, and major task states remain covered. Metadata shards confirmed both extracted modules are below threshold and the plan/manifest do not overclaim fixed state after this final update. Final synthesis returned PASS."
+}
