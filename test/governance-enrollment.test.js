@@ -36,7 +36,7 @@ test("ai-control-platform is enrolled in shared large-file governance", () => {
   const manifest = JSON.parse(readText(".largefile-manifest.json"));
 
   assert.equal(manifest.threshold, 500);
-  assert.equal(manifest.reviewed_at, "2026-05-28");
+  assert.equal(manifest.reviewed_at, "2026-06-02");
 
   const missing = [];
   for (const path of trackedFiles()) {

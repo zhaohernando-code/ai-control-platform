@@ -1,13 +1,13 @@
 // API route contract (門禁治理 phase 3): keeps the frontend's declared HTTP endpoint list
 // (apps/workbench/lib/api/index.ts -> WORKBENCH_API_ENDPOINTS) in lockstep with the routes the
-// backend (tools/workbench-server.mjs) actually serves. Drift here is the classic agent-dev
+// backend Workbench route modules actually serve. Drift here is the classic agent-dev
 // failure: an upstream route is added/renamed/removed and the consumer silently breaks because
 // nothing asserts the two sides agree. This module is the executable contract.
 //
 // Design: ZERO backend mutation. We extract both sides from source text (the backend routing
-// lives in one ~1800-line createServer callback whose 28 handlers are closures over server
-// state — refactoring it into a route table is exactly the regression-prone churn we are trying
-// to avoid). Source-text extraction is guarded: if either extractor finds nothing, that is a
+// lives across the server entrypoint and extracted route handlers whose handlers are closures
+// over server state — refactoring them into a route table is exactly the regression-prone churn
+// we are trying to avoid). Source-text extraction is guarded: if either extractor finds nothing, that is a
 // FAILURE (the source style changed -> fix the extractor), never a silent pass.
 //
 // Validator shape mirrors the rest of the codebase: { status: "pass"|"fail",
@@ -31,7 +31,7 @@ export const BACKEND_ONLY_ALLOWLIST = Object.freeze([
 // these from apps/workbench/lib/api/agents.ts with interpolated ids, but does NOT enumerate them
 // in WORKBENCH_API_ENDPOINTS (which only lists static paths). They are real contract members, so
 // we credit both sides with them rather than forcing template-literal paths into the static list.
-// Keyed by the exact regex source in workbench-server.mjs so a new/removed dynamic route is a
+// Keyed by the exact regex source in the backend route modules so a new/removed dynamic route is a
 // deliberate edit here, not a silent gap.
 export const PARAMETRIZED_ROUTES = Object.freeze([
   { method: "POST", path: "/api/workbench/agents/:id/health-check", source: "/^\\/api\\/workbench\\/agents\\/([^/]+)\\/health-check$/" },
@@ -49,10 +49,12 @@ const DYNAMIC_ROUTE_SOURCES = PARAMETRIZED_ROUTES.map((route) => ({
   literal: route.source
 }));
 
-// Extract the routes the backend actually serves from workbench-server.mjs source text.
+// Extract the routes the backend actually serves from backend route module source text.
 // Returns { static: [{method, path}], dynamic: [{method, path}] }.
 export function extractBackendRoutes(serverSource) {
-  const source = String(serverSource || "");
+  const source = Array.isArray(serverSource)
+    ? serverSource.map((item) => String(item || "")).join("\n")
+    : String(serverSource || "");
   const staticRoutes = [];
   const seen = new Set();
   let match;

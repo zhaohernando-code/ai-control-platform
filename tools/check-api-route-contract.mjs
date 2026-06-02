@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Closeout gate: asserts the frontend's declared HTTP endpoints (WORKBENCH_API_ENDPOINTS in
-// apps/workbench/lib/api/index.ts) match the routes tools/workbench-server.mjs actually serves.
+// apps/workbench/lib/api/index.ts) match the routes Workbench backend route modules actually serve.
 // Pure source-text extraction — no backend mutation. See src/workflow/api-route-contract.js.
 // Exit 0 = contract holds; exit 1 = drift; exit 2 = usage/read error.
 
@@ -12,7 +12,10 @@ import {
   BACKEND_ONLY_ALLOWLIST
 } from "../src/workflow/api-route-contract.js";
 
-const SERVER_PATH = "tools/workbench-server.mjs";
+const BACKEND_ROUTE_SOURCE_PATHS = [
+  "tools/workbench-server.mjs",
+  "tools/workbench-agent-key-routes.mjs"
+];
 const FRONTEND_PATH = "apps/workbench/lib/api/index.ts";
 
 function read(path) {
@@ -25,7 +28,7 @@ function read(path) {
 }
 
 const validation = validateApiRouteContract({
-  backendRoutes: extractBackendRoutes(read(SERVER_PATH)),
+  backendRoutes: extractBackendRoutes(BACKEND_ROUTE_SOURCE_PATHS.map(read)),
   frontendEndpoints: extractFrontendEndpoints(read(FRONTEND_PATH)),
   allowlist: BACKEND_ONLY_ALLOWLIST
 });

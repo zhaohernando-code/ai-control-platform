@@ -15,14 +15,18 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const read = (rel) => readFileSync(resolve(root, rel), "utf8");
 
-const SERVER = "tools/workbench-server.mjs";
+const BACKEND_ROUTE_SOURCES = [
+  "tools/workbench-server.mjs",
+  "tools/workbench-agent-key-routes.mjs"
+];
 const FRONTEND = "apps/workbench/lib/api/index.ts";
+const readBackendRouteSources = () => BACKEND_ROUTE_SOURCES.map(read);
 
 // T1 — the live contract: real backend routes and real frontend declarations must agree.
 // This is the gate that turns red the moment someone adds/renames a route on one side only.
 test("api route contract: frontend declarations match backend routes (live)", () => {
   const validation = validateApiRouteContract({
-    backendRoutes: extractBackendRoutes(read(SERVER)),
+    backendRoutes: extractBackendRoutes(readBackendRouteSources()),
     frontendEndpoints: extractFrontendEndpoints(read(FRONTEND)),
     allowlist: BACKEND_ONLY_ALLOWLIST
   });
@@ -32,7 +36,7 @@ test("api route contract: frontend declarations match backend routes (live)", ()
 // T2 — extractor self-check: a parser that silently returns nothing must be caught HERE, so a
 // future change to the routing/declaration style cannot make the contract vacuously pass.
 test("api route contract: extractors find the expected real shapes (no silent empties)", () => {
-  const backend = extractBackendRoutes(read(SERVER));
+  const backend = extractBackendRoutes(readBackendRouteSources());
   assert.ok(backend.static.length >= 28, `expected >=28 static backend routes, got ${backend.static.length}`);
   assert.equal(backend.dynamic.length, PARAMETRIZED_ROUTES.length, "all parametrized routes must be detected in server source");
   const frontend = extractFrontendEndpoints(read(FRONTEND));
@@ -83,7 +87,7 @@ test("api route contract: empty extraction is a failure, not a vacuous pass", ()
 // only because it is allowlisted; removing it from the allowlist must surface it as drift. This
 // stops the allowlist from quietly growing to mask future accidental backend-only routes.
 test("api route contract: backend-only allowlist is load-bearing and audited", () => {
-  const backendRoutes = extractBackendRoutes(read(SERVER));
+  const backendRoutes = extractBackendRoutes(readBackendRouteSources());
   const frontendEndpoints = extractFrontendEndpoints(read(FRONTEND));
 
   const withAllow = validateApiRouteContract({ backendRoutes, frontendEndpoints, allowlist: BACKEND_ONLY_ALLOWLIST });

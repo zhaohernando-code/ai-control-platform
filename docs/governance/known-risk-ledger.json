@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T09:03:32+08:00",
+  "updated_at": "2026-06-02T09:12:10+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -113,13 +113,17 @@
       "title": "Workbench API server remains a mixed-responsibility route entrypoint",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-02T09:03:32+08:00",
+      "updated_at": "2026-06-02T09:12:10+08:00",
       "status": "fixed",
       "severity": "medium",
       "scope": [
         "tools/workbench-server.mjs",
         "tools/workbench-agent-key-routes.mjs",
-        ".largefile-manifest.json"
+        ".largefile-manifest.json",
+        "src/workflow/api-route-contract.js",
+        "tools/check-api-route-contract.mjs",
+        "test/api-route-contract.test.js",
+        "test/governance-enrollment.test.js"
       ],
       "owned_files": [
         "tools/workbench-server.mjs",
@@ -129,7 +133,12 @@
         "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-deepseek.json",
         "docs/governance/known-risk-ledger.json",
         "test/known-risk-ledger.test.js",
-        "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json"
+        "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json",
+        "src/workflow/api-route-contract.js",
+        "tools/check-api-route-contract.mjs",
+        "test/api-route-contract.test.js",
+        "test/governance-enrollment.test.js",
+        "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-gate-repair-deepseek.json"
       ],
       "acceptance_gates": [
         "Route handler extraction plan or first bounded extraction is implemented without reducing API coverage",
@@ -183,6 +192,26 @@
           "summary": "DeepSeek closeout record review passed with no blocking findings; its full-hash traceability recommendation was applied before final commit.",
           "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json",
           "created_at": "2026-06-02T09:06:25+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "API route contract and large-file governance enrollment tests passed after route-source extraction updates.",
+          "command": "node tools/run-with-node18.mjs --test test/api-route-contract.test.js test/governance-enrollment.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:12:10+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Standalone API route contract gate passed after reading both backend route source files.",
+          "command": "node tools/run-with-node18.mjs tools/check-api-route-contract.mjs",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:12:10+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek reviewed the expanded gate repair and found no gate relaxation or blocking closeout issue.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-gate-repair-deepseek.json",
+          "created_at": "2026-06-02T09:12:10+08:00"
         }
       ],
       "review": {
@@ -209,6 +238,17 @@
               "release.required is recorded as false for an internal route-boundary refactor; future schema tests could cover release metadata."
             ],
             "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-closeout-deepseek.json"
+          },
+          {
+            "reviewer_id": "claude-deepseek-gate-repair-readonly",
+            "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "The backend_extraction_empty error message still names the historical server file instead of all backend route source files; this is cosmetic and does not affect gate accuracy.",
+              "The array-source extractor path is covered by the real multi-source API contract test shape rather than a separate synthetic unit test."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-gate-repair-deepseek.json"
           }
         ]
       },
