@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T09:12:10+08:00",
+  "updated_at": "2026-06-02T09:23:20+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -113,7 +113,7 @@
       "title": "Workbench API server remains a mixed-responsibility route entrypoint",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-02T09:12:10+08:00",
+      "updated_at": "2026-06-02T09:23:20+08:00",
       "status": "fixed",
       "severity": "medium",
       "scope": [
@@ -212,6 +212,27 @@
           "summary": "DeepSeek reviewed the expanded gate repair and found no gate relaxation or blocking closeout issue.",
           "artifact": "docs/examples/reviewer-risk-20260601-workbench-server-route-boundary-gate-repair-deepseek.json",
           "created_at": "2026-06-02T09:12:10+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Full npm test suite passed after the route extraction and route-contract gate repair.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:23:20+08:00"
+        },
+        {
+          "type": "coverage",
+          "summary": "Coverage gate passed after the route extraction and route-contract gate repair; reported all-files line coverage 91.85% and function coverage 96.92%.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:23:20+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Full closeout gate passed after installing the worktree npm dependencies required by the public browser route check.",
+          "command": "npm run check:closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T09:23:20+08:00"
         }
       ],
       "review": {
