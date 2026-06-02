@@ -1702,6 +1702,10 @@ async function executeProjectedNextAction({ req, selectedId, projection, input =
 }
 
 export function createWorkbenchServer(options = {}) {
+  if (options.serveLegacyStatic === true || options.serve_legacy_static === true) {
+    throw new Error("legacy static Workbench serving has been retired; serve the Workbench through the Next.js App Router runtime");
+  }
+
   const eventsPath = options.eventsPath || defaultEventsPath;
   const jsonBodyLimitBytes = Number(options.jsonBodyLimitBytes || options.json_body_limit_bytes || DEFAULT_JSON_BODY_LIMIT_BYTES);
   const serverHistoryPath = options.historyPath || historyPath;
@@ -1769,11 +1773,8 @@ export function createWorkbenchServer(options = {}) {
   const workbenchProjection = (workflowState) => createWorkbenchProjection(
     projectionInputWithProjectStatus(workflowState, projectStatusPath, stateStore)
   );
-  const serveLegacyStatic = options.serveLegacyStatic === true ||
-    options.serve_legacy_static === true;
   const handleStaticRoute = createWorkbenchStaticRouteHandler({
     root,
-    serveLegacyStatic,
     jsonResponse
   });
   const handleAgentKeyRoute = createAgentKeyRouteHandler({
@@ -3358,7 +3359,11 @@ function normalizeCliPort(value) {
 }
 
 function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process.env) {
-  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db", "--serve-legacy-static"]);
+  if (args.includes("--serve-legacy-static") || env.AI_CONTROL_WORKBENCH_SERVE_LEGACY_STATIC === "1") {
+    throw Object.assign(new Error("legacy static Workbench serving has been retired; serve the Workbench through the Next.js App Router runtime"), { code: "LEGACY_STATIC_WORKBENCH_RETIRED" });
+  }
+
+  const optionNames = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db"]);
   const optionsWithValues = new Set(["--host", "--port", "--history-path", "--snapshots-root", "--events-path", "--project-status", "--state-db"]);
   const positionalArgs = [];
   for (let index = 0; index < args.length; index += 1) {
@@ -3391,8 +3396,7 @@ function parseWorkbenchServerCliArgs(args = process.argv.slice(2), env = process
     snapshotsRoot: optionValue("--snapshots-root"),
     eventsPath: optionValue("--events-path"),
     projectStatusPath: optionValue("--project-status"),
-    stateDbPath: optionValue("--state-db") || process.env.AI_CONTROL_WORKBENCH_STATE_DB || defaultStateDbPath,
-    serveLegacyStatic: args.includes("--serve-legacy-static") || env.AI_CONTROL_WORKBENCH_SERVE_LEGACY_STATIC === "1"
+    stateDbPath: optionValue("--state-db") || process.env.AI_CONTROL_WORKBENCH_STATE_DB || defaultStateDbPath
   };
 }
 
@@ -3403,16 +3407,14 @@ export function startWorkbenchServer({
   snapshotsRoot: configuredSnapshotsRoot,
   eventsPath: configuredEventsPath,
   projectStatusPath,
-  stateDbPath = defaultStateDbPath,
-  serveLegacyStatic = false
+  stateDbPath = defaultStateDbPath
 } = {}) {
   const server = createWorkbenchServer({
     historyPath: configuredHistoryPath,
     snapshotsRoot: configuredSnapshotsRoot,
     eventsPath: configuredEventsPath,
     projectStatusPath,
-    stateDbPath,
-    serveLegacyStatic
+    stateDbPath
   });
   const listenPort = normalizeCliPort(port);
   server.listen(listenPort, host);
@@ -3422,13 +3424,11 @@ export function startWorkbenchServer({
 if (import.meta.url === `file://${process.argv[1]}`) {
   if (process.argv.includes("--help") || process.argv.includes("-h")) {
     console.log([
-      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>] [--serve-legacy-static]",
+      "Usage: node tools/workbench-server.mjs [port] [--host <host>] [--port <port>] [--history-path <path>] [--snapshots-root <path>] [--events-path <path>] [--project-status <path>] [--state-db <path>]",
       "",
       "Starts the local workbench API service. Paths are resolved from the platform repo root. When --state-db is set, live workbench state is stored in SQLite instead of tracked JSON state files.",
       "",
-      "--serve-legacy-static   Test-only compatibility mode for the old native HTML shell.",
-      "                        Production and local public routes should be served by",
-      "                        the Next.js App Router runtime instead."
+      "Workbench pages are served by the Next.js App Router runtime. This API service no longer serves the retired native HTML shell."
     ].join("\n"));
     process.exit(0);
   }

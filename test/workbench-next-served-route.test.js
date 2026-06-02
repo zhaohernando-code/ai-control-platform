@@ -25,7 +25,7 @@ test("Next served-route gate is wired as a first-class Workbench check", () => {
   assert.doesNotMatch(gate, /serveLegacyStatic:\s*true/);
 });
 
-test("Next served-route evidence is durable and does not over-close legacy static retirement", () => {
+test("Next served-route evidence is durable and supports legacy static retirement", () => {
   const inventory = JSON.parse(read("docs/governance/legacy-static-workbench-inventory.json"));
   const evidence = JSON.parse(read("docs/examples/workbench-next-served-route-evidence-20260602.json"));
   const gates = inventory.next_served_route_replacement_gates || [];
@@ -45,11 +45,11 @@ test("Next served-route evidence is durable and does not over-close legacy stati
   assert.equal(nextGate?.status, "pass");
   assert.equal(nextGate?.evidence, "docs/examples/workbench-next-served-route-evidence-20260602.json");
   assert.match(nextGate?.replaces_requirement || "", /Next\.js Workbench served route verified/);
-  assert.ok(nextGate?.does_not_replace?.some((item) => item.includes("check-workbench-browser-events")));
-  assert.equal(inventory.status, "retirement_blocked");
-  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_3_partial");
-  assert.match(inventory.retirement.reason, /Legacy assets remain compatibility and rollback dependencies/);
-  assert.doesNotMatch(inventory.retirement.required_evidence_before_delete.join("\n"), /Next\.js Workbench served route verified/);
+  assert.deepEqual(nextGate?.does_not_replace, []);
+  assert.equal(inventory.status, "retired");
+  assert.equal(inventory.retirement.decision, "deleted_in_p6_4");
+  assert.match(inventory.retirement.reason, /P6\.1-P6\.3 replacement gates passed before deletion/);
+  assert.deepEqual(inventory.retirement.required_evidence_before_delete, []);
 });
 
 test("public browser route gate is a Next route check, not a legacy static consumer", () => {

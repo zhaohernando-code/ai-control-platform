@@ -355,8 +355,7 @@ function assetPathMounted(url, projectId) {
     const parsed = new URL(url);
     return (
       parsed.pathname.startsWith(`/projects/${projectId}/_next/static/`) ||
-      parsed.pathname === `/projects/${projectId}/favicon.svg` ||
-      parsed.pathname === `/projects/${projectId}/apps/workbench/favicon.svg`
+      parsed.pathname === `/projects/${projectId}/favicon.svg`
     );
   } catch {
     return false;

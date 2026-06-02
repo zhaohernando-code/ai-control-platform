@@ -20,10 +20,7 @@ test("Next frontend-acceptance is wired as the primary closeout gate", () => {
     pkg.scripts["check:workbench:frontend-acceptance"],
     "node tools/run-with-node18.mjs tools/check-workbench-next-frontend-acceptance.mjs"
   );
-  assert.equal(
-    pkg.scripts["check:workbench:legacy-frontend-acceptance"],
-    "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs"
-  );
+  assert.equal(pkg.scripts["check:workbench:legacy-frontend-acceptance"], undefined);
   assert.match(closeout, /check-workbench-next-frontend-acceptance\.mjs/);
   assert.match(closeout, /report-large-files\.mjs", "--fail-on-issues"/);
   assert.doesNotMatch(closeout, /check-workbench-frontend-acceptance\.mjs", "--output"/);
@@ -58,20 +55,17 @@ test("Next frontend-acceptance evidence is durable and fully validated", () => {
   assert.ok(evidence.durable_evidence?.workflow_state);
 });
 
-test("legacy static inventory records frontend-acceptance migration without unblocking deletion", () => {
+test("legacy static inventory records frontend-acceptance migration and deletion readiness", () => {
   const inventory = JSON.parse(read("docs/governance/legacy-static-workbench-inventory.json"));
   const legacyGateFiles = new Set(inventory.acceptance_gate_dependencies.map((item) => item.file));
   const replacement = inventory.next_served_route_replacement_gates.find((item) => item.file === "tools/check-workbench-next-frontend-acceptance.mjs");
-  const requiredBeforeDelete = inventory.retirement.required_evidence_before_delete.join("\n");
 
   assert.equal(replacement?.status, "pass");
   assert.equal(replacement?.evidence, "docs/examples/workbench-next-frontend-acceptance-evidence-20260603.json");
   assert.match(replacement?.replaces_requirement || "", /Primary frontend-acceptance closeout gate migrated/);
   assert.ok(legacyGateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
   assert.ok(legacyGateFiles.has("tools/check-workbench-frontend-acceptance.mjs"));
-  assert.doesNotMatch(requiredBeforeDelete, /Frontend-acceptance gate migrated/);
-  assert.doesNotMatch(requiredBeforeDelete, /Browser-events gate migrated/);
-  assert.doesNotMatch(requiredBeforeDelete, /Scheduler dispatch writeback browser verification no longer depends/);
-  assert.equal(inventory.status, "retirement_blocked");
-  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_3_partial");
+  assert.equal(inventory.status, "retired");
+  assert.equal(inventory.retirement.decision, "deleted_in_p6_4");
+  assert.deepEqual(inventory.retirement.required_evidence_before_delete, []);
 });

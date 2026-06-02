@@ -203,7 +203,7 @@ function collectPreflightEvidence(options) {
     ["served route headers", `curl -sS -L -I --max-time 10 ${quotedRoute}`],
     ["served route html", `curl -sS -L --max-time 10 ${quotedRoute} | sed -n '1,22p'`],
     ["served next static asset", "asset=$(curl -sS -L --max-time 10 http://127.0.0.1:4180/projects/ai-control-platform/ | grep -o '/projects/ai-control-platform/_next/static/chunks/main-app-[^\"]*\\.js' | head -1); test -n \"$asset\" && curl -sS -I --max-time 10 \"http://127.0.0.1:4180$asset\" | sed -n '1,8p'"],
-    ["served favicon asset", "curl -sS -I --max-time 10 http://127.0.0.1:4180/projects/ai-control-platform/apps/workbench/favicon.svg | sed -n '1,8p'"],
+    ["served favicon asset", "curl -sS -I --max-time 10 http://127.0.0.1:4180/projects/ai-control-platform/favicon.svg | sed -n '1,8p'"],
     ["claimed antd code", "rg -n \"from ['\\\"]antd['\\\"]|@ant-design/nextjs-registry|antd\\\"\" apps/workbench/app/page.tsx apps/workbench/app/providers.tsx apps/workbench/app/shell.tsx apps/workbench/package.json -S | sed -n '1,12p'"],
     ["server route mapping", "rg -n \"nextjsMountHtml|nextjsAppIndexPath|isProjectMountRoot|_next/static|favicon.svg\" tools/workbench-server.mjs | sed -n '1,20p'"],
     ["task failure recovery source", "rg -n \"retryRequirementPlan|closeRequirementTask|retry-plan|requirements/close|isRecoverableFailedTask|关闭失败任务|重试计划|closed_failed|retry_requirement_plan_generation\" src tools apps/workbench test | sed -n '1,80p'"],
@@ -334,7 +334,7 @@ function expandCompactAuditVerdict(compact, options) {
       skill_name: dimensionSkillName(id),
       skill_version_or_path: `/Users/hernando_zhao/.codex/skills/${dimensionSkillName(id)}/SKILL.md`,
       prompt_scope: "real project state and runner-collected live route evidence",
-      input_artifacts: ["tools/workbench-server.mjs", "apps/workbench/app", "apps/workbench/desktop.html"],
+      input_artifacts: ["tools/workbench-server.mjs", "apps/workbench/app", "apps/workbench/lib/api"],
       output_artifact: `tmp/audit-skill-trial/${id}.json`,
       evidence_ids: evidenceIds.length > 0 ? evidenceIds : ["governance-skill-invocation"]
     })),

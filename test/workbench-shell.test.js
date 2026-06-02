@@ -311,7 +311,7 @@ test("frontend migration inventory baseline is durable and enumerates entries, v
   assert.match(inventory, /requirement-unknown-20260526033003/);
   assert.match(inventory, /FRONTEND_REFACTOR_CONSTRAINTS\.md/);
 
-  // 1. Native entries
+  // 1. Retired native entries and current mounted path
   assert.match(inventory, /apps\/workbench\/desktop\.html/);
   assert.match(inventory, /apps\/workbench\/mobile\.html/);
   assert.match(inventory, /\/projects\/ai-control-platform/);
@@ -332,7 +332,7 @@ test("frontend migration inventory baseline is durable and enumerates entries, v
 
   // 3. Static resources
   assert.match(inventory, /apps\/workbench\/styles\.css/);
-  assert.match(inventory, /apps\/workbench\/favicon\.svg/);
+  assert.match(inventory, /apps\/workbench\/public\/favicon\.svg/);
 
   // 4. Application scripts (no inline scripts allowed)
   assert.match(inventory, /apps\/workbench\/workbench\.js/);
@@ -384,7 +384,7 @@ test("frontend migration inventory baseline is durable and enumerates entries, v
 
   // 7. Migration slice ordering + rollback evidence
   assert.match(inventory, /迁移清单/);
-  assert.match(inventory, /回退/);
+  assert.match(inventory, /下线|退役|删除/);
   assert.match(inventory, /check:workbench:browser-events/);
   assert.match(inventory, /check:workbench:frontend-acceptance/);
   assert.match(inventory, /check:closeout/);

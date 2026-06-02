@@ -1,0 +1,41 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "review_id": "reviewer-risk-20260603-legacy-static-retirement-deepseek",
+  "created_at": "2026-06-03T09:20:00+08:00",
+  "reviewer": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "mode": "sharded_read_only",
+    "synthesis_model": "deepseek-v4-flash"
+  },
+  "scope": {
+    "phase": "LFG-P6.4/P6.5",
+    "title": "Legacy Static Workbench Retirement",
+    "focus_files": [
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "docs/governance/legacy-static-workbench-inventory.json",
+      "tools/workbench-server.mjs",
+      "tools/workbench-static-routes.mjs",
+      "tools/check-workbench-frontend-acceptance.mjs",
+      "package.json",
+      "test/legacy-static-workbench-inventory.test.js",
+      "test/workbench-server.test.js",
+      "test/workbench-next-served-route.test.js",
+      "test/workbench-next-browser-events.test.js"
+    ]
+  },
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "summary": "DeepSeek sharded read-only review confirmed the deleted legacy Workbench static files and manifest updates are consistent, workbench-server rejects CLI/env/constructor legacy static opt-in paths, the retired legacy frontend-acceptance CLI exits non-zero, and current Next.js gates cannot false-pass by using desktop.html/mobile.html/workbench.js/styles.css.",
+  "evidence": {
+    "raw_log": "tmp/deepseek-p6-4-legacy-static-retirement.log",
+    "local_gates": [
+      "npm test: pass, 977/977",
+      "npm run check:large-files: pass",
+      "npm run check:closeout: pass",
+      "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs: non-zero retired status as expected"
+    ]
+  }
+}

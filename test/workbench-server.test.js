@@ -3999,29 +3999,25 @@ test("workbench server rejects workflow state snapshots without operator event f
   }, { historyPath });
 });
 
-test("workbench server is API-only by default for page routes", async () => {
+test("workbench server is API-only for page routes and rejects retired legacy static opt-in", async () => {
+  assert.throws(
+    () => createWorkbenchServer({ allowFixtureFileState: true, serveLegacyStatic: true }),
+    /legacy static Workbench serving has been retired/
+  );
+
   await withServer(async (baseUrl) => {
     const response = await request(`${baseUrl}/apps/workbench/desktop.html`);
     const mountedRoot = await request(`${baseUrl}/projects/ai-control-platform/`);
+    const mountedAsset = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/workbench.js`);
     const body = response.json();
 
     assert.equal(response.status, 404);
     assert.match(body.error, /served by Next\.js/);
     assert.equal(mountedRoot.status, 404);
     assert.match(mountedRoot.json().error, /served by Next\.js/);
+    assert.equal(mountedAsset.status, 404);
+    assert.match(mountedAsset.json().error, /served by Next\.js/);
   });
-});
-
-test("workbench server can serve legacy static shell only when explicitly enabled", async () => {
-  await withServer(async (baseUrl) => {
-    const response = await request(`${baseUrl}/apps/workbench/desktop.html`);
-    const mountedAsset = await request(`${baseUrl}/projects/ai-control-platform/apps/workbench/workbench.js`);
-
-    assert.equal(response.status, 200);
-    assert.match(response.text, /data-view="desktop"/);
-    assert.match(response.headers["content-type"], /text\/html/);
-    assert.equal(mountedAsset.status, 200);
-  }, { serveLegacyStatic: true });
 });
 
 test("workbench server exposes mounted workbench APIs", async () => {

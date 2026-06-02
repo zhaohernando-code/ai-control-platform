@@ -10,7 +10,7 @@
  *   - 禁止新增组件/布局/视觉样式（走 antd theme 或组件 props）
  *   - 禁止引入第二套变量体系（tailwind、custom properties 等）
  *   - 禁止覆盖 antd 内置 token（在 apps/workbench/app/theme.ts 中统一管理）
- *   - 旧入口 styles.css 保留为灰度回退，不在此合并
+ *   - 旧入口 styles.css 已退役；不得在此恢复旧静态 shell 样式
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── 浏览器统一基线（antd 不提供） ── */

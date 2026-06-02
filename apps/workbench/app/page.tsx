@@ -96,7 +96,7 @@ function asRecord(value: unknown): Record<string, unknown> {
  * - 严格按照 FRONTEND_REFACTOR_CONSTRAINTS.md：不写裸 div 排版、
  *   不用自定义 CSS、所有基础组件来自 antd。
  * - 加载中显示 Skeleton，加载失败显示 Alert + 重试按钮。
- * - 旧入口 desktop.html / mobile.html 保留为回退路径。
+ * - 原生 desktop.html / mobile.html 已退役，公开页面由 Next.js App Router 接管。
  */
 export default function OverviewPage() {
   const { projection, loading, error, refresh } = useProjection({

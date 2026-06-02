@@ -84,11 +84,10 @@ test("Next browser-events evidence records only mounted runtime and API writebac
   );
 });
 
-test("legacy static inventory records Next browser-events probe while keeping full migration blocked", () => {
+test("legacy static inventory records Next browser-events replacement after retirement", () => {
   const inventory = JSON.parse(read("docs/governance/legacy-static-workbench-inventory.json"));
   const legacyGateFiles = new Set(inventory.acceptance_gate_dependencies.map((item) => item.file));
   const replacement = inventory.next_served_route_replacement_gates.find((item) => item.file === "tools/check-workbench-next-browser-events.mjs");
-  const requiredBeforeDelete = inventory.retirement.required_evidence_before_delete.join("\n");
 
   assert.equal(replacement?.status, "pass");
   assert.equal(replacement?.evidence, "docs/examples/workbench-next-browser-events-evidence-20260603.json");
@@ -100,9 +99,7 @@ test("legacy static inventory records Next browser-events probe while keeping fu
   assert.match(fullReplacement?.replaces_requirement || "", /Full browser-events closeout replay migrated/);
   assert.ok(legacyGateFiles.has("tools/check-workbench-browser-events.mjs"));
   assert.ok(legacyGateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
-  assert.doesNotMatch(requiredBeforeDelete, /Browser-events gate migrated/);
-  assert.doesNotMatch(requiredBeforeDelete, /Frontend-acceptance gate migrated/);
-  assert.doesNotMatch(requiredBeforeDelete, /Scheduler dispatch writeback browser verification no longer depends/);
-  assert.equal(inventory.status, "retirement_blocked");
-  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_3_partial");
+  assert.equal(inventory.status, "retired");
+  assert.equal(inventory.retirement.decision, "deleted_in_p6_4");
+  assert.deepEqual(inventory.retirement.required_evidence_before_delete, []);
 });

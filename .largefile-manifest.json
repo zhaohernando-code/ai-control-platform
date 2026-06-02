@@ -2,18 +2,6 @@
   "threshold": 500,
   "reviewed_at": "2026-06-02",
   "files": {
-    "apps/workbench/styles.css": {
-      "lines": 963,
-      "reason": "Legacy workbench CSS: static shell layout, responsive rules, and state styling remain coupled until the Next.js workbench migration fully replaces the static shell.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
-    },
-    "apps/workbench/workbench.js": {
-      "lines": 1289,
-      "reason": "Legacy static workbench shell: projection rendering, event controls, and mobile/desktop compatibility are kept together while Next.js routes are still being accepted.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
-    },
     "legacy/root-workflow-guard/agent-workflow-guard.js": {
       "lines": 529,
       "reason": "Archived root workflow guard migration input. It is not a default runtime module and should not grow except for migration quarantine fixes.",
@@ -148,7 +136,7 @@
       "reviewed_at": "2026-05-29"
     },
     "test/frontend-acceptance.test.js": {
-      "lines": 1671,
+      "lines": 1670,
       "reason": "Frontend acceptance tests cover content, layout, console, mounted route, favicon, and live-route false-pass regressions over shared artifacts.",
       "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds regression coverage for legacy static shell false-pass rejection.",
       "status": "planned_refactor",
@@ -166,12 +154,6 @@
       "status": "accepted",
       "reviewed_at": "2026-06-03"
     },
-    "test/workbench-projection-source.test.js": {
-      "lines": 584,
-      "reason": "Projection source tests share fixture coverage for dynamic and static workbench projection inputs.",
-      "status": "accepted",
-      "reviewed_at": "2026-05-28"
-    },
     "test/workbench-projection.test.js": {
       "lines": 3175,
       "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, project-management fixtures, mobile projection, and many regression fixtures; one-screen helper counter coverage was extracted to test/workbench-projection-one-screen.test.js, and further staged split should follow schema subdomains.",
@@ -179,7 +161,7 @@
       "reviewed_at": "2026-06-02"
     },
     "test/workbench-server.test.js": {
-      "lines": 4218,
+      "lines": 4214,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture. Agent key route coverage was extracted to test/workbench-server-agent-key-routes.test.js as the first test shard; remaining route/state/static domains still require staged splitting.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-02"

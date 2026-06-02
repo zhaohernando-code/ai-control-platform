@@ -79,9 +79,9 @@ function baseArtifact(overrides = {}) {
       input_path: "docs/examples/headless-live-context-cycle-1779570720000.workbench-input.json"
     },
     viewport_results: [
-      { viewport: "desktop", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, mounted_safe_favicon_count: 1, dimensions: { width: 1440, scrollWidth: 1440 } },
-      { viewport: "desktop_narrow", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, mounted_safe_favicon_count: 1, dimensions: { width: 1024, scrollWidth: 1024 } },
-      { viewport: "mobile", route_path: "/projects/ai-control-platform/apps/workbench/mobile.html", mounted_workbench_route: true, mounted_safe_favicon_count: 1, dimensions: { width: 390, scrollWidth: 390 } }
+      { viewport: "desktop", route_path: "/projects/ai-control-platform/", mounted_workbench_route: true, mounted_safe_favicon_count: 1, dimensions: { width: 1440, scrollWidth: 1440 } },
+      { viewport: "desktop_narrow", route_path: "/projects/ai-control-platform/", mounted_workbench_route: true, mounted_safe_favicon_count: 1, dimensions: { width: 1024, scrollWidth: 1024 } },
+      { viewport: "mobile", route_path: "/projects/ai-control-platform/requirements", mounted_workbench_route: true, mounted_safe_favicon_count: 1, dimensions: { width: 390, scrollWidth: 390 } }
     ],
     navigation_results: [],
     layout_results: [
@@ -224,9 +224,9 @@ function baseArtifact(overrides = {}) {
       projectManagementSemanticResult("mobile")
     ],
     resource_results: [
-      { viewport: "desktop", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
-      { viewport: "desktop_narrow", route_path: "/projects/ai-control-platform/apps/workbench/desktop.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
-      { viewport: "mobile", route_path: "/projects/ai-control-platform/apps/workbench/mobile.html", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true }
+      { viewport: "desktop", route_path: "/projects/ai-control-platform/", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
+      { viewport: "desktop_narrow", route_path: "/projects/ai-control-platform/", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true },
+      { viewport: "mobile", route_path: "/projects/ai-control-platform/requirements", mounted_workbench_route: true, favicon_link_count: 1, mounted_safe_favicon_count: 1, root_favicon_count: 0, mounted_svg_favicon_mime: "image/svg+xml", mounted_svg_favicon_mime_ok: true }
     ],
     control_results: [
       {
@@ -320,13 +320,15 @@ function baseArtifact(overrides = {}) {
 
 function viewportAudit(overrides = {}) {
   const viewport = overrides.viewport || "desktop";
-  const shell = viewport === "mobile" ? "mobile.html" : "desktop.html";
+  const routePath = viewport === "mobile"
+    ? "/projects/ai-control-platform/requirements"
+    : "/projects/ai-control-platform/";
   const nav = viewport === "mobile"
     ? []
     : ["总览", "项目", "任务流", "Agents", "风险", "治理", "运行诊断"].map((text) => ({ text }));
   return {
     viewport,
-    routePath: `/projects/ai-control-platform/apps/workbench/${shell}`,
+    routePath,
     mounted: true,
     dimensions: { width: 1440, height: 900, scrollWidth: 1440, scrollHeight: 900 },
     nav,
@@ -335,13 +337,13 @@ function viewportAudit(overrides = {}) {
       {
         rel: "icon",
         type: "image/svg+xml",
-        href_attribute: "./favicon.svg",
-        href: "http://127.0.0.1:4180/projects/ai-control-platform/apps/workbench/favicon.svg"
+        href_attribute: "/favicon.svg",
+        href: "http://127.0.0.1:4180/projects/ai-control-platform/favicon.svg"
       }
     ],
     mountedSvgFaviconResponses: [
       {
-        url: "http://127.0.0.1:4180/projects/ai-control-platform/apps/workbench/favicon.svg",
+        url: "http://127.0.0.1:4180/projects/ai-control-platform/favicon.svg",
         status: 200,
         content_type: "image/svg+xml"
       }
@@ -537,7 +539,7 @@ test("frontend acceptance requires mounted SVG favicon MIME evidence", () => {
         viewport: "desktop",
         mountedSvgFaviconResponses: [
           {
-            url: "http://127.0.0.1:4180/projects/ai-control-platform/apps/workbench/favicon.svg",
+            url: "http://127.0.0.1:4180/projects/ai-control-platform/favicon.svg",
             status: 200,
             content_type: "application/octet-stream"
           }
@@ -1629,10 +1631,7 @@ test("closeout and package scripts wire frontend acceptance as a hard gate", () 
     pkg.scripts["check:workbench:frontend-acceptance"],
     "node tools/run-with-node18.mjs tools/check-workbench-next-frontend-acceptance.mjs"
   );
-  assert.equal(
-    pkg.scripts["check:workbench:legacy-frontend-acceptance"],
-    "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs"
-  );
+  assert.equal(pkg.scripts["check:workbench:legacy-frontend-acceptance"], undefined);
   assert.match(closeout, /check-workbench-next-frontend-acceptance\.mjs/);
   assert.match(closeout, /validateFrontendAcceptanceArtifact/);
   assert.match(closeoutValidation, /frontend acceptance artifact did not pass/);

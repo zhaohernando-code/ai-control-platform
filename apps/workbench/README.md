@@ -4,15 +4,11 @@ AI Control Platform 工作台的前端入口。公开入口由 **Next.js (App Ro
 + Ant Design** 的完整运行时提供；`tools/workbench-server.mjs` 只保留
 `/api/workbench/*` 后端能力，不再托管 Next 构建出来的静态 HTML。
 
-## 1. 现有原生入口（测试兼容回退）
+## 1. 当前入口
 
-- `desktop.html`：PC 单页工作台，固定占满浏览器视口，内部内容区允许纵向滚动。
-- `mobile.html`：手机独立信息架构，不是 PC 页面缩放。
-- `workbench.js`：只读取 `docs/examples/current-session-workbench-projection.json`，
-  不解析日志或聊天记录。
-- `projection-source.js`：projection 数据源抽象，默认读取本地 fixture，也支持
-  `?projection=/api/workbench/projection` 指向服务接口。
-- `styles.css`：仅供历史验收脚本兼容，不是公开入口。
+- 公开页面由 `app/` 下的 Next.js App Router 路由提供。
+- API 访问通过 `lib/api/` 封装，并由 Next rewrite 转发到 `tools/workbench-server.mjs` 的 `/api/workbench/*`。
+- 原生 `desktop.html` / `mobile.html` / `workbench.js` / `projection-source.js` / `styles.css` 已在 LFG-P6.4 退役删除，不再作为测试兼容回退。
 
 ## 2. Next.js + Ant Design 骨架（实施步骤 02 / 7）
 
