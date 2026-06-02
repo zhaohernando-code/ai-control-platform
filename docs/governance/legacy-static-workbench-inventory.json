@@ -1,8 +1,8 @@
 {
   "version": "legacy-static-workbench-inventory.v1",
-  "reviewed_at": "2026-06-03T04:05:00+08:00",
+  "reviewed_at": "2026-06-03T04:25:00+08:00",
   "status": "retirement_blocked",
-  "summary": "Legacy static Workbench assets are no longer served by tools/workbench-server.mjs by default. Next.js gates now verify the mounted App Router runtime, the primary frontend-acceptance closeout gate, a mounted browser-events API writeback probe, the full browser-events closeout replay, and scheduler dispatch writeback browser verification. Legacy static assets still cannot be deleted because shell tests continue to depend on desktop.html/mobile.html/workbench.js/styles.css.",
+  "summary": "Legacy static Workbench assets are no longer served by tools/workbench-server.mjs by default. Next.js gates now verify the mounted App Router runtime, the primary frontend-acceptance closeout gate, a mounted browser-events API writeback probe, the full browser-events closeout replay, scheduler dispatch writeback browser verification, and the current shell source contract. Legacy static assets still cannot be deleted because legacy frontend-acceptance compatibility, fallback-retention docs, and the explicit legacy static opt-in route have not yet been retired or quarantined.",
   "legacy_static_files": [
     {
       "path": "apps/workbench/desktop.html",
@@ -13,7 +13,6 @@
         "apps/workbench/favicon.svg"
       ],
       "current_consumers": [
-        "test/workbench-shell.test.js",
         "tools/check-workbench-frontend-acceptance.mjs"
       ]
     },
@@ -26,7 +25,6 @@
         "apps/workbench/favicon.svg"
       ],
       "current_consumers": [
-        "test/workbench-shell.test.js",
         "tools/check-workbench-frontend-acceptance.mjs"
       ]
     },
@@ -40,7 +38,6 @@
       "current_consumers": [
         "apps/workbench/desktop.html",
         "apps/workbench/mobile.html",
-        "test/workbench-shell.test.js",
         "test/workbench-server.test.js"
       ]
     },
@@ -51,8 +48,7 @@
       "manifest_large_file_status": "planned_refactor",
       "current_consumers": [
         "apps/workbench/desktop.html",
-        "apps/workbench/mobile.html",
-        "test/workbench-shell.test.js"
+        "apps/workbench/mobile.html"
       ]
     },
     {
@@ -60,8 +56,7 @@
       "role": "legacy_static_projection_api_adapter",
       "depends_on": [],
       "current_consumers": [
-        "apps/workbench/workbench.js",
-        "test/workbench-shell.test.js"
+        "apps/workbench/workbench.js"
       ]
     },
     {
@@ -71,7 +66,6 @@
       "current_consumers": [
         "apps/workbench/desktop.html",
         "apps/workbench/mobile.html",
-        "test/workbench-shell.test.js",
         "test/frontend-acceptance.test.js"
       ]
     }
@@ -123,7 +117,7 @@
     {
       "gate": "node --test test/workbench-shell.test.js",
       "file": "test/workbench-shell.test.js",
-      "legacy_static_requirement": "asserts desktop/mobile DOM bindings, workbench.js projection rendering, styles.css mobile and overflow invariants"
+      "legacy_static_requirement": "none; asserts Next.js/Ant Design shell source contract, mounted runtime replacement gates, operation readouts, projection API/hook contracts, and responsive overflow checks without reading desktop.html/mobile.html/workbench.js/styles.css"
     }
   ],
   "next_served_route_replacement_gates": [
@@ -134,8 +128,7 @@
       "status": "pass",
       "replaces_requirement": "Next.js Workbench served route verified at /projects/ai-control-platform/ for desktop and mobile viewports",
       "does_not_replace": [
-        "tools/check-workbench-browser-events.mjs legacy lifecycle cleanup and timeout browser-event closeout scenarios",
-        "test/workbench-shell.test.js legacy DOM/CSS invariants"
+        "tools/check-workbench-browser-events.mjs legacy lifecycle cleanup and timeout browser-event closeout scenarios"
       ]
     },
     {
@@ -145,8 +138,7 @@
       "status": "pass",
       "replaces_requirement": "Next browser-events mounted runtime and API writeback probe verified; does not replace the full browser-events closeout gate yet",
       "does_not_replace": [
-        "tools/check-workbench-browser-events.mjs full browser-events closeout replay",
-        "test/workbench-shell.test.js legacy DOM/CSS invariants"
+        "tools/check-workbench-browser-events.mjs full browser-events closeout replay"
       ]
     },
     {
@@ -155,9 +147,7 @@
       "evidence": "docs/examples/workbench-browser-events-evidence-20260603-next-full.json",
       "status": "pass",
       "replaces_requirement": "Full browser-events closeout replay migrated from legacy desktop.html/mobile.html to the mounted Next.js App Router runtime while preserving lifecycle cleanup, projected loop, partial reviewer shard, terminal next-action, resume, mobile, and failure-writeback scenarios.",
-      "does_not_replace": [
-        "test/workbench-shell.test.js legacy DOM/CSS invariants"
-      ]
+      "does_not_replace": []
     },
     {
       "gate": "npm run check:workbench:frontend-acceptance",
@@ -165,9 +155,7 @@
       "evidence": "docs/examples/workbench-next-frontend-acceptance-evidence-20260603.json",
       "status": "pass",
       "replaces_requirement": "Primary frontend-acceptance closeout gate migrated from legacy desktop.html/mobile.html to the mounted Next.js App Router runtime with the existing frontend-acceptance validator and durable release evidence.",
-      "does_not_replace": [
-        "test/workbench-shell.test.js legacy DOM/CSS invariants"
-      ]
+      "does_not_replace": []
     },
     {
       "gate": "npm run check:scheduler-dispatch-writeback",
@@ -175,21 +163,29 @@
       "evidence": "docs/examples/scheduler-dispatch-writeback-evidence-20260603-next.json",
       "status": "pass",
       "replaces_requirement": "Scheduler dispatch writeback browser verification migrated from legacy desktop.html/mobile.html to mounted Next.js App Router desktop and mobile viewports.",
+      "does_not_replace": []
+    },
+    {
+      "gate": "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
+      "file": "test/workbench-shell.test.js",
+      "evidence": "test/workbench-shell.test.js",
+      "status": "pass",
+      "replaces_requirement": "Current shell gate migrated from legacy desktop.html/mobile.html/workbench.js/styles.css DOM/CSS invariants to Next.js App Router shell source contracts plus mounted runtime replacement-gate assertions.",
       "does_not_replace": [
-        "test/workbench-shell.test.js legacy DOM/CSS invariants"
+        "tools/check-workbench-frontend-acceptance.mjs compatibility-only legacy desktop/mobile content acceptance",
+        "test/frontend-acceptance.test.js fixture-level legacy frontend acceptance assertions",
+        "tools/workbench-server.mjs explicit legacy static opt-in route"
       ]
     }
   ],
   "retirement": {
     "decision": "do_not_delete_in_p6_3_partial",
-    "reason": "The Next.js served route, primary frontend-acceptance gate, mounted browser-events API writeback probe, full browser-events closeout replay, and scheduler writeback browser verification are now verified, but legacy assets remain acceptance-gate and rollback dependencies until shell gates move off desktop.html/mobile.html/workbench.js/styles.css and the remaining static opt-in path is quarantined.",
+    "reason": "The Next.js served route, primary frontend-acceptance gate, mounted browser-events API writeback probe, full browser-events closeout replay, scheduler writeback browser verification, and shell source contract are now verified. Legacy assets remain compatibility and rollback dependencies until fallback-retention docs are updated, legacy frontend-acceptance fixtures are retired or quarantined, and the remaining static opt-in path is quarantined outside public runtime.",
     "blocked_p6_items": [
-      "LFG-P6.3",
       "LFG-P6.4"
     ],
     "required_evidence_before_delete": [
       "FRONTEND_REFACTOR_CONSTRAINTS.md and FRONTEND_MIGRATION_INVENTORY.md updated to remove fallback-retention requirements",
-      "test/workbench-shell.test.js no longer asserts legacy DOM/CSS invariants as current acceptance gates",
       "tools/workbench-server.mjs and tools/workbench-static-routes.mjs no longer expose opt-in legacy static serving, or the opt-in route is explicitly quarantined outside public runtime"
     ]
   }

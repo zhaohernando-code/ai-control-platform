@@ -4,242 +4,176 @@ import test from "node:test";
 
 import { isRenderedSchedulerDispatchPassStatus } from "../tools/check-scheduler-dispatch-writeback.mjs";
 
-const FILES = [
-  "apps/workbench/desktop.html",
-  "apps/workbench/mobile.html",
-  "apps/workbench/favicon.svg",
-  "apps/workbench/styles.css",
-  "apps/workbench/workbench.js"
+const NEXT_SHELL_FILES = [
+  "apps/workbench/app/layout.tsx",
+  "apps/workbench/app/shell.tsx",
+  "apps/workbench/app/page.tsx",
+  "apps/workbench/app/operation-panel.tsx",
+  "apps/workbench/app/requirements/page.tsx",
+  "apps/workbench/lib/api/index.ts",
+  "apps/workbench/lib/api/projection.ts",
+  "apps/workbench/lib/hooks/useProjection.ts"
 ];
 
 function read(path) {
   return readFileSync(path, "utf8");
 }
 
-test("workbench shell has separate desktop and mobile entries", () => {
-  const desktop = read("apps/workbench/desktop.html");
-  const mobile = read("apps/workbench/mobile.html");
+test("Next workbench shell owns the mounted desktop and mobile route surface", () => {
+  const layout = read("apps/workbench/app/layout.tsx");
+  const shell = read("apps/workbench/app/shell.tsx");
+  const overview = read("apps/workbench/app/page.tsx");
+  const operationPanel = read("apps/workbench/app/operation-panel.tsx");
+  const nextServedRouteGate = read("tools/check-workbench-next-served-route.mjs");
 
-  assert.match(desktop, /data-view="desktop"/);
-  assert.match(mobile, /data-view="mobile"/);
-  assert.match(desktop, /<link rel="icon" type="image\/svg\+xml" href="\.\/favicon\.svg" \/>/);
-  assert.match(mobile, /<link rel="icon" type="image\/svg\+xml" href="\.\/favicon\.svg" \/>/);
-  assert.match(read("apps/workbench/favicon.svg"), /<svg[\s\S]*AI Control Platform/);
-  assert.match(desktop, /data-history-select/);
-  assert.match(mobile, /data-history-select/);
-  assert.match(desktop, /data-bind="closeout_status"/);
-  assert.match(mobile, /data-bind="closeout_status"/);
-  assert.match(desktop, /data-bind="operator_goal_summary"/);
-  assert.match(desktop, /data-bind="operator_blocker_summary"/);
-  assert.match(desktop, /data-bind="operator_risk_summary"/);
-  assert.match(desktop, /data-bind="operator_evidence_summary"/);
-  assert.match(desktop, /data-bind="operator_recovery_summary"/);
-  assert.match(desktop, /data-bind="operator_review_summary"/);
-  assert.match(mobile, /data-bind="operator_blocker_summary"/);
-  assert.match(mobile, /data-bind="operator_dispatch_summary"/);
-  assert.match(mobile, /data-bind="operator_recovery_summary"/);
-  assert.match(mobile, /data-bind="operator_review_summary"/);
-  assert.match(desktop, /data-bind="ui_verification_status"/);
-  assert.match(mobile, /data-bind="ui_verification_status"/);
-  assert.match(desktop, /data-bind="ui_verification_scenarios"/);
-  assert.match(desktop, /data-bind="ui_verification_artifact"/);
-  assert.match(mobile, /data-bind="ui_verification_partial"/);
-  assert.match(desktop, /data-bind="resume_health_status"/);
-  assert.match(mobile, /data-bind="resume_health_status"/);
-  assert.match(desktop, /data-bind="provider_health_value"/);
-  assert.match(mobile, /data-bind="provider_health_value"/);
-  assert.match(desktop, /data-bind="scheduler_dispatch_status"/);
-  assert.match(mobile, /data-bind="scheduler_dispatch_status"/);
-  assert.match(desktop, /data-bind="scheduler_policy_status"/);
-  assert.match(mobile, /data-bind="scheduler_policy_reason"/);
-  assert.match(desktop, /data-bind="scheduler_next_status"/);
-  assert.match(mobile, /data-bind="scheduler_next_packages"/);
-  assert.match(desktop, /data-bind="scheduler_continuation_ready"/);
-  assert.match(mobile, /data-bind="scheduler_continuation_enqueue"/);
-  assert.match(desktop, /data-bind="scheduler_loop_status"/);
-  assert.match(mobile, /data-bind="scheduler_loop_iterations"/);
-  assert.match(desktop, /data-bind="scheduler_loop_recovery"/);
-  assert.match(mobile, /data-bind="scheduler_loop_recovery"/);
-  assert.match(desktop, /data-bind="scheduler_loop_resume_status"/);
-  assert.match(mobile, /data-bind="scheduler_loop_resume_status"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_status"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_status"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_open"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_open"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_unevaluated"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_unevaluated"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_unclosed"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_unclosed"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_timed_out"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_timed_out"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_heartbeats"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_heartbeats"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_latest_heartbeat"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_latest_heartbeat"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_latest_timeout"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_latest_timeout"/);
-  assert.match(desktop, /data-bind="agent_lifecycle_pool_next_action"/);
-  assert.match(mobile, /data-bind="agent_lifecycle_pool_next_action"/);
-  assert.match(desktop, /data-bind="counter_projects_total"/);
-  assert.match(mobile, /data-bind="counter_projects_total"/);
-  assert.match(desktop, /data-bind="counter_active_projects"/);
-  assert.match(mobile, /data-bind="counter_active_projects"/);
-  assert.match(desktop, /data-bind="counter_active_tasks"/);
-  assert.match(mobile, /data-bind="counter_active_tasks"/);
-  assert.match(desktop, /data-list="project_rows"/);
-  assert.match(mobile, /data-list="project_rows"/);
-  assert.match(desktop, /data-list="project_task_flow"/);
-  assert.match(mobile, /data-list="project_task_flow"/);
-  assert.match(desktop, /data-workbench-tab="requirements"/);
-  assert.match(desktop, /data-requirement-form/);
-  assert.match(mobile, /data-requirement-form/);
-  assert.match(desktop, /data-list="requirement_intake"/);
-  assert.match(mobile, /data-list="requirement_intake"/);
-  assert.match(desktop, /新建任务/);
-  assert.match(mobile, /新建任务/);
-  assert.match(desktop, /<button[^>]*data-requirement-submit[^>]*>提交</);
-  assert.match(mobile, /<button[^>]*data-requirement-submit[^>]*>提交</);
-  assert.doesNotMatch(desktop, /提交到流程/);
-  assert.doesNotMatch(mobile, /提交到流程/);
-  assert.doesNotMatch(desktop, /<span>验收标准<\/span>/);
-  assert.doesNotMatch(mobile, /<span>验收标准<\/span>/);
-  assert.match(desktop, /<span>项目<\/span>/);
-  assert.match(mobile, /<span>项目<\/span>/);
-  assert.match(desktop, /data-bind="plan_review_status"/);
-  assert.match(mobile, /data-bind="plan_review_status"/);
-  assert.match(desktop, /data-bind="plan_review_phase"/);
-  assert.match(mobile, /data-bind="plan_review_phase"/);
-  assert.match(desktop, /class="plan-review-copy[^"]*" data-bind="plan_review_acceptance_plan"/);
-  assert.match(mobile, /class="plan-review-copy[^"]*" data-bind="plan_review_acceptance_plan"/);
-  assert.doesNotMatch(desktop, /<strong data-bind="plan_review_acceptance_plan"/);
-  assert.doesNotMatch(mobile, /<strong data-bind="plan_review_acceptance_plan"/);
-  assert.match(desktop, /方案评估与审核/);
-  assert.match(mobile, /方案评估与审核/);
-  assert.match(desktop, /需求 -> 拆解 -> 子任务 -> Review -> 发布 -> Live 验证 -> 验收/);
-  assert.match(mobile, /项目、阶段、当前任务、Agent、进度和更新时间/);
-  assert.match(desktop, /data-list="operations_timeline"/);
-  assert.match(mobile, /data-list="operations_timeline"/);
-  assert.match(desktop, /data-bind="counter_operation_events"/);
-  assert.match(mobile, /data-bind="counter_operation_events"/);
-  assert.match(desktop, /data-bind="next_action_readout_action"/);
-  assert.match(mobile, /data-bind="next_action_readout_action"/);
-  assert.match(desktop, /data-bind="next_action_terminal_status"/);
-  assert.match(mobile, /data-bind="next_action_terminal_status"/);
-  assert.match(desktop, /data-bind="next_action_terminal_action"/);
-  assert.match(mobile, /data-bind="next_action_terminal_action"/);
-  assert.match(desktop, /data-bind="next_action_terminal_reason"/);
-  assert.match(mobile, /data-bind="next_action_terminal_reason"/);
-  assert.match(desktop, /data-bind="scheduler_loop_strategy"/);
-  assert.match(mobile, /data-bind="scheduler_loop_strategy"/);
-  assert.match(desktop, /data-bind="shard_review_executor"/);
-  assert.match(mobile, /data-bind="shard_review_executor"/);
-  assert.match(desktop, /data-bind="shard_review_next"/);
-  assert.match(mobile, /data-bind="shard_review_next"/);
-  assert.match(desktop, /data-bind="shard_review_budget"/);
-  assert.match(mobile, /data-bind="shard_review_budget"/);
-  assert.match(desktop, /data-workbench-next-action="guarded"/);
-  assert.match(mobile, /data-workbench-next-action="guarded"/);
-  assert.match(desktop, /data-scheduler-dispatch="dry-run"/);
-  assert.match(mobile, /data-scheduler-dispatch="dry-run"/);
-  assert.match(desktop, /data-scheduler-dispatch="approved-mock"/);
-  assert.match(mobile, /data-scheduler-dispatch="approved-mock"/);
-  assert.match(desktop, /data-autonomous-scheduler-loop="bounded"/);
-  assert.match(mobile, /data-autonomous-scheduler-loop="bounded"/);
-  assert.match(desktop, /data-autonomous-scheduler-loop="projected-mock"/);
-  assert.match(mobile, /data-autonomous-scheduler-loop="projected-mock"/);
-  assert.match(desktop, /data-autonomous-scheduler-loop="projected-real"/);
-  assert.match(mobile, /data-autonomous-scheduler-loop="projected-real"/);
-  assert.match(desktop, /data-autonomous-scheduler-loop-resume="bounded"/);
-  assert.match(mobile, /data-autonomous-scheduler-loop-resume="bounded"/);
-  assert.match(desktop, /data-provider-health="pass"/);
-  assert.match(mobile, /data-provider-health="timeout"/);
-  assert.doesNotMatch(desktop, /Work Packages|Context Pack\s*(?:-&gt;|->)\s*Run\s*(?:-&gt;|->)\s*Review\s*(?:-&gt;|->)\s*Continuation|Provider Health|Smoke OK|Smoke Timeout|role\(s\)|Projection|Closeout|Resume Health|Snapshot|Evidence|Scheduler Dispatch|Projected Mock Loop|Projected Real Loop|Projected Loop 已记录|Loop 已记录|Resume 已记录|Smoke 已记录/);
-  assert.doesNotMatch(mobile, /Provider smoke|Smoke OK|Smoke Timeout|Projection|Closeout|Snapshot|Projected Mock Loop|Projected Real Loop|Replay|Issues|Dry run|Projected Loop 已记录|Loop 已记录|Resume 已记录|Smoke 已记录/);
-  assert.match(desktop, /通道诊断详情/);
-  assert.match(mobile, /诊断与高级调度/);
-  assert.equal((mobile.match(/<details class="control-drawer">/g) || []).length >= 4, true);
-  assert.match(mobile, /<summary>验收详情<\/summary>[\s\S]*data-bind="closeout_status"/);
-  assert.match(mobile, /<summary>诊断与高级调度<\/summary>[\s\S]*data-bind="agent_lifecycle_pool_latest_timeout"/);
-  assert.notEqual(desktop, mobile);
-  assert.match(desktop, /desktop-app/);
-  assert.match(mobile, /phone-app/);
+  assert.match(layout, /WorkbenchShell/);
+  assert.match(layout, /workbenchMountPrefix/);
+  assert.match(read("apps/workbench/public/favicon.svg"), /<svg[\s\S]*AI Control Platform/);
+  assert.match(shell, /Layout/);
+  assert.match(shell, /Sider/);
+  assert.match(shell, /Content/);
+  assert.match(shell, /Menu/);
+  assert.match(shell, /breakpoint="lg"/);
+  assert.match(shell, /collapsedWidth=\{64\}/);
+  assert.match(shell, /data-component="workbench-nav"/);
+  assert.match(shell, /router\.push\(target\.href,\s*\{\s*scroll:\s*false\s*\}\)/);
+
+  for (const route of [
+    "overview",
+    "requirements",
+    "projects",
+    "flow",
+    "agents",
+    "risks",
+    "governance",
+    "runs"
+  ]) {
+    assert.match(shell, new RegExp(`key: "${route}"`));
+  }
+
+  assert.match(overview, /useProjection/);
+  assert.match(overview, /OperationPanel/);
+  assert.match(overview, /Statistic/);
+  assert.match(overview, /Timeline/);
+  assert.match(overview, /Descriptions/);
+  assert.match(operationPanel, /data-next-readout="scheduler_dispatch_status"/);
+  assert.match(operationPanel, /data-next-list="operations_timeline"/);
+
+  assert.match(nextServedRouteGate, /route_family:\s*"nextjs_app_router"/);
+  assert.match(nextServedRouteGate, /legacy_static_shell_allowed:\s*false/);
+  assert.match(nextServedRouteGate, /viewport:\s*\{\s*width:\s*1440,\s*height:\s*900\s*\}/);
+  assert.match(nextServedRouteGate, /viewport:\s*\{\s*width:\s*390,\s*height:\s*844\s*\},\s*isMobile:\s*true/);
+  assert.match(nextServedRouteGate, /root_next_script_count/);
+  assert.match(nextServedRouteGate, /legacy_data_bind_count/);
+  assert.match(nextServedRouteGate, /desktop_shell_count/);
+  assert.match(nextServedRouteGate, /mobile_shell_count/);
+  assert.match(nextServedRouteGate, /has_legacy_static_entry/);
+  assert.match(nextServedRouteGate, /next_route_legacy_static_shell_detected/);
+  assert.match(nextServedRouteGate, /next_route_horizontal_overflow/);
+  assert.match(nextServedRouteGate, /next_route_browser_errors/);
+  assert.doesNotMatch(nextServedRouteGate, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(nextServedRouteGate, /page\.goto\([^)]*desktop\.html/);
+  assert.doesNotMatch(nextServedRouteGate, /page\.goto\([^)]*mobile\.html/);
 });
 
-test("workbench shell consumes projection json instead of logs", () => {
-  const script = read("apps/workbench/workbench.js");
-  const source = read("apps/workbench/projection-source.js");
+test("Next workbench shell consumes mounted projection APIs and operation readouts", () => {
+  const overview = read("apps/workbench/app/page.tsx");
+  const operationPanel = read("apps/workbench/app/operation-panel.tsx");
+  const requirements = read("apps/workbench/app/requirements/page.tsx");
+  const api = read("apps/workbench/lib/api/index.ts");
+  const projectionApi = read("apps/workbench/lib/api/projection.ts");
 
-  assert.match(script, /createProjectionSource/);
-  assert.match(script, /closeout_status/);
-  assert.match(script, /ui_verification_status/);
-  assert.match(script, /ui_verification_partial/);
-  assert.match(script, /resume_health_status/);
-  assert.match(script, /provider_health_value/);
-  assert.match(script, /scheduler_dispatch_status/);
-  assert.match(script, /scheduler_policy_reason/);
-  assert.match(script, /scheduler_next_action/);
-  assert.match(script, /scheduler_continuation_ready/);
-  assert.match(script, /scheduler_loop_status/);
-  assert.match(script, /scheduler_loop_recovery/);
-  assert.match(script, /scheduler_loop_resume_status/);
-  assert.match(script, /agent_lifecycle_pool_status/);
-  assert.match(script, /agent_lifecycle_pool_open/);
-  assert.match(script, /agent_lifecycle_pool_unevaluated/);
-  assert.match(script, /agent_lifecycle_pool_unclosed/);
-  assert.match(script, /agent_lifecycle_pool_timed_out/);
-  assert.match(script, /agent_lifecycle_pool_heartbeats/);
-  assert.match(script, /agent_lifecycle_pool_latest_heartbeat/);
-  assert.match(script, /agent_lifecycle_pool_latest_timeout/);
-  assert.match(script, /agent_lifecycle_pool_next_action/);
-  assert.match(script, /operations_timeline/);
-  assert.match(script, /counter_operation_events/);
-  assert.match(script, /next_action_readout_action/);
-  assert.match(script, /next_action_terminal_status/);
-  assert.match(script, /next_action_terminal_action/);
-  assert.match(script, /next_action_terminal_reason/);
-  assert.match(script, /scheduler_loop_strategy/);
-  assert.match(script, /shard_review_executor/);
-  assert.match(script, /shard_review_next/);
-  assert.match(script, /shard_review_profile/);
-  assert.match(script, /runNextAction/);
-  assert.match(script, /projected_next_action/);
-  assert.match(script, /approved_bounded_real_reviewer/);
-  assert.match(script, /counter_scheduler_dispatch_steps/);
-  assert.match(script, /runSchedulerDispatch/);
-  assert.match(script, /approved_mock_non_dry_run/);
-  assert.match(script, /runAutonomousSchedulerLoop/);
-  assert.match(script, /resumeAutonomousSchedulerLoop/);
-  assert.match(script, /projectionMode/);
-  assert.match(script, /interactive-fixture/);
-  assert.match(script, /release-readout/);
-  assert.match(script, /LONG_ENGLISH_STATUS_PATTERN/);
-  assert.match(script, /当前目标来自最新续跑状态/);
-  assert.match(read("apps/workbench/styles.css"), /padding:\s*18px 16px calc\(18px \+ 64px \+ env\(safe-area-inset-bottom, 0px\)\)/);
-  assert.match(read("apps/workbench/styles.css"), /scroll-padding-bottom:\s*calc\(64px \+ env\(safe-area-inset-bottom, 0px\)\)/);
-  assert.match(read("apps/workbench/styles.css"), /\.mobile-tabbar\s*{[\s\S]*min-height:\s*64px;/);
-  assert.match(read("apps/workbench/styles.css"), /data-projection-mode="release-readout"[\s\S]*data-scheduler-dispatch/);
-  assert.match(source, /enqueueSchedulerNextCycle/);
-  assert.match(source, /submitRequirement/);
-  assert.match(source, /\/api\/workbench\/requirements/);
-  assert.match(source, /updatePlanReview/);
-  assert.match(source, /\/api\/workbench\/plan-reviews/);
-  assert.match(source, /runAutonomousSchedulerLoop/);
-  assert.match(script, /submitRequirement/);
-  assert.match(script, /updatePlanReview/);
-  assert.match(script, /auto_advance_after_plan_review/);
-  assert.match(script, /正在确认方案并进入开发/);
-  assert.match(script, /开发中/);
-  assert.match(script, /requirement_intake/);
-  assert.match(script, /plan_review_status/);
-  assert.match(script, /等待大模型生成方案/);
-  assert.match(script, /已生成方案，等待你审核/);
-  assert.doesNotMatch(script, /由大模型根据需求生成验收方案（plan review 待审核）/);
-  assert.match(script, /调度失败/);
-  assert.match(script, /调度已拦截/);
-  assert.match(script, /recordProviderHealth/);
-  assert.match(script, /连通写入失败/);
-  assert.match(source, /current-session-workbench-projection\.json/);
-  assert.doesNotMatch(script, /console\.log|PROCESS\.md|PROJECT_STATUS\.json/);
+  assert.match(projectionApi, /fetchCurrentProjection/);
+  assert.match(projectionApi, /fetchProjectionHistory/);
+  assert.match(projectionApi, /fetchSnapshot/);
+  assert.match(projectionApi, /fetchEvents/);
+  assert.match(projectionApi, /RequestInit/);
+  for (const path of [
+    "/api/workbench/projection",
+    "/api/workbench/projections",
+    "/api/workbench/events",
+    "/api/workbench/snapshots",
+    "/api/workbench/requirements",
+    "/api/workbench/plan-reviews",
+    "/api/workbench/reviewer-provider-health",
+    "/api/workbench/scheduler-dispatch",
+    "/api/workbench/scheduler-dispatch-plan",
+    "/api/workbench/scheduler-dispatch-run",
+    "/api/workbench/scheduler-next-cycle",
+    "/api/workbench/autonomous-scheduler-loop",
+    "/api/workbench/autonomous-scheduler-loop-resume",
+    "/api/workbench/workbench-browser-events-run"
+  ]) {
+    assert.match(api, new RegExp(path.replace(/[/-]/g, (c) => `\\${c}`)));
+  }
+
+  for (const readout of [
+    "provider_health_value",
+    "provider_next_action",
+    "scheduler_dispatch_status",
+    "scheduler_dispatch_steps",
+    "scheduler_dispatch_dry_run",
+    "scheduler_policy_status",
+    "scheduler_policy_mode",
+    "scheduler_continuation_ready",
+    "scheduler_loop_status",
+    "scheduler_loop_iterations",
+    "scheduler_loop_strategy",
+    "scheduler_loop_recovery",
+    "scheduler_loop_resume_status",
+    "next_action_readout_action",
+    "next_action_terminal_status",
+    "next_action_terminal_action",
+    "next_action_terminal_reason",
+    "agent_lifecycle_pool_status",
+    "agent_lifecycle_pool_open",
+    "agent_lifecycle_pool_unevaluated",
+    "agent_lifecycle_pool_unclosed",
+    "agent_lifecycle_pool_timed_out",
+    "agent_lifecycle_pool_heartbeats",
+    "agent_lifecycle_pool_latest_heartbeat",
+    "agent_lifecycle_pool_latest_timeout",
+    "agent_lifecycle_pool_next_action",
+    "shard_review_status",
+    "shard_review_completed",
+    "shard_review_next",
+    "shard_review_executor",
+    "shard_review_budget",
+    "global_goals_completed",
+    "global_goals_total",
+    "global_goals_blocked",
+    "counter_operation_events"
+  ]) {
+    assert.match(operationPanel, new RegExp(`data-next-readout="${readout}"`));
+  }
+  assert.match(operationPanel, /data-next-list="operations_timeline"/);
+  assert.match(operationPanel, /data-workbench-next-action="guarded"/);
+  assert.match(operationPanel, /data-scheduler-dispatch="dry-run"/);
+  assert.match(operationPanel, /data-scheduler-dispatch="approved-mock"/);
+  assert.match(operationPanel, /data-autonomous-scheduler-loop="bounded"/);
+  assert.match(operationPanel, /data-autonomous-scheduler-loop="projected-mock"/);
+  assert.match(operationPanel, /data-autonomous-scheduler-loop="projected-real"/);
+  assert.match(operationPanel, /data-autonomous-scheduler-loop-resume="bounded"/);
+  assert.match(operationPanel, /recordProviderHealth/);
+  assert.match(operationPanel, /runSchedulerDispatch/);
+  assert.match(operationPanel, /runAutonomousSchedulerLoop/);
+  assert.match(operationPanel, /resumeAutonomousSchedulerLoop/);
+  assert.match(operationPanel, /runNextAction/);
+  assert.match(operationPanel, /调度失败/);
+  assert.match(operationPanel, /推荐动作被拦截/);
+
+  assert.match(overview, /closeout/);
+  assert.match(overview, /one_screen/);
+  assert.match(overview, /global_goals_completed/);
+  assert.match(overview, /scheduler_dispatch_steps/);
+  assert.match(overview, /agent_lifecycle_open/);
+  assert.match(overview, /operation_events/);
+  assert.match(requirements, /submitRequirement/);
+  assert.match(requirements, /plan_review_requested:\s*true/);
+  assert.match(requirements, /plan_generation_mode:\s*"model"/);
+  assert.match(requirements, /router\.push\(`\/flow\/\$\{encodeURIComponent\(taskId\)\}`\)/);
+  assert.doesNotMatch(`${overview}\n${operationPanel}\n${requirements}`, /from "\.\/workbench"|from "\.\/styles"|href=\{?["'][^"']*(desktop\.html|mobile\.html|workbench\.js|styles\.css)/);
+  assert.doesNotMatch(`${overview}\n${operationPanel}\n${requirements}`, /console\.log|PROCESS\.md|PROJECT_STATUS\.json/);
 });
 
 test("useProjection hooks prevent stale overlapping refresh responses from overwriting newer data", () => {
@@ -303,18 +237,28 @@ test("browser events gate accepts only semantic cleared scheduler loop recovery 
   assert.doesNotMatch(checker, /resumedLoopAttempt === "未配置"/);
 });
 
-test("desktop shell is fixed viewport without horizontal overflow by design", () => {
-  const css = read("apps/workbench/styles.css");
+test("Next shell responsive viewport is governed by runtime overflow checks", () => {
+  const globals = read("apps/workbench/app/globals.css");
+  const shell = read("apps/workbench/app/shell.tsx");
+  const nextServedRouteGate = read("tools/check-workbench-next-served-route.mjs");
 
-  assert.match(css, /body\s*{[\s\S]*overflow:\s*hidden;/);
-  assert.match(css, /\.desktop-app\s*{[\s\S]*width:\s*100vw;[\s\S]*height:\s*100dvh;/);
-  assert.match(css, /\.workbench\s*{[\s\S]*min-width:\s*0;/);
+  assert.match(globals, /\*,\s*\n\*::before,\s*\n\*::after\s*{[\s\S]*box-sizing:\s*border-box;/);
+  assert.match(shell, /<Layout style=\{\{ minHeight: "100vh" \}\}/);
+  assert.match(shell, /breakpoint="lg"/);
+  assert.match(shell, /collapsedWidth=\{64\}/);
+  assert.match(shell, /Content style=\{\{ padding: 24 \}\}/);
+  assert.match(nextServedRouteGate, /viewport:\s*\{\s*width:\s*1440,\s*height:\s*900\s*\}/);
+  assert.match(nextServedRouteGate, /viewport:\s*\{\s*width:\s*390,\s*height:\s*844\s*\},\s*isMobile:\s*true/);
+  assert.match(nextServedRouteGate, /viewport\.dimensions\.scrollWidth > viewport\.dimensions\.width/);
+  assert.match(nextServedRouteGate, /next_route_horizontal_overflow/);
+  assert.doesNotMatch(nextServedRouteGate, /serveLegacyStatic:\s*true/);
 });
 
 test("workbench files avoid legacy and managed project references", () => {
-  const combined = [...FILES, "apps/workbench/projection-source.js"].map(read).join("\n");
+  const combined = NEXT_SHELL_FILES.map(read).join("\n");
 
   assert.doesNotMatch(combined, /stock_dashboard|legacy\/|local-control-server|dashboard-ui/);
+  assert.doesNotMatch(combined, /from "\.\/workbench"|from "\.\/styles"|href=\{?["'][^"']*(desktop\.html|mobile\.html|workbench\.js|styles\.css)/);
 });
 
 test("frontend refactor constraints document is durable and codifies antd + next.js single-page app rules", () => {
@@ -451,12 +395,17 @@ test("frontend migration inventory baseline is durable and enumerates entries, v
 });
 
 test("workbench controls do not show success when operator event persistence fails", () => {
-  const script = read("apps/workbench/workbench.js");
+  const operationPanel = read("apps/workbench/app/operation-panel.tsx");
 
-  assert.match(script, /事件写入失败/);
-  assert.match(script, /事件未写入/);
-  assert.match(script, /button\.dataset\.eventState = "recorded"/);
-  assert.match(script, /catch \{[\s\S]*button\.dataset\.eventState = "failed";[\s\S]*return;[\s\S]*\}/);
+  assert.match(operationPanel, /runMutation/);
+  assert.match(operationPanel, /successLabel/);
+  assert.match(operationPanel, /failureLabel/);
+  assert.match(operationPanel, /setButtonText\(\(current\) => \(\{ \.\.\.current, \[actionKey\]: successLabel \}\)\)/);
+  assert.match(operationPanel, /catch \(error\) \{[\s\S]*setButtonText\(\(current\) => \(\{ \.\.\.current, \[actionKey\]: failureLabel \}\)\);[\s\S]*throw error;/);
+  assert.match(operationPanel, /"事件写入失败"/);
+  assert.match(operationPanel, /"调度失败"/);
+  assert.match(operationPanel, /"推荐动作被拦截"/);
+  assert.doesNotMatch(operationPanel, /successLabel[\s\S]*catch \(error\)[\s\S]*successLabel/);
 });
 
 test("next.js + antd skeleton is durable: package, config, layout, providers, theme, entry, api client are present", () => {

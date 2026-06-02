@@ -23,7 +23,6 @@ test("legacy static workbench inventory matches current asset dependency graph",
   assert.equal(report.version, "legacy-static-workbench-inventory.v1");
   assert.equal(report.status, "retirement_blocked");
   assert.equal(report.retirement.decision, "do_not_delete_in_p6_3_partial");
-  assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.3"));
   assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.4"));
 
   for (const path of [
@@ -114,8 +113,17 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   assert.doesNotMatch(schedulerWriteback, /serveLegacyStatic:\s*true/);
   assert.doesNotMatch(schedulerWriteback, /page\.goto\([^)]*desktop\.html/);
   assert.doesNotMatch(schedulerWriteback, /page\.goto\([^)]*mobile\.html/);
-  assert.match(shellTests, /apps\/workbench\/workbench\.js/);
-  assert.match(shellTests, /apps\/workbench\/styles\.css/);
+  assert.match(shellTests, /Next workbench shell owns the mounted desktop and mobile route surface/);
+  assert.match(shellTests, /data-next-readout="scheduler_dispatch_status"/);
+  assert.match(shellTests, /tools\/check-workbench-next-served-route\.mjs/);
+  const shellReadLines = shellTests.split("\n").filter((line) => line.includes('read("apps/workbench/'));
+  assert.ok(shellReadLines.length > 0);
+  assert.deepEqual(
+    shellReadLines.filter((line) =>
+      /read\("apps\/workbench\/(desktop\.html|mobile\.html|workbench\.js|styles\.css)"\)/.test(line)
+    ),
+    []
+  );
 });
 
 test("legacy static workbench retirement remains blocked until Next served-route gates replace fallback gates", () => {
@@ -134,7 +142,7 @@ test("legacy static workbench retirement remains blocked until Next served-route
   assert.doesNotMatch(requiredEvidence, /Browser-events gate migrated/);
   assert.doesNotMatch(requiredEvidence, /Frontend-acceptance gate migrated/);
   assert.doesNotMatch(requiredEvidence, /Scheduler dispatch writeback browser verification no longer depends/);
+  assert.doesNotMatch(requiredEvidence, /test\/workbench-shell\.test\.js/);
   assert.match(requiredEvidence, /FRONTEND_REFACTOR_CONSTRAINTS\.md/);
   assert.match(requiredEvidence, /FRONTEND_MIGRATION_INVENTORY\.md/);
-  assert.match(requiredEvidence, /test\/workbench-shell\.test\.js/);
 });
