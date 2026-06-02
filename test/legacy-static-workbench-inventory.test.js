@@ -22,7 +22,7 @@ test("legacy static workbench inventory matches current asset dependency graph",
 
   assert.equal(report.version, "legacy-static-workbench-inventory.v1");
   assert.equal(report.status, "retirement_blocked");
-  assert.equal(report.retirement.decision, "do_not_delete_in_p6_2");
+  assert.equal(report.retirement.decision, "do_not_delete_in_p6_3_partial");
   assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.3"));
   assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.4"));
 
@@ -86,9 +86,12 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   assert.ok(gateFiles.has("tools/check-scheduler-dispatch-writeback.mjs"));
   assert.ok(gateFiles.has("test/workbench-shell.test.js"));
 
-  assert.match(browserEvents, /serveLegacyStatic:\s*true/);
-  assert.match(browserEvents, /apps\/workbench\/desktop\.html/);
-  assert.match(browserEvents, /apps\/workbench\/mobile\.html/);
+  assert.match(browserEvents, /nextjs_app_router/);
+  assert.match(browserEvents, /legacy_interactions_replayed:\s*true/);
+  assert.match(browserEvents, /WORKBENCH_MOUNT_PREFIX/);
+  assert.doesNotMatch(browserEvents, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(browserEvents, /page\.goto\([^)]*desktop\.html/);
+  assert.doesNotMatch(browserEvents, /page\.goto\([^)]*mobile\.html/);
   assert.match(nextBrowserEvents, /nextjs_app_router/);
   assert.match(nextBrowserEvents, /partial_next_runtime_writeback_only/);
   assert.doesNotMatch(nextBrowserEvents, /next_app_router_browser_events_equivalence/);
@@ -118,14 +121,14 @@ test("legacy static workbench retirement remains blocked until Next served-route
   const nextGates = report.next_served_route_replacement_gates || [];
   const nextGate = nextGates.find((item) => item.file === "tools/check-workbench-next-served-route.mjs");
 
-  assert.equal(report.retirement.decision, "do_not_delete_in_p6_2");
+  assert.equal(report.retirement.decision, "do_not_delete_in_p6_3_partial");
   assert.equal(nextGate?.status, "pass");
   assert.equal(nextGate?.evidence, "docs/examples/workbench-next-served-route-evidence-20260602.json");
   assert.match(nextGate?.replaces_requirement || "", /Next\.js Workbench served route verified/);
   assert.ok(nextGates.some((item) => item.file === "tools/check-workbench-next-browser-events.mjs" && item.status === "pass"));
   assert.ok(nextGates.some((item) => item.file === "tools/check-workbench-next-frontend-acceptance.mjs" && item.status === "pass"));
   assert.doesNotMatch(requiredEvidence, /Next\.js Workbench served route verified/);
-  assert.match(requiredEvidence, /Browser-events gate migrated/);
+  assert.doesNotMatch(requiredEvidence, /Browser-events gate migrated/);
   assert.doesNotMatch(requiredEvidence, /Frontend-acceptance gate migrated/);
   assert.match(requiredEvidence, /Scheduler dispatch writeback browser verification no longer depends/);
   assert.match(requiredEvidence, /FRONTEND_REFACTOR_CONSTRAINTS\.md/);

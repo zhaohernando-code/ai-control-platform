@@ -10,9 +10,10 @@ function read(path) {
   return readFileSync(path, "utf8");
 }
 
-test("Workbench keeps closeout browser-events on legacy gate and adds a separate Next writeback probe", () => {
+test("Workbench browser-events closeout runs on Next and keeps a separate writeback probe", () => {
   const pkg = JSON.parse(read("package.json"));
   const closeout = read("tools/check-closeout.mjs");
+  const closeoutGate = read("tools/check-workbench-browser-events.mjs");
   const nextGate = read("tools/check-workbench-next-browser-events.mjs");
 
   assert.equal(
@@ -25,6 +26,13 @@ test("Workbench keeps closeout browser-events on legacy gate and adds a separate
   );
   assert.match(closeout, /check-workbench-browser-events\.mjs/);
   assert.doesNotMatch(closeout, /check-workbench-next-browser-events\.mjs/);
+  assert.match(closeoutGate, /nextjs_app_router/);
+  assert.match(closeoutGate, /legacy_interactions_replayed:\s*true/);
+  assert.match(closeoutGate, /agent_lifecycle_pool_cleanup_click/);
+  assert.match(closeoutGate, /agent_lifecycle_pool_cleanup_loop_click/);
+  assert.doesNotMatch(closeoutGate, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(closeoutGate, /page\.goto\([^)]*desktop\.html/);
+  assert.doesNotMatch(closeoutGate, /page\.goto\([^)]*mobile\.html/);
   assert.match(nextGate, /workbench-browser-events-run\.v1/);
   assert.match(nextGate, /nextjs_app_router/);
   assert.match(nextGate, /partial_next_runtime_writeback_only/);
@@ -38,6 +46,21 @@ test("Workbench keeps closeout browser-events on legacy gate and adds a separate
   assert.doesNotMatch(nextGate, /serveLegacyStatic:\s*true/);
   assert.doesNotMatch(nextGate, /page\.goto\([^)]*desktop\.html/);
   assert.doesNotMatch(nextGate, /page\.goto\([^)]*mobile\.html/);
+});
+
+test("full browser-events evidence now validates against the closeout artifact validator", () => {
+  const evidencePath = "docs/examples/workbench-browser-events-evidence-20260603-next-full.json";
+  const evidence = JSON.parse(read(evidencePath));
+
+  assert.equal(evidence.version, "workbench-browser-events-run.v1");
+  assert.equal(evidence.status, "pass");
+  assert.equal(evidence.route_family, "nextjs_app_router");
+  assert.equal(evidence.legacy_interactions_replayed, true);
+  assert.equal(evidence.legacy_static_shell_used, false);
+  assert.equal(evidence.scenario_count, 15);
+  assert.ok(evidence.scenarios.some((scenario) => scenario.scenario === "agent_lifecycle_pool_cleanup_click"));
+  assert.ok(evidence.scenarios.some((scenario) => scenario.scenario === "agent_lifecycle_pool_cleanup_loop_click"));
+  assert.doesNotThrow(() => validateWorkbenchBrowserEventsArtifact(evidencePath));
 });
 
 test("Next browser-events evidence records only mounted runtime and API writeback coverage", () => {
@@ -69,12 +92,17 @@ test("legacy static inventory records Next browser-events probe while keeping fu
 
   assert.equal(replacement?.status, "pass");
   assert.equal(replacement?.evidence, "docs/examples/workbench-next-browser-events-evidence-20260603.json");
+  const fullReplacement = inventory.next_served_route_replacement_gates.find((item) => item.file === "tools/check-workbench-browser-events.mjs");
+
   assert.match(replacement?.replaces_requirement || "", /Next browser-events mounted runtime and API writeback probe/);
+  assert.equal(fullReplacement?.status, "pass");
+  assert.equal(fullReplacement?.evidence, "docs/examples/workbench-browser-events-evidence-20260603-next-full.json");
+  assert.match(fullReplacement?.replaces_requirement || "", /Full browser-events closeout replay migrated/);
   assert.ok(legacyGateFiles.has("tools/check-workbench-browser-events.mjs"));
   assert.ok(legacyGateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
-  assert.match(requiredBeforeDelete, /Browser-events gate migrated/);
+  assert.doesNotMatch(requiredBeforeDelete, /Browser-events gate migrated/);
   assert.doesNotMatch(requiredBeforeDelete, /Frontend-acceptance gate migrated/);
   assert.match(requiredBeforeDelete, /Scheduler dispatch writeback browser verification no longer depends/);
   assert.equal(inventory.status, "retirement_blocked");
-  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_2");
+  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_3_partial");
 });

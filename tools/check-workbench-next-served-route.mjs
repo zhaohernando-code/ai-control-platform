@@ -152,15 +152,16 @@ async function stopChild(child) {
   ]);
 }
 
-export async function withRuntime(fn) {
+export async function withRuntime(fn, options = {}) {
   mkdirSync("tmp", { recursive: true });
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-next-served-route-"));
   const server = createWorkbenchServer({
-    eventsPath: join(dir, "operator-events.json"),
-    historyPath: "docs/examples/projection-history.json",
-    snapshotsRoot: "docs/examples",
-    projectStatusPath: "PROJECT_STATUS.json",
-    stateDbPath: join(dir, "workbench-state.sqlite")
+    eventsPath: options.eventsPath || join(dir, "operator-events.json"),
+    historyPath: options.historyPath || "docs/examples/projection-history.json",
+    snapshotsRoot: options.snapshotsRoot || "docs/examples",
+    projectStatusPath: Object.hasOwn(options, "projectStatusPath") ? options.projectStatusPath : "PROJECT_STATUS.json",
+    stateDbPath: options.stateDbPath || join(dir, "workbench-state.sqlite"),
+    realReviewerExecutor: options.realReviewerExecutor
   });
   const apiPort = await listenServer(server);
   const nextPort = Number(valueAfter("--port")) || 4191;

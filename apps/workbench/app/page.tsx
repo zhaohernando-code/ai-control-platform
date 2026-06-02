@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   Alert,
   Button,
@@ -27,7 +29,9 @@ import {
   SyncOutlined
 } from "@ant-design/icons";
 
+import OperationPanel from "./operation-panel";
 import { useProjection } from "@/lib/hooks";
+import type { ProjectionResponse } from "@/lib/api/projection";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -99,6 +103,11 @@ export default function OverviewPage() {
     pollIntervalMs: 10000,
     immediate: true
   });
+  const [activeProjection, setActiveProjection] = useState<ProjectionResponse | null>(projection);
+
+  useEffect(() => {
+    setActiveProjection(projection);
+  }, [projection]);
 
   /* ---- 加载态 ---- */
   if (loading && !projection) {
@@ -138,7 +147,7 @@ export default function OverviewPage() {
   }
 
   /* ---- 真实数据渲染 ---- */
-  const projectionRecord = asRecord(projection);
+  const projectionRecord = asRecord(activeProjection);
   const oneScreen = asRecord(projectionRecord.one_screen);
   const counters = asRecord(oneScreen.counters);
   const closeout = asRecord(projectionRecord.closeout);
@@ -156,16 +165,16 @@ export default function OverviewPage() {
       {/* ====== Hero 主状态 ====== */}
       <Card>
         <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-          <Tag color={statusColor(oneScreen?.primary_status ?? projection?.status)}>
-            {safeText(oneScreen?.primary_status ?? projection?.status, "状态未知")}
+          <Tag color={statusColor(oneScreen?.primary_status ?? activeProjection?.status)}>
+            {safeText(oneScreen?.primary_status ?? activeProjection?.status, "状态未知")}
           </Tag>
           <span style={{ marginLeft: 8 }}>项目总览</span>
         </Title>
         <Paragraph ellipsis={{ rows: 2, expandable: true }} style={{ marginBottom: 8 }}>
-          {safeText(projection?.goal, safeText(oneScreen?.headline, "等待状态投影"))}
+          {safeText(activeProjection?.goal, safeText(oneScreen?.headline, "等待状态投影"))}
         </Paragraph>
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Run {safeText(projection?.run_id)} · Cycle {safeText(projection?.cycle_id)}
+          Run {safeText(activeProjection?.run_id)} · Cycle {safeText(activeProjection?.cycle_id)}
         </Paragraph>
       </Card>
 
@@ -330,6 +339,11 @@ export default function OverviewPage() {
         </Col>
       </Row>
 
+      <OperationPanel
+        projection={activeProjection}
+        onProjectionChange={setActiveProjection}
+      />
+
       {/* ====== 治理 ====== */}
       <Card title="治理" size="small">
         <Row gutter={[8, 8]}>
@@ -375,7 +389,7 @@ export default function OverviewPage() {
       <Card size="small">
         <Space>
           <Text type="secondary">
-            数据更新时间：{safeText(projection?.generated_at, "未知")}
+            数据更新时间：{safeText(activeProjection?.generated_at, "未知")}
           </Text>
           <Button size="small" icon={<ReloadOutlined />} onClick={refresh}>
             刷新

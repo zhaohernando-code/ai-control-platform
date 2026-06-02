@@ -1,8 +1,8 @@
 {
   "version": "legacy-static-workbench-inventory.v1",
-  "reviewed_at": "2026-06-03T00:20:00+08:00",
+  "reviewed_at": "2026-06-03T03:35:00+08:00",
   "status": "retirement_blocked",
-  "summary": "Legacy static Workbench assets are no longer served by tools/workbench-server.mjs by default. Next.js gates now verify the mounted App Router runtime, a mounted browser-events API writeback probe, and the primary frontend-acceptance closeout gate. Legacy static assets still cannot be deleted because the full browser-events closeout gate, scheduler writeback, and shell tests continue to depend on desktop.html/mobile.html/workbench.js/styles.css.",
+  "summary": "Legacy static Workbench assets are no longer served by tools/workbench-server.mjs by default. Next.js gates now verify the mounted App Router runtime, the primary frontend-acceptance closeout gate, a mounted browser-events API writeback probe, and the full browser-events closeout replay. Legacy static assets still cannot be deleted because scheduler writeback browser verification and shell tests continue to depend on desktop.html/mobile.html/workbench.js/styles.css.",
   "legacy_static_files": [
     {
       "path": "apps/workbench/desktop.html",
@@ -14,7 +14,6 @@
       ],
       "current_consumers": [
         "test/workbench-shell.test.js",
-        "tools/check-workbench-browser-events.mjs",
         "tools/check-workbench-frontend-acceptance.mjs",
         "tools/check-scheduler-dispatch-writeback.mjs"
       ]
@@ -29,7 +28,6 @@
       ],
       "current_consumers": [
         "test/workbench-shell.test.js",
-        "tools/check-workbench-browser-events.mjs",
         "tools/check-workbench-frontend-acceptance.mjs",
         "tools/check-scheduler-dispatch-writeback.mjs"
       ]
@@ -102,7 +100,7 @@
     {
       "gate": "npm run check:workbench:browser-events",
       "file": "tools/check-workbench-browser-events.mjs",
-      "legacy_static_requirement": "starts workbench-server with serveLegacyStatic: true and validates legacy desktop.html/mobile.html browser-event scenarios including lifecycle cleanup interactions"
+      "legacy_static_requirement": "none; full browser-events closeout now replays the success/failure/provider/scheduler/lifecycle/projected-loop/mobile scenarios through the mounted Next.js App Router runtime and mounted API rewrite"
     },
     {
       "gate": "npm run check:workbench:frontend-acceptance",
@@ -139,7 +137,6 @@
       "replaces_requirement": "Next.js Workbench served route verified at /projects/ai-control-platform/ for desktop and mobile viewports",
       "does_not_replace": [
         "tools/check-workbench-browser-events.mjs legacy lifecycle cleanup and timeout browser-event closeout scenarios",
-        "tools/check-workbench-next-frontend-acceptance.mjs primary frontend-acceptance closeout gate",
         "tools/check-scheduler-dispatch-writeback.mjs legacy scheduler browser verification",
         "test/workbench-shell.test.js legacy DOM/CSS invariants"
       ]
@@ -151,8 +148,18 @@
       "status": "pass",
       "replaces_requirement": "Next browser-events mounted runtime and API writeback probe verified; does not replace the full browser-events closeout gate yet",
       "does_not_replace": [
-        "tools/check-workbench-browser-events.mjs legacy lifecycle cleanup and timeout browser-event closeout scenarios",
-        "tools/check-workbench-next-frontend-acceptance.mjs primary frontend-acceptance closeout gate",
+        "tools/check-workbench-browser-events.mjs full browser-events closeout replay",
+        "tools/check-scheduler-dispatch-writeback.mjs legacy scheduler browser verification",
+        "test/workbench-shell.test.js legacy DOM/CSS invariants"
+      ]
+    },
+    {
+      "gate": "npm run check:workbench:browser-events",
+      "file": "tools/check-workbench-browser-events.mjs",
+      "evidence": "docs/examples/workbench-browser-events-evidence-20260603-next-full.json",
+      "status": "pass",
+      "replaces_requirement": "Full browser-events closeout replay migrated from legacy desktop.html/mobile.html to the mounted Next.js App Router runtime while preserving lifecycle cleanup, projected loop, partial reviewer shard, terminal next-action, resume, mobile, and failure-writeback scenarios.",
+      "does_not_replace": [
         "tools/check-scheduler-dispatch-writeback.mjs legacy scheduler browser verification",
         "test/workbench-shell.test.js legacy DOM/CSS invariants"
       ]
@@ -164,21 +171,19 @@
       "status": "pass",
       "replaces_requirement": "Primary frontend-acceptance closeout gate migrated from legacy desktop.html/mobile.html to the mounted Next.js App Router runtime with the existing frontend-acceptance validator and durable release evidence.",
       "does_not_replace": [
-        "tools/check-workbench-browser-events.mjs legacy lifecycle cleanup and timeout browser-event closeout scenarios",
         "tools/check-scheduler-dispatch-writeback.mjs legacy scheduler browser verification",
         "test/workbench-shell.test.js legacy DOM/CSS invariants"
       ]
     }
   ],
   "retirement": {
-    "decision": "do_not_delete_in_p6_2",
-    "reason": "The Next.js served route, primary frontend-acceptance gate, and mounted browser-events API writeback probe are now verified, but legacy assets remain acceptance-gate and rollback dependencies until full browser-events closeout, scheduler writeback, and shell gates move off desktop.html/mobile.html.",
+    "decision": "do_not_delete_in_p6_3_partial",
+    "reason": "The Next.js served route, primary frontend-acceptance gate, mounted browser-events API writeback probe, and full browser-events closeout replay are now verified, but legacy assets remain acceptance-gate and rollback dependencies until scheduler writeback and shell gates move off desktop.html/mobile.html.",
     "blocked_p6_items": [
       "LFG-P6.3",
       "LFG-P6.4"
     ],
     "required_evidence_before_delete": [
-      "Browser-events gate migrated from legacy desktop.html/mobile.html lifecycle scenarios to Next.js routes or replaced by equivalent mounted-route evidence",
       "Scheduler dispatch writeback browser verification no longer depends on legacy desktop.html/mobile.html",
       "FRONTEND_REFACTOR_CONSTRAINTS.md and FRONTEND_MIGRATION_INVENTORY.md updated to remove fallback-retention requirements",
       "test/workbench-shell.test.js no longer asserts legacy DOM/CSS invariants as current acceptance gates",

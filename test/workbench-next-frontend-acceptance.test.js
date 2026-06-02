@@ -70,8 +70,8 @@ test("legacy static inventory records frontend-acceptance migration without unbl
   assert.ok(legacyGateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
   assert.ok(legacyGateFiles.has("tools/check-workbench-frontend-acceptance.mjs"));
   assert.doesNotMatch(requiredBeforeDelete, /Frontend-acceptance gate migrated/);
-  assert.match(requiredBeforeDelete, /Browser-events gate migrated/);
+  assert.doesNotMatch(requiredBeforeDelete, /Browser-events gate migrated/);
   assert.match(requiredBeforeDelete, /Scheduler dispatch writeback browser verification no longer depends/);
   assert.equal(inventory.status, "retirement_blocked");
-  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_2");
+  assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_3_partial");
 });
