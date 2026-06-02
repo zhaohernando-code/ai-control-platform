@@ -1,0 +1,44 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-workbench-server-route-groups",
+  "reviewer_id": "deepseek-lfg-p3-workbench-server-route-group-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T17:12:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/api-route-contract.test.js",
+    "node tools/run-with-node18.mjs tools/check-api-route-contract.mjs",
+    "npm run check:large-files",
+    "npm run check:known-risk-closeout",
+    "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+    "tools/workbench-server.mjs",
+    "tools/workbench-static-routes.mjs",
+    "test/workbench-server.test.js",
+    "test/api-route-contract.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "docs/governance/known-risk-ledger.json"
+  ],
+  "scope": {
+    "files": [
+      "tools/workbench-server.mjs",
+      "tools/workbench-static-routes.mjs",
+      "test/workbench-server.test.js",
+      "test/api-route-contract.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "docs/governance/known-risk-ledger.json"
+    ],
+    "diff_summary": "Legacy static and mounted compatibility routing was extracted from tools/workbench-server.mjs into a 102-line tools/workbench-static-routes.mjs module. The server entrypoint decreased from 3516 to 3447 lines without changing API route handlers or state-store paths.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/api-route-contract.test.js",
+      "node tools/run-with-node18.mjs tools/check-api-route-contract.mjs",
+      "npm run check:large-files",
+      "npm run check:known-risk-closeout",
+      "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js"
+    ]
+  },
+  "notes": "DeepSeek's source shard confirmed API-only default 404, serveLegacyStatic static serving, mounted /projects/ai-control-platform path normalization, favicon handling, and ENOENT-to-404 semantics are preserved. It also confirmed state-store, projection, scheduler, requirement, and operator-event handlers remain before the static fallback and unchanged. Test and metadata shards were consistent, and final synthesis returned PASS."
+}

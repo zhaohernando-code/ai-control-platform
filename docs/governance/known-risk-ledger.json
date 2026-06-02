@@ -1193,8 +1193,8 @@
       "title": "Workbench server entrypoint still owns too many route and runtime responsibilities",
       "source": "large-file-governance-p2",
       "created_at": "2026-06-02T16:10:00+08:00",
-      "updated_at": "2026-06-02T17:08:00+08:00",
-      "status": "in_progress",
+      "updated_at": "2026-06-02T17:13:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "tools/workbench-server.mjs",
@@ -1227,7 +1227,11 @@
         "risk-20260602-workbench-server-test-shards"
       ],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "bac4d504bee0ea0633db9e1ddbec7f6c35dd2e77",
+        "test_added": false,
+        "summary": "Legacy static and mounted compatibility routing was extracted from tools/workbench-server.mjs into tools/workbench-static-routes.mjs, preserving existing static compatibility and API route contract coverage while reducing the server entrypoint from 3516 to 3447 lines."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -1277,10 +1281,30 @@
           "command": "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
           "exit_code": 0,
           "created_at": "2026-06-02T17:08:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek sharded read-only review passed. It confirmed static compatibility, mounted path rewriting, fallback handling, and non-static API route behavior were preserved.",
+          "artifact": "docs/examples/reviewer-risk-20260602-workbench-server-route-groups-deepseek.json",
+          "created_at": "2026-06-02T17:12:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "deepseek-lfg-p3-workbench-server-route-group-review",
+            "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [],
+            "artifact": "docs/examples/reviewer-risk-20260602-workbench-server-route-groups-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "Workbench server route-module extraction only; no public Next.js route, edge proxy, LaunchAgent, or live service was changed in this closeout step."
+      }
     },
     {
       "id": "risk-20260602-workbench-projection-test-shards",
