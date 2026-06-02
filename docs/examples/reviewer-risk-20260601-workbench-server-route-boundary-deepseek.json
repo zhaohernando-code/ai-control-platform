@@ -1,0 +1,35 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260601-workbench-server-route-boundary",
+  "reviewer_id": "claude-deepseek-sharded-readonly",
+  "model": "deepseek-v4-pro shards with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T01:01:20.000Z",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "Shard-level inconclusive notes were caused by split file visibility; the synthesis verdict was PASS after reviewing both server/module and test/manifest shards.",
+    "The remaining projectionInputWithProjectStatus stateStore.summarizeAgentRegistry coupling was pre-existing and outside this bounded extraction."
+  ],
+  "evidence_refs": [
+    "tools/workbench-server.mjs",
+    "tools/workbench-agent-key-routes.mjs",
+    "test/workbench-server.test.js",
+    ".largefile-manifest.json",
+    "node tools/run-with-node18.mjs --test test/workbench-server.test.js",
+    "npm run check:known-risk-closeout"
+  ],
+  "scope": {
+    "files": [
+      "tools/workbench-server.mjs",
+      "tools/workbench-agent-key-routes.mjs",
+      "test/workbench-server.test.js",
+      ".largefile-manifest.json"
+    ],
+    "diff_summary": "Extract agent key and agent health API routes from the mixed Workbench server entrypoint into a bounded route handler module, add fail-closed coverage for missing SQLite state, and update large-file governance metadata.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/workbench-server.test.js",
+      "npm run check:known-risk-closeout"
+    ]
+  },
+  "notes": "DeepSeek found no blocking closeout issue for the first bounded route extraction. The large server entrypoint remains planned_refactor for future route group extraction."
+}

@@ -413,6 +413,26 @@ test("workbench server manages agent keys without returning raw secrets", async 
   }
 });
 
+test("workbench server agent key routes fail closed without SQLite state", async () => {
+  await withServer(async (baseUrl) => {
+    const agents = await request(`${baseUrl}/api/workbench/agents`);
+    assert.equal(agents.status, 503);
+    assert.equal(agents.json().error, "agent key store requires SQLite workbench state");
+
+    const createKey = await request(`${baseUrl}/api/workbench/agent-keys`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "key", agent_id: "codex-token", key: "sk-test" })
+    });
+    assert.equal(createKey.status, 503);
+    assert.equal(createKey.json().error, "agent key store requires SQLite workbench state");
+  }, {
+    stateStore: null,
+    stateDbPath: null,
+    disableAgentHealthTimer: true
+  });
+});
+
 test("workbench server CLI can seed SQLite from isolated history and snapshot roots", async () => {
   const dir = mkdtempSync(join(process.cwd(), "tmp/workbench-server-cli-isolated-"));
   const snapshotsRoot = join(dir, "snapshots");

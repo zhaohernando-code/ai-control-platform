@@ -1,6 +1,6 @@
 {
   "threshold": 500,
-  "reviewed_at": "2026-05-28",
+  "reviewed_at": "2026-06-02",
   "files": {
     "apps/workbench/styles.css": {
       "lines": 963,
@@ -153,16 +153,16 @@
       "reviewed_at": "2026-05-29"
     },
     "test/workbench-server.test.js": {
-      "lines": 4333,
-      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture.",
+      "lines": 4353,
+      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture. Agent key route boundary coverage was added with the first route extraction.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-02"
     },
     "tools/workbench-server.mjs": {
-      "lines": 3783,
-      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary.",
+      "lines": 3516,
+      "reason": "Workbench server entrypoint wires static routes, API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; remaining route groups still require staged extraction.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-02"
     },
     "test/workbench-shell.test.js": {
       "lines": 825,

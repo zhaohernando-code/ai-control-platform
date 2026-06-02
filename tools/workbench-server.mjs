@@ -41,7 +41,7 @@ import {
   runSchedulerLoopDriver
 } from "../src/workflow/autonomous-scheduler-loop.js";
 import { runReviewerShard } from "../src/workflow/reviewer-shard-runner.js";
-import { loadAgentInvocationConfig, runAgentInvocation } from "../src/workflow/agent-invocation.js";
+import { runAgentInvocation } from "../src/workflow/agent-invocation.js";
 import { createAgentReviewerShardExecutor } from "../src/workflow/agent-reviewer-shard-executor.js";
 import { createAgentContextWorkPackageProviderExecutor } from "../src/workflow/context-work-package-provider-executor.js";
 import {
@@ -79,6 +79,7 @@ import {
   sqliteSnapshotIdFromInputPath,
   sqliteSnapshotInputPath
 } from "../src/workflow/workbench-state-store.js";
+import { createAgentKeyRouteHandler } from "./workbench-agent-key-routes.mjs";
 import { mimeTypeFor } from "./workbench-mime-types.mjs";
 
 const root = resolve(process.cwd());
@@ -1805,6 +1806,13 @@ export function createWorkbenchServer(options = {}) {
   );
   const serveLegacyStatic = options.serveLegacyStatic === true ||
     options.serve_legacy_static === true;
+  const handleAgentKeyRoute = createAgentKeyRouteHandler({
+    stateStore,
+    options,
+    jsonBodyLimitBytes,
+    jsonResponse,
+    readJsonBody
+  });
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
@@ -1840,145 +1848,7 @@ export function createWorkbenchServer(options = {}) {
         return;
       }
 
-      if (url.pathname === "/api/workbench/agents" && req.method === "GET") {
-        if (!stateStore || typeof stateStore.listAgents !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const registry = stateStore.listAgents();
-        const invocationConfig = loadAgentInvocationConfig({
-          channels_path: process.env.AI_CONTROL_WORKBENCH_AGENT_CHANNELS_PATH,
-          profiles_path: process.env.AI_CONTROL_WORKBENCH_AGENT_PROFILES_PATH
-        });
-        jsonResponse(res, 200, {
-          ...registry,
-          invocation: {
-            version: invocationConfig.version,
-            profiles_path: invocationConfig.profiles_path,
-            channels_path: invocationConfig.channels_path,
-            profiles: Object.entries(invocationConfig.profiles).map(([id, profile]) => ({
-              id,
-              role: profile.role,
-              stage: profile.stage,
-              risk: profile.risk,
-              budget_tier: profile.budget_tier,
-              strength: profile.strength,
-              timeout_ms: profile.timeout_ms,
-              hooks: profile.hooks || [],
-              candidates: (profile.candidates || []).map((candidate) => ({
-                agent_id: candidate.agent_id || candidate.agentId,
-                model: candidate.model
-              }))
-            }))
-          }
-        });
-        return;
-      }
-
-      if (url.pathname === "/api/workbench/agents/health-check" && req.method === "POST") {
-        if (!stateStore || typeof stateStore.listAgents !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
-        const result = await runAgentHealthCheck(stateStore, {
-          ...input,
-          include_fresh: input.include_fresh ?? true
-        }, {
-          fetchImpl: options.agentHealthFetch || options.fetchImpl,
-          accountHealthRunner: options.agentAccountHealthRunner,
-          accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
-          manualAgentCliPath: options.manualAgentCliPath
-        });
-        jsonResponse(res, result.status === "fail" ? 400 : 201, result);
-        return;
-      }
-
-      const agentHealthMatch = url.pathname.match(/^\/api\/workbench\/agents\/([^/]+)\/health-check$/);
-      if (agentHealthMatch && req.method === "POST") {
-        if (!stateStore || typeof stateStore.listAgents !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
-        const result = await runAgentHealthCheck(stateStore, {
-          ...input,
-          agent_id: decodeURIComponent(agentHealthMatch[1]),
-          include_fresh: input.include_fresh ?? true
-        }, {
-          fetchImpl: options.agentHealthFetch || options.fetchImpl,
-          accountHealthRunner: options.agentAccountHealthRunner,
-          accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
-          manualAgentCliPath: options.manualAgentCliPath
-        });
-        jsonResponse(res, result.status === "fail" ? 400 : 201, result);
-        return;
-      }
-
-      if (url.pathname === "/api/workbench/agent-keys" && req.method === "POST") {
-        if (!stateStore || typeof stateStore.addAgentKey !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
-        const result = stateStore.addAgentKey(input, input.created_at || input.createdAt || new Date().toISOString());
-        jsonResponse(res, result.status === "created" ? 201 : 400, {
-          ...result,
-          registry: result.status === "created" ? stateStore.listAgents() : null
-        });
-        return;
-      }
-
-      const agentKeyDeleteMatch = url.pathname.match(/^\/api\/workbench\/agent-keys\/([^/]+)$/);
-      if (agentKeyDeleteMatch && req.method === "DELETE") {
-        if (!stateStore || typeof stateStore.deleteAgentKey !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const result = stateStore.deleteAgentKey(decodeURIComponent(agentKeyDeleteMatch[1]), new Date().toISOString());
-        jsonResponse(res, result.status === "deleted" ? 200 : 404, {
-          ...result,
-          registry: result.status === "deleted" ? stateStore.listAgents() : null
-        });
-        return;
-      }
-
-      const agentKeyHealthMatch = url.pathname.match(/^\/api\/workbench\/agent-keys\/([^/]+)\/health-check$/);
-      if (agentKeyHealthMatch && req.method === "POST") {
-        if (!stateStore || typeof stateStore.readAgentKeyForHealth !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
-        const result = await runAgentHealthCheck(stateStore, {
-          ...input,
-          key_id: decodeURIComponent(agentKeyHealthMatch[1])
-        }, {
-          fetchImpl: options.agentHealthFetch || options.fetchImpl,
-          accountHealthRunner: options.agentAccountHealthRunner,
-          accountHealthCheckImpl: options.agentAccountHealthCheckImpl,
-          manualAgentCliPath: options.manualAgentCliPath
-        });
-        jsonResponse(res, result.status === "fail" ? 400 : 201, result);
-        return;
-      }
-
-      const agentRolesMatch = url.pathname.match(/^\/api\/workbench\/agents\/([^/]+)\/roles$/);
-      if (agentRolesMatch && req.method === "PUT") {
-        if (!stateStore || typeof stateStore.updateAgentRoles !== "function") {
-          jsonResponse(res, 503, { error: "agent key store requires SQLite workbench state" });
-          return;
-        }
-        const input = await readJsonBody(req, { maxBytes: jsonBodyLimitBytes });
-        const result = stateStore.updateAgentRoles(
-          decodeURIComponent(agentRolesMatch[1]),
-          input.roles || input,
-          input.created_at || input.createdAt || new Date().toISOString()
-        );
-        jsonResponse(res, result.status === "updated" ? 200 : 400, {
-          ...result,
-          registry: result.status === "updated" ? stateStore.listAgents() : null
-        });
+      if (await handleAgentKeyRoute(url, req, res)) {
         return;
       }
 
