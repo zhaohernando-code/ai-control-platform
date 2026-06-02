@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -107,12 +107,20 @@ test("dry-run artifact records selected risks, gates, reviewers, release, and cl
 test("dry-run CLI writes artifact without mutating the ledger", async (t) => {
   const dir = tempDir(t, "known-risk-closeout-runner-");
   const output = join(dir, "run.json");
-  const before = readFileSync("docs/governance/known-risk-ledger.json", "utf8");
+  const ledgerPath = join(dir, "known-risk-ledger.json");
+  writeFileSync(ledgerPath, `${JSON.stringify({
+    version: "known-risk-ledger.v1",
+    updated_at: NOW.toISOString(),
+    risks: [risk("risk-cli-open", "medium")]
+  }, null, 2)}\n`);
+  const before = readFileSync(ledgerPath, "utf8");
 
   const { execFileSync } = await import("node:child_process");
   execFileSync("node", [
     "tools/run-with-node18.mjs",
     "tools/run-known-risk-closeout.mjs",
+    "--ledger",
+    ledgerPath,
     "--max-risks",
     "1",
     "--output",
@@ -121,13 +129,46 @@ test("dry-run CLI writes artifact without mutating the ledger", async (t) => {
     NOW.toISOString()
   ], { encoding: "utf8" });
 
-  const after = readFileSync("docs/governance/known-risk-ledger.json", "utf8");
+  const after = readFileSync(ledgerPath, "utf8");
   const artifact = JSON.parse(readFileSync(output, "utf8"));
 
   assert.equal(before, after);
   assert.equal(existsSync(output), true);
   assert.equal(artifact.selected_risks.length, 1);
+  assert.equal(artifact.selected_risks[0].id, "risk-cli-open");
   assert.equal(artifact.mode, "dry_run");
+});
+
+test("dry-run CLI accepts a zero-open-risk ledger without pretending closeout completed", async (t) => {
+  const dir = tempDir(t, "known-risk-closeout-zero-open-");
+  const output = join(dir, "run.json");
+  const ledgerPath = join(dir, "known-risk-ledger.json");
+  writeFileSync(ledgerPath, `${JSON.stringify({
+    version: "known-risk-ledger.v1",
+    updated_at: NOW.toISOString(),
+    risks: []
+  }, null, 2)}\n`);
+
+  const { execFileSync } = await import("node:child_process");
+  execFileSync("node", [
+    "tools/run-with-node18.mjs",
+    "tools/run-known-risk-closeout.mjs",
+    "--ledger",
+    ledgerPath,
+    "--max-risks",
+    "1",
+    "--output",
+    output,
+    "--now",
+    NOW.toISOString()
+  ], { encoding: "utf8" });
+
+  const artifact = JSON.parse(readFileSync(output, "utf8"));
+
+  assert.deepEqual(artifact.selected_risks, []);
+  assert.equal(artifact.mode, "dry_run");
+  assert.equal(artifact.preflight_only, true);
+  assert.equal(artifact.closeout_completed, false);
 });
 
 test("write mode is rejected before ledger or lock mutation", async (t) => {

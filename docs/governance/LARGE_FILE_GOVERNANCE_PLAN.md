@@ -2,26 +2,26 @@
 
 Status: pending  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T15:08:00+08:00  
+Updated at: 2026-06-02T15:18:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
 
-`docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` is not archived in this phase.
+`docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` is now an archive index. The full historical plan has been moved to `docs/governance/archive/AI_GOVERNED_RISK_CLOSEOUT_PLAN.archived-20260602.md`.
 
 Reason:
 
-- The file is still a required input for the `ai-governed-risk-closeout` skill contract.
-- P6/P7 remain intentionally dry-run/fail-closed for unattended write mode.
-- Verification showed `test/known-risk-closeout-runner.test.js` currently fails after all known risks are terminal because one dry-run assertion still expects one selected open risk. This is a closeout-runner maintenance item, not part of large-file governance.
+- The required input path remains available as an archive index, so the `ai-governed-risk-closeout` skill can still load required context.
+- P6/P7 historical details remain preserved in the archive, while active scheduling and skill-contract documents now describe the current dry-run/fail-closed posture.
+- `test/known-risk-closeout-runner.test.js` now covers both a seeded open-risk dry-run and a zero-open-risk dry-run without pretending closeout completed.
 
-Archive condition for the closeout plan:
+Archive acceptance evidence for the closeout plan:
 
-- A replacement closeout runbook or archived index exists at the required path.
-- Timer-triggered write-mode semantics are either implemented and DeepSeek-reviewed or explicitly removed from the plan.
+- A replacement archived index exists at the required path.
+- Timer-triggered write-mode semantics remain explicitly fail-closed in the active scheduling and skill-contract documents rather than hidden in the archived implementation backlog.
 - `node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js test/known-risk-closeout-runner.test.js` passes when the ledger has zero open risks.
 
-The large-file plan does not replace the closeout plan yet. The closeout plan can stop being a required live input only after LFG-P2 converts large-file items into known-risk work packages and a separate closeout-plan maintenance task updates the skill contract to point at an archived index or successor runbook.
+The large-file plan does not replace the closeout process. It depends on the active closeout requirements, scheduling document, skill contract, and ledger gates, while the old phased implementation plan remains available only as audit history.
 
 ## Objective
 
@@ -85,12 +85,12 @@ Priority order is line-count first, then runtime/contract blast radius. This fav
 
 ### Phase LFG-P0: Plan Baseline and Review
 
-Status: review_pending
+Status: pass
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFG-P0.1 | Record current large-file queue | `LARGE_FILE_GOVERNANCE_PLAN.md` | Manifest entries are reflected with file, line count, and intent. | review_pending |
-| LFG-P0.2 | Decide old closeout plan archival state | This document | The plan states whether `AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` is archived and why. | review_pending |
+| LFG-P0.1 | Record current large-file queue | `LARGE_FILE_GOVERNANCE_PLAN.md` | Manifest entries are reflected with file, line count, and intent. | pass |
+| LFG-P0.2 | Decide old closeout plan archival state | This document | The plan states whether `AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` is archived and why. | pass |
 | LFG-P0.3 | Independent plan review | DeepSeek review output | Read-only DeepSeek returns PASS with no blocking findings. | pass |
 
 ### Phase LFG-P1: Large-File Governance Gate Hardening
@@ -218,13 +218,14 @@ Each scheduled large-file governance run should:
 | --- | --- | --- | --- |
 | Initial plan review | `deepseek-v4-pro` compact no-tools retry | PASS | No blocking findings. Non-blocking findings requested status update after review, old-plan replacement timing, and priority rationale. |
 | Delta review | `deepseek-v4-flash` no-tools | PASS | Confirmed the three non-blocking findings were closed and no new blocking or non-blocking findings remained. |
+| Closeout-plan archive review | `deepseek-v4-pro` bounded read-only review | PASS | No blocking findings. Non-blocking stale LFG-P0 item statuses were updated to `pass`; forward-reference note had no functional impact. |
 
 ## Current External Dependencies
 
 | Dependency | Status | Impact |
 | --- | --- | --- |
-| `AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` archival | blocked | Not fully complete; leave active until write-mode/dry-run zero-risk behavior is resolved or the required input path is replaced by an archived index. |
-| `test/known-risk-closeout-runner.test.js` zero-open-risk dry-run behavior | open external maintenance item | P7 verification currently fails after all known risks are terminal because one test expects a selected open risk. |
+| `AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` archival | pass | Original phased plan moved to `docs/governance/archive/AI_GOVERNED_RISK_CLOSEOUT_PLAN.archived-20260602.md`; required path remains as an archive index. |
+| `test/known-risk-closeout-runner.test.js` zero-open-risk dry-run behavior | pass | Runner tests now cover zero-open-risk dry-run behavior and keep `closeout_completed: false`. |
 | DeepSeek review for this plan | pass | Initial compact read-only review returned PASS with no blocking findings. Non-blocking findings were addressed by updating this status, clarifying old-plan replacement timing, and adding priority rationale. |
 
 ## Acceptance Tracking

@@ -1,0 +1,43 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-ai-governed-risk-closeout-plan-archive",
+  "reviewer_id": "deepseek-closeout-plan-archive-review",
+  "model": "deepseek-v4-pro",
+  "reviewed_at": "2026-06-02T15:18:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "LFG-P0 row statuses were stale after the phase-level status was marked pass; fixed by updating LFG-P0, LFG-P0.1, and LFG-P0.2 to pass.",
+    "Archive index DeepSeek evidence wording could be read as self-referential before the current review completed; no functional impact after this verdict was recorded."
+  ],
+  "evidence_refs": [
+    "docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md",
+    "docs/governance/archive/AI_GOVERNED_RISK_CLOSEOUT_PLAN.archived-20260602.md",
+    "docs/governance/AI_GOVERNED_RISK_CLOSEOUT_SKILL_CONTRACT.md",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "test/known-risk-closeout-runner.test.js",
+    "node tools/run-with-node18.mjs --test test/risk-closeout-orchestrator-contract.test.js test/known-risk-closeout-runner.test.js",
+    "npm run check:known-risk-closeout",
+    "npm run check:known-risk-closeout:required",
+    "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+    "git diff --check"
+  ],
+  "scope": {
+    "files": [
+      "docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md",
+      "docs/governance/archive/AI_GOVERNED_RISK_CLOSEOUT_PLAN.archived-20260602.md",
+      "docs/governance/AI_GOVERNED_RISK_CLOSEOUT_SKILL_CONTRACT.md",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "test/known-risk-closeout-runner.test.js"
+    ],
+    "diff_summary": "Archived the AI-governed risk closeout implementation plan into docs/governance/archive, kept the original path as an archive index, updated the skill contract and large-file plan to reference the archived state, and made the known-risk closeout runner tests independent of live-ledger open-risk count.",
+    "gates_reviewed": [
+      "Archive index exists at the original required path and points to the preserved full plan.",
+      "Skill contract can still load required historical context through the original path.",
+      "Zero-open-risk dry-run produces no selected risks and keeps closeout_completed false.",
+      "Write mode remains rejected before mutation and fail-closed.",
+      "Large-file governance plan consistently records the archived closeout-plan state."
+    ]
+  },
+  "notes": "DeepSeek bounded read-only review returned PASS with no blocking findings. The stale LFG-P0 status finding was fixed before final gates."
+}

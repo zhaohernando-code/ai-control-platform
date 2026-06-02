@@ -28,7 +28,7 @@ The skill requires the agent to read:
 
 1. `docs/governance/known-risk-ledger.json`
 2. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_REQUIREMENTS.md`
-3. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md`
+3. `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` as the archived plan index, plus the archive artifact it names when historical phase details are needed
 4. the active risk closeout policy, defaulting to `docs/governance/ai-governed-risk-closeout-policy.example.json`
 5. `docs/governance/ai-reviewer-verdict.schema.json`
 6. `tools/check-known-risk-closeout.mjs`, `tools/risk-ledger.mjs`, `tools/known-risk-reviewer-prompt.mjs`, `tools/risk-closeout-recovery.mjs`, `tools/scan-risk-closeout-worktrees.mjs`, `tools/risk-closeout-orchestrator-contract.mjs`, and `tools/run-known-risk-closeout.mjs` when implementation details matter
