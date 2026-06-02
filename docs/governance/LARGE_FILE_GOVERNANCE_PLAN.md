@@ -2,7 +2,7 @@
 
 Status: in_progress  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T22:03:00+08:00
+Updated at: 2026-06-02T22:21:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -65,7 +65,7 @@ Priority order is current line count first. Runtime/contract blast radius is use
 | LFG-Q01 | `test/workbench-server.test.js` | 4218 | `planned_refactor` | Split server API/live/static/state-store tests into domain shards. First agent-key route shard extracted. |
 | LFG-Q02 | `tools/workbench-server.mjs` | 3447 | `planned_refactor` | Continue extracting route groups and runtime service bridges. Legacy static compatibility routing extracted. |
 | LFG-Q03 | `test/workbench-projection.test.js` | 3175 | `planned_refactor` | Split projection schema/domain regression suites. One-screen helper shard extracted. |
-| LFG-Q04 | `src/workflow/headless-cli-orchestrator.js` | 2042 | `planned_refactor` | Worker planning extracted; continue extracting acceptance and continuation packaging. |
+| LFG-Q04 | `src/workflow/headless-cli-orchestrator.js` | 1855 | `planned_refactor` | Worker planning and child acceptance packaging extracted; continue extracting runner dispatch and continuation packaging. |
 | LFG-Q05 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split orchestrator tests along extracted domains. |
 | LFG-Q06 | `test/frontend-acceptance.test.js` | 1595 | `planned_refactor` | Split content, browser error, route, and command-architecture validators. |
 | LFG-Q07 | `test/autonomous-continuation.test.js` | 1357 | `planned_refactor` | Split continuation recovery, reviewer, and work-package fixtures. |
@@ -207,7 +207,7 @@ Goal: split long-running orchestration and execution files into auditable contra
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
 | LFG-P5.1 | Extract headless worker planning | `src/workflow/headless-worker-planning.js`; `test/headless-worker-planning.test.js` | `src/workflow/headless-cli-orchestrator.js` decreased from 2090 to 2042 lines; headless worker planning and orchestrator tests pass. | pass |
-| LFG-P5.2 | Extract headless acceptance/closeout packaging | Module + tests | Acceptance gates and continuation packaging remain fail-closed. | pending |
+| LFG-P5.2 | Extract headless acceptance/closeout packaging | `src/workflow/headless-child-acceptance.js`; `test/headless-child-acceptance.test.js` | `src/workflow/headless-cli-orchestrator.js` decreased from 2042 to 1855 lines; child acceptance and orchestrator tests pass, and acceptance remains fail-closed. | pass |
 | LFG-P5.3 | Extract context runner owned-file enforcement | Module + tests | Owned scope tests remain pass/fail as before. | pending |
 | LFG-P5.4 | DeepSeek phase review | Reviewer artifact | DS confirms no host-boundary or completion-authority regression. | pending |
 
@@ -252,6 +252,7 @@ Each scheduled large-file governance run should:
 | LFG-P4 source domain review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed next-action output-shape preservation, lifecycle event-set pass-through, test coverage continuity, non-weakening staged-closeout ledger tests, and metadata consistency. Delta ledger review also passed after evidence format and line-count details were strengthened. |
 | LFG-P4 project-management review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed projection composer delegation, two-call nextActionReadout dependency handling, project/task counter preservation, plan-review/task-flow coverage, mobile/schema/shell consumer compatibility, below-threshold extracted modules, and metadata consistency. |
 | LFG-P5.1 headless worker planning review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed work-package selection and child lifecycle spawn facts are behavior-preserving, child acceptance/owned-file/host-boundary/completion-authority/continuation/snapshot behavior was not weakened, tests cover the extracted boundary, and P5 metadata does not claim phase completion. |
+| LFG-P5.2 headless child acceptance review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed child worker acceptance extraction is behavior-preserving, host boundary, owned-file, no-diff/mainline integration, command evidence, durable state, process hardening, continuation readiness, and self-evaluation checks were not weakened, direct and orchestrator tests cover the boundary, and P5 metadata stays in_progress. |
 
 ## Current External Dependencies
 
@@ -270,5 +271,5 @@ Each scheduled large-file governance run should:
 | LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P3 | pass | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; legacy static compatibility routing was extracted into `tools/workbench-static-routes.mjs`; `node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build`, `npm run check:closeout`, public browser route, state-boundary, live-state cleanliness, and governance audit skill trial passed. The state-boundary scanner now explicitly allows only the split server fixture shards while rejecting unapproved tests and tools. | DeepSeek PASS for test shard, route group, and live-route/state-boundary closeout |
 | LFG-P4 | pass | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; project-management readout policy was extracted into `src/workflow/workbench-project-management.js` and `src/workflow/workbench-project-task-items.js`; projection/schema/shell, coverage, large-file, and known-risk required gates passed. | DeepSeek PASS for test shard, next-action split, and project-management split |
-| LFG-P5 | in_progress | Worker planning was extracted into `src/workflow/headless-worker-planning.js`; `node tools/run-with-node18.mjs --test test/headless-worker-planning.test.js test/headless-cli-orchestrator.test.js test/governance-enrollment.test.js` passes and `src/workflow/headless-cli-orchestrator.js` decreased from 2090 to 2042 lines. | DeepSeek PASS for P5.1 worker planning; P5.2/P5.3/P5.4 pending |
+| LFG-P5 | in_progress | Worker planning was extracted into `src/workflow/headless-worker-planning.js`; child worker acceptance/default/missing/parse packaging was extracted into `src/workflow/headless-child-acceptance.js`; `node tools/run-with-node18.mjs --test test/headless-child-acceptance.test.js test/headless-cli-orchestrator.test.js test/headless-worker-planning.test.js` passes and `src/workflow/headless-cli-orchestrator.js` decreased from 2090 to 1855 lines across P5.1/P5.2. | DeepSeek PASS for P5.1 worker planning and P5.2 child acceptance packaging; P5.3/P5.4 pending |
 | LFG-P6 | pending | Not started. | pending |

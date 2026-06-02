@@ -81,9 +81,15 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 2042,
-      "reason": "Headless CLI orchestrator: worker planning has been extracted to src/workflow/headless-worker-planning.js; owned-scope validation, result acceptance, and continuation packaging still need staged extraction. Acceptance-gate classification has also been extracted; further extraction remains planned.",
+      "lines": 1855,
+      "reason": "Headless CLI orchestrator: worker planning and child worker acceptance/result packaging have been extracted to bounded modules; runner dispatch, process hardening, snapshot/continuation packaging, and projected-action service execution still need staged extraction.",
       "status": "planned_refactor",
+      "reviewed_at": "2026-06-02"
+    },
+    "src/workflow/headless-child-acceptance.js": {
+      "lines": 214,
+      "reason": "Extracted Headless CLI child worker acceptance helper kept below the large-file threshold while preserving host-boundary, owned-file, no-diff, command-evidence, durable-state, process-hardening, continuation, and self-evaluation checks.",
+      "status": "accepted",
       "reviewed_at": "2026-06-02"
     },
     "src/workflow/headless-worker-planning.js": {
