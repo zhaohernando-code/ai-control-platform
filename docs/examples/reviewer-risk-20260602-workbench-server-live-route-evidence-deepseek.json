@@ -1,0 +1,42 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-workbench-server-live-route-evidence",
+  "reviewer_id": "deepseek-lfg-p3-live-route-state-boundary-closeout-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis and final delta",
+  "reviewed_at": "2026-06-02T21:48:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "initial-plan-state-inconsistency",
+      "status": "resolved",
+      "summary": "Initial review found LFG-P3.3 pending and Acceptance Tracking in_progress while the phase header already said pass. The plan was updated so LFG-P3.3, LFG-P3.4, DeepSeek Review Record, and Acceptance Tracking are consistent."
+    }
+  ],
+  "evidence_refs": [
+    "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build",
+    "npm run check:closeout",
+    "node tools/run-with-node18.mjs --test test/workbench-state-boundary.test.js test/workbench-server-agent-key-routes.test.js",
+    "npm run check:workbench:state-boundary",
+    "tools/check-workbench-state-boundary.mjs",
+    "test/workbench-state-boundary.test.js",
+    "test/workbench-server-agent-key-routes.test.js",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+  ],
+  "scope": {
+    "files": [
+      "tools/check-workbench-state-boundary.mjs",
+      "test/workbench-state-boundary.test.js",
+      "test/workbench-server-agent-key-routes.test.js",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+    ],
+    "diff_summary": "LFG-P3.3 live-route closeout exposed that the state-boundary scanner still allowed fixture file-state only in the original server test. The scanner now also allows the extracted agent-key server shard while continuing to reject unapproved tests and all tools that try to use fixture file-state. A focused state-boundary test suite covers allowed shards, unapproved tests, tool rejection, and SQLite-backed callers.",
+    "gates_reviewed": [
+      "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build",
+      "npm run check:closeout",
+      "node tools/run-with-node18.mjs --test test/workbench-state-boundary.test.js test/workbench-server-agent-key-routes.test.js",
+      "npm run check:workbench:state-boundary"
+    ]
+  },
+  "notes": "DeepSeek confirmed the state-boundary patch is narrow, keeps runtime/tool callers on SQLite-backed state, and has tests for the intended allowlist plus rejection paths. The first synthesis failed only because plan state still had LFG-P3.3 pending and Acceptance Tracking in_progress; the final delta review returned PASS after those plan rows were corrected."
+}

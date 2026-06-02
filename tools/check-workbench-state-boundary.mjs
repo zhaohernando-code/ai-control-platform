@@ -6,8 +6,9 @@ import { pathToFileURL } from "node:url";
 const SCAN_ROOTS = ["tools", "src", "apps", "test"];
 const SKIP_DIRS = new Set(["node_modules", "tmp", "coverage", "dist", ".git", ".claude"]);
 const SERVER_FILE = "tools/workbench-server.mjs";
-const ALLOWED_FIXTURE_FILE_STATE_FILES = new Set([
-  "test/workbench-server.test.js"
+export const ALLOWED_FIXTURE_FILE_STATE_FILES = new Set([
+  "test/workbench-server.test.js",
+  "test/workbench-server-agent-key-routes.test.js"
 ]);
 
 function walk(dir, files = []) {
@@ -41,7 +42,7 @@ function hasSqliteStateMode(source) {
   return /\b(stateDbPath|stateDb|state_db|stateStore)\b/.test(source);
 }
 
-function createServerCallIssues(file, source) {
+export function createServerCallIssues(file, source) {
   if (file === SERVER_FILE || !importedWorkbenchServer(source)) return [];
   const issues = [];
   const fixtureMatches = [...source.matchAll(/allowFixtureFileState\s*:\s*true/g)];
