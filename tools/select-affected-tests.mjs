@@ -177,6 +177,7 @@ const FAIL_OPEN_FILES = new Set([
   "tools/select-affected-tests.mjs",
   "tools/run-affected-tests.mjs",
   "tools/check-test-location.mjs",
+  "tools/report-large-files.mjs",
   ".largefile-manifest.json",
 ]);
 

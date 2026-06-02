@@ -1,0 +1,45 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-large-file-governance-p1",
+  "reviewer_id": "deepseek-large-file-governance-p1-review",
+  "model": "deepseek-v4-pro",
+  "reviewed_at": "2026-06-02T15:55:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "evidence_refs": [
+    "tools/report-large-files.mjs",
+    "test/large-file-report.test.js",
+    "tools/select-affected-tests.mjs",
+    "test/select-affected-tests.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "package.json",
+    "node tools/run-with-node18.mjs --test test/large-file-report.test.js test/select-affected-tests.test.js test/governance-enrollment.test.js",
+    "npm run check:large-files",
+    "npm run check:known-risk-closeout",
+    "git diff --check"
+  ],
+  "scope": {
+    "files": [
+      "tools/report-large-files.mjs",
+      "test/large-file-report.test.js",
+      "tools/select-affected-tests.mjs",
+      "test/select-affected-tests.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "package.json"
+    ],
+    "diff_summary": "Added a large-file report and gate for duplicate manifest keys, stale growth, shrink warnings, missing manifest entries, missing files, missing governance fields, and planned_refactor growth without split plans; wired the gate into package scripts and affected-test fail-open behavior; refreshed one reduced manifest line count and marked LFG-P1 pass after DeepSeek delta review.",
+    "gates_reviewed": [
+      "Duplicate JSON keys are detected before JSON.parse last-key-wins behavior can hide them.",
+      "Files that grow beyond manifest line counts fail the gate; files that shrink produce warnings and do not block pass.",
+      "Planned-refactor file growth without a split plan or growth justification fails the gate.",
+      "Tracked files over the threshold must be present in .largefile-manifest.json.",
+      "Manifest entries must point to real files and include reason and status.",
+      "check:large-files exits non-zero on issues and can be used as the LFG-P1 gate.",
+      "Large-file governance files are included in affected-test fail-open behavior."
+    ]
+  },
+  "notes": "DeepSeek initial review found blocking issues around shrink hard-fail behavior and missing-entry coverage. The implementation was updated, local gates reran, and final DeepSeek delta review returned PASS with no blocking or non-blocking findings."
+}

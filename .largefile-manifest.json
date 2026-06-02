@@ -82,7 +82,7 @@
     },
     "src/workflow/headless-cli-orchestrator.js": {
       "lines": 2090,
-      "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction. Acceptance-gate classification extracted (P2-8); further extraction planned.",
+      "reason": "Headless CLI orchestrator: worker planning, owned-scope validation, result acceptance, and continuation packaging need staged extraction. Acceptance-gate classification has been extracted; further extraction remains planned.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-30"
     },
@@ -135,10 +135,10 @@
       "reviewed_at": "2026-05-28"
     },
     "test/headless-cli-orchestrator.test.js": {
-      "lines": 2054,
+      "lines": 1745,
       "reason": "Headless CLI orchestrator tests share worker-result, owned-file, no-diff, and continuation acceptance fixtures.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-02"
     },
     "test/workbench-shell.test.js": {
       "lines": 845,

@@ -58,8 +58,8 @@ test("fail-open: changing the selector itself runs the full suite (self-referenc
   assert.match(r.reasons.join("\n"), /select-affected-tests\.mjs/);
 });
 
-test("fail-open: changing the runner or the location guard runs the full suite", () => {
-  for (const f of ["tools/run-affected-tests.mjs", "tools/check-test-location.mjs", ".largefile-manifest.json"]) {
+test("fail-open: changing the runner or governance gates runs the full suite", () => {
+  for (const f of ["tools/run-affected-tests.mjs", "tools/check-test-location.mjs", "tools/report-large-files.mjs", ".largefile-manifest.json"]) {
     const r = selectAffectedTests([f], SYN);
     assert.equal(r.decision, "full", `${f} must fail open`);
   }

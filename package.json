@@ -19,6 +19,7 @@
     "check:code-review-coverage": "node tools/check-code-review-coverage.mjs",
     "check:known-risk-closeout": "node tools/run-with-node18.mjs tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json --policy docs/governance/ai-governed-risk-closeout-policy.example.json",
     "check:known-risk-closeout:required": "node tools/run-with-node18.mjs tools/check-known-risk-closeout.mjs docs/governance/known-risk-ledger.json --policy docs/governance/ai-governed-risk-closeout-policy.example.json --require-closed",
+    "check:large-files": "node tools/run-with-node18.mjs tools/report-large-files.mjs --fail-on-issues",
     "check:workbench:live-route": "node tools/run-with-node18.mjs tools/check-workbench-live-route.mjs",
     "probe:workbench:live-route": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs",
     "check:workbench:public-browser-route": "node tools/run-with-node18.mjs tools/check-workbench-public-browser-route.mjs",

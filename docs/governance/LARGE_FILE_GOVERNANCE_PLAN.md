@@ -2,7 +2,7 @@
 
 Status: pending  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T15:18:00+08:00
+Updated at: 2026-06-02T15:55:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -56,9 +56,9 @@ The goal is not to refactor every large file in one run. The goal is that each d
 
 ## Current Large-File Queue
 
-The current source of truth is `.largefile-manifest.json`, `reviewed_at: 2026-06-02`.
+The current source of truth is `.largefile-manifest.json`. The top-level `reviewed_at: 2026-06-02` records the latest full report date; individual entries retain their own `reviewed_at` dates when their file-specific rationale was last refreshed.
 
-Priority order is line-count first, then runtime/contract blast radius. This favors the largest files, but keeps source/runtime boundaries ahead of pure test sharding when the line counts are close. Test files remain high priority because they currently hide broad fixture coupling and make behavior-preserving source splits harder to validate.
+Priority order is current line count first. Runtime/contract blast radius is used when selecting a bounded phase scope from the queue, not as a hidden reordering rule. Test files remain high priority because they currently hide broad fixture coupling and make behavior-preserving source splits harder to validate.
 
 | Priority | File | Lines | Current manifest status | Governance intent |
 | --- | --- | ---: | --- | --- |
@@ -66,8 +66,8 @@ Priority order is line-count first, then runtime/contract blast radius. This fav
 | LFG-Q02 | `tools/workbench-server.mjs` | 3516 | `planned_refactor` | Continue extracting route groups and runtime service bridges. |
 | LFG-Q03 | `test/workbench-projection.test.js` | 3294 | `planned_refactor` | Split projection schema/domain regression suites. |
 | LFG-Q04 | `src/workflow/headless-cli-orchestrator.js` | 2090 | `planned_refactor` | Extract worker planning, acceptance, and continuation packaging. |
-| LFG-Q05 | `test/headless-cli-orchestrator.test.js` | 2054 | `planned_refactor` | Split orchestrator tests along extracted domains. |
-| LFG-Q06 | `src/workflow/workbench-projection.js` | 1944 | `planned_refactor` | Extract project-management and next-action readout domains. |
+| LFG-Q05 | `src/workflow/workbench-projection.js` | 1944 | `planned_refactor` | Extract project-management and next-action readout domains. |
+| LFG-Q06 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split orchestrator tests along extracted domains. |
 | LFG-Q07 | `test/frontend-acceptance.test.js` | 1595 | `planned_refactor` | Split content, browser error, route, and command-architecture validators. |
 | LFG-Q08 | `test/autonomous-continuation.test.js` | 1357 | `planned_refactor` | Split continuation recovery, reviewer, and work-package fixtures. |
 | LFG-Q09 | `src/workflow/requirement-intake.js` | 1318 | `planned_refactor` | Extract plan review, validation, and work-package generation. |
@@ -95,21 +95,23 @@ Status: pass
 
 ### Phase LFG-P1: Large-File Governance Gate Hardening
 
-Status: pending
+Status: pass
 
 Goal: make large-file governance stable before refactor work starts.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFG-P1.1 | Add machine-readable queue report | `tools/report-large-files.mjs` or equivalent | Reports manifest status, current line count, stale line counts, and priority order. | pending |
-| LFG-P1.2 | Detect duplicate manifest keys and stale line counts | Tests | Gate fails on duplicate JSON keys before parse-last-wins can hide stale entries. | pending |
-| LFG-P1.3 | Require growth justification for `planned_refactor` files | Test or hook update | Growing a planned-refactor file without a split plan fails governance. | pending |
-| LFG-P1.4 | DeepSeek phase review | Reviewer artifact | DS confirms the gate prevents stale or weakening manifest updates. | pending |
+| LFG-P1.1 | Add machine-readable queue report | `tools/report-large-files.mjs` plus `npm run check:large-files` | Reports manifest status, current line count, stale line counts, and priority order. | pass |
+| LFG-P1.2 | Detect duplicate manifest keys and stale line counts | `test/large-file-report.test.js` | Gate fails on duplicate JSON keys before parse-last-wins can hide stale entries. | pass |
+| LFG-P1.3 | Require growth justification for `planned_refactor` files | `tools/report-large-files.mjs` and tests | Growing a planned-refactor file without a split plan fails governance. | pass |
+| LFG-P1.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-large-file-governance-p1-deepseek.json` | DS confirms the gate prevents stale or weakening manifest updates. | pass |
 
 Suggested gates:
 
 ```bash
 node tools/run-with-node18.mjs --test test/governance-enrollment.test.js
+node tools/run-with-node18.mjs --test test/large-file-report.test.js test/select-affected-tests.test.js test/governance-enrollment.test.js
+npm run check:large-files
 npm run check:known-risk-closeout
 ```
 
@@ -219,6 +221,7 @@ Each scheduled large-file governance run should:
 | Initial plan review | `deepseek-v4-pro` compact no-tools retry | PASS | No blocking findings. Non-blocking findings requested status update after review, old-plan replacement timing, and priority rationale. |
 | Delta review | `deepseek-v4-flash` no-tools | PASS | Confirmed the three non-blocking findings were closed and no new blocking or non-blocking findings remained. |
 | Closeout-plan archive review | `deepseek-v4-pro` bounded read-only review | PASS | No blocking findings. Non-blocking stale LFG-P0 item statuses were updated to `pass`; forward-reference note had no functional impact. |
+| LFG-P1 gate review | `deepseek-v4-pro` bounded + delta read-only reviews | PASS | Initial blocking findings on shrink hard-fail and missing-entry coverage were fixed. Final delta review returned PASS with no blocking or non-blocking findings. |
 
 ## Current External Dependencies
 
@@ -233,7 +236,7 @@ Each scheduled large-file governance run should:
 | Phase | Status | Latest evidence | Reviewer |
 | --- | --- | --- | --- |
 | LFG-P0 | pass | Plan created and non-blocking DS feedback incorporated. | DeepSeek PASS, no blocking findings |
-| LFG-P1 | pending | Not started. | pending |
+| LFG-P1 | pass | `tools/report-large-files.mjs` added; report gate, duplicate-key detection, growth/stale-up detection, shrink warnings, missing-entry detection, and planned-refactor growth guard pass local tests. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P2 | pending | Not started. | pending |
 | LFG-P3 | pending | Not started. | pending |
 | LFG-P4 | pending | Not started. | pending |
