@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T11:22:00+08:00",
+  "updated_at": "2026-06-02T11:57:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -765,27 +765,36 @@
       "title": "Playwright CLI verification can leave untracked .playwright-cli artifacts in canonical checkout",
       "source": "closeout-discovery",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T11:57:00+08:00",
+      "status": "fixed",
       "severity": "low",
       "scope": [
         ".gitignore",
         ".playwright-cli",
-        "PROJECT_RULES.md"
+        "PROJECT_RULES.md",
+        "test/playwright-cli-artifact-cleanliness.test.js"
       ],
       "owned_files": [
         ".gitignore",
-        "PROJECT_RULES.md"
+        "PROJECT_RULES.md",
+        "test/playwright-cli-artifact-cleanliness.test.js",
+        "docs/examples/reviewer-risk-20260601-playwright-cli-artifact-cleanliness-deepseek.json",
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js"
       ],
       "acceptance_gates": [
         "Canonical checkout remains clean after Playwright CLI verification or .playwright-cli is ignored by policy",
         "git status --short"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-playwright-cli-artifact-cleanliness",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "e4b6142541925c6645ad7efc1fddefb6a39a120f",
+        "test_added": true,
+        "summary": "Ignored the local .playwright-cli/ directory, documented Playwright CLI and browser verification diagnostics as local git-ignored artifacts, and added a regression test that creates a .playwright-cli console log and asserts it does not appear in git status."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -793,10 +802,98 @@
           "type": "analysis",
           "summary": "A prior browser verification created `.playwright-cli/console-2026-06-01T06-25-17-467Z.log` in canonical checkout.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": ".gitignore now ignores `.playwright-cli/`, and PROJECT_RULES documents Playwright CLI/browser verification console logs as local temporary diagnostics that must not dirty canonical checkout.",
+          "artifact": ".gitignore",
+          "created_at": "2026-06-02T11:49:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Regression test passed; it checks the ignore rule, project policy text, `git check-ignore`, and a generated `.playwright-cli/console-test.log` with clean git status for that path.",
+          "command": "node tools/run-with-node18.mjs --test test/playwright-cli-artifact-cleanliness.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:49:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Generated a sample `.playwright-cli/console-check.log`; `git check-ignore` returned the sample path and `git status --short -- .playwright-cli` produced no output.",
+          "command": "git check-ignore .playwright-cli/console-check.log && git status --short -- .playwright-cli",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:50:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Related regression tests passed across Playwright artifact cleanliness, known-risk ledger, and frontend acceptance hard-gate wiring.",
+          "command": "node tools/run-with-node18.mjs --test test/playwright-cli-artifact-cleanliness.test.js test/known-risk-ledger.test.js test/frontend-acceptance.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:50:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek compact implementation review passed with no blocking or non-blocking findings after a broader read-only review timed out inconclusively.",
+          "artifact": "docs/examples/reviewer-risk-20260601-playwright-cli-artifact-cleanliness-deepseek.json",
+          "created_at": "2026-06-02T11:50:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk ledger structural gate passed before marking the risk terminal.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:49:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk required-closed mode failed only for the remaining scoped-out useProjection request ordering risk.",
+          "command": "npm run check:known-risk-closeout:required",
+          "exit_code": 1,
+          "created_at": "2026-06-02T11:52:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Full repository test suite passed under the Node wrapper after adding the Playwright CLI artifact cleanliness guard.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:54:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Coverage gate passed with 952/952 tests, all-files line coverage 91.91%, and all-files function coverage 96.93%.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:55:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Repository closeout gate passed after installing worktree-local root dependencies for the Playwright-backed public browser route check.",
+          "command": "npm run check:closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:57:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek final closeout review passed with no blocking or non-blocking findings after inspecting the compressed evidence packet.",
+          "artifact": "docs/examples/reviewer-risk-20260601-playwright-cli-artifact-cleanliness-deepseek.json",
+          "created_at": "2026-06-02T11:58:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "claude-deepseek-implementation-readonly",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [],
+            "artifact": "docs/examples/reviewer-risk-20260601-playwright-cli-artifact-cleanliness-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "No user-visible runtime behavior changed; this is a local artifact ignore policy, documentation, and regression-test update."
+      }
     },
     {
       "id": "risk-20260601-use-projection-request-order",
