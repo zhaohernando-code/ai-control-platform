@@ -31,10 +31,15 @@ import {
   selectedParentAcceptanceGates,
   withAcceptanceGates
 } from "./headless-acceptance-gates.js";
+import {
+  CHILD_WORKER_ROLE,
+  HEADLESS_MAIN_ORCHESTRATOR_ROLE,
+  createHeadlessWorkerSpawnFacts,
+  selectHeadlessWorkPackages
+} from "./headless-worker-planning.js";
 
 export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
-export const HEADLESS_MAIN_ORCHESTRATOR_ROLE = "main_orchestrator";
-export const CHILD_WORKER_ROLE = "child_worker";
+export { CHILD_WORKER_ROLE, HEADLESS_MAIN_ORCHESTRATOR_ROLE };
 export const DEFAULT_CHILD_WORKER_TIMEOUT_MS = 10 * 60 * 1000;
 export const MAX_HEADLESS_LOOP_ITERATIONS = 5;
 const HEADLESS_PROJECTED_NEXT_ACTIONS = new Set([
@@ -129,24 +134,6 @@ function validateHeadlessInput(input = {}) {
   };
 }
 
-function lifecyclePoolId(workflowState = {}, options = {}) {
-  return normalizeString(options.pool_id || options.poolId) ||
-    `headless-cli-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`;
-}
-
-function childWorkerId(workPackage = {}, index = 0, options = {}) {
-  return normalizeString(options.worker_id || options.workerId) ||
-    `child-${safeIdPart(workPackage.id || workPackage.work_package_id || index + 1)}`;
-}
-
-function selectedWorkPackages(workflowState = {}, options = {}) {
-  const maxPackageCount = Math.max(1, Number(options.max_package_count || options.maxPackageCount || 1));
-  return asArray(workflowState?.manifest?.work_packages)
-    .filter((workPackage) => normalizeToken(workPackage?.status || "pending") !== "completed")
-    .filter((workPackage) => workPackage?.dispatch_allowed !== false)
-    .slice(0, maxPackageCount);
-}
-
 function hasMaterializedContextCycle(workflowState = {}) {
   return asArray(workflowState?.manifest?.events).some((event) => [
     "context_pack_cycle_created",
@@ -166,41 +153,6 @@ function continuationRunEvaluationFromProjectStatus(projectStatus = {}) {
     next_work_packages: asArray(globalGoalCompletion.next_work_packages),
     global_goal_completion: globalGoalCompletion
   };
-}
-
-function spawnFactsFor(workflowState = {}, workPackages = [], options = {}) {
-  const poolId = lifecyclePoolId(workflowState, options);
-  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
-  return workPackages.flatMap((workPackage, index) => {
-    const workerId = childWorkerId(workPackage, index, options);
-    const baseSource = {
-      orchestrator_role: HEADLESS_MAIN_ORCHESTRATOR_ROLE,
-      worker_role: CHILD_WORKER_ROLE,
-      work_package_id: workPackage.id || workPackage.work_package_id,
-      owned_files: compactStrings(workPackage.owned_files),
-      executor: normalizeString(options.executor_kind || options.executorKind) || "agent_or_cli_worker"
-    };
-    return [
-      {
-        event_type: "WorkerSpawned",
-        pool_id: poolId,
-        worker_id: workerId,
-        status: "pass",
-        message: `${workerId} spawned by headless CLI main orchestrator`,
-        created_at: createdAt,
-        source: baseSource
-      },
-      {
-        event_type: "WorkerHeartbeat",
-        pool_id: poolId,
-        worker_id: workerId,
-        status: "pass",
-        message: `${workerId} heartbeat recorded before bounded execution`,
-        created_at: createdAt,
-        source: baseSource
-      }
-    ];
-  });
 }
 
 function recordLifecycleFacts(workflowState = {}, facts = []) {
@@ -1678,7 +1630,7 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
     };
   }
 
-  if (hasMaterializedContextCycle(workflowState) && selectedWorkPackages(workflowState, options).length > 0) {
+  if (hasMaterializedContextCycle(workflowState) && selectHeadlessWorkPackages(workflowState, options).length > 0) {
     steps.push({
       phase: "context_pack_cycle",
       status: "existing",
@@ -1707,7 +1659,7 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
     });
   }
 
-  const selected = selectedWorkPackages(workflowState, options);
+  const selected = selectHeadlessWorkPackages(workflowState, options);
   if (selected.length === 0) {
     return {
       status: "blocked",
@@ -1719,7 +1671,7 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
     };
   }
 
-  const spawned = recordLifecycleFacts(workflowState, spawnFactsFor(workflowState, selected, { ...options, created_at: createdAt }));
+  const spawned = recordLifecycleFacts(workflowState, createHeadlessWorkerSpawnFacts(workflowState, selected, { ...options, created_at: createdAt }));
   if (spawned.status !== "pass") {
     return {
       status: "blocked",
