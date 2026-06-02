@@ -78,7 +78,7 @@ function runCommand(id, command, args, { json = true, allowFail = true } = {}) {
 function frontendAcceptanceResult(outputPath) {
   const args = [
     "tools/run-with-node18.mjs",
-    "tools/check-workbench-frontend-acceptance.mjs",
+    "tools/check-workbench-next-frontend-acceptance.mjs",
     "--output",
     outputPath,
     "--allow-fail"

@@ -20,6 +20,7 @@ const ACCEPTANCE_TARGET_LATEST = "latest_projection";
 const ACCEPTANCE_TARGET_FIXTURE = "fixture_current_session";
 const WORKBENCH_MOUNT_PREFIX = "/projects/ai-control-platform";
 const WORKBENCH_FAVICON_PATH = "/apps/workbench/favicon.svg";
+const NEXT_WORKBENCH_FAVICON_PATH = "/favicon.svg";
 const STATIC_ROUTE_PORT = 9;
 const STATIC_CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -105,7 +106,11 @@ function isWorkbenchFaviconLink(link = {}) {
   const pathname = pathnameOfUrl(link.href);
   const type = normalizeText(link.type).toLowerCase();
   return (
-    (hrefAttribute === "favicon.svg" || pathname.endsWith(WORKBENCH_FAVICON_PATH)) &&
+    (
+      hrefAttribute === "favicon.svg" ||
+      pathname.endsWith(WORKBENCH_FAVICON_PATH) ||
+      pathname === `${WORKBENCH_MOUNT_PREFIX}${NEXT_WORKBENCH_FAVICON_PATH}`
+    ) &&
     (!type || type === "image/svg+xml")
   );
 }
@@ -130,7 +135,11 @@ function mountedSvgFaviconResponsesOf(result = {}) {
     : Array.isArray(result.mounted_svg_favicon_responses)
       ? result.mounted_svg_favicon_responses
       : [];
-  return responses.filter((response) => pathnameOfUrl(response.url || response.href).endsWith(WORKBENCH_FAVICON_PATH));
+  return responses.filter((response) => {
+    const pathname = pathnameOfUrl(response.url || response.href);
+    return pathname.endsWith(WORKBENCH_FAVICON_PATH) ||
+      pathname === `${WORKBENCH_MOUNT_PREFIX}${NEXT_WORKBENCH_FAVICON_PATH}`;
+  });
 }
 
 function mountedSvgFaviconMimePasses(result = {}) {

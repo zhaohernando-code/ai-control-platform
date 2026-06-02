@@ -252,6 +252,9 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
   if (!normalizeString(artifact.created_at)) {
     issues.push(issue("missing_frontend_acceptance_created_at", "created_at is required", "created_at"));
   }
+  if (normalizeString(artifact.route_family) === "nextjs_app_router" && artifact.legacy_static_shell_used !== false) {
+    issues.push(issue("next_frontend_acceptance_legacy_shell_not_allowed", "Next.js frontend acceptance must prove legacy static shell was not used", "legacy_static_shell_used"));
+  }
 
   for (const field of [
     "viewport_results",
@@ -263,6 +266,7 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
     "resource_results",
     "control_results",
     "mobile_results",
+    "browser_error_results",
     "findings"
   ]) {
     if (!Array.isArray(artifact[field])) {
@@ -306,6 +310,8 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
   const productSemanticResultsByName = new Map(asArray(artifact.project_management_semantic_results).map((result) => [normalizeString(result.viewport), result]));
   const controlResultsByName = new Map(asArray(artifact.control_results).map((result) => [normalizeString(result.viewport), result]));
   const layoutResultsByName = new Map(asArray(artifact.layout_results).map((result) => [normalizeString(result.viewport), result]));
+  const browserErrorResultsByName = new Map(asArray(artifact.browser_error_results).map((result) => [normalizeString(result.viewport), result]));
+  const findingCodes = new Set(findings.map(findingCode).filter(Boolean));
   for (const requiredViewport of ["desktop", "desktop_narrow", "mobile"]) {
     const viewportResult = viewportResultsByName.get(requiredViewport) || {};
     const resourceResult = resourceResultsByName.get(requiredViewport) || {};
@@ -313,6 +319,7 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
     const semanticResult = productSemanticResultsByName.get(requiredViewport) || null;
     const controlResult = controlResultsByName.get(requiredViewport) || null;
     const layoutResult = layoutResultsByName.get(requiredViewport) || null;
+    const browserErrorResult = browserErrorResultsByName.get(requiredViewport) || null;
     if (viewportResult.mounted_workbench_route !== true && resourceResult.mounted_workbench_route !== true) {
       issues.push(issue("missing_mounted_workbench_route", `${requiredViewport} must exercise the project-mounted workbench route`, "viewport_results"));
     }
@@ -425,6 +432,17 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
         issues.push(issue("frontend_dense_command_layout_missing_finding", `${requiredViewport} dense command layouts must have a matching P0/P1 finding`, "layout_results"));
       }
     }
+    if (!browserErrorResult) {
+      issues.push(issue("missing_frontend_browser_error_evidence", `${requiredViewport} must include browser error evidence`, "browser_error_results"));
+    } else {
+      const blockedBrowserErrorCount = countValue(browserErrorResult.blocked_error_count ?? browserErrorResult.blockedBrowserErrorCount ?? browserErrorResult.blocked_browser_error_count);
+      if (artifact.status === "pass" && blockedBrowserErrorCount > 0) {
+        issues.push(issue("frontend_browser_error_false_pass", `${requiredViewport} browser error evidence cannot pass with blocked errors`, "browser_error_results"));
+      }
+      if (blockedBrowserErrorCount > 0 && !findingCodes.has("frontend_browser_console_error")) {
+        issues.push(issue("frontend_browser_error_finding_mismatch", `${requiredViewport} blocked browser errors must have a matching P0/P1 finding`, "findings"));
+      }
+    }
   }
 
   const contentCompletionBlockerCodes = asArray(artifact.content_completion_results)
@@ -436,7 +454,6 @@ export function validateFrontendAcceptanceRunArtifact(artifact = {}, options = {
     .flatMap(commandArchitectureFindingCodes);
   const projectManagementBlockerCodes = asArray(artifact.project_management_semantic_results)
     .flatMap((result) => asArray(result.blocking_finding_codes || result.blockingFindingCodes));
-  const findingCodes = new Set(findings.map(findingCode).filter(Boolean));
   for (const code of contentCompletionBlockerCodes) {
     if (!findingCodes.has(code)) {
       issues.push(issue("frontend_content_completion_finding_mismatch", `content completion blocker ${code} must have a matching P0/P1 finding`, "findings"));

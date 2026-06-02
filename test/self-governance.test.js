@@ -246,7 +246,7 @@ test("self-governance scanner turns unrunnable evidence commands into evidence g
       command_results: [
         {
           id: "workbench-frontend-acceptance",
-          command: "node tools/check-workbench-frontend-acceptance.mjs",
+          command: "node tools/check-workbench-next-frontend-acceptance.mjs",
           status: "fail",
           stderr: "Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright'"
         }

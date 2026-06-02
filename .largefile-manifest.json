@@ -81,8 +81,9 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/frontend-acceptance.js": {
-      "lines": 801,
+      "lines": 818,
       "reason": "Frontend acceptance validator: browser evidence schema, layout/content checks, console errors, and live-route constraints are one acceptance surface.",
+      "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds a fail-closed guard that rejects nextjs_app_router artifacts unless legacy_static_shell_used is explicitly false.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },
@@ -147,8 +148,9 @@
       "reviewed_at": "2026-05-29"
     },
     "test/frontend-acceptance.test.js": {
-      "lines": 1595,
+      "lines": 1671,
       "reason": "Frontend acceptance tests cover content, layout, console, mounted route, favicon, and live-route false-pass regressions over shared artifacts.",
+      "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds regression coverage for legacy static shell false-pass rejection.",
       "status": "planned_refactor",
       "reviewed_at": "2026-05-28"
     },

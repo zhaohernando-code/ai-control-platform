@@ -366,6 +366,22 @@ test("governance audit skill runner normalizes compact evidence plan aliases", (
           blocks_closure: false,
           minimum_command: "node --test test/workbench-next-browser-events.test.js"
         }
+      },
+      {
+        id: "optional-cost-alias",
+        dimension: "cost_efficiency",
+        type: "可选迭代",
+        severity: "低",
+        disposition: "用户决策",
+        summary: "optional follow-up uses a compact cost alias",
+        evidence_ids: ["governance-skill-invocation"],
+        decision_package: {
+          options: ["defer", "schedule follow-up"],
+          tradeoffs: ["defer keeps scope tight", "follow-up improves observability"],
+          recommended_option: "defer",
+          estimated_cost_or_effort: "low",
+          confidence_gain: "medium"
+        }
       }
     ]
   };
@@ -396,6 +412,7 @@ test("governance audit skill runner normalizes compact evidence plan aliases", (
   assert.equal(output.findings[0].evidence_plan.missing_evidence, "browser-events gate test result");
   assert.equal(output.findings[0].evidence_plan.minimum_command_or_entrypoint, "node --test test/workbench-next-browser-events.test.js");
   assert.equal(output.findings[0].evidence_plan.blocking_closure, false);
+  assert.equal(output.findings[1].decision_package.estimated_cost, "low");
 });
 
 test("governance audit skill runner blocks closeout when invoked skill returns a failing verdict", () => {

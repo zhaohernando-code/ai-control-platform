@@ -23,8 +23,8 @@ test("legacy static workbench inventory matches current asset dependency graph",
   assert.equal(report.version, "legacy-static-workbench-inventory.v1");
   assert.equal(report.status, "retirement_blocked");
   assert.equal(report.retirement.decision, "do_not_delete_in_p6_2");
-  assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.2"));
   assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.3"));
+  assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.4"));
 
   for (const path of [
     "apps/workbench/desktop.html",
@@ -72,6 +72,7 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   const report = inventory();
   const browserEvents = read("tools/check-workbench-browser-events.mjs");
   const nextBrowserEvents = read("tools/check-workbench-next-browser-events.mjs");
+  const nextFrontendAcceptance = read("tools/check-workbench-next-frontend-acceptance.mjs");
   const frontendAcceptance = read("tools/check-workbench-frontend-acceptance.mjs");
   const frontendAcceptanceTests = read("test/frontend-acceptance.test.js");
   const schedulerWriteback = read("tools/check-scheduler-dispatch-writeback.mjs");
@@ -79,6 +80,7 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   const gateFiles = new Set(report.acceptance_gate_dependencies.map((item) => item.file));
 
   assert.ok(gateFiles.has("tools/check-workbench-browser-events.mjs"));
+  assert.ok(gateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
   assert.ok(gateFiles.has("tools/check-workbench-frontend-acceptance.mjs"));
   assert.ok(gateFiles.has("test/frontend-acceptance.test.js"));
   assert.ok(gateFiles.has("tools/check-scheduler-dispatch-writeback.mjs"));
@@ -93,6 +95,11 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   assert.doesNotMatch(nextBrowserEvents, /serveLegacyStatic:\s*true/);
   assert.doesNotMatch(nextBrowserEvents, /page\.goto\([^)]*desktop\.html/);
   assert.doesNotMatch(nextBrowserEvents, /page\.goto\([^)]*mobile\.html/);
+  assert.match(nextFrontendAcceptance, /nextjs_app_router/);
+  assert.match(nextFrontendAcceptance, /validateFrontendAcceptanceRunArtifact/);
+  assert.doesNotMatch(nextFrontendAcceptance, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(nextFrontendAcceptance, /desktop\.html/);
+  assert.doesNotMatch(nextFrontendAcceptance, /mobile\.html/);
   assert.match(frontendAcceptance, /serveLegacyStatic:\s*true/);
   assert.match(frontendAcceptance, /desktop\.html/);
   assert.match(frontendAcceptance, /mobile\.html/);
@@ -116,9 +123,10 @@ test("legacy static workbench retirement remains blocked until Next served-route
   assert.equal(nextGate?.evidence, "docs/examples/workbench-next-served-route-evidence-20260602.json");
   assert.match(nextGate?.replaces_requirement || "", /Next\.js Workbench served route verified/);
   assert.ok(nextGates.some((item) => item.file === "tools/check-workbench-next-browser-events.mjs" && item.status === "pass"));
+  assert.ok(nextGates.some((item) => item.file === "tools/check-workbench-next-frontend-acceptance.mjs" && item.status === "pass"));
   assert.doesNotMatch(requiredEvidence, /Next\.js Workbench served route verified/);
   assert.match(requiredEvidence, /Browser-events gate migrated/);
-  assert.match(requiredEvidence, /Frontend-acceptance gate migrated/);
+  assert.doesNotMatch(requiredEvidence, /Frontend-acceptance gate migrated/);
   assert.match(requiredEvidence, /Scheduler dispatch writeback browser verification no longer depends/);
   assert.match(requiredEvidence, /FRONTEND_REFACTOR_CONSTRAINTS\.md/);
   assert.match(requiredEvidence, /FRONTEND_MIGRATION_INVENTORY\.md/);

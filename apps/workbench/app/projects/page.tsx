@@ -11,6 +11,7 @@ import {
   Col,
   Space,
   Statistic,
+  Steps,
   Table,
   Tag,
   Typography
@@ -50,6 +51,7 @@ interface ProjectRow {
   progress: number;
   last_updated: string;
   human_decisions: number;
+  task_flow: Array<{ id: string; label: string; status: string; count: number }>;
 }
 
 export default function ProjectsPage() {
@@ -76,7 +78,13 @@ export default function ProjectsPage() {
         owner_agent: safeText(project.owner_agent, "main_orchestrator"),
         progress: Number(project.progress || 0),
         last_updated: safeText(project.last_updated, ""),
-        human_decisions: Number(project.human_decisions || 0)
+        human_decisions: Number(project.human_decisions || 0),
+        task_flow: asArray<Record<string, unknown>>(project.task_flow).map((step) => ({
+          id: safeText(step.id, ""),
+          label: safeText(step.label, ""),
+          status: safeText(step.status, "wait"),
+          count: Number(step.count || 0)
+        })).filter((step) => step.label)
       };
     });
   }, [projection]);
@@ -164,10 +172,41 @@ export default function ProjectsPage() {
       width: 120
     },
     {
+      title: "Agent",
+      dataIndex: "owner_agent",
+      key: "owner_agent",
+      width: 150,
+      render: (_, project) => <Text>{project.owner_agent}</Text>
+    },
+    {
       title: "当前任务",
       dataIndex: "current_task",
       key: "current_task",
       ellipsis: true
+    },
+    {
+      title: "任务生命周期",
+      dataIndex: "task_flow",
+      key: "task_flow",
+      width: 520,
+      render: (_, project) => (
+        <Steps
+          size="small"
+          current={Math.max(project.task_flow.findIndex((step) => step.status === "active"), 0)}
+          items={project.task_flow.map((step) => ({
+            key: step.id || step.label,
+            title: step.label,
+            description: step.count > 0 ? `${step.count}` : undefined,
+            status: step.status === "pass" || step.status === "complete"
+              ? "finish"
+              : step.status === "active"
+                ? "process"
+                : step.status === "fail" || step.status === "blocked"
+                  ? "error"
+                  : "wait"
+          }))}
+        />
+      )
     },
     {
       title: "进度",
@@ -350,7 +389,7 @@ export default function ProjectsPage() {
           dataSource={projectRows}
           loading={loading && projectRows.length === 0}
           pagination={false}
-          scroll={{ x: 850 }}
+          scroll={{ x: 1520 }}
           locale={{ emptyText: <Empty description="暂无项目" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
         />
       </Card>

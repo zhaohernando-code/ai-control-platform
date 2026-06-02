@@ -305,6 +305,11 @@ function baseArtifact(overrides = {}) {
         }
       }
     ],
+    browser_error_results: [
+      { viewport: "desktop", error_count: 0, blocked_error_count: 0, errors: [] },
+      { viewport: "desktop_narrow", error_count: 0, blocked_error_count: 0, errors: [] },
+      { viewport: "mobile", error_count: 0, blocked_error_count: 0, errors: [] }
+    ],
     mobile_results: [],
     findings: [],
     blocking_count: 0,
@@ -480,6 +485,49 @@ test("frontend acceptance blocks root favicon fallback links", () => {
   assert.ok(artifact.findings.some((finding) => finding.code === "frontend_root_favicon_fallback"));
   assert.ok(artifact.findings.some((finding) => finding.code === "frontend_favicon_not_mounted_safe"));
   assert.ok(validation.issues.some((issue) => issue.code === "root_favicon_fallback_not_allowed"));
+});
+
+test("frontend acceptance accepts mounted Next workbench favicon links", () => {
+  const artifact = buildArtifact({
+    viewportResults: [
+      viewportAudit({
+        viewport: "desktop",
+        routePath: "/projects/ai-control-platform/",
+        faviconLinks: [
+          {
+            rel: "icon",
+            type: "image/svg+xml",
+            href_attribute: "/projects/ai-control-platform/favicon.svg",
+            href: "http://127.0.0.1:4191/projects/ai-control-platform/favicon.svg"
+          }
+        ],
+        mountedSvgFaviconResponses: [
+          {
+            url: "http://127.0.0.1:4191/projects/ai-control-platform/favicon.svg",
+            status: 200,
+            content_type: "image/svg+xml"
+          }
+        ]
+      }),
+      viewportAudit({ viewport: "desktop_narrow", routePath: "/projects/ai-control-platform/", dimensions: { width: 1024, height: 768, scrollWidth: 1024, scrollHeight: 768 } }),
+      viewportAudit({ viewport: "mobile", routePath: "/projects/ai-control-platform/", dimensions: { width: 390, height: 844, scrollWidth: 390, scrollHeight: 844 } })
+    ],
+    navigationResults: [],
+    screenshots: [],
+    targetInfo: {
+      acceptance_target: "latest_projection",
+      acceptance_mode: "release_default_latest_projection",
+      release_default: true
+    }
+  });
+  const desktopResources = artifact.resource_results.find((result) => result.viewport === "desktop");
+  const validation = validateFrontendAcceptanceRunArtifact(artifact);
+
+  assert.equal(desktopResources.mounted_safe_favicon_count, 1);
+  assert.equal(desktopResources.root_favicon_count, 0);
+  assert.equal(desktopResources.mounted_svg_favicon_mime_ok, true);
+  assert.ok(!artifact.findings.some((finding) => finding.code === "frontend_favicon_not_mounted_safe"));
+  assert.ok(!validation.issues.some((issue) => issue.code === "missing_frontend_favicon_readiness"));
 });
 
 test("frontend acceptance requires mounted SVG favicon MIME evidence", () => {
@@ -1370,6 +1418,30 @@ test("frontend acceptance records and blocks browser console or page errors", ()
   assert.match(consoleFinding.evidence.errors[0].url, /favicon\.ico/);
 });
 
+test("frontend acceptance validation rejects browser error false-pass artifacts", () => {
+  const validation = validateFrontendAcceptanceRunArtifact(baseArtifact({
+    browser_error_results: [
+      { viewport: "desktop", error_count: 1, blocked_error_count: 1, errors: [{ source: "console", type: "error", text: "boom" }] },
+      { viewport: "desktop_narrow", error_count: 0, blocked_error_count: 0, errors: [] },
+      { viewport: "mobile", error_count: 0, blocked_error_count: 0, errors: [] }
+    ]
+  }));
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((issue) => issue.code === "frontend_browser_error_false_pass"));
+  assert.ok(validation.issues.some((issue) => issue.code === "frontend_browser_error_finding_mismatch"));
+});
+
+test("frontend acceptance validation rejects Next artifacts that used the legacy static shell", () => {
+  const validation = validateFrontendAcceptanceRunArtifact(baseArtifact({
+    route_family: "nextjs_app_router",
+    legacy_static_shell_used: true
+  }));
+
+  assert.equal(validation.status, "fail");
+  assert.ok(validation.issues.some((issue) => issue.code === "next_frontend_acceptance_legacy_shell_not_allowed"));
+});
+
 test("frontend acceptance rejects active-class-only navigation", () => {
   const navigationResults = [
     {
@@ -1555,9 +1627,13 @@ test("closeout and package scripts wire frontend acceptance as a hard gate", () 
 
   assert.equal(
     pkg.scripts["check:workbench:frontend-acceptance"],
+    "node tools/run-with-node18.mjs tools/check-workbench-next-frontend-acceptance.mjs"
+  );
+  assert.equal(
+    pkg.scripts["check:workbench:legacy-frontend-acceptance"],
     "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs"
   );
-  assert.match(closeout, /check-workbench-frontend-acceptance\.mjs/);
+  assert.match(closeout, /check-workbench-next-frontend-acceptance\.mjs/);
   assert.match(closeout, /validateFrontendAcceptanceArtifact/);
   assert.match(closeoutValidation, /frontend acceptance artifact did not pass/);
   assert.match(closeoutValidation, /release default latest projection/);

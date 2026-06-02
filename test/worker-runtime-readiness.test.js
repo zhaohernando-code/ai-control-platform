@@ -40,7 +40,7 @@ test("commands containing browser scripts or playwright-backed tools require pla
   const result = evaluateWorkerRuntimeReadiness({
     commands: [
       "npm run check:scheduler-dispatch-writeback",
-      ["node", "tools/check-workbench-frontend-acceptance.mjs", "--output", "tmp/run.json"]
+      ["node", "tools/check-workbench-next-frontend-acceptance.mjs", "--output", "tmp/run.json"]
     ],
     package_availability: {
       playwright: { available: false }
@@ -49,7 +49,7 @@ test("commands containing browser scripts or playwright-backed tools require pla
 
   assert.equal(result.status, "fail");
   assert.ok(result.detections.some((item) => item.kind === "command_script" && item.matched === "check:scheduler-dispatch-writeback"));
-  assert.ok(result.detections.some((item) => item.kind === "command_tool" && item.matched === "tools/check-workbench-frontend-acceptance.mjs"));
+  assert.ok(result.detections.some((item) => item.kind === "command_tool" && item.matched === "tools/check-workbench-next-frontend-acceptance.mjs"));
 });
 
 test("non-browser scripts do not require playwright", () => {

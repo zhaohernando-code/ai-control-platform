@@ -1,0 +1,33 @@
+{
+  "version": "reviewer-risk.v1",
+  "reviewed_at": "2026-06-03T00:00:00+08:00",
+  "reviewer": "claude-code-deepseek-v4-pro",
+  "scope": "LFG-P6.2 Next frontend-acceptance migration",
+  "status": "pass_after_delta",
+  "summary": "DeepSeek confirmed the primary frontend-acceptance script, closeout, and self-governance scan were moved to the mounted Next.js App Router gate; the Next gate reuses buildArtifact and validateFrontendAcceptanceRunArtifact with requireDurableReleaseEvidence:true; inventory and plan keep legacy deletion blocked by browser-events, scheduler writeback, and shell-test dependencies. Delta reviews identified missing direct browser-error false-pass validator coverage, missing explicit Next legacy-shell fail-closed validation, missing large-file governance in closeout, ambiguous P6.2 deletion-blocker wording, and a governance audit compact-output estimated_cost alias false-red. The validator, tests, closeout gate, P6 plan/inventory, and audit runner normalization were strengthened; final DeepSeek sharded delta synthesis returned PASS.",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "delta_closure": {
+    "initial_gap": "browser-error false-pass lacked a direct validator test; later delta review also flagged Next legacy-shell false-pass risk, missing large-file gate inside closeout, P6.2 deletion-blocker ambiguity, and governance audit estimated_cost_or_effort alias false-red",
+    "fix": [
+      "src/workflow/frontend-acceptance.js now requires browser_error_results and fails pass artifacts with blocked browser errors or missing frontend_browser_console_error finding",
+      "src/workflow/frontend-acceptance.js now rejects nextjs_app_router artifacts unless legacy_static_shell_used is explicitly false",
+      "test/frontend-acceptance.test.js now directly rejects browser-error false-pass artifacts and Next artifacts that used the legacy static shell",
+      "tools/check-closeout.mjs now runs tools/report-large-files.mjs --fail-on-issues as a closeout gate",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md and docs/governance/legacy-static-workbench-inventory.json now mark P6.2 replacement gates as pass while keeping deletion blockers in P6.3/P6.4",
+      "tools/run-governance-audit-skill-trial.mjs now normalizes estimated_cost_or_effort, estimated_effort, and cost_or_effort to estimated_cost, with test coverage"
+    ],
+    "delta_status": "PASS"
+  },
+  "evidence": {
+    "primary_gate": "npm run check:workbench:frontend-acceptance",
+    "next_gate": "tools/check-workbench-next-frontend-acceptance.mjs",
+    "artifact": "docs/examples/workbench-next-frontend-acceptance-evidence-20260603.json",
+    "legacy_gate": "npm run check:workbench:legacy-frontend-acceptance",
+    "remaining_legacy_blockers": [
+      "tools/check-workbench-browser-events.mjs",
+      "tools/check-scheduler-dispatch-writeback.mjs",
+      "test/workbench-shell.test.js"
+    ]
+  }
+}

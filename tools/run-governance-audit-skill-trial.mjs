@@ -279,6 +279,16 @@ function normalizeEvidencePlan(plan = {}, requestedFinalVerdict = "", dispositio
   };
 }
 
+function normalizeDecisionPackage(decisionPackage = {}) {
+  return {
+    ...decisionPackage,
+    estimated_cost: decisionPackage.estimated_cost ||
+      decisionPackage.estimated_cost_or_effort ||
+      decisionPackage.estimated_effort ||
+      decisionPackage.cost_or_effort
+  };
+}
+
 function expandCompactAuditVerdict(compact, options) {
   const evidenceIds = (options.preflightEvidenceItems || []).map((item) => item.id);
   const requestedFinalVerdict = compact.final_verdict || "";
@@ -300,13 +310,13 @@ function expandCompactAuditVerdict(compact, options) {
         evidence_plan: normalizeEvidencePlan(finding.evidence_plan, requestedFinalVerdict, disposition)
       } : {}),
       ...(type === "可选迭代" ? {
-        decision_package: finding.decision_package || {
+        decision_package: normalizeDecisionPackage(finding.decision_package || {
           options: ["defer", "schedule follow-up"],
           tradeoffs: "Deferring avoids scope expansion; follow-up increases confidence.",
           recommended_option: "schedule follow-up",
           estimated_cost: "low",
           confidence_gain: "medium"
-        }
+        })
       } : {})
     };
   }) : [];

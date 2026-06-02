@@ -45,7 +45,7 @@ AI Control Platform 工作台的第一职责是管理项目，不是展示单次
 
 ## 5. Frontend Acceptance 责任
 
-`tools/check-workbench-frontend-acceptance.mjs` 必须在真实浏览器 DOM 中验证：
+`tools/check-workbench-next-frontend-acceptance.mjs` 必须在真实 Next.js App Router 浏览器 DOM 中验证：
 
 - 桌面导航包含 `总览`、`项目`、`任务流`、`Agents`、`风险`、`治理`。
 - PC 和 mobile 都显示项目列表、`AI Control Platform`、`ai-control-platform`、阶段、当前任务、Agent、进度和更新时间。

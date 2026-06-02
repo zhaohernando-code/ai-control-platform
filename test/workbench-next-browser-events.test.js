@@ -71,8 +71,9 @@ test("legacy static inventory records Next browser-events probe while keeping fu
   assert.equal(replacement?.evidence, "docs/examples/workbench-next-browser-events-evidence-20260603.json");
   assert.match(replacement?.replaces_requirement || "", /Next browser-events mounted runtime and API writeback probe/);
   assert.ok(legacyGateFiles.has("tools/check-workbench-browser-events.mjs"));
+  assert.ok(legacyGateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
   assert.match(requiredBeforeDelete, /Browser-events gate migrated/);
-  assert.match(requiredBeforeDelete, /Frontend-acceptance gate migrated/);
+  assert.doesNotMatch(requiredBeforeDelete, /Frontend-acceptance gate migrated/);
   assert.match(requiredBeforeDelete, /Scheduler dispatch writeback browser verification no longer depends/);
   assert.equal(inventory.status, "retirement_blocked");
   assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_2");

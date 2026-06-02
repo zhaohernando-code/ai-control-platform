@@ -155,14 +155,15 @@ export default function OverviewPage() {
 
       {/* ====== Hero 主状态 ====== */}
       <Card>
-        <Title level={3} style={{ marginTop: 0 }}>
+        <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
           <Tag color={statusColor(oneScreen?.primary_status ?? projection?.status)}>
             {safeText(oneScreen?.primary_status ?? projection?.status, "状态未知")}
           </Tag>
-          <span style={{ marginLeft: 8 }}>
-            {safeText(projection?.goal, safeText(oneScreen?.headline, "等待状态投影"))}
-          </span>
+          <span style={{ marginLeft: 8 }}>项目总览</span>
         </Title>
+        <Paragraph ellipsis={{ rows: 2, expandable: true }} style={{ marginBottom: 8 }}>
+          {safeText(projection?.goal, safeText(oneScreen?.headline, "等待状态投影"))}
+        </Paragraph>
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
           Run {safeText(projection?.run_id)} · Cycle {safeText(projection?.cycle_id)}
         </Paragraph>
@@ -244,7 +245,7 @@ export default function OverviewPage() {
                   {safeText(closeout?.status, "等待上报")}
                 </Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Snapshot">
+              <Descriptions.Item label="快照">
                 <Text>{safeText(closeout?.snapshot_id, "无")}</Text>
               </Descriptions.Item>
             </Descriptions>
