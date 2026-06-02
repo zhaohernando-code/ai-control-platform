@@ -1,0 +1,362 @@
+{
+  "version": "workbench-next-served-route-check.v1",
+  "status": "pass",
+  "created_at": "2026-06-02T15:52:57.449Z",
+  "route_base_url": "http://127.0.0.1:4191",
+  "api_port": 56190,
+  "next_port": 4191,
+  "mount_prefix": "/projects/ai-control-platform",
+  "route_family": "nextjs_app_router",
+  "legacy_static_shell_allowed": false,
+  "viewport_results": [
+    {
+      "viewport": "desktop",
+      "route_path": "/projects/ai-control-platform/",
+      "http_status": 200,
+      "projection_response": {
+        "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8"
+      },
+      "projection_api_probe": {
+        "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "projection_status": "rerun",
+        "run_id": "run-20260521-platform-self-trial",
+        "cycle_id": "cycle-20260521-autonomous-platform-context-pack-1779724593760"
+      },
+      "favicon_response": {
+        "url": "http://127.0.0.1:4191/projects/ai-control-platform/favicon.svg",
+        "status": 200,
+        "content_type": "image/svg+xml"
+      },
+      "console_error_count": 0,
+      "page_error_count": 0,
+      "failed_request_count": 0,
+      "http_error_count": 0,
+      "console_errors": [],
+      "page_errors": [],
+      "failed_requests": [],
+      "http_errors": [],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/",
+          "status": 308,
+          "content_type": null
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform",
+          "status": 200,
+          "content_type": "text/html; charset=utf-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/css/app/layout.css?v=1780415560216",
+          "status": 200,
+          "content_type": "text/css; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/webpack.js?v=1780415560216",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/loading.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/error.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/not-found.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/page.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/layout.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/main-app.js?v=1780415560216",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+          "status": 200,
+          "content_type": "application/json; charset=utf-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+          "status": 200,
+          "content_type": "application/json; charset=utf-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/favicon.svg",
+          "status": 200,
+          "content_type": "image/svg+xml"
+        }
+      ],
+      "title": "AI Control Platform Workbench",
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform",
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\nrerun需求：“提需求”模块更新。现状与目标：1. “提需求”这三个字非常不专业。你应该使用“新建任务” 2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端 3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框 4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里 5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上 6. “提交到流程”改为“提交”。验收：由平台根据需求生成验收方案： 1. 需求目标已落地：1. “提需求”这三个字非常不专业。你应该使用“新建任务” 2. 当前的“范围”选项需要修改，这边应该改成选择“项目”。因为很多的需求并不能精准定位到前后端 3. “验收标准”这个不应该由用户提出，应该根据用户的需求出发，由大模型生成验收方案，所以不应该有这个填写框 4. 底下的“暂无前端提交的需求”，这个不应该显示在这里，而应该放在项目下的任务列表，或者任务流里 5. 当前可能在流程里没有一个“用户提交后，生成一个plan再让用户审核”的机制（这个事情的必要性在于，有的需求本身需要经过评估步骤才可以有具体的落地方案），前端和后端的设计也需要根据这个需求跟上 6. “提交到流程”改为“提交” 2. 提交流程生成可审核方案，用户通过方案后才进入开发执行。 3. 相关工作包、投影和真实 Workbench 页面均通过对应自动化验证。 4. 约束已验证：注意：此次需求的范围不只是前端。约束：注意：此次需求的范围不只是前端。范围：AI Control Platform 项目\nRun run-20260521-platform-self-trial · Cycle cycle-20260521-autonomous-platform-context-pack-1779724593760\n项目总数\n2\n活跃项目\n2\n任务包\n1\n已完成目标\n5/17\n运营事件\n12\n证据\n14\n收口验收\n状态\nnot_configured\n\n\nSnapshot\n无\n推荐动作\nrerun\nRerun failed checks with recovery context\nAgent 池\n开放\n0\n未评估\n0\n未关闭\n0\n超时\n0\n心跳\n1\n已完成\n1\n调度\n调度步数\n0\n续跑就绪\n0\n循环迭代\n3\n审查分片\n0\n审查发现\n0\n可派发任务\n0\n治理\n自治理发现\n2\n自修复\n1\n证据任务\n0\n用户",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "mounted_next_script_count": 9,
+      "root_next_script_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "legacy_data_bind_count": 0,
+      "has_legacy_static_entry": false,
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "viewport": "mobile",
+      "route_path": "/projects/ai-control-platform/",
+      "http_status": 200,
+      "projection_response": null,
+      "projection_api_probe": {
+        "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "projection_status": "rerun",
+        "run_id": "run-20260521-platform-self-trial",
+        "cycle_id": "cycle-20260521-autonomous-platform-context-pack-1779724593760"
+      },
+      "favicon_response": {
+        "url": "http://127.0.0.1:4191/projects/ai-control-platform/favicon.svg",
+        "status": 200,
+        "content_type": "image/svg+xml"
+      },
+      "console_error_count": 0,
+      "page_error_count": 0,
+      "failed_request_count": 0,
+      "http_error_count": 0,
+      "console_errors": [],
+      "page_errors": [],
+      "failed_requests": [],
+      "http_errors": [],
+      "responses": [
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/",
+          "status": 308,
+          "content_type": null
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform",
+          "status": 200,
+          "content_type": "text/html; charset=utf-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/css/app/layout.css?v=1780415562717",
+          "status": 200,
+          "content_type": "text/css; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/webpack.js?v=1780415562717",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/loading.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/not-found.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/error.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/page.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/app/layout.js",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/_next/static/chunks/main-app.js?v=1780415562717",
+          "status": 200,
+          "content_type": "application/javascript; charset=UTF-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+          "status": 200,
+          "content_type": "application/json; charset=utf-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/api/workbench/projection",
+          "status": 200,
+          "content_type": "application/json; charset=utf-8"
+        },
+        {
+          "url": "http://127.0.0.1:4191/projects/ai-control-platform/favicon.svg",
+          "status": 200,
+          "content_type": "image/svg+xml"
+        }
+      ],
+      "title": "AI Control Platform Workbench",
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform",
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "mounted_next_script_count": 9,
+      "root_next_script_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "legacy_data_bind_count": 0,
+      "has_legacy_static_entry": false,
+      "dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    }
+  ],
+  "navigation_result": {
+    "status": "pass",
+    "requirements_url": "http://127.0.0.1:4191/projects/ai-control-platform/requirements",
+    "flow_url": "http://127.0.0.1:4191/projects/ai-control-platform/flow",
+    "requirements_contains_form": true
+  },
+  "route_results": [
+    {
+      "label": "overview",
+      "path": "/",
+      "route_path": "/projects/ai-control-platform/",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n状态未知等待状态投影\nRun -- · Cycle --\n项目总数\n0\n活跃项目\n0\n任务包\n0\n已完成目标\n0/0\n运营事件\n0\n证据\n0\n收口验收\n状态等待上报\n\n\nSnapshot无\n推荐动作\n等待新的可执行任务\nAgent 池\n开放\n0\n未评估\n0\n未关闭\n0\n超时\n0\n心跳\n0\n已完成\n0\n调度\n调度步数\n0\n续跑就绪\n0\n循环迭代\n0\n审查分片\n0\n审查发现\n0\n可派发任务\n0\n治理\n自治理发现\n0\n自修复\n0\n证据任务\n0\n用户决策\n0\n运行时间线\n暂无运行事件\n数据更新时间：未知\n刷新"
+    },
+    {
+      "label": "requirements",
+      "path": "/requirements",
+      "route_path": "/projects/ai-control-platform/requirements",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/requirements",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n新建任务\n提交后由平台生成计划和验收方案，后续审视、执行与结果都在任务流中处理。\n任务标题\n0 / 80\n所属项目\nAI Control Platform\n需求描述\n0 / 3000\n约束 / 备注（可选）\n0 / 1200\n验收方案由平台生成\n具体验收方案会在计划生成后进入任务流。请在计划审视中同意或打回。\n提交\n查看任务流\n创建成功后会自动进入任务详情。"
+    },
+    {
+      "label": "projects",
+      "path": "/projects",
+      "route_path": "/projects/ai-control-platform/projects",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/projects",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n项目列表\n项目总数\n0\n进行中项目\n0\n任务总数\n0\n需决策\n0\n项目\t阶段\t当前任务\t进度\t更新时间\n\n项目\n\t\n阶段\n\t\n当前任务\n\t\n进度\n\t\n更新时间\n\n\n暂无项目\n项目下的任务\n任务\t状态\t阶段\t失败原因\t更新时间\t操作\n\n任务\n\t\n状态\n\t\n阶段\n\t\n失败原因\n\t\n更新时间\n\t\n操作\n\n\n暂无任务"
+    },
+    {
+      "label": "flow",
+      "path": "/flow",
+      "route_path": "/projects/ai-control-platform/flow",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/flow",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n任务流\n任务创建后的计划生成、人工审视、执行、失败和验收状态都在这里跟踪。\n全部\n运行中\n待执行\n待生成\n待审视\n完成\n失败\n超时\n刷新\n暂无任务"
+    },
+    {
+      "label": "agents",
+      "path": "/agents",
+      "route_path": "/projects/ai-control-platform/agents",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/agents",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\nAgents\n查看任务流\n全量可用性测试\n最后刷新时间：暂无\nAPI Key 健康、竞争锁策略和 Agent 职能配置会参与后续任务流调度。\n统一调用治理\n暂无调用 profile"
+    },
+    {
+      "label": "risks",
+      "path": "/risks",
+      "route_path": "/projects/ai-control-platform/risks",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/risks",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n风险\n此模块将在后续切片中迁移为 antd Alert + Card + Descriptions， 展示阻塞项、风险摘要和需要人工决策的事项。\n风险面板将在后续切片中接入\n返回总览"
+    },
+    {
+      "label": "governance",
+      "path": "/governance",
+      "route_path": "/projects/ai-control-platform/governance",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/governance",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n治理\n此模块将在后续切片中迁移为 antd Card + Descriptions + Alert， 展示治理状态、收口验收证据、Snapshot 和流程硬化结果。\n治理面板将在后续切片中接入\n返回总览"
+    },
+    {
+      "label": "runs",
+      "path": "/runs",
+      "route_path": "/projects/ai-control-platform/runs",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:4191/projects/ai-control-platform/runs",
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "body_text_sample": "AI Control Platform\n总览\n新建任务\n项目\n任务流\nAgents\n风险\n治理\n运行诊断\n运行诊断\n此模块将在后续切片中迁移为 antd Card + Descriptions + Timeline， 展示调度执行、模型路由、审查通道和 Operator 操作时间线。\n运行诊断面板将在后续切片中接入\n返回总览"
+    }
+  ],
+  "secret_policy": "No cookies, tokens, authorization headers, or secret values are stored.",
+  "findings": [],
+  "blocking_count": 0,
+  "next_stdout_tail": "  ▲ Next.js 14.2.35\n  - Local:        http://127.0.0.1:4191\n  - Network:      http://127.0.0.1:4191\n  - Experiments (use with caution):\n    · typedRoutes\n\n ✓ Starting...\n ✓ Ready in 4s\n ○ Compiling / ...\n ✓ Compiled / in 3.1s (5259 modules)\n GET / 200 in 3375ms\n GET / 200 in 59ms\n GET / 200 in 25ms\n ○ Compiling /requirements ...\n ✓ Compiled /requirements in 704ms (5469 modules)\n ○ Compiling /flow ...\n ✓ Compiled /flow in 1868ms (5807 modules)\n GET / 200 in 194ms\n GET /requirements 200 in 151ms\n ○ Compiling /projects ...\n ✓ Compiled /projects in 533ms (5845 modules)\n GET /projects 200 in 779ms\n GET /flow 200 in 99ms\n ○ Compiling /agents ...\n ✓ Compiled /agents in 2.8s (5877 modules)\n GET /agents 200 in 3023ms\n ○ Compiling /risks ...\n ✓ Compiled /risks in 556ms (5887 modules)\n GET /risks 200 in 738ms\n ○ Compiling /governance ...\n ✓ Compiled /governance in 521ms (5895 modules)\n GET /governance 200 in 610ms\n ○ Compiling /runs ...\n ✓ Compiled /runs in 512ms (5903 modules)\n GET /runs 200 in 578ms\n",
+  "next_stderr_tail": "(node:55481) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nWarning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.\n"
+}

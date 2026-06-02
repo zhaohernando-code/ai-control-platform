@@ -23,6 +23,7 @@
     "check:workbench:live-route": "node tools/run-with-node18.mjs tools/check-workbench-live-route.mjs",
     "probe:workbench:live-route": "node tools/run-with-node18.mjs tools/probe-workbench-live-route.mjs",
     "check:workbench:public-browser-route": "node tools/run-with-node18.mjs tools/check-workbench-public-browser-route.mjs",
+    "check:workbench:next-served-route": "node tools/run-with-node18.mjs tools/check-workbench-next-served-route.mjs",
     "check:workbench:browser-events": "node tools/run-with-node18.mjs tools/check-workbench-browser-events.mjs",
     "check:workbench:frontend-acceptance": "node tools/run-with-node18.mjs tools/check-workbench-frontend-acceptance.mjs",
     "check:workbench:state-boundary": "node tools/run-with-node18.mjs tools/check-workbench-state-boundary.mjs",

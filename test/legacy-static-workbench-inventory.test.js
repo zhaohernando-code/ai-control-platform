@@ -22,7 +22,7 @@ test("legacy static workbench inventory matches current asset dependency graph",
 
   assert.equal(report.version, "legacy-static-workbench-inventory.v1");
   assert.equal(report.status, "retirement_blocked");
-  assert.equal(report.retirement.decision, "do_not_delete_in_p6_1");
+  assert.equal(report.retirement.decision, "do_not_delete_in_p6_2");
   assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.2"));
   assert.ok(report.retirement.blocked_p6_items.includes("LFG-P6.3"));
 
@@ -101,9 +101,14 @@ test("legacy static workbench inventory records current acceptance-gate dependen
 test("legacy static workbench retirement remains blocked until Next served-route gates replace fallback gates", () => {
   const report = inventory();
   const requiredEvidence = report.retirement.required_evidence_before_delete.join("\n");
+  const nextGates = report.next_served_route_replacement_gates || [];
+  const nextGate = nextGates.find((item) => item.file === "tools/check-workbench-next-served-route.mjs");
 
-  assert.equal(report.retirement.decision, "do_not_delete_in_p6_1");
-  assert.match(requiredEvidence, /Next\.js Workbench served route verified/);
+  assert.equal(report.retirement.decision, "do_not_delete_in_p6_2");
+  assert.equal(nextGate?.status, "pass");
+  assert.equal(nextGate?.evidence, "docs/examples/workbench-next-served-route-evidence-20260602.json");
+  assert.match(nextGate?.replaces_requirement || "", /Next\.js Workbench served route verified/);
+  assert.doesNotMatch(requiredEvidence, /Next\.js Workbench served route verified/);
   assert.match(requiredEvidence, /Browser-events gate migrated/);
   assert.match(requiredEvidence, /Frontend-acceptance gate migrated/);
   assert.match(requiredEvidence, /Scheduler dispatch writeback browser verification no longer depends/);

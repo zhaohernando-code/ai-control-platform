@@ -1,0 +1,38 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-next-served-route-gate",
+  "reviewer_id": "deepseek-lfg-p6-next-served-route-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis and deepseek-v4-pro delta",
+  "reviewed_at": "2026-06-02T23:55:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs tools/check-workbench-next-served-route.mjs --output docs/examples/workbench-next-served-route-evidence-20260602.json",
+    "node tools/run-with-node18.mjs --test test/workbench-next-served-route.test.js test/legacy-static-workbench-inventory.test.js test/workbench-shell.test.js test/frontend-acceptance.test.js",
+    "tools/check-workbench-next-served-route.mjs",
+    "test/workbench-next-served-route.test.js",
+    "docs/examples/workbench-next-served-route-evidence-20260602.json",
+    "docs/governance/legacy-static-workbench-inventory.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "package.json"
+  ],
+  "scope": {
+    "files": [
+      "tools/check-workbench-next-served-route.mjs",
+      "test/workbench-next-served-route.test.js",
+      "docs/examples/workbench-next-served-route-evidence-20260602.json",
+      "docs/governance/legacy-static-workbench-inventory.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "package.json"
+    ],
+    "diff_summary": "Added a real Playwright-backed Next.js served-route gate for the mounted Workbench App Router runtime. The gate starts an API backend and Next.js dev server, verifies desktop and mobile mounted routes, mounted API rewrite, SVG favicon, SPA navigation, all eight main App Router routes, browser error cleanliness, and absence of legacy static shell markers. P6.2 remains blocked and legacy static assets are not deleted.",
+    "remaining_blockers": [
+      "tools/check-workbench-browser-events.mjs still drives legacy desktop.html/mobile.html interaction scenarios",
+      "tools/check-workbench-frontend-acceptance.mjs still validates legacy desktop/mobile content acceptance",
+      "tools/check-scheduler-dispatch-writeback.mjs still verifies scheduler browser writeback through legacy desktop/mobile pages",
+      "test/workbench-shell.test.js still asserts legacy DOM/CSS invariants"
+    ]
+  },
+  "notes": "Initial DeepSeek sharded review returned PASS with non-blocking requests to confirm full route coverage and public-browser-route non-legacy status. The delta review confirmed all eight App Router routes are covered, public-browser-route is a Next/Ant route gate rather than a legacy static consumer, and P6.2 remains retirement_blocked with no non-blocking findings."
+}
