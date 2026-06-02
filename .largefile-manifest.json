@@ -153,8 +153,8 @@
       "reviewed_at": "2026-05-28"
     },
     "test/workbench-projection.test.js": {
-      "lines": 3294,
-      "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, one-screen helper counter coverage, and many regression fixtures; staged split should follow schema subdomains.",
+      "lines": 3175,
+      "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, project-management fixtures, mobile projection, and many regression fixtures; one-screen helper counter coverage was extracted to test/workbench-projection-one-screen.test.js, and further staged split should follow schema subdomains.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-02"
     },

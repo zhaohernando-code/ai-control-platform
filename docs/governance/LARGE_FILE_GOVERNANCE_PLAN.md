@@ -2,7 +2,7 @@
 
 Status: in_progress  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T17:13:00+08:00
+Updated at: 2026-06-02T18:58:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -64,7 +64,7 @@ Priority order is current line count first. Runtime/contract blast radius is use
 | --- | --- | ---: | --- | --- |
 | LFG-Q01 | `test/workbench-server.test.js` | 4218 | `planned_refactor` | Split server API/live/static/state-store tests into domain shards. First agent-key route shard extracted. |
 | LFG-Q02 | `tools/workbench-server.mjs` | 3447 | `planned_refactor` | Continue extracting route groups and runtime service bridges. Legacy static compatibility routing extracted. |
-| LFG-Q03 | `test/workbench-projection.test.js` | 3294 | `planned_refactor` | Split projection schema/domain regression suites. |
+| LFG-Q03 | `test/workbench-projection.test.js` | 3175 | `planned_refactor` | Split projection schema/domain regression suites. One-screen helper shard extracted. |
 | LFG-Q04 | `src/workflow/headless-cli-orchestrator.js` | 2090 | `planned_refactor` | Extract worker planning, acceptance, and continuation packaging. |
 | LFG-Q05 | `src/workflow/workbench-projection.js` | 1944 | `planned_refactor` | Extract project-management and next-action readout domains. |
 | LFG-Q06 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split orchestrator tests along extracted domains. |
@@ -180,13 +180,13 @@ npm run check:closeout
 
 ### Phase LFG-P4: Workbench Projection Domain Split
 
-Status: pending
+Status: review_pending
 
 Goal: reduce projection aggregation risk while preserving one-screen and mobile contracts.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFG-P4.1 | Split projection tests by schema domain | New test shards | `test/workbench-projection.test.js` line count decreases and all projection shards pass. | pending |
+| LFG-P4.1 | Split projection tests by schema domain | `test/workbench-projection-one-screen.test.js` | `test/workbench-projection.test.js` line count decreased from 3294 to 3175; extracted shard is 122 lines and projection/shell gates pass. | review_pending |
 | LFG-P4.2 | Extract project-management projection | `src/workflow/workbench-project-management.js` or equivalent | Existing project/task counters and readouts remain unchanged. | pending |
 | LFG-P4.3 | Extract next-action readout projection | New module | Scheduler, lifecycle, reviewer, and terminal next-action tests still pass. | pending |
 | LFG-P4.4 | DeepSeek phase review | Reviewer artifact | DS confirms extraction is behavior-preserving and does not just move complexity. | pending |
@@ -264,6 +264,6 @@ Each scheduled large-file governance run should:
 | LFG-P1 | pass | `tools/report-large-files.mjs` added; report gate, duplicate-key detection, growth/stale-up detection, shrink warnings, missing-entry detection, and planned-refactor growth guard pass local tests. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P3 | in_progress | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; legacy static compatibility routing was extracted into `tools/workbench-static-routes.mjs`; server/API route contract, large-file, known-risk, and governance enrollment gates passed. | DeepSeek PASS for test shard and route group; live-route preservation remains pending |
-| LFG-P4 | pending | Not started. | pending |
+| LFG-P4 | review_pending | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; projection shard and shell gates passed. | DeepSeek review pending |
 | LFG-P5 | pending | Not started. | pending |
 | LFG-P6 | pending | Not started. | pending |
