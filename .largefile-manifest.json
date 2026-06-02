@@ -63,10 +63,16 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1217,
-      "reason": "Context work package runner: owned-file enforcement, execution governance, worker dispatch, execution-root provenance, and result normalization share one flow.",
+      "lines": 1135,
+      "reason": "Context work package runner: execution-scope and workspace mutation guard logic has been extracted to src/workflow/context-work-package-execution-scope.js; execution governance, worker dispatch, execution-root provenance, and result normalization still share one flow.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-30"
+      "reviewed_at": "2026-06-02"
+    },
+    "src/workflow/context-work-package-execution-scope.js": {
+      "lines": 156,
+      "reason": "Extracted context work package execution-scope helper kept below the large-file threshold while preserving code-output isolation, primary-worktree blocking, no-code workspace mutation guard, and git porcelain snapshot behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-02"
     },
     "src/workflow/development-flow-real.js": {
       "lines": 892,

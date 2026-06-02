@@ -2,7 +2,7 @@
 
 Status: in_progress  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T22:21:00+08:00
+Updated at: 2026-06-02T22:33:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -72,7 +72,7 @@ Priority order is current line count first. Runtime/contract blast radius is use
 | LFG-Q08 | `src/workflow/requirement-intake.js` | 1318 | `planned_refactor` | Extract plan review, validation, and work-package generation. |
 | LFG-Q09 | `apps/workbench/workbench.js` | 1289 | `planned_refactor` | Retire or quarantine legacy static shell once Next.js routes are complete. |
 | LFG-Q10 | `test/context-work-package-runner.test.js` | 1242 | `planned_refactor` | Split owned-file, dependency, and execution-governance tests. |
-| LFG-Q11 | `src/workflow/context-work-package-runner.js` | 1217 | `planned_refactor` | Split owned-file enforcement, execution governance, worker dispatch, and result normalization. |
+| LFG-Q11 | `src/workflow/context-work-package-runner.js` | 1135 | `planned_refactor` | Execution-scope and workspace mutation guard extracted; continue splitting execution governance, worker dispatch, and result normalization. |
 | LFG-Q12 | `apps/workbench/styles.css` | 963 | `planned_refactor` | Retire or quarantine legacy static shell styling once Next.js routes are complete. |
 | LFG-Q13 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Next-action readout and project-management readout domains extracted; remaining logic is projection composition. |
 | LFG-Q14 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance and phase evidence aggregation. |
@@ -200,7 +200,7 @@ npm run test:coverage
 
 ### Phase LFG-P5: Headless and Context Execution Split
 
-Status: in_progress
+Status: pass
 
 Goal: split long-running orchestration and execution files into auditable contracts.
 
@@ -208,8 +208,8 @@ Goal: split long-running orchestration and execution files into auditable contra
 | --- | --- | --- | --- | --- |
 | LFG-P5.1 | Extract headless worker planning | `src/workflow/headless-worker-planning.js`; `test/headless-worker-planning.test.js` | `src/workflow/headless-cli-orchestrator.js` decreased from 2090 to 2042 lines; headless worker planning and orchestrator tests pass. | pass |
 | LFG-P5.2 | Extract headless acceptance/closeout packaging | `src/workflow/headless-child-acceptance.js`; `test/headless-child-acceptance.test.js` | `src/workflow/headless-cli-orchestrator.js` decreased from 2042 to 1855 lines; child acceptance and orchestrator tests pass, and acceptance remains fail-closed. | pass |
-| LFG-P5.3 | Extract context runner owned-file enforcement | Module + tests | Owned scope tests remain pass/fail as before. | pending |
-| LFG-P5.4 | DeepSeek phase review | Reviewer artifact | DS confirms no host-boundary or completion-authority regression. | pending |
+| LFG-P5.3 | Extract context runner owned-file enforcement | `src/workflow/context-work-package-execution-scope.js`; `test/context-work-package-execution-scope.test.js` | `src/workflow/context-work-package-runner.js` decreased from 1217 to 1135 lines; fixed owned_files gate still runs before provider adapter, code-output packages still require isolated worker worktrees, and no-code mutation guard still fails closed. | pass |
+| LFG-P5.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-context-execution-scope-split-deepseek.json` | DS confirms no host-boundary or completion-authority regression. | pass |
 
 ### Phase LFG-P6: Legacy Static Workbench Retirement
 
@@ -253,6 +253,7 @@ Each scheduled large-file governance run should:
 | LFG-P4 project-management review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed projection composer delegation, two-call nextActionReadout dependency handling, project/task counter preservation, plan-review/task-flow coverage, mobile/schema/shell consumer compatibility, below-threshold extracted modules, and metadata consistency. |
 | LFG-P5.1 headless worker planning review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed work-package selection and child lifecycle spawn facts are behavior-preserving, child acceptance/owned-file/host-boundary/completion-authority/continuation/snapshot behavior was not weakened, tests cover the extracted boundary, and P5 metadata does not claim phase completion. |
 | LFG-P5.2 headless child acceptance review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed child worker acceptance extraction is behavior-preserving, host boundary, owned-file, no-diff/mainline integration, command evidence, durable state, process hardening, continuation readiness, and self-evaluation checks were not weakened, direct and orchestrator tests cover the boundary, and P5 metadata stays in_progress. |
+| LFG-P5.3/P5.4 context execution-scope review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed fixed owned_files gate ordering before provider execution, primary-worktree blocking for code-output packages, fail-closed no-code workspace mutation guard, direct and integration test coverage, and metadata consistency after delta clarification. |
 
 ## Current External Dependencies
 
@@ -271,5 +272,5 @@ Each scheduled large-file governance run should:
 | LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P3 | pass | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; legacy static compatibility routing was extracted into `tools/workbench-static-routes.mjs`; `node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build`, `npm run check:closeout`, public browser route, state-boundary, live-state cleanliness, and governance audit skill trial passed. The state-boundary scanner now explicitly allows only the split server fixture shards while rejecting unapproved tests and tools. | DeepSeek PASS for test shard, route group, and live-route/state-boundary closeout |
 | LFG-P4 | pass | One-screen helper counter and next-action assertions were extracted into `test/workbench-projection-one-screen.test.js`; next-action readout source policy was extracted into `src/workflow/workbench-next-action-readout.js`; project-management readout policy was extracted into `src/workflow/workbench-project-management.js` and `src/workflow/workbench-project-task-items.js`; projection/schema/shell, coverage, large-file, and known-risk required gates passed. | DeepSeek PASS for test shard, next-action split, and project-management split |
-| LFG-P5 | in_progress | Worker planning was extracted into `src/workflow/headless-worker-planning.js`; child worker acceptance/default/missing/parse packaging was extracted into `src/workflow/headless-child-acceptance.js`; `node tools/run-with-node18.mjs --test test/headless-child-acceptance.test.js test/headless-cli-orchestrator.test.js test/headless-worker-planning.test.js` passes and `src/workflow/headless-cli-orchestrator.js` decreased from 2090 to 1855 lines across P5.1/P5.2. | DeepSeek PASS for P5.1 worker planning and P5.2 child acceptance packaging; P5.3/P5.4 pending |
+| LFG-P5 | pass | Worker planning was extracted into `src/workflow/headless-worker-planning.js`; child worker acceptance/default/missing/parse packaging was extracted into `src/workflow/headless-child-acceptance.js`; context execution-scope and workspace mutation guard logic was extracted into `src/workflow/context-work-package-execution-scope.js`; `node tools/run-with-node18.mjs --test test/context-work-package-execution-scope.test.js test/context-work-package-runner.test.js test/fixed-development-mode.test.js` passes and `src/workflow/context-work-package-runner.js` decreased from 1217 to 1135 lines. Large-file queue items such as `test/headless-cli-orchestrator.test.js` and the remaining `context-work-package-runner.js` flow are still tracked separately. | DeepSeek PASS for P5.1, P5.2, and P5.3/P5.4 |
 | LFG-P6 | pending | Not started. | pending |

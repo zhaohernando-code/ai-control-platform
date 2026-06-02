@@ -1,0 +1,55 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-context-execution-scope-split",
+  "reviewer_id": "deepseek-lfg-p5-context-execution-scope-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T22:33:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "code": "provider_path_mutation_guard_only",
+      "summary": "DeepSeek noted the no-code mutation guard is invoked only in the provider/model-routed path; this preserves current behavior because local-bounded completion is governed separately and the existing runner test covers provider mutation fail-closed."
+    },
+    {
+      "code": "primary_worktree_default_is_environment_specific",
+      "summary": "DeepSeek noted the primary worktree fallback path is environment-specific; this was moved without semantic change and remains overrideable through primary_worktree_path/primaryWorktreePath."
+    },
+    {
+      "code": "dispatch_stage_does_not_run_execution_scope",
+      "summary": "DeepSeek noted staged dispatch does not run execution-scope isolation; this is intentional because staged dispatch only marks provider work as running and does not execute or complete work packages."
+    },
+    {
+      "code": "plan_contract_wording_was_vague",
+      "summary": "Initial plan wording said tests pass/fail as before; the plan was updated to name the preserved contracts explicitly: fixed owned_files gate ordering, isolated worktree requirement, and fail-closed no-code mutation guard."
+    }
+  ],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/context-work-package-execution-scope.test.js test/context-work-package-runner.test.js test/fixed-development-mode.test.js test/governance-enrollment.test.js",
+    "npm run check:large-files",
+    "src/workflow/context-work-package-runner.js",
+    "src/workflow/context-work-package-execution-scope.js",
+    "test/context-work-package-execution-scope.test.js",
+    "test/context-work-package-runner.test.js",
+    "test/fixed-development-mode.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+  ],
+  "scope": {
+    "files": [
+      "src/workflow/context-work-package-runner.js",
+      "src/workflow/context-work-package-execution-scope.js",
+      "test/context-work-package-execution-scope.test.js",
+      "test/context-work-package-runner.test.js",
+      "test/fixed-development-mode.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+    ],
+    "diff_summary": "Context work package execution-scope and workspace mutation guard logic was extracted from src/workflow/context-work-package-runner.js into a 156-line src/workflow/context-work-package-execution-scope.js module. The runner decreased from 1217 to 1135 lines while preserving fixed-development owned_files gate ordering, primary-worktree blocking for code-output packages, and fail-closed no-code provider workspace mutation guard behavior.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/context-work-package-execution-scope.test.js test/context-work-package-runner.test.js test/fixed-development-mode.test.js test/governance-enrollment.test.js",
+      "npm run check:large-files"
+    ]
+  },
+  "notes": "DeepSeek source, test, fixed-mode/manifest, and plan shards all returned PASS and synthesis returned PASS. The review confirmed owned_files fixed-mode gate ordering still precedes provider adapter execution, code-output work packages still cannot complete from the primary platform worktree, no-code provider mutation remains fail-closed, and plan metadata now closes P5 only while leaving remaining large-file queue items tracked separately."
+}
