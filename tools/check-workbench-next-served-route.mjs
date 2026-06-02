@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 import { createWorkbenchServer } from "./workbench-server.mjs";
 
 const VERSION = "workbench-next-served-route-check.v1";
-const WORKBENCH_MOUNT_PREFIX = "/projects/ai-control-platform";
+export const WORKBENCH_MOUNT_PREFIX = "/projects/ai-control-platform";
 const NEXT_READY_TIMEOUT_MS = 90000;
 const ROUTE_TIMEOUT_MS = 30000;
 
@@ -152,7 +152,7 @@ async function stopChild(child) {
   ]);
 }
 
-async function withRuntime(fn) {
+export async function withRuntime(fn) {
   mkdirSync("tmp", { recursive: true });
   const dir = mkdtempSync(join(tmpdir(), "ai-control-platform-next-served-route-"));
   const server = createWorkbenchServer({

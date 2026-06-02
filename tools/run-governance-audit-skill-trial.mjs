@@ -262,29 +262,42 @@ function normalizeDimensionId(value, fallback = "product_capability_gap") {
   return candidates.find((candidate) => AUDIT_SKILL_DIMENSIONS.includes(candidate)) || fallback;
 }
 
+function normalizeEvidencePlan(plan = {}, requestedFinalVerdict = "", disposition = "") {
+  return {
+    missing_evidence: plan.missing_evidence || plan.missing || "Additional live route evidence",
+    how_to_collect: plan.how_to_collect || plan.collection_method || "Run the governance audit skill trial with fresh route evidence",
+    blocking_closure: typeof plan.blocking_closure === "boolean"
+      ? plan.blocking_closure
+      : (typeof plan.blocks_closure === "boolean"
+          ? plan.blocks_closure
+          : requestedFinalVerdict === "需补证" && disposition === "继续取证"),
+    minimum_command_or_entrypoint: plan.minimum_command_or_entrypoint ||
+      plan.minimum_command ||
+      plan.command ||
+      "npm run run:governance-audit-skill-trial",
+    ...(plan.note ? { note: plan.note } : {})
+  };
+}
+
 function expandCompactAuditVerdict(compact, options) {
   const evidenceIds = (options.preflightEvidenceItems || []).map((item) => item.id);
   const requestedFinalVerdict = compact.final_verdict || "";
   const findings = Array.isArray(compact.findings) ? compact.findings.map((finding, index) => {
     const type = finding.type || "明确缺陷";
+    const disposition = finding.disposition || (type === "明确缺陷" ? "立即修复" : "继续取证");
     return {
       id: finding.id || `governance-finding-${index + 1}`,
       dimension: normalizeDimensionId(finding.dimension),
       type,
       severity: finding.severity || "高",
-      disposition: finding.disposition || (type === "明确缺陷" ? "立即修复" : "继续取证"),
+      disposition,
       summary: finding.summary || finding.impact || "Governance audit finding",
       impact: finding.impact || finding.summary || "The live-facing acceptance boundary is not satisfied.",
       user_visible: finding.user_visible !== false,
       evidence_ids: Array.isArray(finding.evidence_ids) && finding.evidence_ids.length > 0 ? finding.evidence_ids : evidenceIds,
       ...(type === "明确缺陷" ? { repair_schedule: finding.repair_schedule || defaultRepairSchedule() } : {}),
       ...(type === "证据缺口" ? {
-        evidence_plan: finding.evidence_plan || {
-          missing_evidence: "Additional live route evidence",
-          how_to_collect: "Run the governance audit skill trial with fresh route evidence",
-          blocking_closure: requestedFinalVerdict === "需补证" && finding.disposition === "继续取证",
-          minimum_command_or_entrypoint: "npm run run:governance-audit-skill-trial"
-        }
+        evidence_plan: normalizeEvidencePlan(finding.evidence_plan, requestedFinalVerdict, disposition)
       } : {}),
       ...(type === "可选迭代" ? {
         decision_package: finding.decision_package || {

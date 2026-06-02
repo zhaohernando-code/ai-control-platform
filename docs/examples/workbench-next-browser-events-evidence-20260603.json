@@ -1,0 +1,92 @@
+{
+  "version": "workbench-browser-events-run.v1",
+  "status": "pass",
+  "created_at": "2026-06-02T16:33:14.744Z",
+  "scenario_count": 4,
+  "route_family": "nextjs_app_router",
+  "closeout_coverage": "partial_next_runtime_writeback_only",
+  "legacy_interactions_replayed": false,
+  "legacy_static_shell_used": false,
+  "required_scenarios": [
+    "next_app_router_projection_readout",
+    "next_app_router_browser_events_writeback",
+    "projected_real_partial_shard_readout",
+    "mobile_projection"
+  ],
+  "scenarios": [
+    {
+      "scenario": "next_app_router_projection_readout",
+      "route_path": "/projects/ai-control-platform/",
+      "projection_status": "rerun",
+      "run_id": "run-20260521-platform-self-trial",
+      "cycle_id": "cycle-20260521-autonomous-platform-context-pack-1779724593760",
+      "source": "desktop_browser_mounted_projection_api",
+      "legacy_static_shell_used": false,
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "next_app_router_browser_events_writeback",
+      "response_status": 201,
+      "projection_status": "pass",
+      "partial_shard_ready": true,
+      "artifact_id": "workbench-browser-events-run-20260521-platform-self-trial-cycle-20260521-autonomous-platform-001",
+      "source": "desktop_browser_mounted_api_writeback_response",
+      "legacy_static_shell_used": false,
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "projected_real_partial_shard_readout",
+      "shard_review_next": "reviewer-scope-shard-002",
+      "next_action_readout": "run_reviewer_scope_shard",
+      "source": "mounted_api_writeback_contract_payload",
+      "legacy_static_shell_used": false,
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "mobile_projection",
+      "route_path": "/projects/ai-control-platform/",
+      "projection_status": "rerun",
+      "source": "mobile_browser_mounted_projection_api",
+      "legacy_static_shell_used": false,
+      "dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    }
+  ],
+  "next_runtime_evidence": {
+    "desktop": {
+      "projection_status": 200,
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    "mobile": {
+      "projection_status": 200,
+      "ant_layout_count": 2,
+      "ant_menu_count": 1,
+      "legacy_data_bind_count": 0,
+      "desktop_shell_count": 0,
+      "mobile_shell_count": 0,
+      "dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    }
+  }
+}

@@ -342,6 +342,62 @@ test("governance audit skill runner parses claude json result envelopes", () => 
   assert.equal(output.final_verdict, "通过");
 });
 
+test("governance audit skill runner normalizes compact evidence plan aliases", () => {
+  const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-evidence-plan-"));
+  const fakeRunner = join(dir, "fake-runner.sh");
+  const outputPath = join(dir, "out.json");
+  const rawPath = join(dir, "raw.txt");
+  const promptPath = join(dir, "prompt.md");
+  const compact = {
+    skill_used: true,
+    final_verdict: "带条件通过",
+    findings: [
+      {
+        id: "quality-gate-coverage-gap",
+        dimension: "quality_gate",
+        type: "证据缺口",
+        severity: "低",
+        disposition: "继续取证",
+        summary: "new browser-events gate evidence was not visible to the reviewer",
+        evidence_ids: ["governance-skill-invocation"],
+        evidence_plan: {
+          missing: "browser-events gate test result",
+          how_to_collect: "node --test test/workbench-next-browser-events.test.js",
+          blocks_closure: false,
+          minimum_command: "node --test test/workbench-next-browser-events.test.js"
+        }
+      }
+    ]
+  };
+  writeFileSync(fakeRunner, [
+    "#!/usr/bin/env bash",
+    "set -euo pipefail",
+    "node -e 'process.stdout.write(JSON.stringify({type:\"result\", subtype:\"success\", result: JSON.stringify(JSON.parse(process.env.FAKE_COMPACT_AUDIT))}))'"
+  ].join("\n"));
+  chmodSync(fakeRunner, 0o755);
+
+  const result = spawnSync(process.execPath, [
+    "tools/run-governance-audit-skill-trial.mjs",
+    "--runner-command", fakeRunner,
+    "--output", outputPath,
+    "--raw-output", rawPath,
+    "--prompt-output", promptPath,
+    "--no-fail-on-blocking-verdict"
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      FAKE_COMPACT_AUDIT: JSON.stringify(compact)
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const output = JSON.parse(readFileSync(outputPath, "utf8"));
+  assert.equal(output.findings[0].evidence_plan.missing_evidence, "browser-events gate test result");
+  assert.equal(output.findings[0].evidence_plan.minimum_command_or_entrypoint, "node --test test/workbench-next-browser-events.test.js");
+  assert.equal(output.findings[0].evidence_plan.blocking_closure, false);
+});
+
 test("governance audit skill runner blocks closeout when invoked skill returns a failing verdict", () => {
   const dir = mkdtempSync(join(tmpdir(), "governance-audit-runner-blocking-"));
   const fakeRunner = join(dir, "fake-runner.sh");

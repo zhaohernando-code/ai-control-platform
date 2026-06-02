@@ -12,6 +12,7 @@ export const PLAYWRIGHT_REQUIRED_SCRIPTS = Object.freeze([
 
 export const PLAYWRIGHT_BACKED_TOOL_FILENAMES = Object.freeze([
   "tools/check-workbench-browser-events.mjs",
+  "tools/check-workbench-next-browser-events.mjs",
   "tools/check-workbench-frontend-acceptance.mjs",
   "tools/check-scheduler-dispatch-writeback.mjs",
   "tools/check-closeout.mjs"

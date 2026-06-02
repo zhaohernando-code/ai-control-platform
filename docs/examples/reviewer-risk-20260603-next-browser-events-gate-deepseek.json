@@ -1,0 +1,48 @@
+{
+  "version": "reviewer-risk-artifact.v1",
+  "review_id": "deepseek-next-browser-events-gate-20260603",
+  "created_at": "2026-06-03T01:20:00+08:00",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "scope": "LFG-P6.2 Next browser-events mounted runtime/API writeback probe",
+  "status": "pass_after_scope_reduction",
+  "initial_review": {
+    "status": "blocked",
+    "blocking_findings": [
+      {
+        "code": "hardcoded_legacy_browser_event_scenarios",
+        "summary": "Initial implementation claimed full browser-events migration while lifecycle timeout and cleanup scenarios were hardcoded rather than replayed through Next UI."
+      },
+      {
+        "code": "overstated_closeout_replacement",
+        "summary": "Package and closeout initially pointed to the Next script, which risked replacing the legacy full closeout gate with a partial probe."
+      }
+    ]
+  },
+  "resolution": {
+    "status": "scope_reduced",
+    "changes": [
+      "check:workbench:browser-events remains on tools/check-workbench-browser-events.mjs.",
+      "tools/check-closeout.mjs remains on tools/check-workbench-browser-events.mjs for full closeout validation.",
+      "check:workbench:next-browser-events was added as a separate mounted Next runtime/API writeback probe.",
+      "docs/examples/workbench-next-browser-events-evidence-20260603.json is marked closeout_coverage=partial_next_runtime_writeback_only and legacy_interactions_replayed=false.",
+      "docs/governance/legacy-static-workbench-inventory.json and LARGE_FILE_GOVERNANCE_PLAN.md keep full browser-events migration as a deletion blocker."
+    ]
+  },
+  "delta_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "non_blocking_findings": [
+      {
+        "code": "post_assertion_status_literal",
+        "summary": "The probe artifact uses status=pass after runtime assertions have already succeeded; DeepSeek judged this non-blocking."
+      }
+    ],
+    "summary": "DeepSeek confirmed the revised change no longer presents the Next probe as full closeout migration, keeps the legacy closeout gate intact, and records P6 deletion as blocked."
+  },
+  "evidence": [
+    "docs/examples/workbench-next-browser-events-evidence-20260603.json",
+    "test/workbench-next-browser-events.test.js",
+    "docs/governance/legacy-static-workbench-inventory.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md"
+  ]
+}

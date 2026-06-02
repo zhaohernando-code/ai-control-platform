@@ -45,7 +45,7 @@ test("Next served-route evidence is durable and does not over-close legacy stati
   assert.equal(nextGate?.status, "pass");
   assert.equal(nextGate?.evidence, "docs/examples/workbench-next-served-route-evidence-20260602.json");
   assert.match(nextGate?.replaces_requirement || "", /Next\.js Workbench served route verified/);
-  assert.ok(nextGate?.does_not_replace?.includes("tools/check-workbench-browser-events.mjs legacy operator-event interaction scenarios"));
+  assert.ok(nextGate?.does_not_replace?.some((item) => item.includes("check-workbench-browser-events")));
   assert.equal(inventory.status, "retirement_blocked");
   assert.equal(inventory.retirement.decision, "do_not_delete_in_p6_2");
   assert.match(inventory.retirement.reason, /legacy assets remain acceptance-gate/);

@@ -1,0 +1,20 @@
+{
+  "version": "reviewer-risk-artifact.v1",
+  "review_id": "deepseek-governance-audit-evidence-plan-alias-20260603",
+  "created_at": "2026-06-03T01:55:00+08:00",
+  "model": "deepseek-v4-pro bounded read-only review",
+  "scope": "governance audit skill trial compact evidence_plan alias normalization",
+  "status": "pass",
+  "summary": "DeepSeek confirmed normalizeEvidencePlan only maps common compact-output aliases to canonical schema fields, does not weaken src/workflow/audit-skill-trial-run.js validation, and does not change final_verdict closeout blocking logic.",
+  "findings": [],
+  "non_blocking_notes": [
+    "Default fallback evidence_plan values only apply when both canonical and alias keys are absent; DeepSeek judged this safe because final_verdict still controls closeout blocking."
+  ],
+  "evidence": [
+    "tools/run-governance-audit-skill-trial.mjs",
+    "test/audit-skill-trial-run.test.js"
+  ],
+  "verification": [
+    "node tools/run-with-node18.mjs --test test/audit-skill-trial-run.test.js"
+  ]
+}

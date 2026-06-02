@@ -71,6 +71,7 @@ test("legacy static workbench inventory records server route posture and opt-in 
 test("legacy static workbench inventory records current acceptance-gate dependencies", () => {
   const report = inventory();
   const browserEvents = read("tools/check-workbench-browser-events.mjs");
+  const nextBrowserEvents = read("tools/check-workbench-next-browser-events.mjs");
   const frontendAcceptance = read("tools/check-workbench-frontend-acceptance.mjs");
   const frontendAcceptanceTests = read("test/frontend-acceptance.test.js");
   const schedulerWriteback = read("tools/check-scheduler-dispatch-writeback.mjs");
@@ -86,6 +87,12 @@ test("legacy static workbench inventory records current acceptance-gate dependen
   assert.match(browserEvents, /serveLegacyStatic:\s*true/);
   assert.match(browserEvents, /apps\/workbench\/desktop\.html/);
   assert.match(browserEvents, /apps\/workbench\/mobile\.html/);
+  assert.match(nextBrowserEvents, /nextjs_app_router/);
+  assert.match(nextBrowserEvents, /partial_next_runtime_writeback_only/);
+  assert.doesNotMatch(nextBrowserEvents, /next_app_router_browser_events_equivalence/);
+  assert.doesNotMatch(nextBrowserEvents, /serveLegacyStatic:\s*true/);
+  assert.doesNotMatch(nextBrowserEvents, /page\.goto\([^)]*desktop\.html/);
+  assert.doesNotMatch(nextBrowserEvents, /page\.goto\([^)]*mobile\.html/);
   assert.match(frontendAcceptance, /serveLegacyStatic:\s*true/);
   assert.match(frontendAcceptance, /desktop\.html/);
   assert.match(frontendAcceptance, /mobile\.html/);
@@ -108,6 +115,7 @@ test("legacy static workbench retirement remains blocked until Next served-route
   assert.equal(nextGate?.status, "pass");
   assert.equal(nextGate?.evidence, "docs/examples/workbench-next-served-route-evidence-20260602.json");
   assert.match(nextGate?.replaces_requirement || "", /Next\.js Workbench served route verified/);
+  assert.ok(nextGates.some((item) => item.file === "tools/check-workbench-next-browser-events.mjs" && item.status === "pass"));
   assert.doesNotMatch(requiredEvidence, /Next\.js Workbench served route verified/);
   assert.match(requiredEvidence, /Browser-events gate migrated/);
   assert.match(requiredEvidence, /Frontend-acceptance gate migrated/);
