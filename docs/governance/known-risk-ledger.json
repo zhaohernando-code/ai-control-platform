@@ -1,6 +1,6 @@
 {
   "version": "known-risk-ledger.v1",
-  "updated_at": "2026-06-02T10:22:00+08:00",
+  "updated_at": "2026-06-02T11:00:00+08:00",
   "risks": [
     {
       "id": "risk-20260601-npm-test-node-wrapper",
@@ -430,28 +430,43 @@
       "title": "Frontend API client drops structured backend diagnostics on non-2xx responses",
       "source": "code-quality-audit-followup",
       "created_at": "2026-06-01T16:00:00+08:00",
-      "updated_at": "2026-06-01T16:00:00+08:00",
-      "status": "open",
+      "updated_at": "2026-06-02T11:00:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "apps/workbench/lib/api/index.ts",
-        "apps/workbench/app"
+        "test/workbench-api-client.test.js",
+        "test/workbench-shell.test.js",
+        "apps/workbench/app",
+        "tools/check-closeout.mjs",
+        "test/package-scripts.test.js"
       ],
       "owned_files": [
         "apps/workbench/lib/api/index.ts",
         "apps/workbench/lib/api",
-        "test/workbench-shell.test.js"
+        "test/workbench-api-client.test.js",
+        "test/workbench-shell.test.js",
+        "tools/check-closeout.mjs",
+        "test/package-scripts.test.js",
+        "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-deepseek.json",
+        "docs/governance/known-risk-ledger.json",
+        "test/known-risk-ledger.test.js",
+        "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-closeout-deepseek.json"
       ],
       "acceptance_gates": [
         "Non-2xx JSON error bodies preserve error, phase, issues, and projection when present",
         "node tools/run-with-node18.mjs --test test/workbench-shell.test.js",
         "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build"
       ],
-      "attempted_count": 0,
-      "last_agent_run_id": null,
+      "attempted_count": 1,
+      "last_agent_run_id": "manual-closeout-20260602-workbench-api-error-diagnostics",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "026dd1354917dfd4df62a8f79ff2bb0236c25fb8",
+        "test_added": true,
+        "summary": "Added WorkbenchApiError so fetchWorkbenchJson preserves non-2xx JSON response diagnostics as structured error, phase, issues, and projection fields, with behavior tests for full JSON, partial JSON, and non-JSON error bodies. Final closeout also removed a divergent --test-force-exit unit-test mode from check:closeout after it hung post-summary in the isolated worktree, aligning closeout unit tests with the standard npm test path and adding a 15-minute child-process timeout so future hangs fail explicitly."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -459,10 +474,140 @@
           "type": "analysis",
           "summary": "fetchWorkbenchJson currently throws only `workbench api <path> failed: <status>` for non-2xx responses.",
           "created_at": "2026-06-01T16:00:00+08:00"
+        },
+        {
+          "type": "artifact",
+          "summary": "Workbench API client now throws WorkbenchApiError with structured diagnostics on non-2xx JSON responses.",
+          "artifact": "apps/workbench/lib/api/index.ts",
+          "created_at": "2026-06-02T10:42:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "API client behavior tests and existing workbench shell tests passed after preserving structured diagnostics.",
+          "command": "node tools/run-with-node18.mjs --test test/workbench-api-client.test.js test/workbench-shell.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:44:00+08:00"
+        },
+        {
+          "type": "build",
+          "summary": "Next.js workbench production build passed after the API error type change.",
+          "command": "node ../../tools/run-with-node18.mjs node_modules/next/dist/bin/next build",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:44:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek implementation and delta reviews passed with no blocking findings; the non-blocking partial-field test recommendation was applied.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-deepseek.json",
+          "created_at": "2026-06-02T10:42:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Known-risk ledger structural gate passed after marking the API diagnostics risk fixed; remaining open risks are outside this scoped closeout.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:48:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek closeout review passed with no blocking findings; it confirmed fixed status, full commit hash, evidence, release decision, and known-risk counts. Its evidence-thinness note is addressed by final full-suite and closeout gates before merge.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-closeout-deepseek.json",
+          "created_at": "2026-06-02T10:52:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Full repository Node test suite passed after the API diagnostics change and closeout test-runner alignment.",
+          "command": "npm test",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:53:00+08:00"
+        },
+        {
+          "type": "coverage",
+          "summary": "Coverage gate passed with 948/948 tests, all-files line coverage 91.91% and function coverage 96.93%.",
+          "command": "npm run test:coverage",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:54:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Package script regression test passed after removing the divergent --test-force-exit mode from check:closeout unit tests and adding timeout protection.",
+          "command": "node tools/run-with-node18.mjs --test test/package-scripts.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:58:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "First check:closeout attempt failed because the isolated worktree root lacked the playwright package; npm ci installed root dependencies with Node16 engine warnings only.",
+          "command": "npm ci",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:54:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "A subsequent check:closeout attempt printed 948/948 unit tests passed but hung in the --test-force-exit child process; this exposed a closeout gate exit-mode risk during final verification.",
+          "command": "npm run check:closeout",
+          "exit_code": 1,
+          "created_at": "2026-06-02T10:55:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Full closeout gate passed after aligning check:closeout unit tests with the standard non-forced test-runner mode and adding child-process timeout protection; unit tests reported 949/949 and all closeout sub-gates passed.",
+          "command": "npm run check:closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T10:59:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek final gate-patch and ledger-packet reviews passed with no blocking findings after the closeout scope expansion and timeout protection.",
+          "artifact": "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-closeout-deepseek.json",
+          "created_at": "2026-06-02T10:59:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Final known-risk ledger structural gate passed after all evidence and reviewer artifact updates.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T11:00:00+08:00"
+        },
+        {
+          "type": "command",
+          "summary": "Required known-risk closeout mode failed only for the three remaining open risks outside this scoped closeout: code-review coverage denominator, Playwright CLI artifact cleanliness, and useProjection request ordering.",
+          "command": "npm run check:known-risk-closeout:required",
+          "exit_code": 1,
+          "created_at": "2026-06-02T11:00:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "claude-deepseek-implementation-readonly",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "When init.signal is provided by the caller, the internal 30s AbortController timeout is bypassed because fetch listens to the caller signal; this pre-existing design behavior is outside this structured diagnostics risk.",
+              "DeepSeek suggested adding a partial-field JSON body test. The test was added and the delta review passed; the delta review noted message format is already covered by the full JSON-body test."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-deepseek.json"
+          },
+          {
+            "reviewer_id": "claude-deepseek-closeout-readonly",
+            "model": "deepseek-v4-pro",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [
+              "The final closeout scope expansion added tools/check-closeout.mjs and test/package-scripts.test.js after check:closeout exposed a unit-test child-process exit hang; DeepSeek reviewed the final gate patch and found no blocking issue.",
+              "The final ledger packet review passed; test counts moved from 948 to 949 because the closeout exit-mode regression test was added.",
+              "The closeout artifact was untracked at review time and must be committed with the ledger update before merge."
+            ],
+            "artifact": "docs/examples/reviewer-risk-20260601-workbench-api-error-diagnostics-closeout-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "No user-visible runtime route changed; this is a frontend API client error-object improvement with preserved build and shell behavior."
+      }
     },
     {
       "id": "risk-20260601-code-review-coverage-denominator",

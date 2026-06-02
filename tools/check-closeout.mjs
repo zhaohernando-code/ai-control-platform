@@ -15,6 +15,7 @@ const WORKBENCH_API_PORT = process.env.AI_CONTROL_WORKBENCH_API_PORT || "4182";
 const WORKBENCH_HOST = process.env.AI_CONTROL_WORKBENCH_HOST || "127.0.0.1";
 const MAINLINE_BRANCH = process.env.AI_CONTROL_MAINLINE_BRANCH || "main";
 const REQUIRE_MAINLINE_CLOSEOUT = process.env.AI_CONTROL_CLOSEOUT_REQUIRE_MAINLINE === "1";
+const CLOSEOUT_CHILD_TIMEOUT_MS = Number.parseInt(process.env.AI_CONTROL_CLOSEOUT_CHILD_TIMEOUT_MS || "", 10) || 15 * 60 * 1000;
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -24,7 +25,11 @@ function withoutLiveRouteEvidenceEnv(env = process.env) {
 
 function run(label, args, options = {}) {
   console.log(`\n[closeout] ${label}`);
-  const result = spawnSync(process.execPath, args, { stdio: "inherit", env: options.env || process.env });
+  const result = spawnSync(process.execPath, args, {
+    stdio: "inherit",
+    env: options.env || process.env,
+    timeout: CLOSEOUT_CHILD_TIMEOUT_MS
+  });
   if (result.error) {
     console.error(result.error.message);
     process.exit(1);
@@ -51,7 +56,7 @@ export function runCloseoutChecks() {
     .sort()
     .map((file) => join("test", file));
 
-  run("unit tests", ["--test", "--test-force-exit", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
+  run("unit tests", ["--test", ...testFiles], { env: withoutLiveRouteEvidenceEnv() });
   run("project onboarding", ["tools/check-project-onboarding-sync.mjs", "project-manifest.json", "/Users/hernando_zhao/codex/WORKSPACE_INDEX.json"]);
   run("git worktree isolation", ["tools/check-git-worktree-isolation.mjs"]);
   run("process hardening", ["tools/check-process-hardening.mjs", "docs/examples/process-hardening-current.json"]);
