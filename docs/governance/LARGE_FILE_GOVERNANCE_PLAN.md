@@ -2,7 +2,7 @@
 
 Status: in_progress  
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-02T16:24:00+08:00
+Updated at: 2026-06-02T16:29:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
@@ -159,16 +159,16 @@ With the current queue this selects `risk-20260602-workbench-server-test-shards`
 
 ### Phase LFG-P3: Workbench Server Route and Test Boundary Split
 
-Status: review_pending
+Status: in_progress
 
 Goal: reduce the highest-impact server boundary without breaking public route, state-store, or API behavior.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFG-P3.1 | Split server tests by route domain | `test/workbench-server-agent-key-routes.test.js` | `test/workbench-server.test.js` line count decreased from 4353 to 4218; extracted shard is 185 lines and all extracted tests pass. | review_pending |
+| LFG-P3.1 | Split server tests by route domain | `test/workbench-server-agent-key-routes.test.js` | `test/workbench-server.test.js` line count decreased from 4353 to 4218; extracted shard is 185 lines and all extracted tests pass. | pass |
 | LFG-P3.2 | Extract next route groups from server entrypoint | Route modules | `tools/workbench-server.mjs` line count decreases and API route contract passes. | pending |
 | LFG-P3.3 | Preserve live route behavior | Live evidence | Next build, closeout, and public browser route pass after merge. | pending |
-| LFG-P3.4 | DeepSeek phase review | Reviewer artifact | DS confirms no static compatibility or state-store behavior was lost. | review_pending |
+| LFG-P3.4 | DeepSeek phase review | `docs/examples/reviewer-risk-20260602-workbench-server-test-shards-deepseek.json` | DS confirms no static compatibility or state-store behavior was lost. | pass |
 
 Suggested gates:
 
@@ -245,6 +245,7 @@ Each scheduled large-file governance run should:
 | Closeout-plan archive review | `deepseek-v4-pro` bounded read-only review | PASS | No blocking findings. Non-blocking stale LFG-P0 item statuses were updated to `pass`; forward-reference note had no functional impact. |
 | LFG-P1 gate review | `deepseek-v4-pro` bounded + delta read-only reviews | PASS | Initial blocking findings on shrink hard-fail and missing-entry coverage were fixed. Final delta review returned PASS with no blocking or non-blocking findings. |
 | LFG-P2 risk package review | `deepseek-v4-pro` sharded + delta read-only reviews | PASS | No blocking findings. Non-blocking findings on headless scope rationale, live-ledger test coupling, and dependency-first selection were addressed; final delta returned PASS with no findings. |
+| LFG-P3 test shard review | `deepseek-v4-pro` sharded review with `deepseek-v4-flash` synthesis | PASS | Confirmed the extracted agent-key shard preserved API, SQLite fail-closed, secret non-leak, health, roles, and delete assertions; final synthesis returned no blocking or non-blocking findings. |
 
 ## Current External Dependencies
 
@@ -261,7 +262,7 @@ Each scheduled large-file governance run should:
 | LFG-P0 | pass | Plan created and non-blocking DS feedback incorporated. | DeepSeek PASS, no blocking findings |
 | LFG-P1 | pass | `tools/report-large-files.mjs` added; report gate, duplicate-key detection, growth/stale-up detection, shrink warnings, missing-entry detection, and planned-refactor growth guard pass local tests. | DeepSeek PASS, no blocking or non-blocking findings after delta |
 | LFG-P2 | pass | Four Workbench large-file queue items were converted into open known-risk entries with owned files, dependencies, and acceptance gates. Dry-run selection is dependency-first, covers one bounded large-file risk, and does not claim closeout. | DeepSeek PASS, no blocking or non-blocking findings after delta |
-| LFG-P3 | review_pending | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; target server shard and API route contract tests passed. | DeepSeek review pending |
+| LFG-P3 | in_progress | Agent-key route tests were extracted into `test/workbench-server-agent-key-routes.test.js`; target server shard, API route contract, large-file, known-risk, and governance enrollment gates passed. | DeepSeek PASS for test shard; source route split remains pending |
 | LFG-P4 | pending | Not started. | pending |
 | LFG-P5 | pending | Not started. | pending |
 | LFG-P6 | pending | Not started. | pending |

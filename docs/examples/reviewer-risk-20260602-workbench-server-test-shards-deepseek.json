@@ -1,0 +1,38 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "risk_id": "risk-20260602-workbench-server-test-shards",
+  "reviewer_id": "deepseek-lfg-p3-workbench-server-test-shard-review",
+  "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+  "reviewed_at": "2026-06-02T16:28:00+08:00",
+  "verdict": "pass",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "evidence_refs": [
+    "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-*.test.js test/api-route-contract.test.js",
+    "npm run check:large-files",
+    "npm run check:known-risk-closeout",
+    "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+    "test/workbench-server-agent-key-routes.test.js",
+    "test/workbench-server.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+    "docs/governance/known-risk-ledger.json"
+  ],
+  "scope": {
+    "files": [
+      "test/workbench-server.test.js",
+      "test/workbench-server-agent-key-routes.test.js",
+      ".largefile-manifest.json",
+      "docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md",
+      "docs/governance/known-risk-ledger.json"
+    ],
+    "diff_summary": "Agent-key route API and SQLite fail-closed tests were extracted from the broad workbench server suite into a 185-line shard; original server test file decreased from 4353 to 4218 lines.",
+    "gates_reviewed": [
+      "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-*.test.js test/api-route-contract.test.js",
+      "npm run check:large-files",
+      "npm run check:known-risk-closeout",
+      "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js"
+    ]
+  },
+  "notes": "DeepSeek's code shard confirmed the migrated tests preserve agent-key CRUD, SQLite fail-closed behavior, secret non-leak assertions, health-check, account-health, role update, and delete assertions, with MANUAL_AGENT_CONFIG restored in a finally block. Metadata shards found manifest and plan state self-consistent; final synthesis returned pass with no blocking or non-blocking findings."
+}

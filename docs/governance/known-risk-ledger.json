@@ -1082,8 +1082,8 @@
       "title": "Workbench server test suite remains a broad large-file regression surface",
       "source": "large-file-governance-p2",
       "created_at": "2026-06-02T16:10:00+08:00",
-      "updated_at": "2026-06-02T16:24:00+08:00",
-      "status": "in_progress",
+      "updated_at": "2026-06-02T16:29:00+08:00",
+      "status": "fixed",
       "severity": "medium",
       "scope": [
         "test/workbench-server.test.js",
@@ -1109,7 +1109,11 @@
       "last_agent_run_id": "manual-closeout-20260602-workbench-server-test-shards",
       "depends_on": [],
       "superseded_by": null,
-      "resolution": null,
+      "resolution": {
+        "fixed_by_commit": "9ad42ba8eac84c6e98122d459ac07b13e3013243",
+        "test_added": true,
+        "summary": "Agent-key route API and SQLite fail-closed coverage were extracted from the broad workbench server suite into a 185-line shard while preserving the original assertions and reducing test/workbench-server.test.js from 4353 to 4218 lines."
+      },
       "deferral": null,
       "blockage": null,
       "evidence": [
@@ -1138,10 +1142,51 @@
           "command": "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-*.test.js test/api-route-contract.test.js",
           "exit_code": 0,
           "created_at": "2026-06-02T16:24:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Large-file governance report passed with updated workbench-server test line count and no stale manifest issues.",
+          "command": "npm run check:large-files",
+          "exit_code": 0,
+          "created_at": "2026-06-02T16:24:00+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Known-risk ledger ordinary gate passed with this risk in progress and the remaining large-file risks still queued.",
+          "command": "npm run check:known-risk-closeout",
+          "exit_code": 0,
+          "created_at": "2026-06-02T16:24:55+08:00"
+        },
+        {
+          "type": "test",
+          "summary": "Governance enrollment tests passed after the shard split.",
+          "command": "node tools/run-with-node18.mjs --test test/governance-enrollment.test.js",
+          "exit_code": 0,
+          "created_at": "2026-06-02T16:25:00+08:00"
+        },
+        {
+          "type": "review",
+          "summary": "DeepSeek sharded read-only review passed with no blocking or non-blocking findings after confirming assertion preservation and metadata consistency.",
+          "artifact": "docs/examples/reviewer-risk-20260602-workbench-server-test-shards-deepseek.json",
+          "created_at": "2026-06-02T16:28:00+08:00"
         }
       ],
-      "review": null,
-      "release": null
+      "review": {
+        "reviewers": [
+          {
+            "reviewer_id": "deepseek-lfg-p3-workbench-server-test-shard-review",
+            "model": "deepseek-v4-pro sharded review with deepseek-v4-flash synthesis",
+            "verdict": "pass",
+            "blocking_findings": [],
+            "non_blocking_findings": [],
+            "artifact": "docs/examples/reviewer-risk-20260602-workbench-server-test-shards-deepseek.json"
+          }
+        ]
+      },
+      "release": {
+        "required": false,
+        "reason": "Test-only governance split; no user-visible runtime or public route behavior changed."
+      }
     },
     {
       "id": "risk-20260602-workbench-server-route-groups",
