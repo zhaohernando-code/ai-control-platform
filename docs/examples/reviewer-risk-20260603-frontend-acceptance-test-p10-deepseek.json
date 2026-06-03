@@ -1,0 +1,370 @@
+DS_SHARD start depth=0 files=test/frontend-acceptance.test.js,test/helpers/frontend-acceptance-fixtures.js
+DS_OBSERVE init model=deepseek-v4-pro[1m] cwd=/private/var/folders/b1/yntc7qc96ysgd4nvjtbgk__40000gn/T/claude-deepseek-review-hpo02k44 tools=Read
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=3
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE tool_input chars=1
+DS_OBSERVE tool_use name=Read id=call_00_UciGrFlG5WAbzhOT75QC0020
+DS_OBSERVE block_stop index=1
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE event type=user
+DS_OBSERVE tool_use name=Read id=call_01_GLPABDh0H6DvmXEgBhWH8057
+DS_OBSERVE block_stop index=2
+DS_OBSERVE message_delta stop_reason=tool_use
+DS_OBSERVE message_stop
+DS_OBSERVE event type=user
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=600
+DS_OBSERVE heartbeat elapsed_s=10 quiet_s=0 no_progress_s=0 process=Rs 00:10 8.9 1.4
+DS_OBSERVE thinking chars=2800
+DS_OBSERVE thinking chars=3800
+DS_OBSERVE heartbeat elapsed_s=20 quiet_s=0 no_progress_s=0 process=Rs 00:20 9.8 1.6
+DS_OBSERVE thinking chars=4200
+DS_OBSERVE thinking chars=4400
+DS_OBSERVE thinking chars=4800
+DS_OBSERVE thinking chars=5000
+DS_OBSERVE thinking chars=5200
+DS_OBSERVE thinking chars=5800
+DS_OBSERVE heartbeat elapsed_s=30 quiet_s=0 no_progress_s=0 process=Rs 00:30 7.3 1.4
+DS_OBSERVE thinking chars=7200
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=text
+DS_OBSERVE text_delta total_chars=3
+DS_OBSERVE text_delta total_chars=200
+DS_OBSERVE text_delta total_chars=400
+DS_OBSERVE heartbeat elapsed_s=40 quiet_s=0 no_progress_s=0 process=Ss 00:40 9.6 0.8
+DS_OBSERVE text_delta total_chars=600
+DS_OBSERVE assistant_text chars=708
+DS_OBSERVE block_stop index=1
+DS_OBSERVE message_delta stop_reason=end_turn
+DS_OBSERVE message_stop
+DS_OBSERVE result subtype=success duration_ms=40459 api_ms=42597 turns=3 terminal_reason=completed
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "本分片仅含缩减后的 test/frontend-acceptance.test.js(577行/21个test) 和 helpers/frontend-acceptance-fixtures.js，缺少原始1670行文件、四个测试shard、.largefile-manifest.json 和计划文档，无法完成 36 test name parity 核对",
+    "helpers/frontend-acceptance-viewport.js 被 test 文件 import 但未在本分片中提供，无法验证 viewportAudit/baseWorkflowState 是否完整搬迁"
+  ],
+  "non_blocking_findings": [
+    "缩减后文件内21个 test name 无重复，helper 文件为纯 fixture 数据提取无逻辑削弱迹象",
+    "缩减后文件保留 validateFrontendAcceptanceRunArtifact/recordFrontendAcceptanceRunArtifact/buildArtifact 等核心覆盖调用链"
+  ],
+  "required_fixes": [
+    "需最终综合判断：提供原始文件、四个 shard 文件、manifest 和计划文档后，方可校验 36/36 test parity、largefile 阈值自洽性和 focused gate 覆盖"
+  ]
+}
+```
+DS_SHARD pass depth=0 files=test/frontend-acceptance.test.js,test/helpers/frontend-acceptance-fixtures.js
+DS_SHARD start depth=0 files=test/helpers/frontend-acceptance-viewport.js,test/frontend-acceptance-copy-content.test.js
+DS_OBSERVE init model=deepseek-v4-pro[1m] cwd=/private/var/folders/b1/yntc7qc96ysgd4nvjtbgk__40000gn/T/claude-deepseek-review-pci8_748 tools=Read
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=3
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE tool_input chars=1
+DS_OBSERVE tool_use name=Read id=call_00_5Jf496o84LpBx7YyvMRA0854
+DS_OBSERVE block_stop index=1
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE event type=user
+DS_OBSERVE tool_input chars=200
+DS_OBSERVE tool_use name=Read id=call_01_zp3CSXyNvnSVXeO8J7se7904
+DS_OBSERVE block_stop index=2
+DS_OBSERVE message_delta stop_reason=tool_use
+DS_OBSERVE message_stop
+DS_OBSERVE event type=user
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=800
+DS_OBSERVE heartbeat elapsed_s=10 quiet_s=0 no_progress_s=0 process=Ss 00:11 14.5 1.5
+DS_OBSERVE thinking chars=1400
+DS_OBSERVE thinking chars=1600
+DS_OBSERVE thinking chars=2200
+DS_OBSERVE thinking chars=2600
+DS_OBSERVE thinking chars=3200
+DS_OBSERVE heartbeat elapsed_s=20 quiet_s=0 no_progress_s=0 process=Ss 00:21 7.6 1.7
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=text
+DS_OBSERVE text_delta total_chars=3
+DS_OBSERVE text_delta total_chars=200
+DS_OBSERVE text_delta total_chars=400
+DS_OBSERVE assistant_text chars=690
+DS_OBSERVE block_stop index=1
+DS_OBSERVE message_delta stop_reason=end_turn
+DS_OBSERVE message_stop
+DS_OBSERVE result subtype=success duration_ms=26147 api_ms=43208 turns=3 terminal_reason=completed
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "分片仅覆盖 2/7 个文件（helper + 1/4 shard），无法验证 36 test name parity：本 shard 含 4 个 test() 调用，其余 32 个测试在未提供的 3 个 shard 和原文件中，缺乏交叉比对依据",
+    ".largefile-manifest.json 和计划文档未包含在本分片审查范围内，无法验证行数/目标/split_evidence 自洽性及大文件绕过"
+  ],
+  "non_blocking_findings": [
+    "frontend-acceptance-copy-content.test.js 内 4 个测试无重复、命名风格一致，helper viewportAudit/baseWorkflowState 为纯 fixture 搬迁，未见削弱",
+    "helper 依赖 frontend-acceptance-fixtures.js（未提供），需确认该 fixture 是否随拆分一并迁移"
+  ],
+  "required_fixes": [
+    "需最终综合判断：补充其余 3 个 shard 文件、原 577 行 test/frontend-acceptance.test.js、.largefile-manifest.json、focused gate 配置（36/36），完成全量 test name 交叉比对后确认 parity"
+  ]
+}
+```
+DS_SHARD pass depth=0 files=test/helpers/frontend-acceptance-viewport.js,test/frontend-acceptance-copy-content.test.js
+DS_SHARD start depth=0 files=test/frontend-acceptance-content-diagnostics.test.js,test/frontend-acceptance-project-semantics.test.js
+DS_OBSERVE init model=deepseek-v4-pro[1m] cwd=/private/var/folders/b1/yntc7qc96ysgd4nvjtbgk__40000gn/T/claude-deepseek-review-shqpjjcb tools=Read
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=3
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE tool_input chars=1
+DS_OBSERVE tool_use name=Read id=call_00_Ferq7p8V5vEpWyrKSP3T3017
+DS_OBSERVE block_stop index=1
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE event type=user
+DS_OBSERVE tool_use name=Read id=call_01_t60DmshyI1PivoxzC5c93766
+DS_OBSERVE block_stop index=2
+DS_OBSERVE message_delta stop_reason=tool_use
+DS_OBSERVE message_stop
+DS_OBSERVE event type=user
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=600
+DS_OBSERVE thinking chars=800
+DS_OBSERVE thinking chars=1200
+DS_OBSERVE heartbeat elapsed_s=10 quiet_s=0 no_progress_s=0 process=Ss 00:10 11.5 1.8
+DS_OBSERVE thinking chars=2000
+DS_OBSERVE thinking chars=2400
+DS_OBSERVE thinking chars=3200
+DS_OBSERVE thinking chars=3800
+DS_OBSERVE thinking chars=4000
+DS_OBSERVE heartbeat elapsed_s=20 quiet_s=0 no_progress_s=0 process=Ss 00:20 16.4 1.6
+DS_OBSERVE heartbeat elapsed_s=30 quiet_s=0 no_progress_s=0 process=Ss 00:30 16.8 1.5
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=text
+DS_OBSERVE text_delta total_chars=4
+DS_OBSERVE text_delta total_chars=400
+DS_OBSERVE text_delta total_chars=800
+DS_OBSERVE assistant_text chars=870
+DS_OBSERVE block_stop index=1
+DS_OBSERVE message_delta stop_reason=end_turn
+DS_OBSERVE message_stop
+DS_OBSERVE result subtype=success duration_ms=37339 api_ms=37280 turns=3 terminal_reason=completed
+Read both shard files (250 + 123 lines).
+
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "NB1",
+      "detail": "本分片仅可见 4 个 shard 中的 2 个（content-diagnostics 5 用例 + project-semantics 3 用例），无法确认全量 36 个 test name parity；可见的 8 个用例名称互不重复且按主题合理分组。"
+    },
+    {
+      "id": "NB2",
+      "detail": "未见 .largefile-manifest.json 和计划文档，无法验证行数（1670→577）、目标及 split_evidence 自洽性；需最终综合判断。"
+    },
+    {
+      "id": "NB3",
+      "detail": "project-semantics shard 中第 3 个用例（'blocks legacy desktop diagnostic false pass'）在语义上横跨 content-diagnostics 主题，但逻辑上归属 validation 门禁，当前放置合理。"
+    }
+  ],
+  "required_fixes": [
+    "需最终综合判断确认：1) 另外 2 个 shard + 577 行主文件 + 2 个 helper 完整可见后，36 个 test name 无丢失/新增/重复；2) .largefile-manifest.json 的 split_evidence 和 focused gate 36/36 覆盖所有 4 个 shard；3) 主文件缩减到 577 行后未出现 near-threshold 绕过。"
+  ]
+}
+```
+DS_SHARD pass depth=0 files=test/frontend-acceptance-content-diagnostics.test.js,test/frontend-acceptance-project-semantics.test.js
+DS_SHARD start depth=0 files=test/frontend-acceptance-command-architecture.test.js,docs/examples/frontend-acceptance-test-p10-split-parity.json
+DS_OBSERVE init model=deepseek-v4-pro[1m] cwd=/private/var/folders/b1/yntc7qc96ysgd4nvjtbgk__40000gn/T/claude-deepseek-review-305xjn6x tools=Read
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=3
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE tool_input chars=1
+DS_OBSERVE tool_use name=Read id=call_00_PKVqCnZovQzKcQ657SvL4568
+DS_OBSERVE block_stop index=1
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE event type=user
+DS_OBSERVE tool_input chars=200
+DS_OBSERVE tool_use name=Read id=call_01_eOKjPmGe9Y9yxhZ8JGPT6134
+DS_OBSERVE block_stop index=2
+DS_OBSERVE message_delta stop_reason=tool_use
+DS_OBSERVE message_stop
+DS_OBSERVE event type=user
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE heartbeat elapsed_s=10 quiet_s=0 no_progress_s=0 process=Ss 00:10 7.2 1.6
+DS_OBSERVE thinking chars=1400
+DS_OBSERVE thinking chars=1600
+DS_OBSERVE thinking chars=2400
+DS_OBSERVE thinking chars=3000
+DS_OBSERVE thinking chars=4200
+DS_OBSERVE heartbeat elapsed_s=20 quiet_s=0 no_progress_s=0 process=Ss 00:20 7.3 1.3
+DS_OBSERVE thinking chars=4600
+DS_OBSERVE thinking chars=5800
+DS_OBSERVE thinking chars=6600
+DS_OBSERVE thinking chars=8000
+DS_OBSERVE heartbeat elapsed_s=30 quiet_s=0 no_progress_s=0 process=Ss 00:30 6.6 1.0
+DS_OBSERVE thinking chars=8200
+DS_OBSERVE thinking chars=8400
+DS_OBSERVE thinking chars=8600
+DS_OBSERVE thinking chars=10000
+DS_OBSERVE heartbeat elapsed_s=40 quiet_s=0 no_progress_s=0 process=Ss 00:40 6.7 0.9
+DS_OBSERVE thinking chars=10400
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=text
+DS_OBSERVE text_delta total_chars=3
+DS_OBSERVE text_delta total_chars=200
+DS_OBSERVE heartbeat elapsed_s=50 quiet_s=0 no_progress_s=0 process=Ss 00:50 4.3 0.9
+DS_OBSERVE text_delta total_chars=800
+DS_OBSERVE text_delta total_chars=1400
+DS_OBSERVE assistant_text chars=1555
+DS_OBSERVE block_stop index=1
+DS_OBSERVE message_delta stop_reason=end_turn
+DS_OBSERVE message_stop
+DS_OBSERVE result subtype=success duration_ms=56166 api_ms=63766 turns=3 terminal_reason=completed
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "NBF-01",
+      "title": "仅能验证 command-architecture 这一个 shard 的内容一致性",
+      "detail": "复审分片只提供了 1/4 的 shard 文件（command-architecture）和 parity JSON。其余 3 个 shard（copy-content、content-diagnostics、project-semantics）和 2 个 helper 的测试体未被本分片覆盖，无法确认其内部断言是否完整保留、未削弱。需最终综合判断。",
+      "evidence": "bounded review scope limited to 2 files"
+    },
+    {
+      "id": "NBF-02",
+      "title": ".largefile-manifest.json 未提供，无法验证其自洽性",
+      "detail": "请求中要求的 .largefile-manifest.json 文件不在本次分片文件列表中，无法确认其行数、split_evidence 与 parity JSON 的一致性，也无法检查是否存在大文件/near-threshold 绕过。需其他分片或最终综合判断。",
+      "evidence": "manifest file not in bounded review files"
+    },
+    {
+      "id": "NBF-03",
+      "title": "计划文档（计划文档）未提供",
+      "detail": "请求中提及的计划文档不在本分片文件列表中，无法确认其行数、目标与 split_evidence 是否自洽。",
+      "evidence": "plan document not in bounded review files"
+    }
+  ],
+  "required_fixes": [],
+  "confirmed_facts": [
+    "command-architecture shard 包含 3 个测试，与 parity JSON 中 tests_by_file 完全一致",
+    "parity JSON 声明 before_count=36, after_count=36, missing/added/duplicate 均为空数组，36 个 test name 无丢失、无新增、无重复",
+    "command-architecture.test.js 实际 193 行，与 parity JSON 中 line_counts（193）严格匹配",
+    "command-architecture shard 使用了与原始测试相同的导入链（buildArtifact, viewportAudit, baseArtifact, validateFrontendAcceptanceRunArtifact），测试断言覆盖 control_count、architecture、findings、layout、validation，未发现覆盖削弱",
+    "两个 helper 文件（fixtures 298 行，viewport 79 行）均低于 300 行 near-threshold 警戒线"
+  ]
+}
+```
+DS_SHARD pass depth=0 files=test/frontend-acceptance-command-architecture.test.js,docs/examples/frontend-acceptance-test-p10-split-parity.json
+DS_SHARD start depth=0 files=.largefile-manifest.json,docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md
+DS_OBSERVE init model=deepseek-v4-pro[1m] cwd=/private/var/folders/b1/yntc7qc96ysgd4nvjtbgk__40000gn/T/claude-deepseek-review-edotjlbz tools=Read
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=3
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE tool_input chars=1
+DS_OBSERVE tool_use name=Read id=call_00_aas3dnjNeJJAHcMLWzoE1921
+DS_OBSERVE block_stop index=1
+DS_OBSERVE block_start type=tool_use
+DS_OBSERVE event type=user
+DS_OBSERVE tool_use name=Read id=call_01_QSxMtnyzGo4A9M0yHmNk1270
+DS_OBSERVE block_stop index=2
+DS_OBSERVE message_delta stop_reason=tool_use
+DS_OBSERVE message_stop
+DS_OBSERVE event type=user
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE heartbeat elapsed_s=10 quiet_s=0 no_progress_s=0 process=Ss 00:10 4.0 1.6
+DS_OBSERVE thinking chars=800
+DS_OBSERVE thinking chars=1400
+DS_OBSERVE thinking chars=1800
+DS_OBSERVE thinking chars=3000
+DS_OBSERVE thinking chars=3200
+DS_OBSERVE heartbeat elapsed_s=20 quiet_s=0 no_progress_s=0 process=Ss 00:20 13.3 1.4
+DS_OBSERVE thinking chars=5200
+DS_OBSERVE thinking chars=5800
+DS_OBSERVE heartbeat elapsed_s=30 quiet_s=0 no_progress_s=0 process=Ss 00:30 7.4 1.4
+DS_OBSERVE thinking chars=7200
+DS_OBSERVE thinking chars=7600
+DS_OBSERVE heartbeat elapsed_s=40 quiet_s=0 no_progress_s=0 process=Ss 00:40 7.3 1.1
+DS_OBSERVE thinking chars=9200
+DS_OBSERVE thinking chars=9600
+DS_OBSERVE thinking chars=9800
+DS_OBSERVE heartbeat elapsed_s=50 quiet_s=0 no_progress_s=0 process=Ss 00:50 9.6 0.9
+DS_OBSERVE thinking chars=10800
+DS_OBSERVE thinking chars=11400
+DS_OBSERVE thinking chars=12000
+DS_OBSERVE heartbeat elapsed_s=60 quiet_s=0 no_progress_s=0 process=Ss 01:01 8.1 0.8
+DS_OBSERVE thinking chars=12800
+DS_OBSERVE thinking chars=13400
+DS_OBSERVE thinking chars=13800
+DS_OBSERVE heartbeat elapsed_s=70 quiet_s=0 no_progress_s=0 process=Ss 01:11 8.1 0.7
+DS_OBSERVE thinking chars=14600
+DS_OBSERVE heartbeat elapsed_s=80 quiet_s=0 no_progress_s=0 process=Rs 01:21 8.1 0.6
+DS_OBSERVE thinking chars=17800
+DS_OBSERVE thinking chars=18200
+DS_OBSERVE thinking chars=18400
+DS_OBSERVE heartbeat elapsed_s=90 quiet_s=0 no_progress_s=0 process=Ss 01:31 8.0 0.8
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=text
+DS_OBSERVE text_delta total_chars=2
+DS_OBSERVE assistant_text chars=824
+DS_OBSERVE block_stop index=1
+DS_OBSERVE message_delta stop_reason=end_turn
+DS_OBSERVE message_stop
+DS_OBSERVE result subtype=success duration_ms=97544 api_ms=102022 turns=3 terminal_reason=completed
+基于提供的两个文件（`.largefile-manifest.json` 和 `LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md`），做出以下分片审查结论：
+
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "parity_artifact (docs/examples/frontend-acceptance-test-p10-split-parity.json) 被引用但不在本分片审查包中，36/36 对等声明无法独立验证",
+    "test/helpers/frontend-acceptance-fixtures.js 为 298 行，仅低于 300 行近阈值边界 2 行，需最终综合判断是否触发 near-threshold 预算警告",
+    "实际测试 shard/helper 内容不在审查包中，无法验证是否存在覆盖率弱化或测试逻辑重复",
+    "manifest 中 reduction_target.base_lines=577 为拆分后行数而非原始基线 1670，虽对下一阶段正确但丢失历史基线追溯"
+  ],
+  "required_fixes": []
+}
+```
+
+**可确认的事实**：manifest 与计划文档在行数（1670→577）、拆分文件数（2 helper + 4 shard）、36/36 对等声明、focused gate 覆盖全部 5 个测试文件、reduction_target 参数自洽方面均内部一致。新文件均低于 500 行，无大文件绕过；fixtures helper 298 行在 300 边界之下技术上合规。**最终判定需 parity JSON 和实际测试文件内容才能确认对等真实性和覆盖率完整性。**
+DS_SHARD pass depth=0 files=.largefile-manifest.json,docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md
+DS_SHARD synthesis_start
+DS_OBSERVE init model=deepseek-v4-flash cwd=/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260603-reduce-frontend-acceptance-test-root-p10-36dced tools=
+DS_OBSERVE status=requesting
+DS_OBSERVE block_start type=thinking
+DS_OBSERVE thinking chars=2
+DS_OBSERVE thinking chars=400
+DS_OBSERVE thinking chars=800
+DS_OBSERVE thinking chars=1200
+DS_OBSERVE thinking chars=1600
+DS_OBSERVE thinking chars=2000
+DS_OBSERVE heartbeat elapsed_s=10 quiet_s=0 no_progress_s=0 process=Ss 00:10 13.0 1.4
+DS_OBSERVE thinking chars=2400
+DS_OBSERVE thinking chars=2600
+DS_OBSERVE thinking chars=3000
+DS_OBSERVE thinking chars=3400
+DS_OBSERVE heartbeat elapsed_s=20 quiet_s=0 no_progress_s=0 process=Ss 00:20 12.2 1.0
+DS_OBSERVE thinking chars=4600
+DS_OBSERVE block_stop index=0
+DS_OBSERVE block_start type=text
+DS_OBSERVE text_delta total_chars=1
+DS_OBSERVE assistant_text chars=4
+DS_OBSERVE block_stop index=1
+DS_OBSERVE message_delta stop_reason=end_turn
+DS_OBSERVE message_stop
+DS_OBSERVE result subtype=success duration_ms=20340 api_ms=39329 turns=1 terminal_reason=completed
+PASS
+PASS

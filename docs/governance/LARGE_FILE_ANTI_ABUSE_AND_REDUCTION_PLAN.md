@@ -2,7 +2,7 @@
 
 Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T20:15:43+08:00
+Updated at: 2026-06-03T20:44:47+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -266,6 +266,21 @@ Goal: reduce `test/workbench-server.test.js` below the 1400-line phase target wi
 | LFA-P9.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-test-p9-deepseek.json` | Initial sharded DS review returned PASS and flagged non-blocking cleanup: unused root imports, helper-gate/parity scope explanation, and retained-domain specificity. After cleanup and manifest/parity updates, delta review returned PASS. A final consistency review also returned PASS after the one-line gate-alignment change moved the root count to 1363. | pass |
 | LFA-P9.6 | Run final gates | Command evidence | Final gates passed: focused server/API/state tests 91/91, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
 
+### Phase LFA-P10: Frontend Acceptance Test Root Reduction Step 1
+
+Status: pass
+
+Goal: reduce `test/frontend-acceptance.test.js` below the 1200-line phase target without weakening release-default latest-projection, content/copy, project-management semantics, command architecture, browser-error, navigation, repair, or closeout wiring coverage.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P10.1 | Select current test target | This document and `.largefile-manifest.json` | Selected `test/frontend-acceptance.test.js` because it is the current highest-priority queue item at 1670 lines, with a required 250-line minimum reduction and a 1200-line phase target. | pass |
+| LFA-P10.2 | Extract bounded fixture helpers and domain shards | `test/helpers/frontend-acceptance-fixtures.js`; `test/helpers/frontend-acceptance-viewport.js`; `test/frontend-acceptance-copy-content.test.js`; `test/frontend-acceptance-content-diagnostics.test.js`; `test/frontend-acceptance-project-semantics.test.js`; `test/frontend-acceptance-command-architecture.test.js`; `test/frontend-acceptance.test.js`; `.largefile-manifest.json` | Root frontend acceptance suite reduced from 1670 to 577 lines, below the 1200-line phase target. The largest new helper is 298 lines and every new shard is below 250 lines, avoiding new near-threshold warnings. The target remains open with a new below-500 / 426-line target. | pass |
+| LFA-P10.3 | Prove split parity | `docs/examples/frontend-acceptance-test-p10-split-parity.json` | Test-name parity against base `c08a0f0531afa2462099e51cdcc66471e8e8464e` passed: 36 before / 36 after, with no missing, added, or duplicate test names. | pass |
+| LFA-P10.4 | Run focused gates | Command evidence | Focused frontend acceptance gates passed 36/36: `node tools/run-with-node18.mjs --test test/frontend-acceptance.test.js test/frontend-acceptance-copy-content.test.js test/frontend-acceptance-content-diagnostics.test.js test/frontend-acceptance-project-semantics.test.js test/frontend-acceptance-command-architecture.test.js`. | pass |
+| LFA-P10.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-frontend-acceptance-test-p10-deepseek.json` | Sharded DeepSeek review returned PASS. Non-blocking findings were limited to shard-scope caveats, the 298-line helper being close to the 300-line near-threshold warning boundary, and historical-baseline traceability; the manifest, plan, parity artifact, focused gate scope, and large-file gate are internally consistent. | pass |
+| LFA-P10.6 | Run final gates | Command evidence | Final gates passed: focused frontend acceptance tests 36/36, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. A failed closeout retry left an orphaned 4191 Next process; only that isolated-worktree process group was cleared before the successful focused browser-events rerun and full closeout rerun. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -280,6 +295,7 @@ Goal: reduce `test/workbench-server.test.js` below the 1400-line phase target wi
 | LFA-P7 | pass | Selected `src/workflow/headless-cli-orchestrator.js`; runtime file is 1136 lines after extracting child-worker prompt, process-hardening, snapshot publisher, projected workbench client, and projected next-action execution modules, all below 300 lines and registered in the manifest. Focused headless/scheduler/projection gates passed 111/111 after adding snapshot rollback, dirty-state failure, and loop continuation evidence. Final gates passed: `npm test` 998/998, large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 | LFA-P8 | pass | Selected `test/headless-cli-orchestrator.test.js`; root suite is 1071 lines after extracting shared headless CLI fixtures and three CLI process/service shards, all under 300 lines. Split parity passed 40/40 with no missing, added, or duplicate tests. Final gates passed: focused tests 111/111, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta |
 | LFA-P9 | pass | Selected `test/workbench-server.test.js`; root suite is 1363 lines after extracting CLI bootstrap/state-db/port validation and project-status continuation next-action shards, both under 300 lines. Split parity passed 21/21 with no missing, added, or duplicate tests. Final gates passed: focused server/API/state tests 91/91, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta/final consistency |
+| LFA-P10 | pass | Selected `test/frontend-acceptance.test.js`; root suite is 577 lines after extracting shared fixtures plus copy/content, diagnostic content, project-management semantics, and command-architecture shards, all under 300 lines. Split parity passed 36/36 with no missing, added, or duplicate tests. Final gates passed: focused frontend acceptance tests 36/36, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS |
 
 ## Daily Run Shape
 

@@ -244,17 +244,37 @@
       }
     },
     "test/frontend-acceptance.test.js": {
-      "lines": 1670,
-      "reason": "Frontend acceptance tests cover content, layout, console, mounted route, favicon, and live-route false-pass regressions over shared artifacts.",
-      "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds regression coverage for legacy static shell false-pass rejection.",
+      "lines": 577,
+      "reason": "Frontend acceptance root tests were reduced from the P10 1670-line baseline by extracting shared artifact/viewport fixtures plus copy/content, diagnostic content, project-management semantics, and command-architecture false-pass domains into bounded helpers and shards under 300 lines. The root still covers artifact schema, viewport/resource readiness, durable release evidence, CLI default latest-projection mode, browser console errors, legacy shell rejection, navigation semantic-change guards, repair work package scheduling, closeout wiring, and public live-route gate wiring, so it remains planned debt rather than accepted. Split parity is recorded in docs/examples/frontend-acceptance-test-p10-split-parity.json with 36 before / 36 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1670,
-        "target_lines": 1200,
-        "minimum_reduction": 250,
-        "terminal_condition": "Frontend acceptance root suite must fall below 1200 lines without dropping live-route or legacy false-pass coverage.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "base_lines": 577,
+        "target_lines": 426,
+        "minimum_reduction": 150,
+        "terminal_condition": "Frontend acceptance root suite must fall below 500 lines or to 426 lines or below through another stable extraction while preserving release evidence, navigation, repair, and closeout wiring assertions.",
+        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+      },
+      "split_evidence": {
+        "parity_artifact": "docs/examples/frontend-acceptance-test-p10-split-parity.json",
+        "before_count": 36,
+        "after_count": 36,
+        "moved_domains": {
+          "test/frontend-acceptance-copy-content.test.js": "copy_content_and_operator_readability",
+          "test/frontend-acceptance-content-diagnostics.test.js": "content_completion_diagnostics_and_placeholder_false_passes",
+          "test/frontend-acceptance-project-semantics.test.js": "project_management_semantics_false_passes",
+          "test/frontend-acceptance-command-architecture.test.js": "semantic_command_controls_and_architecture_false_passes"
+        },
+        "retained_root_domains": [
+          "artifact_schema_and_viewport_resource_readiness",
+          "durable_release_evidence_and_projection_summary",
+          "cli_default_latest_projection_mode",
+          "browser_console_errors_and_legacy_shell_guard",
+          "navigation_semantic_change_guard",
+          "frontend_acceptance_repair_work_package_and_closeout_wiring",
+          "public_workbench_live_route_gate_wiring"
+        ],
+        "helper_scope_note": "Shared P10 helpers contain only artifact, viewport, and workflow-state fixtures and remain below the 300-line near-threshold warning boundary."
       }
     },
     "test/headless-cli-orchestrator.test.js": {
@@ -480,6 +500,42 @@
     "test/workbench-server-project-status-continuation.test.js": {
       "lines": 264,
       "reason": "Extracted Workbench server project-status continuation shard kept below the near-threshold budget while preserving next-action context-pack creation, unsupported provider profile guards, bounded mock no-completion semantics, and local bounded completion coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/helpers/frontend-acceptance-fixtures.js": {
+      "lines": 298,
+      "reason": "Extracted frontend acceptance artifact fixture helper kept below the 300-line near-threshold warning boundary while preserving PROJECT_MANAGEMENT_TEXT, project-management semantic result defaults, and base acceptance artifact shape.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/helpers/frontend-acceptance-viewport.js": {
+      "lines": 79,
+      "reason": "Extracted frontend acceptance viewport/workflow-state fixture helper kept below the near-threshold budget while preserving mounted route, navigation, favicon, browser-error, content-section, and base workflow-state fixtures.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/frontend-acceptance-copy-content.test.js": {
+      "lines": 184,
+      "reason": "Extracted frontend acceptance copy/content shard kept below the near-threshold budget while preserving unbounded headline, raw internal copy, translated operator copy, and labeled status-count acceptance coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/frontend-acceptance-content-diagnostics.test.js": {
+      "lines": 249,
+      "reason": "Extracted frontend acceptance diagnostic-content shard kept below the near-threshold budget while preserving diagnostic wall, mobile telemetry dump, placeholder-dominated section, and content-completion false-pass coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/frontend-acceptance-project-semantics.test.js": {
+      "lines": 122,
+      "reason": "Extracted frontend acceptance project-management semantics shard kept below the near-threshold budget while preserving missing project-management semantics and legacy diagnostic false-pass coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/frontend-acceptance-command-architecture.test.js": {
+      "lines": 193,
+      "reason": "Extracted frontend acceptance command architecture shard kept below the near-threshold budget while preserving semantic command control, primary action overload, risky action overload, and command false-pass coverage.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
     }

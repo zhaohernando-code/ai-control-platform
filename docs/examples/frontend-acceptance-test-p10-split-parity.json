@@ -1,0 +1,175 @@
+{
+  "version": "test-split-parity.v2",
+  "generated_at": "2026-06-03T12:23:15.362Z",
+  "base_ref": "c08a0f0531afa2462099e51cdcc66471e8e8464e",
+  "target": "test/frontend-acceptance.test.js",
+  "before": {
+    "file": "test/frontend-acceptance.test.js",
+    "line_count": 1670,
+    "test_count": 36,
+    "tests": [
+      "frontend acceptance artifact fails closed on blocking findings",
+      "frontend acceptance artifact requires desktop and mobile viewport evidence",
+      "frontend acceptance requires mounted route and explicit workbench favicon readiness",
+      "frontend acceptance blocks root favicon fallback links",
+      "frontend acceptance accepts mounted Next workbench favicon links",
+      "frontend acceptance requires mounted SVG favicon MIME evidence",
+      "frontend acceptance run records durable workflow facts and projection summary",
+      "release frontend acceptance fails closed without durable workflow and projection evidence",
+      "release frontend acceptance accepts recordFrontendAcceptanceRunArtifact durable projection evidence",
+      "frontend acceptance CLI defaults to release latest projection mode",
+      "frontend acceptance artifact identifies latest projection evidence",
+      "frontend acceptance catches live latest unbounded copy and control pileup",
+      "frontend acceptance blocks visible internal workbench copy and raw artifact ids",
+      "frontend acceptance allows translated operator workbench copy",
+      "frontend acceptance allows labeled operator status counts with next-action context",
+      "frontend acceptance blocks desktop diagnostic field wall content",
+      "frontend acceptance blocks realistic desktop diagnostic field walls with high actionable labels",
+      "frontend acceptance blocks mobile long telemetry/status dump content",
+      "frontend acceptance blocks placeholder-dominated visible sections",
+      "frontend acceptance validation rejects missing or inconsistent content completion evidence",
+      "frontend acceptance blocks workbench pages without project-management semantics",
+      "frontend acceptance validation rejects false-pass project-management semantics",
+      "frontend acceptance validation blocks legacy desktop diagnostic false pass artifacts",
+      "frontend acceptance counts and blocks semantic command controls",
+      "frontend acceptance blocks overloaded command information architecture",
+      "frontend acceptance validation rejects command architecture false pass artifacts",
+      "frontend acceptance records and blocks browser console or page errors",
+      "frontend acceptance validation rejects browser error false-pass artifacts",
+      "frontend acceptance validation rejects Next artifacts that used the legacy static shell",
+      "frontend acceptance rejects active-class-only navigation",
+      "frontend acceptance allows navigation with distinct visible content",
+      "closeout rejects fixture-only frontend acceptance artifacts",
+      "failed frontend acceptance creates a bounded repair work package",
+      "failed frontend acceptance schedules a bounded UI repair child-worker package",
+      "closeout and package scripts wire frontend acceptance as a hard gate",
+      "closeout and package scripts wire public workbench live-route acceptance as a hard gate"
+    ]
+  },
+  "after": {
+    "active_split_files": [
+      "test/frontend-acceptance.test.js",
+      "test/frontend-acceptance-copy-content.test.js",
+      "test/frontend-acceptance-content-diagnostics.test.js",
+      "test/frontend-acceptance-project-semantics.test.js",
+      "test/frontend-acceptance-command-architecture.test.js"
+    ],
+    "line_counts": {
+      "test/frontend-acceptance.test.js": 577,
+      "test/frontend-acceptance-copy-content.test.js": 184,
+      "test/frontend-acceptance-content-diagnostics.test.js": 249,
+      "test/frontend-acceptance-project-semantics.test.js": 122,
+      "test/frontend-acceptance-command-architecture.test.js": 193,
+      "test/helpers/frontend-acceptance-fixtures.js": 298,
+      "test/helpers/frontend-acceptance-viewport.js": 79
+    },
+    "test_count": 36,
+    "tests_by_file": {
+      "test/frontend-acceptance.test.js": [
+        "frontend acceptance artifact fails closed on blocking findings",
+        "frontend acceptance artifact requires desktop and mobile viewport evidence",
+        "frontend acceptance requires mounted route and explicit workbench favicon readiness",
+        "frontend acceptance blocks root favicon fallback links",
+        "frontend acceptance accepts mounted Next workbench favicon links",
+        "frontend acceptance requires mounted SVG favicon MIME evidence",
+        "frontend acceptance run records durable workflow facts and projection summary",
+        "release frontend acceptance fails closed without durable workflow and projection evidence",
+        "release frontend acceptance accepts recordFrontendAcceptanceRunArtifact durable projection evidence",
+        "frontend acceptance CLI defaults to release latest projection mode",
+        "frontend acceptance artifact identifies latest projection evidence",
+        "frontend acceptance records and blocks browser console or page errors",
+        "frontend acceptance validation rejects browser error false-pass artifacts",
+        "frontend acceptance validation rejects Next artifacts that used the legacy static shell",
+        "frontend acceptance rejects active-class-only navigation",
+        "frontend acceptance allows navigation with distinct visible content",
+        "closeout rejects fixture-only frontend acceptance artifacts",
+        "failed frontend acceptance creates a bounded repair work package",
+        "failed frontend acceptance schedules a bounded UI repair child-worker package",
+        "closeout and package scripts wire frontend acceptance as a hard gate",
+        "closeout and package scripts wire public workbench live-route acceptance as a hard gate"
+      ],
+      "test/frontend-acceptance-copy-content.test.js": [
+        "frontend acceptance catches live latest unbounded copy and control pileup",
+        "frontend acceptance blocks visible internal workbench copy and raw artifact ids",
+        "frontend acceptance allows translated operator workbench copy",
+        "frontend acceptance allows labeled operator status counts with next-action context"
+      ],
+      "test/frontend-acceptance-content-diagnostics.test.js": [
+        "frontend acceptance blocks desktop diagnostic field wall content",
+        "frontend acceptance blocks realistic desktop diagnostic field walls with high actionable labels",
+        "frontend acceptance blocks mobile long telemetry/status dump content",
+        "frontend acceptance blocks placeholder-dominated visible sections",
+        "frontend acceptance validation rejects missing or inconsistent content completion evidence"
+      ],
+      "test/frontend-acceptance-project-semantics.test.js": [
+        "frontend acceptance blocks workbench pages without project-management semantics",
+        "frontend acceptance validation rejects false-pass project-management semantics",
+        "frontend acceptance validation blocks legacy desktop diagnostic false pass artifacts"
+      ],
+      "test/frontend-acceptance-command-architecture.test.js": [
+        "frontend acceptance counts and blocks semantic command controls",
+        "frontend acceptance blocks overloaded command information architecture",
+        "frontend acceptance validation rejects command architecture false pass artifacts"
+      ]
+    }
+  },
+  "parity": {
+    "before_count": 36,
+    "after_count": 36,
+    "missing_tests": [],
+    "added_tests": [],
+    "duplicate_tests": [],
+    "status": "pass"
+  },
+  "moved_domains": [
+    {
+      "file": "test/frontend-acceptance-copy-content.test.js",
+      "domain": "copy_content_and_operator_readability",
+      "tests": [
+        "frontend acceptance catches live latest unbounded copy and control pileup",
+        "frontend acceptance blocks visible internal workbench copy and raw artifact ids",
+        "frontend acceptance allows translated operator workbench copy",
+        "frontend acceptance allows labeled operator status counts with next-action context"
+      ]
+    },
+    {
+      "file": "test/frontend-acceptance-content-diagnostics.test.js",
+      "domain": "content_completion_diagnostics_and_placeholder_false_passes",
+      "tests": [
+        "frontend acceptance blocks desktop diagnostic field wall content",
+        "frontend acceptance blocks realistic desktop diagnostic field walls with high actionable labels",
+        "frontend acceptance blocks mobile long telemetry/status dump content",
+        "frontend acceptance blocks placeholder-dominated visible sections",
+        "frontend acceptance validation rejects missing or inconsistent content completion evidence"
+      ]
+    },
+    {
+      "file": "test/frontend-acceptance-project-semantics.test.js",
+      "domain": "project_management_semantics_false_passes",
+      "tests": [
+        "frontend acceptance blocks workbench pages without project-management semantics",
+        "frontend acceptance validation rejects false-pass project-management semantics",
+        "frontend acceptance validation blocks legacy desktop diagnostic false pass artifacts"
+      ]
+    },
+    {
+      "file": "test/frontend-acceptance-command-architecture.test.js",
+      "domain": "semantic_command_controls_and_architecture_false_passes",
+      "tests": [
+        "frontend acceptance counts and blocks semantic command controls",
+        "frontend acceptance blocks overloaded command information architecture",
+        "frontend acceptance validation rejects command architecture false pass artifacts"
+      ]
+    }
+  ],
+  "retained_root_domains": [
+    "artifact_schema_and_viewport_resource_readiness",
+    "durable_release_evidence_and_projection_summary",
+    "cli_default_latest_projection_mode",
+    "browser_console_errors_and_legacy_shell_guard",
+    "navigation_semantic_change_guard",
+    "frontend_acceptance_repair_work_package_and_closeout_wiring",
+    "public_workbench_live_route_gate_wiring"
+  ],
+  "helper_scope_note": "P10 helper files contain shared frontend acceptance artifact, viewport, and workflow-state fixtures only; all helpers remain below the 300-line near-threshold warning boundary."
+}
