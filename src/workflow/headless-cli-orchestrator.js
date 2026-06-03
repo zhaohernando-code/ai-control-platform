@@ -4,65 +4,56 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { decideContinuation } from "./autonomous-continuation.js";
-import { recordArtifact } from "./artifact-ledger.js";
 import { cleanupAgentLifecyclePool, recordAgentLifecycleFact } from "./agent-lifecycle-pool.js";
 import { materializeContextPackCycleFromWorkflowState } from "./context-pack-cycle.js";
 import {
   prepareContinuationFromProjectStatus,
   recordProjectStatusContinuationPrepared
 } from "./project-status-continuation.js";
-import { createProcessHardeningPlan } from "./process-hardening.js";
-import { appendRunEvent } from "./run-manifest.js";
 import { runContextWorkPackages } from "./context-work-package-runner.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
-import { publishWorkbenchSnapshot } from "./workbench-snapshots.js";
-import {
-  promptSafeContextPack,
-  promptSafeWorkflowIdentity,
-  promptSafeWorkPackage,
-  promptSafetyPreamble
-} from "./external-prompt-safety.js";
 import { runAgentInvocation } from "./agent-invocation.js";
-import {
-  selectedChildAcceptanceGates,
-  isParentOwnedAcceptanceGate,
-  splitChildAcceptanceGates,
-  selectedParentAcceptanceGates,
-  withAcceptanceGates
-} from "./headless-acceptance-gates.js";
+import { isParentOwnedAcceptanceGate, splitChildAcceptanceGates } from "./headless-acceptance-gates.js";
 import {
   CHILD_WORKER_ROLE,
   HEADLESS_MAIN_ORCHESTRATOR_ROLE,
   createHeadlessWorkerSpawnFacts,
   selectHeadlessWorkPackages
 } from "./headless-worker-planning.js";
+import { headlessChildWorkerPrompt } from "./headless-child-worker-prompt.js";
 import {
   defaultHeadlessChildWorkerOutput,
   evaluateHeadlessChildWorkerOutput,
   missingHeadlessChildWorkerOutput,
   parseHeadlessChildWorkerOutput
 } from "./headless-child-acceptance.js";
+import {
+  recordHeadlessProcessHardening,
+  rejectedPackageResults
+} from "./headless-process-hardening.js";
+import {
+  publishHeadlessWorkflowSnapshot,
+  snapshotPersistenceConfig
+} from "./headless-snapshot-publisher.js";
+import {
+  MAX_HEADLESS_LOOP_ITERATIONS,
+  boundedHeadlessLoopIterations,
+  executeHeadlessProjectedNextAction,
+  nextProjectedActionOptions,
+  recordHeadlessProjectedActionProgress,
+  serviceProjectedActionConfigured
+} from "./headless-projected-next-action.js";
 
 export const HEADLESS_CLI_ORCHESTRATOR_VERSION = "headless-cli-orchestrator.v1";
 export { CHILD_WORKER_ROLE, HEADLESS_MAIN_ORCHESTRATOR_ROLE };
 export {
   evaluateHeadlessChildWorkerOutput,
+  headlessChildWorkerPrompt,
   parseHeadlessChildWorkerOutput
 };
 export const DEFAULT_CHILD_WORKER_TIMEOUT_MS = 10 * 60 * 1000;
-export const MAX_HEADLESS_LOOP_ITERATIONS = 5;
-const HEADLESS_PROJECTED_NEXT_ACTIONS = new Set([
-  "enqueue_scheduler_next_cycle",
-  "prepare_project_status_continuation",
-  "continue_after_reviewer_aggregate",
-  "create_context_pack_from_seed",
-  "run_context_work_packages",
-  "run_reviewer_scope_shard",
-  "cleanup_agent_lifecycle_pool",
-  "resume_autonomous_scheduler_loop",
-  "run_autonomous_scheduler_loop"
-]);
+export { MAX_HEADLESS_LOOP_ITERATIONS };
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -202,97 +193,6 @@ function childOutputsByPackage(options = {}) {
     if (id) byId.set(id, output);
   }
   return byId;
-}
-
-function promptSafeFocusedContextPack(contextPack = {}, workPackage = {}, acceptanceGates = []) {
-  const safeContextPack = promptSafeContextPack(contextPack);
-  const focusedWorkPackage = withAcceptanceGates(workPackage, acceptanceGates);
-  return {
-    ...safeContextPack,
-    acceptance_gates: acceptanceGates,
-    subtasks: [promptSafeWorkPackage(focusedWorkPackage)]
-  };
-}
-
-export function headlessChildWorkerPrompt(workflowState = {}, workPackage = {}, options = {}) {
-  const contextPack = workflowState?.manifest?.context_pack || {};
-  const acceptanceGates = selectedChildAcceptanceGates(workPackage, contextPack, options);
-  const parentAcceptanceGates = selectedParentAcceptanceGates(workPackage, contextPack, options);
-  const focusedWorkPackage = withAcceptanceGates(workPackage, acceptanceGates);
-  const outputPath = normalizeString(options.child_worker_output_path_resolved || options.childWorkerOutputPathResolved) ||
-    childWorkerCommandOutputPath(workPackage, {
-      ...options,
-      run_id: workflowState?.manifest?.run_id,
-      cycle_id: workflowState?.manifest?.cycle_id
-    });
-  const outputPathInstructions = outputPath
-    ? [
-        "",
-        "Final response protocol:",
-        `- Write exactly one JSON object to child_worker_output_path: ${outputPath}`,
-        "- Also print exactly the same JSON object as the final stdout content.",
-        "- The JSON object must match the Required JSON shape above."
-      ]
-    : [];
-  return [
-    "# AI Control Platform Bounded Implementation Task",
-    "",
-    "role=bounded_implementation_worker",
-    "host=platform_core",
-    "Return exactly one JSON object. Do not wrap it in prose.",
-    "",
-    promptSafetyPreamble(),
-    "",
-    "You are not the coordinator. Only implement the bounded task.",
-    "",
-    "Required rules:",
-    "- Read AGENTS.md, PROCESS.md, PROJECT_STATUS.json, PROJECT_RULES.md, docs/contracts/CODEX_PROXY_HANDOFF_CN.md, and this task context.",
-    "- Do not read more than five extra files outside the task context unless you first report why.",
-    "- First produce the minimum runnable diff, then explain design.",
-    "- If no patch is possible within the time box, return status=fail with no_diff=true, blocker, read_files, and next_minimal_patch_position.",
-    "- If the current mainline already satisfies the selected task, return status=pass with changed_files=[], no_diff=true, passing child gates, durable state evidence, and continuation readiness.",
-    "- Do not modify managed projects, legacy directories, or files outside owned_files.",
-    "- Do not create, switch to, or delegate into another worktree; the current working directory is the only execution root for this bounded child task.",
-    "- Do not create .claude/worktrees or run claude --worktree; return status=fail if the current execution root is unsuitable.",
-    "- If you are running inside an isolated worker worktree, commit the bounded changes on the current worker branch before returning status=pass; the parent runner owns mainline integration.",
-    "- Run only the child acceptance gates listed below. Do not run deferred parent-owned release gates from the isolated worker branch.",
-    "- Deferred parent-owned release gates are not your failure criteria. If all child acceptance gates pass and your bounded diff is committed, return status=pass, process_hardening={required:false,status:\"not_required\"}, continuation_readiness.ready=true, and self_evaluation.aligned=true.",
-    "- Do not set process_hardening.status=\"pending\", continuation_readiness.ready=false, or self_evaluation.aligned=false solely because deferred_parent_gates remain for the parent runner.",
-    "",
-    "Required JSON shape:",
-    JSON.stringify({
-      status: "pass|fail",
-      role: CHILD_WORKER_ROLE,
-      host: "platform_core",
-      changed_files: ["owned file path"],
-      no_diff: false,
-      test_results: [{ command: "focused test command", status: "pass|fail" }],
-      deferred_parent_gates: ["parent-owned gate not run by child"],
-      durable_state_updated: true,
-      process_hardening: { required: false, status: "not_required|completed" },
-      continuation_readiness: { ready: true },
-      self_evaluation: { aligned: true, drifted: false, evidence_sufficient: true },
-      blocker: null,
-      read_files: [],
-      next_minimal_patch_position: null
-    }, null, 2),
-    "",
-    "Workflow identity:",
-    JSON.stringify(promptSafeWorkflowIdentity(workflowState), null, 2),
-    "",
-    "Task context:",
-    JSON.stringify(promptSafeFocusedContextPack(contextPack, workPackage, acceptanceGates), null, 2),
-    "",
-    "Selected task:",
-    JSON.stringify(promptSafeWorkPackage(focusedWorkPackage), null, 2),
-    "",
-    "Child acceptance gates:",
-    JSON.stringify(acceptanceGates, null, 2),
-    "",
-    "Deferred parent-owned release gates:",
-    JSON.stringify(parentAcceptanceGates, null, 2),
-    ...outputPathInstructions
-  ].join("\n");
 }
 
 function agentInvocationTemplateFrom(options = {}) {
@@ -759,82 +659,6 @@ export function createHeadlessProviderExecutor(options = {}) {
   };
 }
 
-function processHardeningFindingFor(rejectedResults = []) {
-  return {
-    id: "headless-child-worker-acceptance-failed",
-    status: "fail",
-    category: "process_gap",
-    severity: "p1",
-    message: "Headless main orchestrator rejected child worker output; retry must first preserve the failure as a gate or regression.",
-    enforcement_target: "src/workflow/headless-cli-orchestrator.js; test/headless-cli-orchestrator.test.js; docs/examples/process-hardening-current.json",
-    regression_test: "headless CLI orchestrator hardens no-diff child worker output before retry",
-    verification: "node --test test/headless-cli-orchestrator.test.js; npm run check:process-hardening; npm run check:closeout",
-    hardening_status: "completed",
-    rejected_results: rejectedResults
-  };
-}
-
-function recordHeadlessProcessHardening(workflowState = {}, rejectedResults = [], options = {}) {
-  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
-  const finding = processHardeningFindingFor(rejectedResults);
-  const plan = createProcessHardeningPlan({
-    run_id: workflowState?.manifest?.run_id,
-    cycle_id: workflowState?.manifest?.cycle_id,
-    findings: [finding]
-  });
-  const id = normalizeString(options.process_hardening_artifact_id || options.processHardeningArtifactId) ||
-    `headless-process-hardening-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}-001`;
-  const artifact = {
-    id,
-    type: "evaluation",
-    status: "pass",
-    uri: `headless-cli://process-hardening/${encodeURIComponent(workflowState?.manifest?.run_id || "unknown")}/${encodeURIComponent(workflowState?.manifest?.cycle_id || "unknown")}`,
-    producer: "headless-cli-orchestrator",
-    created_at: createdAt,
-    metadata: {
-      version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
-      type: "headless_cli_process_hardening",
-      status: "completed",
-      finding,
-      plan
-    }
-  };
-  const manifest = appendRunEvent(workflowState.manifest, {
-    id: `event-${id}`,
-    type: "headless_cli_process_hardening",
-    status: "completed",
-    artifact_id: id,
-    message: "headless child worker failure was converted into process-hardening evidence before retry",
-    created_at: createdAt,
-    metadata: artifact.metadata
-  });
-  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
-  const artifactLedger = recordArtifact({
-    ...baseLedger,
-    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
-  }, artifact);
-
-  return {
-    status: "pass",
-    finding,
-    plan,
-    workflow_state: {
-      ...workflowState,
-      manifest: {
-        ...manifest,
-        review_findings: [...asArray(manifest.review_findings), finding],
-        artifacts: [...asArray(manifest.artifacts), artifact]
-      },
-      artifact_ledger: artifactLedger
-    }
-  };
-}
-
-function rejectedPackageResults(runResult = {}) {
-  return asArray(runResult.package_results)
-    .filter((result) => normalizeToken(result?.status) !== "pass");
-}
-
 function continuationInput(projectStatus = {}, workflowState = {}, projection = {}) {
   return {
     project_status: projectStatus,
@@ -845,549 +669,6 @@ function continuationInput(projectStatus = {}, workflowState = {}, projection = 
       projection
     },
     workflow_state: workflowState
-  };
-}
-
-function snapshotPersistenceConfig(options = {}) {
-  const historyPath = normalizeString(options.projection_history_path || options.projectionHistoryPath || options.history_path || options.historyPath);
-  const snapshotsRoot = normalizeString(options.snapshots_root || options.snapshotsRoot);
-  if (!historyPath && !snapshotsRoot) {
-    return {
-      status: "not_configured",
-      issues: []
-    };
-  }
-  const issues = [];
-  if (!historyPath) {
-    issues.push(issue("missing_projection_history_path", "projection history path is required when headless snapshot persistence is configured", "projection_history_path"));
-  }
-  if (!snapshotsRoot) {
-    issues.push(issue("missing_snapshots_root", "snapshots root is required when headless snapshot persistence is configured", "snapshots_root"));
-  }
-  return {
-    status: issues.length ? "fail" : "configured",
-    issues,
-    root: normalizeString(options.root) || process.cwd(),
-    history_path: historyPath,
-    snapshots_root: snapshotsRoot
-  };
-}
-
-function headlessSnapshotId(workflowState = {}, options = {}) {
-  const explicit = normalizeString(options.snapshot_id || options.snapshotId);
-  if (explicit) return safeIdPart(explicit).slice(0, 80);
-  const prefix = normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-cli";
-  return `${safeIdPart(prefix)}-${safeIdPart(workflowState?.manifest?.cycle_id)}`.slice(0, 80);
-}
-
-function headlessSnapshotArtifact(snapshotId, result = {}, options = {}) {
-  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
-  const status = result.status === "created" ? "pass" : "fail";
-  return {
-    id: `headless-cli-snapshot-${snapshotId}`,
-    type: "evaluation",
-    status,
-    path: result.item?.input_path || undefined,
-    uri: result.item?.input_path ? undefined : `workbench://snapshot/${snapshotId}`,
-    producer: "headless-cli-orchestrator",
-    created_at: createdAt,
-    metadata: {
-      version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
-      type: "headless_cli_snapshot_publish",
-      snapshot_id: snapshotId,
-      publish_status: result.status,
-      projection_status: result.projection?.status || null,
-      history_latest: result.history?.latest || null,
-      issues: result.issues || []
-    }
-  };
-}
-
-function recordHeadlessSnapshotEvidence(workflowState = {}, snapshotId, result = {}, options = {}) {
-  const artifact = headlessSnapshotArtifact(snapshotId, result, options);
-  const manifest = appendRunEvent(workflowState.manifest, {
-    id: `event-${artifact.id}`,
-    type: "headless_cli_snapshot_publish",
-    status: result.status === "created" ? "created" : "fail",
-    artifact_id: artifact.id,
-    snapshot_id: snapshotId,
-    message: result.status === "created"
-      ? "headless CLI workflow snapshot published"
-      : "headless CLI workflow snapshot publish failed",
-    created_at: artifact.created_at,
-    metadata: artifact.metadata
-  });
-  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
-  const artifactLedger = recordArtifact({
-    ...baseLedger,
-    artifacts: Array.isArray(baseLedger.artifacts)
-      ? baseLedger.artifacts.filter((item) => item.id !== artifact.id)
-      : []
-  }, artifact);
-
-  return {
-    ...workflowState,
-    manifest: {
-      ...manifest,
-      artifacts: [...asArray(manifest.artifacts).filter((item) => item.id !== artifact.id), artifact]
-    },
-    artifact_ledger: artifactLedger
-  };
-}
-
-function publishHeadlessWorkflowSnapshot(workflowState = {}, options = {}) {
-  const config = snapshotPersistenceConfig(options);
-  if (config.status !== "configured") {
-    return {
-      status: config.status,
-      issues: config.issues,
-      workflow_state: workflowState
-    };
-  }
-
-  const snapshotId = headlessSnapshotId(workflowState, options);
-  const basePlan = {
-    id: snapshotId,
-    label: normalizeString(options.snapshot_label || options.snapshotLabel) || "Headless CLI orchestrator cycle",
-    input: workflowState,
-    created_at: normalizeString(options.created_at || options.createdAt) || new Date().toISOString()
-  };
-  const initial = publishWorkbenchSnapshot(basePlan, {
-    root: config.root,
-    historyPath: config.history_path,
-    snapshotsRoot: config.snapshots_root
-  });
-  if (initial.status !== "created") {
-    return {
-      status: "fail",
-      issues: initial.issues || [],
-      item: initial.item,
-      projection: initial.projection,
-      workflow_state: workflowState,
-      initial_publish: initial
-    };
-  }
-
-  const evidencedWorkflowState = recordHeadlessSnapshotEvidence(workflowState, snapshotId, initial, options);
-  const evidence = publishWorkbenchSnapshot({
-    ...basePlan,
-    input: evidencedWorkflowState
-  }, {
-    root: config.root,
-    historyPath: config.history_path,
-    snapshotsRoot: config.snapshots_root
-  });
-  if (evidence.status !== "created") {
-    return {
-      status: "fail",
-      issues: evidence.issues || [],
-      item: evidence.item,
-      projection: evidence.projection,
-      workflow_state: evidencedWorkflowState,
-      initial_publish: initial,
-      evidence_snapshot_publish: evidence
-    };
-  }
-
-  return {
-    status: "created",
-    issues: [],
-    item: evidence.item,
-    projection: evidence.projection,
-    workflow_state: evidencedWorkflowState,
-    snapshot_path: evidence.snapshot_path,
-    history: evidence.history,
-    initial_publish: initial,
-    evidence_snapshot_publish: evidence
-  };
-}
-
-function boundedHeadlessLoopIterations(value) {
-  const parsed = Number(value || 1);
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_HEADLESS_LOOP_ITERATIONS) {
-    return {
-      status: "fail",
-      value: null,
-      issues: [issue(
-        "invalid_headless_loop_iterations",
-        `max_iterations must be an integer between 1 and ${MAX_HEADLESS_LOOP_ITERATIONS}`,
-        "max_iterations"
-      )]
-    };
-  }
-  return { status: "pass", value: parsed, issues: [] };
-}
-
-function projectedNextActionRunnerFrom(options = {}) {
-  if (typeof options.projected_next_action_runner === "function") return options.projected_next_action_runner;
-  if (typeof options.projectedNextActionRunner === "function") return options.projectedNextActionRunner;
-  return workbenchNextActionRunnerFrom(options);
-}
-
-function projectedNextActionMode(options = {}) {
-  return normalizeString(options.execution_strategy || options.executionStrategy) === "projected_next_action" ||
-    normalizeString(options.headless_loop_strategy || options.headlessLoopStrategy) === "projected_next_action";
-}
-
-function isTerminalProjectedAction(action = "") {
-  return !action ||
-    action === "wait_for_driver_event" ||
-    action === "inspect_scheduler_loop" ||
-    action === "inspect_resume_target" ||
-    action === "inspect_latest_driver";
-}
-
-function projectedActionProgressEvidence(result = {}) {
-  return Boolean(
-    result?.workflow_state ||
-      result?.workflowState ||
-      result?.projection ||
-      result?.result?.projection ||
-      result?.result?.current_projection ||
-      result?.result?.next_item?.id ||
-      result?.next_item?.id
-  );
-}
-
-function localWorkbenchBaseUrl(value = "") {
-  const text = normalizeString(value);
-  if (!text) return null;
-  const url = new URL(text);
-  const localHosts = new Set(["127.0.0.1", "localhost", "::1"]);
-  if (url.protocol !== "http:" || !localHosts.has(url.hostname)) {
-    const error = new Error("headless projected next-action workbench base url must be local http");
-    error.code = "INVALID_WORKBENCH_BASE_URL";
-    throw error;
-  }
-  return url;
-}
-
-function requestJsonSync(url, body = null, options = {}) {
-  const timeoutMs = Number(options.timeout_ms || options.timeoutMs || 30000);
-  const method = normalizeString(options.method).toUpperCase() || (body === null ? "GET" : "POST");
-  const payload = body === null ? "" : JSON.stringify(body);
-  const script = [
-    "const http = await import('node:http');",
-    "const https = await import('node:https');",
-    "const url = process.argv[1];",
-    "const method = process.argv[2] || 'GET';",
-    "const body = process.argv[3] || '';",
-    "const timeoutMs = Number(process.argv[4] || 30000);",
-    "const target = new URL(url);",
-    "const transport = target.protocol === 'https:' ? https : http;",
-    "const result = await new Promise((resolveRequest, rejectRequest) => {",
-    "  const headers = body ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } : {};",
-    "  const req = transport.request(target, { method, headers }, (res) => {",
-    "    let text = '';",
-    "    res.setEncoding('utf8');",
-    "    res.on('data', (chunk) => { text += chunk; });",
-    "    res.on('end', () => resolveRequest({ statusCode: res.statusCode || 0, text }));",
-    "  });",
-    "  req.setTimeout(timeoutMs, () => req.destroy(new Error('workbench request timed out')));",
-    "  req.on('error', rejectRequest);",
-    "  req.write(body);",
-    "  req.end();",
-    "});",
-    "if (result.statusCode < 200 || result.statusCode >= 300) { console.error(result.text); process.exit(result.statusCode || 1); }",
-    "process.stdout.write(result.text);"
-  ].join("\n");
-  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script, url.toString(), method, payload, String(timeoutMs)], {
-    encoding: "utf8",
-    timeout: timeoutMs + 1000
-  });
-  if (result.status !== 0) {
-    const error = new Error(normalizeString(result.stderr) || normalizeString(result.stdout) || `workbench request failed: ${result.status}`);
-    error.status = result.status;
-    throw error;
-  }
-  return JSON.parse(result.stdout || "{}");
-}
-
-function postJsonSync(url, body = {}, options = {}) {
-  return requestJsonSync(url, body, { ...options, method: "POST" });
-}
-
-function getJsonSync(url, options = {}) {
-  return requestJsonSync(url, null, { ...options, method: "GET" });
-}
-
-function workbenchProjectionFrom(options = {}) {
-  const loader = typeof options.workbench_projection_loader === "function"
-    ? options.workbench_projection_loader
-    : typeof options.workbenchProjectionLoader === "function"
-      ? options.workbenchProjectionLoader
-      : null;
-  if (loader) {
-    return loader(options);
-  }
-  const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
-  if (!baseValue) return null;
-  const base = localWorkbenchBaseUrl(baseValue);
-  const projectionId = normalizeString(
-    options.current_workbench_projection_id ||
-      options.currentWorkbenchProjectionId ||
-      options.workbench_projection_id ||
-      options.workbenchProjectionId
-  );
-  const url = new URL("/api/workbench/projection", base);
-  if (projectionId) url.searchParams.set("id", projectionId);
-  return getJsonSync(url, {
-    timeout_ms: options.workbench_request_timeout_ms || options.workbenchRequestTimeoutMs
-  });
-}
-
-function workbenchNextActionRunnerFrom(options = {}) {
-  const baseValue = normalizeString(options.workbench_base_url || options.workbenchBaseUrl);
-  if (!baseValue) return null;
-  const base = localWorkbenchBaseUrl(baseValue);
-  return ({ action, iteration }) => {
-    const url = new URL("/api/workbench/next-action", base);
-    const projectionId = normalizeString(
-      options.current_workbench_projection_id ||
-        options.currentWorkbenchProjectionId ||
-        options.workbench_projection_id ||
-        options.workbenchProjectionId
-    );
-    if (projectionId) url.searchParams.set("id", projectionId);
-    const body = {
-      expected_action: action,
-      max_iterations: 1,
-      snapshot_prefix: normalizeString(options.snapshot_prefix || options.snapshotPrefix) || "headless-projected-action",
-      created_at: normalizeString(options.created_at || options.createdAt),
-      iteration
-    };
-    const reviewerOrSchedulerAction = new Set([
-      "run_reviewer_scope_shard",
-      "run_autonomous_scheduler_loop",
-      "resume_autonomous_scheduler_loop",
-      "enqueue_scheduler_next_cycle"
-    ]).has(action);
-    const contextExecutionProfile = options.context_work_package_execution_profile || options.contextWorkPackageExecutionProfile;
-    for (const [target, source] of [
-      ["execution_profile", action === "run_context_work_packages"
-        ? contextExecutionProfile
-        : reviewerOrSchedulerAction
-          ? (options.execution_profile || options.executionProfile)
-          : undefined],
-      [
-        "context_work_package_execution_profile",
-        options.context_work_package_execution_profile || options.contextWorkPackageExecutionProfile
-      ],
-      ["reviewer_mock_status", options.reviewer_mock_status || options.reviewerMockStatus],
-      ["reviewer_mock_findings_json", options.reviewer_mock_findings_json || options.reviewerMockFindingsJson],
-      ["max_external_reviewer_calls", options.max_external_reviewer_calls ?? options.maxExternalReviewerCalls],
-      ["provider_cost_mode", options.provider_cost_mode || options.providerCostMode],
-      ["budget_tier", options.budget_tier || options.budgetTier],
-      ["risk", options.risk || options.risk_level || options.riskLevel],
-      ["timeout_seconds", options.timeout_seconds || options.timeoutSeconds],
-      ["record_provider_health_on_timeout", options.record_provider_health_on_timeout ?? options.recordProviderHealthOnTimeout],
-      ["provider_smoke_status", options.provider_smoke_status || options.providerSmokeStatus]
-    ]) {
-      if (source !== undefined && source !== null && source !== "") body[target] = source;
-    }
-    const result = postJsonSync(url, body, {
-      timeout_ms: options.workbench_request_timeout_ms || options.workbenchRequestTimeoutMs
-    });
-    return {
-      status: result.status || "executed",
-      action: result.action || action,
-      result,
-      projection: result.projection || result.result?.projection || null,
-      next_item: result.next_item || result.result?.next_item || null
-    };
-  };
-}
-
-function executeHeadlessProjectedNextAction(run = {}, options = {}, index = 0) {
-  if (!projectedNextActionMode(options)) {
-    return {
-      status: "not_configured",
-      workflow_state: run.workflow_state,
-      projection: run.projection
-    };
-  }
-
-  if (normalizeString(options.workbench_base_url || options.workbenchBaseUrl)) {
-    localWorkbenchBaseUrl(options.workbench_base_url || options.workbenchBaseUrl);
-  }
-
-  let serviceProjection = null;
-  if (!options.projected_next_action_readout && !options.projectedNextActionReadout) {
-    try {
-      serviceProjection = workbenchProjectionFrom(options);
-    } catch (error) {
-      if (normalizeString(options.workbench_base_url || options.workbenchBaseUrl)) {
-        return {
-          status: "blocked",
-          action: null,
-          issues: [
-            issue(
-              "projected_service_projection_unavailable",
-              error.message,
-              "workbench_projection"
-            )
-          ],
-          workflow_state: run.workflow_state,
-          projection: run.projection
-        };
-      }
-    }
-  }
-  const readout = options.projected_next_action_readout ||
-    options.projectedNextActionReadout ||
-    serviceProjection?.next_action_readout ||
-    run.projection?.next_action_readout ||
-    {};
-  const action = normalizeString(readout.action);
-  if (readout.status !== "ready" || isTerminalProjectedAction(action)) {
-    return {
-      status: "stopped",
-      action,
-      reason: readout.reason || "projected next action is terminal or not ready",
-      workflow_state: run.workflow_state,
-      projection: run.projection
-    };
-  }
-  const runner = projectedNextActionRunnerFrom(options);
-  if (!runner) {
-    return {
-      status: "not_configured",
-      workflow_state: run.workflow_state,
-      projection: run.projection
-    };
-  }
-  if (!HEADLESS_PROJECTED_NEXT_ACTIONS.has(action)) {
-    return {
-      status: "blocked",
-      action,
-      issues: [issue("unsupported_projected_next_action", `${action || "none"} is not in the headless projected action allowlist`, "projection.next_action_readout.action")],
-      workflow_state: run.workflow_state,
-      projection: run.projection
-    };
-  }
-
-  let result;
-  try {
-    result = runner({
-      action,
-      projection: run.projection,
-      workflow_state: run.workflow_state,
-      expected_action: action,
-      iteration: index + 1,
-      options
-    });
-  } catch (error) {
-    return {
-      status: "blocked",
-      action,
-      issues: [issue("projected_next_action_runner_failed", error.message, "projected_next_action_runner")],
-      workflow_state: run.workflow_state,
-      projection: run.projection
-    };
-  }
-
-  if (!projectedActionProgressEvidence(result)) {
-    return {
-      status: "blocked",
-      action,
-      result,
-      issues: [issue("projected_action_missing_progress_evidence", "projected next-action execution must return workflow_state, projection, or next_item.id", "projected_next_action_result")],
-      workflow_state: run.workflow_state,
-      projection: run.projection
-    };
-  }
-
-  return {
-    status: result.status || "executed",
-    action,
-    result,
-    workflow_state: result.workflow_state || result.workflowState || run.workflow_state,
-    projection: result.projection || result.result?.projection || result.result?.current_projection || serviceProjection || run.projection,
-    next_projection_id: result.result?.next_item?.id || result.next_item?.id || null
-  };
-}
-
-function nextProjectedActionOptions(options = {}, projectedAction = {}) {
-  const nextProjectionId = normalizeString(projectedAction.next_projection_id);
-  if (!nextProjectionId) {
-    return {
-      ...options,
-      projected_next_action_readout: null,
-      projectedNextActionReadout: null
-    };
-  }
-  return {
-    ...options,
-    workbench_projection_id: nextProjectionId,
-    workbenchProjectionId: nextProjectionId,
-    projected_next_action_readout: null,
-    projectedNextActionReadout: null
-  };
-}
-
-function serviceProjectedActionConfigured(options = {}) {
-  return projectedNextActionMode(options) &&
-    Boolean(normalizeString(options.workbench_base_url || options.workbenchBaseUrl));
-}
-
-function recordHeadlessProjectedActionProgress(workflowState = {}, projectedAction = {}, options = {}) {
-  if (projectedAction.status === "not_configured") {
-    return {
-      status: "not_configured",
-      workflow_state: workflowState
-    };
-  }
-
-  const createdAt = normalizeString(options.created_at || options.createdAt) || new Date().toISOString();
-  const id = normalizeString(options.projected_action_artifact_id || options.projectedActionArtifactId) ||
-    `headless-projected-action-${safeIdPart(workflowState?.manifest?.run_id)}-${safeIdPart(workflowState?.manifest?.cycle_id)}-${safeIdPart(projectedAction.action || projectedAction.status)}-001`;
-  const artifact = {
-    id,
-    type: "evaluation",
-    status: projectedAction.status === "blocked" ? "fail" : "pass",
-    uri: `headless-cli://projected-action/${encodeURIComponent(workflowState?.manifest?.run_id || "unknown")}/${encodeURIComponent(workflowState?.manifest?.cycle_id || "unknown")}/${encodeURIComponent(id)}`,
-    producer: "headless-cli-orchestrator",
-    created_at: createdAt,
-    metadata: {
-      version: HEADLESS_CLI_ORCHESTRATOR_VERSION,
-      type: "headless_projected_action_progress",
-      status: projectedAction.status,
-      action: projectedAction.action || null,
-      terminal_action: projectedAction.status === "stopped" ? projectedAction.action || null : null,
-      terminal_reason: projectedAction.status === "stopped" ? projectedAction.reason || null : null,
-      next_projection_id: projectedAction.next_projection_id || projectedAction.result?.result?.next_item?.id || projectedAction.result?.next_item?.id || null,
-      has_workflow_state: isObject(projectedAction.workflow_state || projectedAction.workflowState),
-      has_projection: isObject(projectedAction.projection),
-      issues: asArray(projectedAction.issues),
-      result_status: projectedAction.result?.status || null
-    }
-  };
-  const manifest = appendRunEvent(workflowState.manifest, {
-    id: `event-${id}`,
-    type: "headless_projected_action_progress",
-    status: artifact.status,
-    artifact_id: id,
-    message: `headless projected next-action ${projectedAction.action || "unknown"} ${projectedAction.status}`,
-    created_at: createdAt,
-    metadata: artifact.metadata
-  });
-  const baseLedger = workflowState.artifact_ledger || workflowState.artifactLedger || {};
-  const artifactLedger = recordArtifact({
-    ...baseLedger,
-    artifacts: Array.isArray(baseLedger.artifacts) ? baseLedger.artifacts : []
-  }, artifact);
-
-  return {
-    status: "pass",
-    artifact,
-    workflow_state: {
-      ...workflowState,
-      manifest: {
-        ...manifest,
-        artifacts: [...asArray(manifest.artifacts), artifact]
-      },
-      artifact_ledger: artifactLedger
-    }
   };
 }
 
@@ -1595,7 +876,7 @@ export function runHeadlessCliMainOrchestrator(input = {}, options = {}) {
       projection: snapshotPublish.projection || projection,
       continuation,
       snapshot_publish: snapshotPublish,
-      workflow_state: snapshotPublish.workflow_state || workflowState
+      workflow_state: workflowState
     };
   }
   workflowState = snapshotPublish.workflow_state || workflowState;

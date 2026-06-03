@@ -2,7 +2,7 @@
 
 Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T16:00:58+08:00
+Updated at: 2026-06-03T17:13:51+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -31,7 +31,7 @@ Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/rep
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 36 |
+| Manifest entries | 41 |
 | Files currently above 500 lines | 30 |
 | `planned_refactor` files above 500 lines | 21 |
 | `accepted` files above 500 lines | 9 |
@@ -41,11 +41,11 @@ Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `test/workbench-server.test.js` | 4214 | `planned_refactor` | Split to domain shards until the root shard is below 2500 lines, then continue until below 1500 unless explicitly reaccepted with evidence. |
-| LFA-Q02 | `tools/workbench-server.mjs` | 3447 | `planned_refactor` | Extract route/service groups until the entrypoint is below 2000 lines, then continue toward below 1200. |
-| LFA-Q03 | `test/workbench-projection.test.js` | 3175 | `planned_refactor` | Split schema/domain suites until the root shard is below 1800 lines, then continue toward below 1200. |
-| LFA-Q04 | `src/workflow/headless-cli-orchestrator.js` | 1855 | `planned_refactor` | Extract runner dispatch and continuation packaging until below 1200 lines. |
-| LFA-Q05 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split by acceptance, provider, continuation, and projected-action fixtures until below 1200 lines. |
+| LFA-Q01 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split by acceptance, provider, continuation, and projected-action fixtures until below 1200 lines. |
+| LFA-Q02 | `test/workbench-server.test.js` | 1717 | `planned_refactor` | Continue splitting broad projection, CLI, requirement-intake, and continuation-flow tests until below 1400 lines. |
+| LFA-Q03 | `test/frontend-acceptance.test.js` | 1670 | `planned_refactor` | Split content, layout, console, mounted route, favicon, and live-route false-pass coverage until below 1200 lines. |
+| LFA-Q04 | `tools/retired-workbench-frontend-acceptance.mjs` | 1596 | `planned_refactor` | Shrink or delete the retired legacy acceptance script after replacement evidence remains durable. |
+| LFA-Q05 | `test/workbench-projection.test.js` | 1434 | `planned_refactor` | Continue stable projection domain shards until below 1184 lines. |
 
 ## State Vocabulary
 
@@ -222,6 +222,20 @@ Goal: continue the strict reduction of `tools/workbench-server.mjs` below the 12
 | LFA-P6.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-entrypoint-p6-deepseek.json` | Sharded DeepSeek review returned PASS. Non-blocking findings were limited to duplicated route-source lists, lower-bound route-count self-checks, broad projection fallback catch behavior, and a future cleanup suggestion for plan-review workflow-state construction. | pass |
 | LFA-P6.6 | Run final gates | Command evidence | Final gates passed: `npm test` 995/995, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
 
+### Phase LFA-P7: Headless CLI Orchestrator Runtime Reduction Step 1
+
+Status: pass
+
+Goal: reduce `src/workflow/headless-cli-orchestrator.js` below the 1200-line phase target without changing child-worker prompt, process-hardening, snapshot, projected next-action, or loop behavior.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P7.1 | Select current runtime target | This document and `.largefile-manifest.json` | Selected `src/workflow/headless-cli-orchestrator.js` because it was the next active runtime target at 1855 lines, with a required 250-line minimum reduction and a 1200-line phase target. | pass |
+| LFA-P7.2 | Extract bounded headless runtime domains | `src/workflow/headless-child-worker-prompt.js`; `src/workflow/headless-process-hardening.js`; `src/workflow/headless-snapshot-publisher.js`; `src/workflow/headless-projected-workbench-client.js`; `src/workflow/headless-projected-next-action.js`; `src/workflow/headless-cli-orchestrator.js`; `.largefile-manifest.json` | Headless CLI orchestrator reduced from 1855 to 1136 lines, below the 1200-line phase target. New prompt, hardening, snapshot, workbench-client, and projected-action modules are each below 300 lines and are registered as accepted extraction modules. The target remains open with a new 900-line target. | pass |
+| LFA-P7.3 | Run focused gates | Command evidence | Focused headless/scheduler/projection gates passed 111/111 after adding `test/headless-cli-loop-continuation.test.js`: `node tools/run-with-node18.mjs --test test/headless-cli-loop-continuation.test.js test/headless-cli-orchestrator.test.js test/headless-child-acceptance.test.js test/headless-worker-planning.test.js test/context-work-package-runner.test.js test/context-work-package-execution-scope.test.js test/autonomous-scheduler-loop.test.js test/workbench-projection-headless-evidence.test.js`. `npm run check:large-files` passed with no issues and no warnings before DS, and will be rerun after delta fixes. | pass |
+| LFA-P7.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-headless-cli-orchestrator-p7-deepseek.json` | Initial DS review failed on missing extracted-module manifest entries, snapshot evidence-publish rollback risk, and insufficient dedicated loop/continuation evidence. First delta still flagged orchestrator snapshot failure-state trust, so the failure path now returns the pre-publish workflow state and `test/headless-cli-loop-continuation.test.js` verifies publisher-mutated workflow state is not exposed. Second delta returned PASS. | pass |
+| LFA-P7.5 | Run final gates | Command evidence | Final gates passed: `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. An initial closeout run had one transient Workbench server shard failure; the shard passed on focused rerun and the full closeout rerun passed. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -233,6 +247,7 @@ Goal: continue the strict reduction of `tools/workbench-server.mjs` below the 12
 | LFA-P4 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1954 lines after extracting HTTP utilities, loop/next-action support, CLI parsing, mainline preflight evaluator, snapshot/event routes, requirement routes, scheduler dispatch routes, and scheduler loop/next-action routes. Final gates passed: focused server tests 86/86, `npm test` 995/995, large-file gate, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 | LFA-P5 | pass | Selected `test/workbench-projection.test.js`; root shard is 1434 lines after extracting shared fixtures plus project-management, project-management-dispatch, governance-lifecycle, agent-lifecycle, agent-lifecycle-closed, headless-evidence, continuation, and continuation-terminal shards, all under 300 lines. Final gates passed: focused projection tests 55/55, `npm test` 995/995, staged large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 | LFA-P6 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1131 lines after extracting requirement plan, auto-advance, reviewer, and workflow-evidence routes/services; all new extraction modules are below 300 lines. Focused server/API/state gates passed 91/91. Final gates passed: `npm test` 995/995, large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS |
+| LFA-P7 | pass | Selected `src/workflow/headless-cli-orchestrator.js`; runtime file is 1136 lines after extracting child-worker prompt, process-hardening, snapshot publisher, projected workbench client, and projected next-action execution modules, all below 300 lines and registered in the manifest. Focused headless/scheduler/projection gates passed 111/111 after adding snapshot rollback, dirty-state failure, and loop continuation evidence. Final gates passed: `npm test` 998/998, large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 

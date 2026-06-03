@@ -111,23 +111,53 @@
       }
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 1855,
-      "reason": "Headless CLI orchestrator: worker planning and child worker acceptance/result packaging have been extracted to bounded modules; runner dispatch, process hardening, snapshot/continuation packaging, and projected-action service execution still need staged extraction.",
+      "lines": 1136,
+      "reason": "Headless CLI orchestrator has been reduced from the P7 1855-line baseline by extracting child-worker prompt construction, process-hardening evidence, snapshot publishing, projected workbench client access, and projected next-action execution into bounded modules below 300 lines. The main file still owns child command execution, workflow-state transitions, continuation packaging, and loop orchestration, so it remains planned debt rather than accepted.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1855,
-        "target_lines": 1200,
-        "minimum_reduction": 250,
-        "terminal_condition": "Headless CLI orchestrator must fall below 1200 lines through behavior-preserving domain extraction.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "base_lines": 1136,
+        "target_lines": 900,
+        "minimum_reduction": 228,
+        "terminal_condition": "Headless CLI orchestrator must fall to 900 lines or below through another coherent extraction step before this queue item can be reconsidered; if it remains above 500 lines, it stays planned_refactor.",
+        "next_phase": "Extract child command execution, continuation/result packaging, or loop state-transition groups without weakening headless CLI and scheduler-loop evidence coverage."
       }
+    },
+    "src/workflow/headless-child-worker-prompt.js": {
+      "lines": 120,
+      "reason": "Extracted Headless CLI child-worker prompt builder kept below the large-file threshold while preserving prompt safety, focused context pack shaping, output path instructions, and child/parent acceptance gate selection.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
     },
     "src/workflow/headless-child-acceptance.js": {
       "lines": 214,
       "reason": "Extracted Headless CLI child worker acceptance helper kept below the large-file threshold while preserving host-boundary, owned-file, no-diff, command-evidence, durable-state, process-hardening, continuation, and self-evaluation checks.",
       "status": "accepted",
       "reviewed_at": "2026-06-02"
+    },
+    "src/workflow/headless-process-hardening.js": {
+      "lines": 97,
+      "reason": "Extracted Headless CLI process-hardening evidence helper kept below the large-file threshold while preserving rejected-result normalization, hardening-plan creation, run event append, and artifact ledger recording.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "src/workflow/headless-projected-next-action.js": {
+      "lines": 277,
+      "reason": "Extracted Headless CLI projected next-action executor kept below the near-threshold budget while preserving the local action allowlist, loop bounds, injected/service runner selection, progress evidence, and blocked/stopped semantics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "src/workflow/headless-projected-workbench-client.js": {
+      "lines": 154,
+      "reason": "Extracted Headless CLI projected Workbench client kept below the large-file threshold while preserving localhost-only URL validation plus synchronous projection and next-action service calls.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "src/workflow/headless-snapshot-publisher.js": {
+      "lines": 213,
+      "reason": "Extracted Headless CLI snapshot publisher kept below the large-file threshold while preserving snapshot persistence configuration, publish evidence recording, and rollback on evidence publish failure.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
     },
     "src/workflow/headless-worker-planning.js": {
       "lines": 75,
