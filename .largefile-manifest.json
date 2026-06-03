@@ -274,16 +274,16 @@
       }
     },
     "tools/workbench-server.mjs": {
-      "lines": 1954,
-      "reason": "Workbench server entrypoint still wires API route ordering, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior. Agent key/health routes, legacy static routing, HTTP JSON utilities, local loop/projected next-action support, CLI parsing, mainline preflight evaluation, snapshot/event routes, requirement routes, scheduler dispatch routes, and scheduler loop/next-action routes have been extracted into bounded helper modules. Remaining reviewer, context-pack/context-work-package, projection-history, and state-bootstrap groups still require staged extraction.",
+      "lines": 1131,
+      "reason": "Workbench server entrypoint has been reduced from the P6 1954-line baseline by extracting requirement plan/auto-advance services plus reviewer and workflow evidence routes into bounded modules. The entrypoint still wires server bootstrap, projection/history/state access, scheduler/context-pack/context-work-package routes, project-status continuation, and runtime route ordering, so it remains planned debt rather than accepted.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1954,
-        "target_lines": 1200,
-        "minimum_reduction": 250,
-        "terminal_condition": "Server entrypoint must fall below 1200 lines before this queue item can be reconsidered for accepted status.",
-        "next_phase": "Continue staged extraction of reviewer, context-pack/context-work-package, projection-history, and state-bootstrap groups while the entrypoint remains above 1200 lines."
+        "base_lines": 1131,
+        "target_lines": 900,
+        "minimum_reduction": 227,
+        "terminal_condition": "Server entrypoint must fall below 900 lines through another coherent extraction step before this queue item can be reconsidered; if it remains above 500 lines, it stays planned_refactor.",
+        "next_phase": "Extract remaining context-pack/context-work-package, project-status continuation, projection-history, or state-bootstrap groups without weakening API route contract coverage."
       }
     },
     "src/workflow/workbench-next-action-readout.js": {

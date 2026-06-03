@@ -14,6 +14,7 @@ export async function handleRequirementRoutes(context) {
     url,
     req,
     res,
+    root,
     jsonBodyLimitBytes,
     jsonResponse,
     readJsonBody,
@@ -35,6 +36,7 @@ export async function handleRequirementRoutes(context) {
     workflowStateWithProjectStatus,
     workbenchProjection,
     runRequirementAutoAdvance,
+    projectionById,
     allowedHistoryRoots,
     normalizeString,
     requirementAutoAdvanceEnabled
@@ -114,6 +116,7 @@ export async function handleRequirementRoutes(context) {
         writeWorkflowState,
         projectStatusPath,
         stateStore,
+        root,
         requirementPlanGenerator
       });
       jsonResponse(res, 201, {
@@ -138,6 +141,7 @@ export async function handleRequirementRoutes(context) {
     }
 
     const planGeneration = await generateRequirementPlanIfRequested(submitted, input, {
+      root,
       requirementPlanGenerator
     });
     let effectiveSubmission = planGeneration.submission;
@@ -213,7 +217,8 @@ export async function handleRequirementRoutes(context) {
         allowedHistoryRoots,
         projectStatusPath,
         stateStore,
-        workbenchProjection
+        workbenchProjection,
+        projectionById
       });
     jsonResponse(res, 201, {
       status: "created",
@@ -315,6 +320,7 @@ export async function handleRequirementRoutes(context) {
       writeWorkflowState,
       projectStatusPath,
       stateStore,
+      root,
       requirementPlanGenerator
     });
     jsonResponse(res, 202, {
@@ -415,7 +421,8 @@ export async function handleRequirementRoutes(context) {
         allowedHistoryRoots,
         projectStatusPath,
         stateStore,
-        workbenchProjection
+        workbenchProjection,
+        projectionById
       })
       : {
         status: "disabled",

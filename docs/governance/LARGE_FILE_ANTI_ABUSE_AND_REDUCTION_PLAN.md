@@ -2,7 +2,7 @@
 
 Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T15:11:16+08:00
+Updated at: 2026-06-03T16:00:58+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -207,6 +207,21 @@ Goal: reduce `test/workbench-projection.test.js` below the 1800-line phase targe
 | LFA-P5.3 | Run focused and final gates | Command evidence | Focused projection gates passed 55/55. Final gates passed: `npm test` 995/995, `npm run check:large-files` with staged files and no warnings, `npm run check:closeout`, and `git diff --check`. Root and app dependencies were installed in the isolated worktree so browser/Next closeout gates could run. | pass |
 | LFA-P5.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-projection-p5-deepseek.json` | Initial DS review failed on a plan status mismatch. After correcting status and splitting new shards below 300 lines, final DS synthesis returned PASS. A post-PASS delta review also returned PASS after helper/import cleanup. | pass |
 
+### Phase LFA-P6: Workbench Server Entrypoint Reduction Step 2
+
+Status: pass
+
+Goal: continue the strict reduction of `tools/workbench-server.mjs` below the 1200-line phase target without changing Workbench API behavior or hiding routes from the API contract gate.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P6.1 | Select current runtime target | This document and `.largefile-manifest.json` | Selected `tools/workbench-server.mjs` because it remained the largest active runtime entrypoint at 1954 lines after P4, with a required 250-line minimum reduction and a 1200-line phase target. | pass |
+| LFA-P6.2 | Extract requirement services and reviewer/evidence routes | `tools/workbench-requirement-services.mjs`; `tools/workbench-requirement-plan-services.mjs`; `tools/workbench-requirement-auto-advance-service.mjs`; `tools/workbench-requirement-service-utils.mjs`; `tools/workbench-reviewer-routes.mjs`; `tools/workbench-workflow-evidence-routes.mjs`; `tools/workbench-requirement-routes.mjs`; `tools/workbench-server.mjs` | Server entrypoint reduced from 1954 to 1131 lines, below the 1200-line phase target. New requirement, reviewer, and evidence modules are each below 300 lines, with the old service import preserved as an 11-line re-export layer. The server target remains open with a new 900-line target. | pass |
+| LFA-P6.3 | Preserve API route contract coverage after route extraction | `test/api-route-contract.test.js`; `tools/check-api-route-contract.mjs` | Backend route source lists now include reviewer and workflow-evidence route modules, so route extraction cannot make frontend/backend drift checks silently lose coverage. | pass |
+| LFA-P6.4 | Run focused gates | Command evidence | Focused server/API/state gates passed 91/91: `node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-shard-01.test.js test/workbench-server-shard-02.test.js test/workbench-server-shard-03.test.js test/workbench-server-shard-04.test.js test/workbench-server-shard-05.test.js test/workbench-server-shard-06.test.js test/workbench-server-shard-07.test.js test/workbench-server-shard-08.test.js test/workbench-server-shard-09.test.js test/workbench-server-shard-10.test.js test/workbench-server-shard-11.test.js test/workbench-server-agent-key-routes.test.js test/workbench-state-store.test.js test/api-route-contract.test.js`. | pass |
+| LFA-P6.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-entrypoint-p6-deepseek.json` | Sharded DeepSeek review returned PASS. Non-blocking findings were limited to duplicated route-source lists, lower-bound route-count self-checks, broad projection fallback catch behavior, and a future cleanup suggestion for plan-review workflow-state construction. | pass |
+| LFA-P6.6 | Run final gates | Command evidence | Final gates passed: `npm test` 995/995, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -217,6 +232,7 @@ Goal: reduce `test/workbench-projection.test.js` below the 1800-line phase targe
 | LFA-P3 | pass | Selected Q01 `test/workbench-server.test.js`; root shard is 1717 lines after split, target tests, large-file gate, full `npm test`, and full closeout passed. DeepSeek initial fail was repaired; delta review passed with no blocking findings. | DeepSeek PASS after delta |
 | LFA-P4 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1954 lines after extracting HTTP utilities, loop/next-action support, CLI parsing, mainline preflight evaluator, snapshot/event routes, requirement routes, scheduler dispatch routes, and scheduler loop/next-action routes. Final gates passed: focused server tests 86/86, `npm test` 995/995, large-file gate, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 | LFA-P5 | pass | Selected `test/workbench-projection.test.js`; root shard is 1434 lines after extracting shared fixtures plus project-management, project-management-dispatch, governance-lifecycle, agent-lifecycle, agent-lifecycle-closed, headless-evidence, continuation, and continuation-terminal shards, all under 300 lines. Final gates passed: focused projection tests 55/55, `npm test` 995/995, staged large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
+| LFA-P6 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1131 lines after extracting requirement plan, auto-advance, reviewer, and workflow-evidence routes/services; all new extraction modules are below 300 lines. Focused server/API/state gates passed 91/91. Final gates passed: `npm test` 995/995, large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS |
 
 ## Daily Run Shape
 

@@ -20,6 +20,8 @@ const BACKEND_ROUTE_SOURCES = [
   "tools/workbench-agent-key-routes.mjs",
   "tools/workbench-basic-routes.mjs",
   "tools/workbench-requirement-routes.mjs",
+  "tools/workbench-reviewer-routes.mjs",
+  "tools/workbench-workflow-evidence-routes.mjs",
   "tools/workbench-scheduler-dispatch-routes.mjs",
   "tools/workbench-scheduler-loop-routes.mjs"
 ];
