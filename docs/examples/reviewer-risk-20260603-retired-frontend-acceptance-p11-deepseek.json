@@ -1,0 +1,50 @@
+{
+  "version": "deepseek-review-record.v1",
+  "reviewed_at": "2026-06-03T21:05:00+08:00",
+  "phase": "LFA-P11",
+  "target": "tools/retired-workbench-frontend-acceptance.mjs",
+  "reviewer": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "synthesis_model": "deepseek-v4-flash",
+    "mode": "read_only_sharded"
+  },
+  "initial_review": {
+    "status": "fail",
+    "blocking_findings": [
+      {
+        "code": "builder_compatibility_evidence_gap",
+        "summary": "DeepSeek required explicit proof that split buildArtifact and parseAcceptanceOptions preserve exports, artifact shape, status, and blocking semantics."
+      },
+      {
+        "code": "predelete_manifest_tracking_evidence_gap",
+        "summary": "DeepSeek required proof that the deleted 1596-line retired file had been tracked by the base manifest before deletion rather than bypassing large-file governance."
+      }
+    ]
+  },
+  "fixes": [
+    {
+      "artifact": "docs/examples/retired-frontend-acceptance-p11-parity.json",
+      "summary": "Generated canonical parity evidence comparing the base retired builder and current split builder, excluding runtime-only created_at; artifact output, status, blocking count, and parseAcceptanceOptions results match."
+    },
+    {
+      "artifact": "docs/examples/retired-frontend-acceptance-p11-parity.json",
+      "summary": "Recorded base-ref manifest evidence showing tools/retired-workbench-frontend-acceptance.mjs was tracked at 1596 lines with planned_refactor status before P11 deletion."
+    },
+    {
+      "files": [
+        "tools/workbench-frontend-acceptance-artifact.mjs",
+        "tools/workbench-frontend-acceptance-content.mjs",
+        "tools/workbench-frontend-acceptance-resources.mjs"
+      ],
+      "summary": "Kept split helpers below the 300-line near-threshold budget at 284, 231, and 100 lines."
+    }
+  ],
+  "delta_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "required_fixes": [],
+    "summary": "DeepSeek delta review accepted the parity evidence, confirmed the base manifest tracked the retired file before deletion, and confirmed all helper files are under 300 lines."
+  },
+  "final_verdict": "pass"
+}

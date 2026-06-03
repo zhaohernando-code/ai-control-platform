@@ -1,0 +1,53 @@
+{
+  "version": "retired-frontend-acceptance-p11-parity.v1",
+  "status": "pass",
+  "base_ref": "3c7112c1503d85e142c0d4e0378d6dafea0e5405",
+  "compared_exports": [
+    "buildArtifact",
+    "parseAcceptanceOptions"
+  ],
+  "artifact_match": true,
+  "artifact_compare_mode": "canonical_json_without_created_at",
+  "parse_options_match": true,
+  "stable_artifact_top_level_keys": [
+    "version",
+    "status",
+    "acceptance_target",
+    "acceptance_mode",
+    "release_default",
+    "projection_evidence",
+    "screenshots",
+    "viewport_results",
+    "navigation_results",
+    "layout_results",
+    "copy_results",
+    "content_completion_results",
+    "project_management_semantic_results",
+    "resource_results",
+    "control_results",
+    "browser_error_results",
+    "mobile_results",
+    "findings",
+    "blocking_count",
+    "blocking_findings"
+  ],
+  "old_blocking_count": 0,
+  "new_blocking_count": 0,
+  "old_status": "pass",
+  "new_status": "pass",
+  "manifest_predelete_entry": {
+    "lines": 1596,
+    "status": "planned_refactor",
+    "reviewed_at": "2026-06-03"
+  },
+  "helper_line_counts": {
+    "tools/workbench-frontend-acceptance-artifact.mjs": 284,
+    "tools/workbench-frontend-acceptance-content.mjs": 231,
+    "tools/workbench-frontend-acceptance-resources.mjs": 100
+  },
+  "notes": [
+    "created_at is intentionally excluded from artifact equality because it is generated at runtime",
+    "canonical comparison sorts object keys so property insertion order from refactoring is not treated as semantic drift",
+    "base manifest was read from the canonical checkout before P11 merge; it still tracks the retired file at 1596 lines"
+  ]
+}

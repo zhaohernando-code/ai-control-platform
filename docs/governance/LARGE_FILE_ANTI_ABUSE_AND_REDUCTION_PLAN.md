@@ -2,7 +2,7 @@
 
 Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T20:44:47+08:00
+Updated at: 2026-06-03T21:32:33+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -44,7 +44,7 @@ Highest active reduction targets:
 | LFA-Q01 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split by acceptance, provider, continuation, and projected-action fixtures until below 1200 lines. |
 | LFA-Q02 | `test/workbench-server.test.js` | 1717 | `planned_refactor` | Continue splitting broad projection, CLI, requirement-intake, and continuation-flow tests until below 1400 lines. |
 | LFA-Q03 | `test/frontend-acceptance.test.js` | 1670 | `planned_refactor` | Split content, layout, console, mounted route, favicon, and live-route false-pass coverage until below 1200 lines. |
-| LFA-Q04 | `tools/retired-workbench-frontend-acceptance.mjs` | 1596 | `planned_refactor` | Shrink or delete the retired legacy acceptance script after replacement evidence remains durable. |
+| LFA-Q04 | `tools/retired-workbench-frontend-acceptance.mjs` | 1596 | `deleted in LFA-P11` | Removed after the Next frontend-acceptance gate and legacy fail-closed wrapper remained covered by focused tests. |
 | LFA-Q05 | `test/workbench-projection.test.js` | 1434 | `planned_refactor` | Continue stable projection domain shards until below 1184 lines. |
 
 ## State Vocabulary
@@ -281,6 +281,21 @@ Goal: reduce `test/frontend-acceptance.test.js` below the 1200-line phase target
 | LFA-P10.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-frontend-acceptance-test-p10-deepseek.json` | Sharded DeepSeek review returned PASS. Non-blocking findings were limited to shard-scope caveats, the 298-line helper being close to the 300-line near-threshold warning boundary, and historical-baseline traceability; the manifest, plan, parity artifact, focused gate scope, and large-file gate are internally consistent. | pass |
 | LFA-P10.6 | Run final gates | Command evidence | Final gates passed: focused frontend acceptance tests 36/36, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. A failed closeout retry left an orphaned 4191 Next process; only that isolated-worktree process group was cleared before the successful focused browser-events rerun and full closeout rerun. | pass |
 
+### Phase LFA-P11: Retired Frontend Acceptance Script Deletion
+
+Status: pass
+
+Goal: delete `tools/retired-workbench-frontend-acceptance.mjs` instead of splitting a retired legacy-static browser runner, while preserving the fail-closed legacy CLI wrapper and current Next frontend-acceptance artifact builder behavior.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P11.1 | Select retired target | This document and `.largefile-manifest.json` | Selected `tools/retired-workbench-frontend-acceptance.mjs` because it was the highest-priority queue item at 1596 lines and its terminal condition explicitly allowed deletion after replacement evidence remained durable. | pass |
+| LFA-P11.2 | Preserve live builder behavior without the retired runner | `tools/workbench-frontend-acceptance-artifact.mjs`; `tools/workbench-frontend-acceptance-content.mjs`; `tools/workbench-frontend-acceptance-resources.mjs`; `tools/check-workbench-frontend-acceptance.mjs`; `docs/examples/retired-frontend-acceptance-p11-parity.json` | The still-used `buildArtifact` and `parseAcceptanceOptions` exports moved into bounded helper modules of 284, 231, and 100 lines. The legacy CLI wrapper remains fail-closed. Parity evidence compares the old base builder and current split builder with canonical JSON excluding runtime `created_at`: artifact shape/status/blocking count and CLI option parsing all match. | pass |
+| LFA-P11.3 | Delete retired large file and update manifest | Deleted `tools/retired-workbench-frontend-acceptance.mjs`; `.largefile-manifest.json`; `docs/examples/retired-frontend-acceptance-p11-parity.json` | The 1596-line retired script was removed and its manifest entry was deleted, reducing planned large-file queue count without adding any new file above the 300-line near-threshold budget. The parity artifact records that base `3c7112c1503d85e142c0d4e0378d6dafea0e5405` tracked the deleted file in `.largefile-manifest.json` at 1596 lines before P11. | pass |
+| LFA-P11.4 | Run focused gates | Command evidence | Syntax checks passed for the new helpers and frontend-acceptance entrypoints. Focused frontend acceptance, Next frontend acceptance wiring, and legacy static retirement tests passed 43/43: `node tools/run-with-node18.mjs --test test/frontend-acceptance.test.js test/frontend-acceptance-copy-content.test.js test/frontend-acceptance-content-diagnostics.test.js test/frontend-acceptance-project-semantics.test.js test/frontend-acceptance-command-architecture.test.js test/workbench-next-frontend-acceptance.test.js test/legacy-static-workbench-inventory.test.js`. | pass |
+| LFA-P11.5 | DeepSeek deletion review | `docs/examples/reviewer-risk-20260603-retired-frontend-acceptance-p11-deepseek.json` | Initial DeepSeek review failed on two evidence gaps: builder export/artifact parity and pre-delete manifest tracking. After adding `docs/examples/retired-frontend-acceptance-p11-parity.json`, delta review returned PASS with no blocking findings or required fixes. | pass |
+| LFA-P11.6 | Run final gates | Command evidence | Final gates passed: focused frontend acceptance/Next wiring/legacy retirement tests 43/43, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -296,6 +311,7 @@ Goal: reduce `test/frontend-acceptance.test.js` below the 1200-line phase target
 | LFA-P8 | pass | Selected `test/headless-cli-orchestrator.test.js`; root suite is 1071 lines after extracting shared headless CLI fixtures and three CLI process/service shards, all under 300 lines. Split parity passed 40/40 with no missing, added, or duplicate tests. Final gates passed: focused tests 111/111, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta |
 | LFA-P9 | pass | Selected `test/workbench-server.test.js`; root suite is 1363 lines after extracting CLI bootstrap/state-db/port validation and project-status continuation next-action shards, both under 300 lines. Split parity passed 21/21 with no missing, added, or duplicate tests. Final gates passed: focused server/API/state tests 91/91, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta/final consistency |
 | LFA-P10 | pass | Selected `test/frontend-acceptance.test.js`; root suite is 577 lines after extracting shared fixtures plus copy/content, diagnostic content, project-management semantics, and command-architecture shards, all under 300 lines. Split parity passed 36/36 with no missing, added, or duplicate tests. Final gates passed: focused frontend acceptance tests 36/36, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS |
+| LFA-P11 | pass | Selected `tools/retired-workbench-frontend-acceptance.mjs`; deleted the 1596-line retired legacy-static runner after moving still-used artifact builder exports into bounded helper modules under 300 lines. Parity artifact proved old/new artifact and option behavior matched, focused frontend acceptance/Next wiring/legacy retirement tests passed 43/43, `npm test` passed 998/998, large-file gate and full closeout passed. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 

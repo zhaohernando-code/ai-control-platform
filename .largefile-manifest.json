@@ -390,19 +390,6 @@
       "status": "accepted",
       "reviewed_at": "2026-06-02"
     },
-    "tools/retired-workbench-frontend-acceptance.mjs": {
-      "lines": 1596,
-      "reason": "Retired legacy frontend acceptance script is still tracked and above the large-file threshold; it should shrink or be deleted after replacement evidence remains durable.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
-      "reduction_target": {
-        "base_lines": 1596,
-        "target_lines": 1200,
-        "minimum_reduction": 250,
-        "terminal_condition": "Retired frontend acceptance script must fall below 1200 lines or be deleted after replacement evidence is durable.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
-      }
-    },
     "tools/check-workbench-browser-events.mjs": {
       "lines": 983,
       "reason": "Browser events closeout checker covers mounted runtime scenarios, API rewrites, console errors, and durable event evidence in one large script.",
