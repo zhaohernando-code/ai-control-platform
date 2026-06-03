@@ -1,0 +1,147 @@
+{
+  "version": "test-split-parity.v2",
+  "status": "pass",
+  "reviewed_at": "2026-06-03",
+  "base_ref": "1b9942842874aef04e94e65001d43da05ae1ba80",
+  "source_file_before": "test/headless-cli-orchestrator.test.js",
+  "files_after": [
+    "test/headless-cli-orchestrator.test.js",
+    "test/headless-cli-orchestrator-cli-basic.test.js",
+    "test/headless-cli-orchestrator-cli-service-actions.test.js",
+    "test/headless-cli-orchestrator-cli-service-loop.test.js"
+  ],
+  "before_line_count": 1745,
+  "before_count": 40,
+  "after_count": 40,
+  "missing": [],
+  "added": [],
+  "duplicates": [],
+  "moved_tests": [
+    {
+      "name": "run-headless-cli-orchestrator CLI writes replayable output",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1262,
+      "after_file": "test/headless-cli-orchestrator-cli-basic.test.js",
+      "after_line": 17,
+      "domain": "cli_process_basic_output_loop_and_help"
+    },
+    {
+      "name": "run-headless-cli-orchestrator CLI can persist a bounded loop to projection history",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1297,
+      "after_file": "test/headless-cli-orchestrator-cli-basic.test.js",
+      "after_line": 52,
+      "domain": "cli_process_basic_output_loop_and_help"
+    },
+    {
+      "name": "run-headless-cli-orchestrator CLI exposes projected next-action workbench controls",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1729,
+      "after_file": "test/headless-cli-orchestrator-cli-basic.test.js",
+      "after_line": 104,
+      "domain": "cli_process_basic_output_loop_and_help"
+    },
+    {
+      "name": "run-headless-cli-orchestrator CLI executes projected action through local workbench service",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1349,
+      "after_file": "test/headless-cli-orchestrator-cli-service-actions.test.js",
+      "after_line": 15,
+      "domain": "cli_workbench_service_projected_actions"
+    },
+    {
+      "name": "run-headless-cli-orchestrator CLI passes reviewer controls to projected service actions",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1441,
+      "after_file": "test/headless-cli-orchestrator-cli-service-actions.test.js",
+      "after_line": 107,
+      "domain": "cli_workbench_service_projected_actions"
+    },
+    {
+      "name": "run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1534,
+      "after_file": "test/headless-cli-orchestrator-cli-service-loop.test.js",
+      "after_line": 15,
+      "domain": "cli_workbench_service_loop_and_projection_cursor"
+    },
+    {
+      "name": "run-headless-cli-orchestrator CLI follows service next projection into context work packages",
+      "before_file": "test/headless-cli-orchestrator.test.js",
+      "before_line": 1632,
+      "after_file": "test/headless-cli-orchestrator-cli-service-loop.test.js",
+      "after_line": 113,
+      "domain": "cli_workbench_service_loop_and_projection_cursor"
+    }
+  ],
+  "domain_summary": {
+    "test/headless-cli-orchestrator.test.js": {
+      "domain": "root_core_acceptance_provider_continuation_and_injected_projected_action",
+      "after_line_count": 1071,
+      "test_count": 33,
+      "test_names": [
+        "headless CLI orchestrator runs one main_orchestrator cycle with bounded child lifecycle facts",
+        "headless CLI orchestrator continues existing context cycle without rematerializing completed packages",
+        "headless governed agent invocation receives sanitized workbench child-worker environment",
+        "headless CLI orchestrator blocks implicit mock child worker completion",
+        "headless child worker acceptance checks host, owned files, tests, durable state, hardening, and continuation",
+        "headless child worker acceptance allows changed files under owned directories",
+        "headless child worker acceptance allows project root owned scope",
+        "headless child worker project root scope rejects files outside the project",
+        "headless child worker acceptance includes touched files when checking owned scope",
+        "headless child worker acceptance rejects touched files outside owned scope",
+        "headless child worker acceptance rejects sibling paths outside owned directories",
+        "headless child worker acceptance rejects failed status, failed command, and missing required integration",
+        "headless CLI orchestrator can execute a real child command runner and parse structured output",
+        "headless child prompt minimizes high-risk routing keywords for external CLI providers",
+        "headless child prompt includes selected requirement plan step context",
+        "headless child prompt defers parent-owned release gates outside isolated worker execution",
+        "headless CLI orchestrator passes configured output path into child prompt and parses file output",
+        "headless CLI orchestrator can use governed agent retry and split policy",
+        "headless CLI orchestrator persists workflow snapshots into projection history",
+        "headless CLI loop continues from persisted workflow state and snapshots every iteration",
+        "headless CLI loop can execute projected next_action_readout through an injected runner",
+        "headless CLI loop refreshes same service projection after in-place projected action writes",
+        "headless CLI loop executes service projected action before local package materialization",
+        "headless CLI loop blocks projected next action without progress evidence",
+        "headless CLI loop records terminal projected next-action stops",
+        "headless CLI loop rejects nonlocal workbench next-action service URLs",
+        "headless CLI loop blocks when configured service projection cannot be loaded",
+        "headless snapshot ids stay within publisher-safe length",
+        "headless CLI orchestrator hardens timed-out child command output before retry",
+        "headless child worker output parser accepts fenced json and rejects prose",
+        "headless CLI orchestrator hardens no-diff child worker output before retry",
+        "headless CLI orchestrator accepts no-diff child output only with already-satisfied integration evidence",
+        "headless CLI orchestrator blocks wrong role before mutating workflow state"
+      ]
+    },
+    "test/headless-cli-orchestrator-cli-basic.test.js": {
+      "domain": "cli_process_basic_output_loop_and_help",
+      "after_line_count": 120,
+      "test_count": 3,
+      "test_names": [
+        "run-headless-cli-orchestrator CLI writes replayable output",
+        "run-headless-cli-orchestrator CLI can persist a bounded loop to projection history",
+        "run-headless-cli-orchestrator CLI exposes projected next-action workbench controls"
+      ]
+    },
+    "test/headless-cli-orchestrator-cli-service-actions.test.js": {
+      "domain": "cli_workbench_service_projected_actions",
+      "after_line_count": 198,
+      "test_count": 2,
+      "test_names": [
+        "run-headless-cli-orchestrator CLI executes projected action through local workbench service",
+        "run-headless-cli-orchestrator CLI passes reviewer controls to projected service actions"
+      ]
+    },
+    "test/headless-cli-orchestrator-cli-service-loop.test.js": {
+      "domain": "cli_workbench_service_loop_and_projection_cursor",
+      "after_line_count": 208,
+      "test_count": 2,
+      "test_names": [
+        "run-headless-cli-orchestrator CLI continues after reviewer aggregate through service",
+        "run-headless-cli-orchestrator CLI follows service next projection into context work packages"
+      ]
+    }
+  }
+}

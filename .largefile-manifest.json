@@ -258,16 +258,33 @@
       }
     },
     "test/headless-cli-orchestrator.test.js": {
-      "lines": 1745,
-      "reason": "Headless CLI orchestrator tests share worker-result, owned-file, no-diff, and continuation acceptance fixtures.",
+      "lines": 1071,
+      "reason": "Headless CLI orchestrator root tests were reduced from the P8 1745-line baseline by extracting shared fixtures plus CLI process, Workbench-service action, and Workbench-service loop shards under 300 lines. The first split intentionally moved the stable process/provider/projected-action CLI cluster while leaving child acceptance, provider command-runner, continuation, and injected projected-action loop coverage in the root for the next 850-line target. Split parity is recorded in docs/examples/headless-cli-orchestrator-test-p8-split-parity.json with 40 before / 40 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1745,
-        "target_lines": 1200,
-        "minimum_reduction": 250,
-        "terminal_condition": "Headless CLI root suite must fall below 1200 lines through domain shards that preserve acceptance coverage.",
+        "base_lines": 1071,
+        "target_lines": 850,
+        "minimum_reduction": 215,
+        "terminal_condition": "Headless CLI root suite must fall to 850 lines or below through additional stable domain shards while preserving orchestrator and loop behavior assertions.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      },
+      "split_evidence": {
+        "parity_artifact": "docs/examples/headless-cli-orchestrator-test-p8-split-parity.json",
+        "before_count": 40,
+        "after_count": 40,
+        "moved_domains": {
+          "test/headless-cli-orchestrator-cli-basic.test.js": "cli_process_basic_output_loop_and_help",
+          "test/headless-cli-orchestrator-cli-service-actions.test.js": "cli_workbench_service_projected_actions",
+          "test/headless-cli-orchestrator-cli-service-loop.test.js": "cli_workbench_service_loop_and_projection_cursor"
+        },
+        "retained_root_domains": [
+          "child_acceptance",
+          "provider_command_runner",
+          "continuation_loop",
+          "injected_projected_action_loop",
+          "hardening_and_no_diff_acceptance"
+        ]
       }
     },
     "test/workbench-shell.test.js": {
@@ -398,6 +415,36 @@
         "terminal_condition": "Next served-route checker must fall below 500 lines or split route assertions into a bounded helper.",
         "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
       }
+    },
+    "test/helpers/headless-cli-orchestrator.js": {
+      "lines": 204,
+      "reason": "Extracted Headless CLI orchestrator test fixture helper kept below the near-threshold budget while preserving workbench server lifecycle setup, project status fixtures, governed agent state-store stubs, and source workflow state fixtures consumed by the root suite plus cli-basic, cli-service-actions, and cli-service-loop shards. Its acceptance gate and owned-files fixture enumerate all four headless CLI orchestrator test shards.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03",
+      "consumed_by": [
+        "test/headless-cli-orchestrator.test.js",
+        "test/headless-cli-orchestrator-cli-basic.test.js",
+        "test/headless-cli-orchestrator-cli-service-actions.test.js",
+        "test/headless-cli-orchestrator-cli-service-loop.test.js"
+      ]
+    },
+    "test/headless-cli-orchestrator-cli-basic.test.js": {
+      "lines": 120,
+      "reason": "Extracted Headless CLI basic process tests kept below the near-threshold budget while preserving replayable output, bounded loop persistence, and CLI help coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/headless-cli-orchestrator-cli-service-actions.test.js": {
+      "lines": 198,
+      "reason": "Extracted Headless CLI workbench-service action tests kept below the near-threshold budget while preserving projected action execution and reviewer-control propagation coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/headless-cli-orchestrator-cli-service-loop.test.js": {
+      "lines": 208,
+      "reason": "Extracted Headless CLI workbench-service loop tests kept below the near-threshold budget while preserving reviewer aggregate continuation and service projection cursor coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
     }
   }
 }

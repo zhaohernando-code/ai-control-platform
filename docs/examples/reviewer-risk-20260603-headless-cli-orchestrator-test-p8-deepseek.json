@@ -1,0 +1,289 @@
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "P8 分片仅含 diff 和 root test 文件；helper (test/helpers/headless-cli-orchestrator.js) 及三个 CLI shard 文件均不在本 bundle，无法验证 withWorkbenchServer 是否随 CLI 测试正确迁移至目标 shard，也无法确认 currentSessionWorkflowState 引用是否在 shard 中正确接入。",
+    "root 文件中 withWorkbenchServer 函数（依赖 spawn/once）已被完整移除，但 manifest 未声明该函数落入 helper 或哪个 shard；若 shard 各自内联复制则存在重复维护风险。"
+  ],
+  "non_blocking_findings": [
+    "root 从 1745 降至 1071 行，manifest 标记 planned_refactor 且新目标 850 行，自洽且未假装完成；三个 shard（120/198/208 行）均低于 300 行上限，无明显治理规避。",
+    "共享 fixture 函数（projectStatus 等）为纯工厂函数，每次返回新对象，不引入状态污染风险。"
+  ],
+  "required_fixes": [
+    "需在最终综合审查中交叉验证 helper 和三个 shard 文件：确认 withWorkbenchServer 无重复定义，currentSessionWorkflowState 导入链完整，7 个 CLI 测试断言无弱化或遗漏。"
+  ]
+}
+```
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "projectStatus() owned_files 和 sourceWorkflowState() acceptance_gates 仍引用单体测试文件 test/headless-cli-orchestrator.test.js，未反映新的 shard 结构，CI 门禁将遗漏 shard 测试"
+  ],
+  "non_blocking_findings": [
+    "helper 导出的 withWorkbenchServer/governedAgentStateStore/materializedWorkflowStateWithCompletedFirstPackage 在本 shard 中未被消费——需确认其他两个 shard 是否存在、覆盖是否完整",
+    "projectStatus() 仅顶层浅 spread，嵌套对象（如 global_goals[0].next_work_packages）若被调用方原地修改会造成跨测试 fixture 污染",
+    "主文件残余 1071 行仍偏大，仅凭单 shard 证据无法判定是否构成大文件治理规避，需结合其他两个 shard 综合评估"
+  ],
+  "required_fixes": [
+    "更新 projectStatus()/sourceWorkflowState() 中的测试文件引用，将 acceptance_gates 改为覆盖全部 shard 文件（如 node --test test/headless-cli-orchestrator*.test.js）"
+  ]
+}
+```
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "两个 shard 仅含 4 个测试（407 行），原始文件 1745 行拆至 1071 行主文件 + 3 个 CLI shard + helper，本分片未提供第三个 shard 和主文件，无法核算总迁移覆盖率",
+    "projectStatus() 在 3/4 个测试中以无参调用依赖 helper 默认值；若原始文件曾为各测试定制 project_status 细节，该特异性可能已丢失，需与原始文件交叉比对确认",
+    "两个 shard 的 import 块完全重复（各 13 行），属小幅冗余但非阻断"
+  ],
+  "required_fixes": [
+    "需与原始 1745 行文件逐测试比对，确认无遗漏用例（特别是非 projected_next_action 执行策略路径）",
+    "需审查第三个 CLI shard 与 helper 文件完整性，确认 manifest/plan 标注的开放债务是否与当前拆分一致"
+  ]
+}
+```
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "Plan decomposition mismatch: LFA-Q01(plan line 44) 原定按 acceptance/provider/continuation/projected-action 拆分，但 P8.2 实际产出为 cli-basic/cli-service-actions/cli-service-loop 三个 shard，无法从 manifest/plan 确认 acceptance 和 provider 覆盖是否被遗漏或弱化。",
+    "缺乏测试计数等值证明（before/after test name parity）：manifest/plan 未记录拆分前后测试用例总数对比，无法排除迁移遗漏。"
+  ],
+  "non_blocking_findings": [
+    "helper(197行) 管理 server lifecycle/project status/state-store stubs，共享给 root 和三个 shard。若不强制 per-test fixture 重置，存在状态污染风险；本分片无源代码无法确认。",
+    "root 保持在 1071 行、状态 planned_refactor 且目标 850 行，shard 均<300 行，符合反规避规则，未构成治理规避。"
+  ],
+  "required_fixes": [
+    "提供拆分前后测试名称等值对比（如 P3.3 的 split parity script 输出），证明 acceptance/provider 覆盖未丢失。",
+    "确认 helper 中 shared fixture 每次调用返回全新对象（参考 P3.4 的 currentSessionWorkflowState 结论），或由最终综合审查验证源代码。"
+  ]
+}
+```
+FAIL
+1. 原定按 acceptance/provider/continuation/projected-action 拆分，实际产出为 cli-basic/cli-service-actions/cli-service-loop，manifest/plan 未提供测试计数等值证明（before/after test name parity），无法确认原始覆盖（特别是 acceptance/provider 用例）是否被完整迁移。
+2. helper 导出的 withWorkbenchServer、currentSessionWorkflowState 等共享函数在三个 CLI shard 间的导入链未完整验证，无法确认是否存在重复定义、功能弱化或导入断裂，且 helper 导出函数在两个 shard 中未被消费，跨 shard 一致性存疑。
+3. CLI shard 中 projectStatus() 以无参调用依赖 helper 默认值，若原始测试曾为不同用例定制 project_status 细节（如非 projected_next_action 执行策略路径），该特异性可能已丢失，导致非 projected_next_action 路径覆盖被弱化。
+FAIL
+1. 原定按 acceptance/provider/continuation/projected-action 拆分，实际产出为 cli-basic/cli-service-actions/cli-service-loop，manifest/plan 未提供测试计数等值证明（before/after test name parity），无法确认原始覆盖（特别是 acceptance/provider 用例）是否被完整迁移。
+2. helper 导出的 withWorkbenchServer、currentSessionWorkflowState 等共享函数在三个 CLI shard 间的导入链未完整验证，无法确认是否存在重复定义、功能弱化或导入断裂，且 helper 导出函数在两个 shard 中未被消费，跨 shard 一致性存疑。
+3. CLI shard 中 projectStatus() 以无参调用依赖 helper 默认值，若原始测试曾为不同用例定制 project_status 细节（如非 projected_next_action 执行策略路径），该特异性可能已丢失，导致非 projected_next_action 路径覆盖被弱化。
+
+
+--- DELTA REVIEW 2026-06-03 ---
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "P8-NB1",
+      "finding": "test/helpers/headless-cli-orchestrator.js actual content not visible in this delta bundle; can only confirm manifest registration (204 lines, accepted) and the plan's assertion that fixtures now reference all four shards. Cannot independently verify the helper code changed from old-root-only to multi-shard."
+    }
+  ],
+  "required_fixes": [
+    "P8 final gates (npm test, check:large-files, git diff --check, check:closeout) remain pending per LFA-P8.6. Must be completed after DS review passes."
+  ],
+  "summary": "All three original P8 FAIL points appear closed: (1) split-parity JSON provides before=40/after=40 with no missing/added/duplicates, (2) plan LFA-P8.3 states helper now references all four shards, (3) plan LFA-P8.2 explicitly maps extracted cli-basic/service shards to the original process/provider/projected-action/continuation direction. No new circumventions detected. The only evidence gap is the helper file body, which is outside this delta bundle."
+}
+```
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "parity evidence (40/40) and split-direction rationale exist only as plan self-claims in LFA-P8.2/P8.3; the actual parity JSON artifact and new shard test files are outside this bounded scope, so final confirmation requires full-scope synthesis."
+  ],
+  "required_fixes": []
+}
+```
+
+**Analysis per blocking point:**
+
+1. **before/after test-name parity** — CLOSED. Plan LFA-P8.3 documents 40 before / 40 after parity against base `1b9942842874aef04e94e65001d43da05ae1ba80`, with no missing/added/duplicate names.
+
+2. **helper 仍只指旧根测试 gate** — CLOSED. `HEADLESS_CLI_ORCHESTRATOR_TEST_FILES` now enumerates all four shards (lines 9–14); `acceptance_gates` (line 134) and `projectStatus().owned_files` (lines 79, 87) all consume the full array.
+
+3. **plan 未解释 cli-basic/service shard 与原拆分方向关系** — CLOSED. LFA-P8.2 explicitly states: cli-basic/service shards capture the stable process/provider/projected-action cluster, while child-acceptance / provider-command-runner / continuation / injected-projected-action-loop coverage remain in root for the next 850-line target.
+
+No new bypasses or evidence inconsistencies detected within the bounded file set.
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "P8-1 before/after test-name parity: manifest lists root (1071→from 1745) and shards (cli-basic/120, cli-service-actions/198, cli-service-loop/208) but provides no per-test migration mapping showing which original test cases moved to which shard — parity evidence missing.",
+    "P8-2 helper gate scope: test/helpers/headless-cli-orchestrator.js (204 lines) description only lists 'workbench server lifecycle setup, project status fixtures, governed agent state-store stubs' without confirming it now serves all extracted shards rather than only the old root suite — cannot close from manifest alone.",
+    "P8-3 split-direction rationale: manifest states root was reduced by extracting CLI process, workbench-service action, and loop shards, but never explains how cli-basic/service shards relate to the originally planned simplification direction — relationship documentation absent."
+  ],
+  "non_blocking_findings": [
+    "Manifest shows numeric progress: root test 1745→1071 lines with 215-line reduction target; helper and three shards all under 300 lines and accepted — structural extraction completed but explanatory gaps unclosed.",
+    "No new evasions or evidence inconsistencies detected in this delta file."
+  ],
+  "required_fixes": [
+    "Provide a test-name parity table mapping original root test cases to each extracted shard (cli-basic, cli-service-actions, cli-service-loop) with before/after line counts per domain.",
+    "Update helper description or add evidence showing it exports fixtures consumed by all four test files (root + 3 shards), not just the old root.",
+    "Document how the actual cli-basic/service shard split aligns with or differs from the originally planned simplification direction, including any mid-stream pivots."
+  ]
+}
+```
+P1. before/after test-name parity: manifest lists root and shard sizes but no per-test migration mapping showing which original tests moved to which shard — parity evidence missing  
+P1. helper gate scope: helper description not confirmed to serve all extracted shards rather than only the old root suite  
+P1. split-direction rationale: manifest never explains how cli-basic/service shards relate to the originally planned simplification direction
+P1. before/after test-name parity: manifest lists root and shard sizes but no per-test migration mapping showing which original tests moved to which shard — parity evidence missing  
+P1. helper gate scope: helper description not confirmed to serve all extracted shards rather than only the old root suite  
+P1. split-direction rationale: manifest never explains how cli-basic/service shards relate to the originally planned simplification direction
+
+
+--- DELTA2 REVIEW 2026-06-03 ---
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "Parity artifact docs/examples/headless-cli-orchestrator-test-p8-split-parity.json is referenced but not in this review bundle; manifest self-description (40 before/after, no missing/duplicate) is internally consistent but unverifiable without the file."
+  ],
+  "required_fixes": []
+}
+```
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "parity manifest仅自证40→40守恒，未交叉校验实际文件字节级测试计数，需端到端回归确认"
+  ],
+  "required_fixes": []
+}
+```
+
+**分析依据（≤8行）**：
+- **per-test migration映射已关闭**：`moved_tests` 逐条记录before_file/before_line→after_file/after_line+domain，`domain_summary`含每拆分文件的完整test_names列表，missing/added/duplicates皆空。
+- **helper消费范围已关闭**：`HEADLESS_CLI_ORCHESTRATOR_TEST_FILES`显式列出四个拆分文件，被`projectStatus().owned_files`和`sourceWorkflowState().acceptance_gates`消费。
+- **split direction已解释**：domain语义清晰（cli_process_basic/cli_workbench_service_projected/cli_workbench_service_loop），根文件保留33测，子文件3+2+2测。
+- **未发现大文件治理规避**：拆分后最大文件1071行，无异常体积新增。
+```json
+{
+  "status": "FAIL",
+  "blocking_findings": [
+    "LFA-P8.5 DeepSeek delta review still pending; plan自述delta修复后尚未通过独立reviewer验证，无法确认parity/helper/direction三个阻断点已实质关闭",
+    "parity证据文件(docs/examples/headless-cli-orchestrator-test-p8-split-parity.json)不在本bounded review范围内，无法核实40/40测试名映射是否真实、无重复、无遗漏",
+    ".largefile-manifest.json不在本review内，无法核实manifest是否已更新per-shard migration映射、helper消费范围是否在manifest中注册为accepted extraction test file"
+  ],
+  "non_blocking_findings": [
+    "LFA-P8.2声称new helper/CLI shards均≤300行且已注册为accepted extraction test files，符合治理规则，无新增规避迹象",
+    "split direction解释(process/provider/projected-action集群先行拆分，child acceptance/continuation/projected-action loop留待850-line target)已在plan中明确，逻辑自洽"
+  ],
+  "required_fixes": [
+    "完成LFA-P8.5 DeepSeek delta review并取得PASS",
+    "将parity JSON和更新后的.largefile-manifest.json纳入同一review bundle供终审验证"
+  ]
+}
+```
+1. 完成 LFA-P8.5 DeepSeek delta review 并取得 PASS
+2. 在有效 review 范围内验证 parity 证据文件 (40/40 映射无重复遗漏及字节级计数交叉校验)
+3. 在有效 review 范围内验证 .largefile-manifest.json 已包含 per-shard migration 映射及 helper 消费范围注册
+1. 完成 LFA-P8.5 DeepSeek delta review 并取得 PASS
+2. 在有效 review 范围内验证 parity 证据文件 (40/40 映射无重复遗漏及字节级计数交叉校验)
+3. 在有效 review 范围内验证 .largefile-manifest.json 已包含 per-shard migration 映射及 helper 消费范围注册
+
+
+--- FINAL DELTA REVIEW 2026-06-03 ---
+I have now reviewed all four files. Here is my analysis.
+
+---
+
+## 1. Per-test migration / parity mapping (previous blocker)
+
+**Parity artifact** (`headless-cli-orchestrator-test-p8-split-parity.json`):
+
+- `before_count`: 40, `after_count`: 40 ✅
+- `missing`: [], `added`: [], `duplicates`: [] ✅
+- 7 tests moved: 3 → `cli-basic`, 2 → `cli-service-actions`, 2 → `cli-service-loop`; each entry has `before_file`/`before_line`/`after_file`/`after_line`/`domain` ✅
+- Root retains 33 tests, fully enumerated in `domain_summary` (names listed) ✅
+- 33 + 3 + 2 + 2 = 40, cross-checks clean ✅
+
+**Conclusion**: Parity mapping is complete, traceable, and proves zero test loss/duplication. Prior blocker resolved.
+
+## 2. Helper consumption scope (previous blocker)
+
+**Manifest** entry for `test/helpers/headless-cli-orchestrator.js`:
+```json
+"consumed_by": [
+  "test/headless-cli-orchestrator.test.js",
+  "test/headless-cli-orchestrator-cli-basic.test.js",
+  "test/headless-cli-orchestrator-cli-service-actions.test.js",
+  "test/headless-cli-orchestrator-cli-service-loop.test.js"
+]
+```
+
+**Helper source** `HEADLESS_CLI_ORCHESTRATOR_TEST_FILES` constant (lines 9–14) lists the identical four paths. This constant feeds both `owned_files` in `projectStatus()` (lines 79/87–88) and `acceptance_gates` in `sourceWorkflowState()` (line 134), which expands to:
+```
+node --test test/headless-cli-orchestrator.test.js test/headless-cli-orchestrator-cli-basic.test.js test/headless-cli-orchestrator-cli-service-actions.test.js test/headless-cli-orchestrator-cli-service-loop.test.js
+```
+
+The old root-only gate has been replaced. All four shards are covered. ✅
+
+**Conclusion**: Helper consumption scope is correct and consistent across manifest, helper source, and fixture gates. Prior blocker resolved.
+
+## 3. Split direction interpretation (previous blocker)
+
+**Manifest `split_evidence`** (lines 272–288) now declares:
+
+- **Moved domains**: `cli_process_basic_output_loop_and_help`, `cli_workbench_service_projected_actions`, `cli_workbench_service_loop_and_projection_cursor` — the stable CLI process/provider/projected-action cluster.
+- **Retained root domains**: `child_acceptance`, `provider_command_runner`, `continuation_loop`, `injected_projected_action_loop`, `hardening_and_no_diff_acceptance` — the domains intentionally left for the next 850-line target.
+
+**Plan LFA-P8.2** (line 248) explicitly explains the rationale: the stable process/provider/projected-action cluster was moved first; the remaining five domain clusters stay in the root for the next reduction step. This matches the parity artifact's moved/retained breakdown. ✅
+
+**Conclusion**: Split direction is fully explained and consistent across plan, manifest, and parity artifact. Prior blocker resolved.
+
+## 4. Large file governance circumvention check
+
+Applying the **Non-Negotiable Rules** (plan lines 61–75) and **Anti-Gaming Coverage** (lines 103–113):
+
+| Check | Result |
+|---|---|
+| Manifest ceiling raise? | No — root dropped 1745→1071; extracted shards ≤208 lines |
+| `accepted` used as growth permit? | No — all extracted shards are `accepted` and under 300 lines |
+| New >500-line file added? | No — largest new file is 208 lines |
+| Extracted module >800 lines? | No |
+| Growth justification as bypass? | Only `reduction_target` metadata present; no `growth_justification` on root |
+| Accepted file >750 without `rechallenge_due`? | N/A — extracted files are 120–208 lines |
+| Material reduction criteria met? | Yes — 1745→1071 = 674-line (38.6%) reduction, exceeding the 250-line minimum for 1000–2000-line bracket |
+| Next-phase target valid? | Yes — 1071→850 target with 215 minimum reduction, meets 20% threshold (214.2) |
+| Status enum closed? | Only `accepted` and `planned_refactor` used ✅ |
+| `files_after` in parity matches manifest `consumed_by`? | Yes ✅ |
+
+**No governance circumvention detected.**
+
+---
+
+## Final Judgment
+
+All three prior blocking findings are resolved: split parity is proven, helper fixture scope covers all four shards, and split direction is documented. No large-file governance circumvention exists.
+
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "NB-P8-01",
+      "severity": "info",
+      "detail": "Parity artifact pins base commit 1b9942842874aef04e94e65001d43da05ae1ba80. This reference should remain stable through merge; if the base advances before merge, the artifact's before_line_count may need refresh for audit traceability."
+    },
+    {
+      "id": "NB-P8-02",
+      "severity": "info",
+      "detail": "Helper HEADLESS_CLI_ORCHESTRATOR_TEST_FILES constant and manifest consumed_by must be kept in sync when new shards are added in future phases. The current four-entry match is correct but there is no automated cross-check."
+    },
+    {
+      "id": "NB-P8-03",
+      "severity": "info",
+      "detail": "The root suite at 1071 lines remains above the 500-line threshold and thus stays planned_refactor. The next reduction to 850 lines is already scoped with terminal_condition and next_phase directions."
+    }
+  ],
+  "required_fixes": []
+}
+```
