@@ -2,7 +2,7 @@
 
 Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T19:46:47+08:00
+Updated at: 2026-06-03T20:15:43+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -251,6 +251,21 @@ Goal: reduce `test/headless-cli-orchestrator.test.js` below the 1200-line phase 
 | LFA-P8.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-headless-cli-orchestrator-test-p8-deepseek.json` | Initial DS synthesis returned FAIL because the plan lacked split parity evidence, the helper fixture still referenced only the old root test gate, and the CLI process/service decomposition was not explained against the original acceptance/provider/continuation/projected-action direction. After adding `docs/examples/headless-cli-orchestrator-test-p8-split-parity.json`, helper shard gate coverage, manifest `split_evidence`, and split-direction rationale, final delta review returned PASS with no blocking findings. | pass |
 | LFA-P8.6 | Run final gates | Command evidence | Final gates passed: focused headless/scheduler/projection tests 111/111, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
 
+### Phase LFA-P9: Workbench Server Test Root Reduction Step 2
+
+Status: pass
+
+Goal: reduce `test/workbench-server.test.js` below the 1400-line phase target without changing Workbench server API behavior or weakening CLI/project-status continuation coverage.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P9.1 | Select current test target | This document and `.largefile-manifest.json` | Selected `test/workbench-server.test.js` because it is the current highest-priority queue item at 1717 lines, with a required 250-line minimum reduction and a 1400-line phase target. | pass |
+| LFA-P9.2 | Extract bounded CLI and project-status continuation shards | `test/workbench-server-cli.test.js`; `test/workbench-server-project-status-continuation.test.js`; `test/helpers/workbench-server.js`; `test/workbench-server.test.js`; `.largefile-manifest.json` | Root Workbench server suite reduced from 1717 to 1363 lines, below the 1400-line phase target, after extracting CLI/project-status shards and cleaning unused root imports. New CLI and project-status continuation shards are 104 and 264 lines, and the shared helper remains below 300 lines at 285 lines. The target remains open with a new 1100-line target. | pass |
+| LFA-P9.3 | Prove split parity and fixture gate coverage | `docs/examples/workbench-server-test-p9-split-parity.json`; `test/helpers/workbench-server.js` | Test-name parity against base `3d50a2b25aa95d96813b5949ececa4c8181dc6f2` passed: 21 before / 21 after, with no missing, added, or duplicate test names. Shared fixture `acceptance_gates` now references the root suite, existing server shards, and the P9 CLI/project-status continuation shards. | pass |
+| LFA-P9.4 | Run focused gates | Command evidence | Focused server/API/state gates passed 91/91: `node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-cli.test.js test/workbench-server-project-status-continuation.test.js test/workbench-server-agent-key-routes.test.js test/workbench-server-shard-01.test.js test/workbench-server-shard-02.test.js test/workbench-server-shard-03.test.js test/workbench-server-shard-04.test.js test/workbench-server-shard-05.test.js test/workbench-server-shard-06.test.js test/workbench-server-shard-07.test.js test/workbench-server-shard-08.test.js test/workbench-server-shard-09.test.js test/workbench-server-shard-10.test.js test/workbench-server-shard-11.test.js test/workbench-state-store.test.js test/api-route-contract.test.js`. | pass |
+| LFA-P9.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-test-p9-deepseek.json` | Initial sharded DS review returned PASS and flagged non-blocking cleanup: unused root imports, helper-gate/parity scope explanation, and retained-domain specificity. After cleanup and manifest/parity updates, delta review returned PASS. A final consistency review also returned PASS after the one-line gate-alignment change moved the root count to 1363. | pass |
+| LFA-P9.6 | Run final gates | Command evidence | Final gates passed: focused server/API/state tests 91/91, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -264,6 +279,7 @@ Goal: reduce `test/headless-cli-orchestrator.test.js` below the 1200-line phase 
 | LFA-P6 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1131 lines after extracting requirement plan, auto-advance, reviewer, and workflow-evidence routes/services; all new extraction modules are below 300 lines. Focused server/API/state gates passed 91/91. Final gates passed: `npm test` 995/995, large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS |
 | LFA-P7 | pass | Selected `src/workflow/headless-cli-orchestrator.js`; runtime file is 1136 lines after extracting child-worker prompt, process-hardening, snapshot publisher, projected workbench client, and projected next-action execution modules, all below 300 lines and registered in the manifest. Focused headless/scheduler/projection gates passed 111/111 after adding snapshot rollback, dirty-state failure, and loop continuation evidence. Final gates passed: `npm test` 998/998, large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 | LFA-P8 | pass | Selected `test/headless-cli-orchestrator.test.js`; root suite is 1071 lines after extracting shared headless CLI fixtures and three CLI process/service shards, all under 300 lines. Split parity passed 40/40 with no missing, added, or duplicate tests. Final gates passed: focused tests 111/111, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta |
+| LFA-P9 | pass | Selected `test/workbench-server.test.js`; root suite is 1363 lines after extracting CLI bootstrap/state-db/port validation and project-status continuation next-action shards, both under 300 lines. Split parity passed 21/21 with no missing, added, or duplicate tests. Final gates passed: focused server/API/state tests 91/91, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta/final consistency |
 
 ## Daily Run Shape
 

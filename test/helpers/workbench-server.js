@@ -18,6 +18,8 @@ import { currentSessionWorkflowState } from "./current-session-workflow-state.js
 
 mkdirSync("tmp", { recursive: true });
 
+export const WORKBENCH_SERVER_TEST_FILES = ["test/workbench-server.test.js", "test/workbench-server-agent-key-routes.test.js", "test/workbench-server-cli.test.js", "test/workbench-server-project-status-continuation.test.js", "test/workbench-server-shard-01.test.js", "test/workbench-server-shard-02.test.js", "test/workbench-server-shard-03.test.js", "test/workbench-server-shard-04.test.js", "test/workbench-server-shard-05.test.js", "test/workbench-server-shard-06.test.js", "test/workbench-server-shard-07.test.js", "test/workbench-server-shard-08.test.js", "test/workbench-server-shard-09.test.js", "test/workbench-server-shard-10.test.js", "test/workbench-server-shard-11.test.js"];
+
 export { assertWorkbenchProjectionSchema, chmodSync, createSchedulerDispatchPlan, createSchedulerDispatchRunArtifact, createWorkbenchServer, currentSessionWorkflowState, join, mkdirSync, mkdtempSync, once, readFileSync, relative, runSchedulerDispatchPlan, spawn, tmpdir, VERIFIED_PROVIDER_MULTI_AGENT_PROFILE, writeFileSync };
 
 export function currentProjectionHistory() {
@@ -60,7 +62,7 @@ export function generatedRequirementPlan(overrides = {}) {
     assessment_summary: "模型评估认为该需求需要先完成方案审核，再进入受控开发。",
     proposed_acceptance_plan: "## 目标\n形成可审核方案。\n## 验收\n方案通过前不自动开发；通过后进入受控任务执行。",
     implementation_outline: ["生成方案", "等待审核", "审核通过后派发"],
-    acceptance_gates: ["node --test test/workbench-server.test.js"],
+    acceptance_gates: [`node --test ${WORKBENCH_SERVER_TEST_FILES.join(" ")}`],
     risks: ["模型方案必须结构化保存"],
     ...overrides
   };
@@ -191,7 +193,7 @@ export function providerContextWorkPackageWorkflowState() {
         non_goals: ["不修改业务项目"],
         forbidden_actions: ["不得从 HTTP body 注入 executor"],
         owned_files: ["src/workflow/context-work-package-execution-adapter.js"],
-        acceptance_gates: ["node --test test/workbench-server.test.js"],
+        acceptance_gates: [`node --test ${WORKBENCH_SERVER_TEST_FILES.join(" ")}`],
         rollback_conditions: ["provider executor provenance invalid"],
         subtasks: [
           {
@@ -233,7 +235,7 @@ export function retryAgentWorkerWorkflowState() {
     non_goals: ["Do not modify managed business projects"],
     forbidden_actions: ["Do not skip main-process evaluation gates"],
     owned_files: ["src/workflow/context-work-package-runner.js"],
-    acceptance_gates: ["node --test test/workbench-server.test.js"],
+    acceptance_gates: [`node --test ${WORKBENCH_SERVER_TEST_FILES.join(" ")}`],
     rollback_conditions: ["retry facts are missing"],
     subtasks: [
       {

@@ -1,0 +1,204 @@
+基于对 diff 和当前测试文件的审查，以下是 P9 审查结论：
+
+**可确认事实：**
+- 根文件已从21个测试减少到17个（删除3个CLI + 1个project-status continuation = 4个测试迁移）
+- Helper gate `WORKBENCH_SERVER_TEST_FILES` 覆盖全部15个文件（根+14个shard），从单一根文件扩展到完整列表，门禁配置正确无遗漏
+- 新shard大小合规：CLI 104行、project-status 264行，均低于300行阈值
+- Parity声明21→21自洽（根17 + CLI 3 + project-status 1 = 21），但新shard实际文件未在审查范围内，无法验证内容等价性
+
+**非阻断问题：**
+1. 根文件迁移后遗留约15个未使用导入（spawn/runNode/waitForOutput/once/chmodSync等），属于清理遗漏
+2. 根仍保留project-status相关的continuation测试（长ID截断、provider context验证），域边界不够纯净
+3. Manifest描述遗漏了仍保留在根中的provider context和continuation截断测试
+4. Project-status shard 264行接近300行阈值，后续扩展空间有限
+
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "root retains ~15 unused imports after CLI extraction (spawn, runNode, waitForOutput, once, chmodSync, etc.)",
+    "root still contains continuation-domain tests (long-id truncation, provider context) that conceptually overlap with extracted project-status-continuation shard",
+    "manifest retained_root_domains description omits provider-context and continuation-truncation tests still present in root",
+    "project-status-continuation shard at 264 lines is near the 300-line threshold"
+  ],
+  "required_fixes": [
+    "remove unused imports from root test file to match extracted domain boundaries",
+    "verify new shard file contents against parity artifact (requires full-repo access beyond this shard's bounded scope)"
+  ]
+}
+```
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "project-status shard single test at 265 lines is structurally long; borderline for future split but not a governance bypass given clear functional domain",
+    "CLI shard (105 lines) covers seed+flags+invalid-port but does not test --events-path or --state-db in isolation; coverage depth depends on original file parity"
+  ],
+  "required_fixes": []
+}
+```
+
+**Key observations (within 8 lines):**
+
+1. **迁移遗漏**: 两个 shard 无可见遗漏——CLI shard 覆盖 seed/host/port/invalid-port 三条路径；project-status shard 覆盖 next-action→cycle→多种 execution profile（`real_provider_not_registered`/`bounded_mock_multi_agent`/`local_bounded`/adapter-profile）的完整流，profile 覆盖未见弱化。
+
+2. **Helper gate**: 两个 shard 均从 `./helpers/workbench-server.js` 导入，无绕过 gate 的证据；但需确认 helper 中 `withServer`、`currentSessionWithoutRequirementPlanReview` 等函数是否覆盖原 server shard 所有依赖。
+
+3. **大文件规避**: 否定——shard 按功能域（CLI vs project-status continuation）拆分，非按行数机械切割；两文件合计 370 行，与原文件 339 行缩减量基本吻合。
+
+4. **Parity/manifest 自洽**: 仅凭这两个文件无法验证——需对照原 1717 行文件及 manifest/plan 文档做最终综合判断（特别是 1100 行后续目标是否与当前 1378+370=1748 总量一致）。
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "P9-NB1",
+      "type": "parity_manifest_incomplete_scope",
+      "detail": "parity manifest files_after 仅列出 root/cli/continuation 三个文件，但 helper gate WORKBENCH_SERVER_TEST_FILES 引用15个文件（含11个 shard-01~11）。若 shard 为前序分片产物，manifest 应注明引用关系或扩展 files_after；否则需最终综合判断 shard 来源与归属。",
+      "evidence": "helper L21 含15文件；parity L7-10 仅3文件"
+    },
+    {
+      "id": "P9-NB2",
+      "type": "gate_overbroad_no_per_domain_isolation",
+      "detail": "acceptance_gates 统一指向全部15个测试文件，CLI/continuation 无独立 gate scope，失败时无法按域归因。",
+      "evidence": "helper L65、L196、L238 使用 WORKBENCH_SERVER_TEST_FILES.join(' ')"
+    }
+  ],
+  "required_fixes": [
+    "parity manifest 需补充 shard-01~11 的文件清单或注明其来源（前序分片/本次新增），确保 manifest 与 helper gate 引用集合自洽"
+  ]
+}
+```
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "parity artifact (docs/examples/workbench-server-test-p9-split-parity.json) and actual test/helper source files不在本分片内, 无法独立验证 21/21 测试名无遗漏/新增/重复的声明; 需要最终综合判断",
+    "helper gate (test/helpers/workbench-server.js, 285行) 的 WORKBENCH_SERVER_TEST_FILES 枚举是否确实覆盖全部 15 个 server shard(根+11个P3 shard+agent-key-routes+2个P9 shard)无法从 manifest 文本直接证实; 需要最终综合判断",
+    "LFA-P9.5 DeepSeek review 和 LFA-P9.6 最终门禁仍为 pending, 当前只有分片内 manifest/plan 静态一致性可确认"
+  ],
+  "required_fixes": []
+}
+```
+PASS
+PASS
+
+
+--- DELTA REVIEW 2026-06-03 ---
+Now let me analyze each review concern systematically.
+
+---
+
+## Delta Review Analysis
+
+### Concern 1: Root unused imports
+
+**Before (diff L162-192):** The root `test/workbench-server.test.js` imported 27 symbols from the helper. After extracting the CLI and project-status-continuation tests, many of these were dead.
+
+**After (final file L4-18):** 16 imports removed: `assertWorkbenchProjectionSchema`, `chmodSync`, `createSchedulerDispatchPlan`, `createSchedulerDispatchRunArtifact`, `createWorkbenchServer`, `currentProjectionHistory`, `currentSessionWithoutSchedulerLoop`, `currentSessionWorkflowState`, `mkdirSync`, `once`, `retryAgentWorkerWorkflowState`, `runNode`, `runSchedulerDispatchPlan`, `spawn`, `tmpdir`, `waitForOutput`.
+
+**Verified unused:** None of the removed imports appear in the remaining 17 root tests. All 13 retained imports are actually used. ✓
+
+### Concern 2: Parity artifact & helper gate 15-file scope explanation
+
+The parity artifact (`workbench-server-test-p9-split-parity.json`) now contains:
+- `helper_gate_scope_note` (L29): explicitly states `WORKBENCH_SERVER_TEST_FILES` intentionally includes pre-existing P3 shards, agent-key routes, root, and P9 shards; parity counts cover only the P9 migration set.
+- `preexisting_helper_gate_files_not_part_of_p9_parity` (L30-43): enumerates the 12 pre-existing files.
+- `helper_gate_files` (L12-28): lists all 15 files (root + agent-key + 2 P9 new + 11 pre-existing shards).
+
+The manifest mirrors this at L339. The 15-file count (= 1 root + 1 agent-key + 2 P9 + 11 shards) is clearly decomposed. ✓
+
+### Concern 3: Manifest retained root domains / base_lines precision
+
+**Before delta:** `base_lines: 1717`, no `retained_root_domains`, no `split_evidence`.
+**After delta:**
+- `base_lines: 1362` (matches actual post-extraction count)
+- `target_lines: 1100` (realistic next target; `minimum_reduction: 250` still satisfies 1362−1100=262)
+- `retained_root_domains` (L34-41): 7 concrete domain names with specific behavioral descriptions
+- `terminal_condition` now references the 1100-line target explicitly
+- Full `split_evidence` block with `moved_domains`, `before_count`/`after_count`, and `parity_artifact` pointer
+
+The `base_lines` precision is resolved: it was wrong at 1717 (reflected the pre-extraction state) and is now 1362 (current post-extraction state). ✓
+
+### Concern 4: New large-file governance circumvention
+
+| New/Modified file | Lines | Threshold | Status |
+|---|---|---|---|
+| `test/workbench-server-cli.test.js` | 104 | < 500 | ✓ |
+| `test/workbench-server-project-status-continuation.test.js` | 264 | < 500 | ✓ |
+| `test/helpers/workbench-server.js` | 285 | < 500 | ✓ |
+| `test/workbench-server.test.js` (root) | 1362 | planned_refactor | ↓355 lines |
+
+No new file exceeds 500 lines. The root shrank by 355 lines. No circumvention detected. ✓
+
+### Minor Observation (non-blocking)
+
+Two hardcoded `acceptance_gates: ["node --test test/workbench-server.test.js"]` strings remain in the inline fixture of the "background resume" test (root L715, L744). These were *not* updated to `WORKBENCH_SERVER_TEST_FILES` while the three helper functions (`generatedRequirementPlan`, `providerContextWorkPackageWorkflowState`, `retryAgentWorkerWorkflowState`) were updated. This is a pre-existing consistency gap (not introduced by the delta) and does not affect test correctness since the single-file gate is a subset.
+
+---
+
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "P9-DELTA-NB-01",
+      "severity": "low",
+      "location": "test/workbench-server.test.js lines 715, 744",
+      "description": "Two inline acceptance_gates in the background-resume test fixture still hardcode [\"node --test test/workbench-server.test.js\"] rather than using the WORKBENCH_SERVER_TEST_FILES constant. The three helper functions (generatedRequirementPlan, providerContextWorkPackageWorkflowState, retryAgentWorkerWorkflowState) were correctly updated; this pre-existing inline fixture was missed.",
+      "recommendation": "Align the two inline gates with WORKBENCH_SERVER_TEST_FILES for consistency."
+    }
+  ],
+  "required_fixes": []
+}
+```
+
+
+--- FINAL CONSISTENCY REVIEW 2026-06-03 ---
+I've completed my review of all four files. Here is my analysis:
+
+## Review Summary
+
+### Consistency Check Across Artifacts
+
+| Artifact | Value | Matches File? |
+|---|---|---|
+| `test/workbench-server.test.js` actual line count | **1363** | — (source of truth) |
+| `.largefile-manifest.json` → `"lines": 1363` | 1363 | ✅ |
+| `.largefile-manifest.json` → `"base_lines": 1363` | 1363 | ✅ |
+| `workbench-server-test-p9-split-parity.json` → `"after_line_count": 1363` | 1363 | ✅ |
+| `LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md` (L263, L282) | 1363 | ✅ |
+
+All four artifacts are **internally consistent** at the corrected value of **1363**.
+
+### Verification Findings
+
+1. **Actual file line count**: The source file `test/workbench-server.test.js` has exactly **1363 lines** (last line is `});`), matching the corrected metadata. No off-by-one discrepancy between file and manifest.
+
+2. **Material reduction compliance**: The reduction from 1717 → 1363 (Δ354) satisfies the 20% threshold for 1000–2000-line files (20% × 1717 = 343.4; 354 > 343.4 ✅), and the 250-line minimum (354 > 250 ✅). The new 1100-line target with 250 minimum reduction from 1363 is also properly defined.
+
+3. **Split parity preservation**: 21 before / 21 after tests remain intact with no missing, added, or duplicate test names. Root retains 17 tests; CLI shard 3; continuation shard 1. 17 + 3 + 1 = 21 ✅.
+
+4. **Anti-abuse gate compliance**: No manifest ceiling inflation — the `lines` and `base_lines` values (both 1363) match the actual file content. The file `planned_refactor` status properly records a genuine shrink from 1717, satisfying non-negotiable Rule 3.
+
+5. **No governance bypass detected**: The correction from 1362 → 1363 (+1 line) is consistent with a genuine off-by-one counting error fix, not an attempt to mask growth. All metadata converges on the same correct value.
+
+```json
+{
+  "status": "PASS",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    {
+      "id": "NB-LFA-P9-COUNT-001",
+      "area": "pre-correction state unverifiable",
+      "detail": "Only post-correction artifacts are available in this bundle. The claim that the value was corrected from 1362 to 1363 cannot be independently verified from these files alone. However, all four post-correction artifacts are internally consistent at 1363 and match the actual file line count, so this is non-blocking."
+    }
+  ],
+  "required_fixes": []
+}
+```

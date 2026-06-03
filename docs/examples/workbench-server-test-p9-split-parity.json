@@ -1,0 +1,128 @@
+{
+  "version": "test-split-parity.v2",
+  "status": "pass",
+  "reviewed_at": "2026-06-03",
+  "base_ref": "3d50a2b25aa95d96813b5949ececa4c8181dc6f2",
+  "source_file_before": "test/workbench-server.test.js",
+  "active_split_files_after": [
+    "test/workbench-server.test.js",
+    "test/workbench-server-cli.test.js",
+    "test/workbench-server-project-status-continuation.test.js"
+  ],
+  "helper_gate_files": [
+    "test/workbench-server.test.js",
+    "test/workbench-server-agent-key-routes.test.js",
+    "test/workbench-server-cli.test.js",
+    "test/workbench-server-project-status-continuation.test.js",
+    "test/workbench-server-shard-01.test.js",
+    "test/workbench-server-shard-02.test.js",
+    "test/workbench-server-shard-03.test.js",
+    "test/workbench-server-shard-04.test.js",
+    "test/workbench-server-shard-05.test.js",
+    "test/workbench-server-shard-06.test.js",
+    "test/workbench-server-shard-07.test.js",
+    "test/workbench-server-shard-08.test.js",
+    "test/workbench-server-shard-09.test.js",
+    "test/workbench-server-shard-10.test.js",
+    "test/workbench-server-shard-11.test.js"
+  ],
+  "helper_gate_scope_note": "WORKBENCH_SERVER_TEST_FILES intentionally includes pre-existing P3 server shards, agent-key routes, the current root suite, and the two P9 shards; parity counts below cover only the P9 root-to-new-shard migration set.",
+  "preexisting_helper_gate_files_not_part_of_p9_parity": [
+    "test/workbench-server-agent-key-routes.test.js",
+    "test/workbench-server-shard-01.test.js",
+    "test/workbench-server-shard-02.test.js",
+    "test/workbench-server-shard-03.test.js",
+    "test/workbench-server-shard-04.test.js",
+    "test/workbench-server-shard-05.test.js",
+    "test/workbench-server-shard-06.test.js",
+    "test/workbench-server-shard-07.test.js",
+    "test/workbench-server-shard-08.test.js",
+    "test/workbench-server-shard-09.test.js",
+    "test/workbench-server-shard-10.test.js",
+    "test/workbench-server-shard-11.test.js"
+  ],
+  "before_line_count": 1717,
+  "before_count": 21,
+  "after_count": 21,
+  "missing": [],
+  "added": [],
+  "duplicates": [],
+  "moved_tests": [
+    {
+      "name": "workbench server CLI can seed SQLite from isolated history and snapshot roots",
+      "before_file": "test/workbench-server.test.js",
+      "before_line": 53,
+      "after_file": "test/workbench-server-cli.test.js",
+      "after_line": 18,
+      "domain": "workbench_server_cli_bootstrap_state_db_and_port_validation"
+    },
+    {
+      "name": "workbench server CLI accepts explicit host and port flags",
+      "before_file": "test/workbench-server.test.js",
+      "before_line": 103,
+      "after_file": "test/workbench-server-cli.test.js",
+      "after_line": 68,
+      "domain": "workbench_server_cli_bootstrap_state_db_and_port_validation"
+    },
+    {
+      "name": "workbench server CLI fails closed for invalid port",
+      "before_file": "test/workbench-server.test.js",
+      "before_line": 126,
+      "after_file": "test/workbench-server-cli.test.js",
+      "after_line": 91,
+      "domain": "workbench_server_cli_bootstrap_state_db_and_port_validation"
+    },
+    {
+      "name": "workbench server executes project status continuation next action",
+      "before_file": "test/workbench-server.test.js",
+      "before_line": 206,
+      "after_file": "test/workbench-server-project-status-continuation.test.js",
+      "after_line": 15,
+      "domain": "project_status_continuation_context_pack_and_execution_profile_guards"
+    }
+  ],
+  "domain_summary": {
+    "test/workbench-server.test.js": {
+      "domain": "root_requirement_intake_review_completion_and_verified_provider_flows",
+      "after_line_count": 1363,
+      "test_count": 17,
+      "test_names": [
+        "workbench server returns latest projection",
+        "workbench server builds latest projection from workflow state input",
+        "workbench server overlays repository PROJECT_STATUS into workflow projections",
+        "workbench server accepts frontend requirements into autonomous continuation flow",
+        "workbench server persists frontend requirement before model plan generation",
+        "workbench server retries and closes failed requirement plan generation",
+        "workbench server falls back to a governed requirement plan model after timeout",
+        "workbench server can apply a supplied plan when retrying failed plan generation",
+        "workbench server records plan review decisions",
+        "workbench server starts development automatically after plan review approval",
+        "workbench server stages resume execution in background without blocking projection API",
+        "workbench server completes requirement intake only with verified provider completion authority",
+        "workbench server closes requirement when all approved implementation packages finish",
+        "workbench server can complete requirement intake through configured governed agent executor",
+        "workbench server truncates generated context pack snapshot ids for long projection ids",
+        "workbench server only completes verified provider profile with configured executor",
+        "workbench next action defaults requirement implementation packages to verified provider execution"
+      ]
+    },
+    "test/workbench-server-cli.test.js": {
+      "domain": "workbench_server_cli_bootstrap_state_db_and_port_validation",
+      "after_line_count": 104,
+      "test_count": 3,
+      "test_names": [
+        "workbench server CLI can seed SQLite from isolated history and snapshot roots",
+        "workbench server CLI accepts explicit host and port flags",
+        "workbench server CLI fails closed for invalid port"
+      ]
+    },
+    "test/workbench-server-project-status-continuation.test.js": {
+      "domain": "project_status_continuation_context_pack_and_execution_profile_guards",
+      "after_line_count": 264,
+      "test_count": 1,
+      "test_names": [
+        "workbench server executes project status continuation next action"
+      ]
+    }
+  }
+}
