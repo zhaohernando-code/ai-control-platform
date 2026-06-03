@@ -1,6 +1,6 @@
 # Large File Anti-Abuse and Reduction Plan
 
-Status: in_progress
+Status: pass
 Created at: 2026-06-03T09:45:00+08:00
 Updated at: 2026-06-03T13:10:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
@@ -170,16 +170,16 @@ Goal: prevent "minor shrink equals complete" reporting for existing large files.
 
 ### Phase LFA-P3: First Strict Reduction Run
 
-Status: pending
+Status: in_progress
 
 Goal: apply the stricter rules to the highest-priority file instead of doing a small symbolic split.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFA-P3.1 | Select one high-priority target | Status update in this document | Selection uses line count, blast radius, and available behavior-preserving test seam. | pending |
-| LFA-P3.2 | Reduce by material target | Code/test split | Selected target meets the phase reduction criterion or remains open. | pending |
-| LFA-P3.3 | Run target gates and full governance gate | Command evidence | Target tests, `npm run check:large-files`, and relevant closeout gates pass. | pending |
-| LFA-P3.4 | DeepSeek reduction review | Reviewer artifact | DS confirms the split reduced complexity rather than hiding it. | pending |
+| LFA-P3.1 | Select one high-priority target | Status update in this document | Selected Q01 `test/workbench-server.test.js` because it was the largest queue item at 4214 lines, had a clear test-only split seam, and could be reduced without runtime behavior changes. | pass |
+| LFA-P3.2 | Reduce by material target | Code/test split | Root server test shard reduced from 4214 to 1717 lines, below the 2500-line phase target; moved tests into 11 shard files under 300 lines and one 283-line shared helper. The target remains open with a new 1400-line reduction target. | pass |
+| LFA-P3.3 | Run target gates and full governance gate | Command evidence | Target server tests passed; split parity script confirmed 78 before / 78 after tests with no missing, added, or duplicate names. `npm test` passed 994/994, `npm run check:large-files` passed with no issues or warnings, `git diff --check` passed, and `npm run check:closeout` passed after installing ignored root and Workbench app dependencies in the isolated worktree. | pass |
+| LFA-P3.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-large-file-p3-first-reduction-deepseek.json` | Initial DS review failed on state-boundary file-level whitelist risk and a conditional shared-state mutation question. Delta review passed after adding per-call fixture-state annotations and confirming `currentSessionWorkflowState()` returns a fresh JSON-parsed object on every call. | pass |
 
 ## Acceptance Tracking
 
@@ -188,7 +188,7 @@ Goal: apply the stricter rules to the highest-priority file instead of doing a s
 | LFA-P0 | pass | Initial DS review failed with three blockers; plan was revised; delta DS review passed with no blocking findings. | DeepSeek PASS after delta |
 | LFA-P1 | pass | Baseline anti-abuse gate implemented; focused tests, `npm test`, `npm run check:large-files`, `npm run check:closeout`, and `git diff --check` passed. | DeepSeek PASS after delta |
 | LFA-P2 | pass | Focused tests passed: `node tools/run-with-node18.mjs --test test/large-file-report.test.js test/large-file-reduction-targets.test.js test/select-affected-tests.test.js test/governance-enrollment.test.js`; `npm run check:large-files`; `git diff --check`; `npm test`; `npm run check:closeout`. DeepSeek final delta PASS is recorded in `docs/examples/reviewer-risk-20260603-large-file-reduction-p2-deepseek.json`. | DeepSeek PASS after delta |
-| LFA-P3 | pending | Not started. | pending |
+| LFA-P3 | pass | Selected Q01 `test/workbench-server.test.js`; root shard is 1717 lines after split, target tests, large-file gate, full `npm test`, and full closeout passed. DeepSeek initial fail was repaired; delta review passed with no blocking findings. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 

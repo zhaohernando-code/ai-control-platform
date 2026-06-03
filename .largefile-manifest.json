@@ -261,16 +261,16 @@
       }
     },
     "test/workbench-server.test.js": {
-      "lines": 4214,
-      "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture. Agent key route coverage was extracted to test/workbench-server-agent-key-routes.test.js as the first test shard; remaining route/state/static domains still require staged splitting.",
+      "lines": 1717,
+      "reason": "Workbench server tests were split from the 4214-line root into a smaller root shard, a shared helper, and 11 domain shards under 300 lines. The root still covers broad projection, CLI, requirement-intake, and continuation flows, so it remains planned debt until additional route/state domains are extracted.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 4214,
-        "target_lines": 2500,
-        "minimum_reduction": 500,
-        "terminal_condition": "Root server test shard must fall below 2500 lines before this phase can close; then continue toward below 1500 lines.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "base_lines": 1717,
+        "target_lines": 1400,
+        "minimum_reduction": 250,
+        "terminal_condition": "Root server test shard must fall below 1400 lines before the next reduction phase can close; then continue toward below 1000 lines unless explicitly reaccepted with evidence.",
+        "next_phase": "Continue staged extraction of remaining projection, CLI, requirement-intake, and continuation-flow tests if the root shard remains above 500 lines after this target."
       }
     },
     "tools/workbench-server.mjs": {

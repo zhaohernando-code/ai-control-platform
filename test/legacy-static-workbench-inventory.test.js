@@ -10,6 +10,15 @@ function inventory() {
   return JSON.parse(read("docs/governance/legacy-static-workbench-inventory.json"));
 }
 
+function workbenchServerTestSources() {
+  const shardPaths = Array.from({ length: 11 }, (_, index) => {
+    return `test/workbench-server-shard-${String(index + 1).padStart(2, "0")}.test.js`;
+  });
+  return ["test/workbench-server.test.js", ...shardPaths]
+    .map((path) => read(path))
+    .join("\n");
+}
+
 test("legacy static Workbench inventory records deleted assets and manifest retirement", () => {
   const report = inventory();
   const manifest = JSON.parse(read(".largefile-manifest.json"));
@@ -41,7 +50,7 @@ test("legacy static Workbench serving is retired and cannot be opt-in enabled", 
   const report = inventory();
   const server = read("tools/workbench-server.mjs");
   const staticRoutes = read("tools/workbench-static-routes.mjs");
-  const serverTests = read("test/workbench-server.test.js");
+  const serverTests = workbenchServerTestSources();
   const pkg = JSON.parse(read("package.json"));
 
   assert.equal(report.runtime_routes["tools/workbench-server.mjs"].default_static_page_behavior, "api_only_404");

@@ -6,9 +6,12 @@ import { pathToFileURL } from "node:url";
 const SCAN_ROOTS = ["tools", "src", "apps", "test"];
 const SKIP_DIRS = new Set(["node_modules", "tmp", "coverage", "dist", ".git", ".claude"]);
 const SERVER_FILE = "tools/workbench-server.mjs";
+const FIXTURE_FILE_STATE_ALLOW_COMMENT = "workbench-state-boundary-allow fixture-file-state";
 export const ALLOWED_FIXTURE_FILE_STATE_FILES = new Set([
   "test/workbench-server.test.js",
-  "test/workbench-server-agent-key-routes.test.js"
+  "test/workbench-server-agent-key-routes.test.js",
+  "test/helpers/workbench-server.js",
+  "test/workbench-server-shard-10.test.js"
 ]);
 
 function walk(dir, files = []) {
@@ -34,16 +37,24 @@ function issue(file, line, code, message) {
   return { file, line, code, message };
 }
 
-function importedWorkbenchServer(source) {
-  return /createWorkbenchServer/.test(source);
+function callsWorkbenchServer(source) {
+  return /createWorkbenchServer\s*\(/.test(source);
 }
 
 function hasSqliteStateMode(source) {
   return /\b(stateDbPath|stateDb|state_db|stateStore)\b/.test(source);
 }
 
+function hasFixtureFileStateAllowComment(source, index) {
+  return source
+    .slice(0, index)
+    .split(/\r?\n/)
+    .slice(-3)
+    .some((line) => line.includes(FIXTURE_FILE_STATE_ALLOW_COMMENT));
+}
+
 export function createServerCallIssues(file, source) {
-  if (file === SERVER_FILE || !importedWorkbenchServer(source)) return [];
+  if (file === SERVER_FILE || !callsWorkbenchServer(source)) return [];
   const issues = [];
   const fixtureMatches = [...source.matchAll(/allowFixtureFileState\s*:\s*true/g)];
   for (const match of fixtureMatches) {
@@ -53,6 +64,13 @@ export function createServerCallIssues(file, source) {
         lineNumber(source, match.index),
         "workbench_fixture_file_state_not_allowed",
         "allowFixtureFileState is only allowed in the explicit workbench server fixture test"
+      ));
+    } else if (!hasFixtureFileStateAllowComment(source, match.index)) {
+      issues.push(issue(
+        file,
+        lineNumber(source, match.index),
+        "workbench_fixture_file_state_unannotated",
+        `fixture file-state exceptions require a nearby ${FIXTURE_FILE_STATE_ALLOW_COMMENT} comment`
       ));
     }
   }

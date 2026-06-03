@@ -35,6 +35,7 @@ function writeManualAgentConfig(dir) {
 }
 
 async function withServer(fn, options = {}) {
+  // workbench-state-boundary-allow fixture-file-state: agent-key route fixture uses isolated JSON state in tests only.
   const server = createWorkbenchServer({ allowFixtureFileState: true, ...options });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
