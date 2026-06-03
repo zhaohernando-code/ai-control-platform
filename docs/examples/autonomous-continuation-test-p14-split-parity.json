@@ -1,0 +1,104 @@
+{
+  "version": "split-parity.v1",
+  "phase": "LFA-P14",
+  "target": "test/autonomous-continuation.test.js",
+  "base_ref": "origin/main",
+  "current_files": [
+    "test/autonomous-continuation.test.js",
+    "test/autonomous-continuation-global-goals.test.js",
+    "test/autonomous-continuation-governance-repair.test.js"
+  ],
+  "before_count": 37,
+  "after_count": 37,
+  "missing": [],
+  "added": [],
+  "duplicates": [],
+  "moved_tests": [
+    {
+      "name": "continues from pending global goals after a single requirement passes",
+      "file": "test/autonomous-continuation-global-goals.test.js"
+    },
+    {
+      "name": "completed global goal work packages are skipped on the next continuation",
+      "file": "test/autonomous-continuation-global-goals.test.js"
+    },
+    {
+      "name": "global goal identity survives context pack materialization and drives the next continuation",
+      "file": "test/autonomous-continuation-global-goals.test.js"
+    },
+    {
+      "name": "global goals do not dilute explicit scheduler continuation packages",
+      "file": "test/autonomous-continuation-global-goals.test.js"
+    },
+    {
+      "name": "marks continuation complete only when all configured global goals are done",
+      "file": "test/autonomous-continuation-global-goals.test.js"
+    },
+    {
+      "name": "blocked global goals stop without pretending the cycle is complete",
+      "file": "test/autonomous-continuation-global-goals.test.js"
+    },
+    {
+      "name": "self-governance defects and evidence gaps become continuation work packages",
+      "file": "test/autonomous-continuation-governance-repair.test.js"
+    },
+    {
+      "name": "invalid self-governance findings do not become continuation work packages",
+      "file": "test/autonomous-continuation-governance-repair.test.js"
+    },
+    {
+      "name": "frontend repair continuation deduplicates package ids and preserves repair gates",
+      "file": "test/autonomous-continuation-governance-repair.test.js"
+    },
+    {
+      "name": "governance audit failure schedules a bounded repair package for continuation",
+      "file": "test/autonomous-continuation-governance-repair.test.js"
+    }
+  ],
+  "after_by_file": {
+    "test/autonomous-continuation.test.js": [
+      "continues when a completed run has a durable next step and no blockers",
+      "does not stop just because a cycle summary was produced",
+      "reruns when autonomous run returns recoverable next work packages",
+      "approved requirement plans split broad intake into bounded implementation steps",
+      "approved requirement plan continuation removes dependencies already completed in prior cycles",
+      "existing broad frontend view migration packages are split before dispatch",
+      "current reviewer aggregate fixture advances after provider health follow-up packages",
+      "agent lifecycle pool gaps schedule cleanup without human intervention",
+      "timed-out agent lifecycle pool schedules smaller retry worker slice",
+      "timed-out agent lifecycle retry package has default owned files",
+      "reviewer scope split facts generate concrete shard work packages",
+      "reviewer scope split continuation skips shards with recorded results",
+      "code review coverage gap schedules supplement shard work and seeds context source",
+      "reviewer shard aggregate failure overrides stale pass evaluation",
+      "reviewer shard aggregate pass clears stale rerun evaluation",
+      "reviewer shard aggregate pass clears stale reviewer recovery artifacts",
+      "provider health fallback schedules model fallback work package",
+      "provider health needs_smoke_check below threshold still schedules smoke",
+      "provider health stops for human after consecutive smoke requests reach threshold",
+      "smoke stall counter resets when a non-smoke health event interrupts the streak",
+      "rolls back without asking human when rollback is automatic",
+      "stops only for human intervention blockers",
+      "stops when continuation points at the wrong host",
+      "continuation emits a workbench snapshot publish plan when workflow state is projection-ready",
+      "continuation does not emit a snapshot publish plan when workflow state is not projection-ready",
+      "continuation does not emit a snapshot publish plan without operator event facts",
+      "project status next work packages are durable continuation inputs"
+    ],
+    "test/autonomous-continuation-global-goals.test.js": [
+      "continues from pending global goals after a single requirement passes",
+      "completed global goal work packages are skipped on the next continuation",
+      "global goal identity survives context pack materialization and drives the next continuation",
+      "global goals do not dilute explicit scheduler continuation packages",
+      "marks continuation complete only when all configured global goals are done",
+      "blocked global goals stop without pretending the cycle is complete"
+    ],
+    "test/autonomous-continuation-governance-repair.test.js": [
+      "self-governance defects and evidence gaps become continuation work packages",
+      "invalid self-governance findings do not become continuation work packages",
+      "frontend repair continuation deduplicates package ids and preserves repair gates",
+      "governance audit failure schedules a bounded repair package for continuation"
+    ]
+  },
+  "verdict": "pass"
+}

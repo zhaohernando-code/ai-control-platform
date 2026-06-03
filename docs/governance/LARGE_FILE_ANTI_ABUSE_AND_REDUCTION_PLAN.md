@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T22:17:32+08:00
+Updated at: 2026-06-03T22:37:46+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -41,7 +41,7 @@ Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split by acceptance, provider, continuation, and projected-action fixtures until below 1200 lines. |
+| LFA-Q01 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Reduced in LFA-P14; continue stable autonomous-continuation shards until below 690 lines. |
 | LFA-Q02 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Reduced in LFA-P13; continue stable server test shards until below 850 lines. |
 | LFA-Q03 | `test/frontend-acceptance.test.js` | 1670 | `planned_refactor` | Split content, layout, console, mounted route, favicon, and live-route false-pass coverage until below 1200 lines. |
 | LFA-Q04 | `tools/retired-workbench-frontend-acceptance.mjs` | 1596 | `deleted in LFA-P11` | Removed after the Next frontend-acceptance gate and legacy fail-closed wrapper remained covered by focused tests. |
@@ -326,6 +326,21 @@ Goal: reduce `test/workbench-server.test.js` below the 1100-line phase target wi
 | LFA-P13.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-test-p13-deepseek.json` | Initial DeepSeek review failed on one blocking manifest completeness issue: the extracted P13 shard lacked an independent accepted manifest entry. Delta review passed after adding `test/workbench-server-requirement-plan-generation.test.js` to `.largefile-manifest.json` at 286 lines and syncing this plan. | pass |
 | LFA-P13.6 | Run final gates | Command evidence | Final gates passed: `npm test` 998/998, `npm run check:large-files` pass with no issues/warnings, `git diff --check` pass, and `npm run check:closeout` pass after installing root/app dependencies in the isolated worktree to satisfy browser/Next checks. | pass |
 
+### Phase LFA-P14: Autonomous Continuation Test Root Reduction Step 1
+
+Status: pass
+
+Goal: reduce `test/autonomous-continuation.test.js` below the 1000-line phase target without weakening base continuation decisions, global-goal lifecycle handling, self-governance repair scheduling, frontend repair dedupe, governance audit repair, reviewer recovery, provider health, rollback/human-stop, snapshot publishing, or project-status next-work-package coverage.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P14.1 | Select current test target | This document and `.largefile-manifest.json` | Selected `test/autonomous-continuation.test.js` because it is the current highest-priority queue item at 1357 lines, with a required 250-line minimum reduction and a 1000-line phase target. | pass |
+| LFA-P14.2 | Extract bounded global-goal and governance repair shards | `test/autonomous-continuation-global-goals.test.js`; `test/autonomous-continuation-governance-repair.test.js`; `test/autonomous-continuation.test.js`; `.largefile-manifest.json` | Root autonomous continuation suite reduced from 1357 to 840 lines, below the 1000-line phase target. The new global-goals shard is 257 lines and the governance-repair shard is 294 lines, so both remain below the 300-line near-threshold warning boundary. The target remains open with a new 690-line target. | pass |
+| LFA-P14.3 | Prove split parity and manifest coverage | `docs/examples/autonomous-continuation-test-p14-split-parity.json`; `.largefile-manifest.json` | Test-name parity against base `origin/main` passed: 37 before / 37 after across the root plus two new shards, with no missing, added, or duplicate test names. Both extracted shards are registered as independent accepted manifest entries. | pass |
+| LFA-P14.4 | Run focused gates | Command evidence | Focused autonomous continuation gates passed 37/37: `node tools/run-with-node18.mjs --test test/autonomous-continuation.test.js test/autonomous-continuation-global-goals.test.js test/autonomous-continuation-governance-repair.test.js`. | pass |
+| LFA-P14.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-autonomous-continuation-test-p14-deepseek.json` | DeepSeek read-only sharded review passed: it confirmed parity, shard dependencies, assertion preservation, independent manifest entries for both shards, the 690-line follow-up target, and no premature phase pass. | pass |
+| LFA-P14.6 | Run final gates | Command evidence | Final gates passed: `npm test` 998/998, `npm run check:large-files` pass with no issues/warnings, `git diff --check` pass, and `npm run check:closeout` pass after installing root/app dependencies in the isolated worktree to satisfy browser/Next checks. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -344,6 +359,7 @@ Goal: reduce `test/workbench-server.test.js` below the 1100-line phase target wi
 | LFA-P11 | pass | Selected `tools/retired-workbench-frontend-acceptance.mjs`; deleted the 1596-line retired legacy-static runner after moving still-used artifact builder exports into bounded helper modules under 300 lines. Parity artifact proved old/new artifact and option behavior matched, focused frontend acceptance/Next wiring/legacy retirement tests passed 43/43, `npm test` passed 998/998, large-file gate and full closeout passed. | DeepSeek PASS after delta |
 | LFA-P12 | pass | Selected `test/workbench-projection.test.js`; root suite is 1025 lines after extracting scheduler dispatch/continuation/policy and scheduler loop/resume coverage into two shards under 300 lines. Split parity passed 25/25 with no missing, added, or duplicate tests. Final gates passed: focused projection tests 70/70, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta |
 | LFA-P13 | pass | Selected `test/workbench-server.test.js`; root suite is 1092 lines after extracting requirement submission, pending plan generation, and failed plan retry/close coverage into a 286-line shard. Split parity passed 17/17 with no missing, added, or duplicate tests. Focused server/API/state tests passed 91/91. Final gates passed: `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. DeepSeek initial fail was repaired by adding the shard's independent manifest entry; delta review passed. | DeepSeek PASS after delta |
+| LFA-P14 | pass | Selected `test/autonomous-continuation.test.js`; root suite is 840 lines after extracting global-goal lifecycle and governance/frontend-repair continuation coverage into 257-line and 294-line shards. Split parity passed 37/37 with no missing, added, or duplicate tests. Focused autonomous continuation tests passed 37/37. Final gates passed: `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS |
 
 ## Daily Run Shape
 

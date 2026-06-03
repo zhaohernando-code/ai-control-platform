@@ -198,17 +198,47 @@
       }
     },
     "test/autonomous-continuation.test.js": {
-      "lines": 1357,
-      "reason": "Autonomous continuation regression suite shares fixtures for next-action, recovery, reviewer, and work package dispatch behavior.",
+      "lines": 840,
+      "reason": "Autonomous continuation root tests were reduced from the P14 1357-line baseline by extracting global-goal lifecycle and governance/frontend-repair continuation coverage into bounded shards under 300 lines. The root still covers base continuation decisions, requirement plan slicing, reviewer recovery, provider health, rollback/human-stop, snapshot publishing, and project-status next work packages, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/autonomous-continuation-test-p14-split-parity.json with 37 before / 37 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1357,
-        "target_lines": 1000,
-        "minimum_reduction": 250,
-        "terminal_condition": "Autonomous continuation root suite must fall to 1000 lines or below before this phase can close.",
+        "base_lines": 840,
+        "target_lines": 690,
+        "minimum_reduction": 150,
+        "terminal_condition": "Autonomous continuation root suite must fall to 690 lines or below through additional stable continuation-domain shards while preserving provider health, reviewer recovery, rollback/human-stop, snapshot publishing, and project-status next-work-package assertions.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      },
+      "split_evidence": {
+        "parity_artifact": "docs/examples/autonomous-continuation-test-p14-split-parity.json",
+        "before_count": 37,
+        "after_count": 37,
+        "moved_domains": {
+          "test/autonomous-continuation-global-goals.test.js": "global_goal_lifecycle_completion_and_blocking",
+          "test/autonomous-continuation-governance-repair.test.js": "self_governance_frontend_repair_and_governance_audit_repair"
+        },
+        "retained_root_domains": [
+          "base_continuation_decisions",
+          "requirement_plan_slicing",
+          "reviewer_recovery",
+          "provider_health",
+          "rollback_and_human_stop",
+          "snapshot_publish_plan",
+          "project_status_next_work_packages"
+        ]
       }
+    },
+    "test/autonomous-continuation-global-goals.test.js": {
+      "lines": 257,
+      "reason": "Extracted autonomous continuation global-goal lifecycle shard kept below the near-threshold budget while preserving pending/completed/blocked global-goal continuation and context-pack identity coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/autonomous-continuation-governance-repair.test.js": {
+      "lines": 294,
+      "reason": "Extracted autonomous continuation governance repair shard kept below the near-threshold budget while preserving self-governance defect/evidence scheduling, frontend repair dedupe, and governance audit repair coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
     },
     "test/autonomous-scheduler-loop.test.js": {
       "lines": 877,
