@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T10:50:00+08:00
+Updated at: 2026-06-03T13:10:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -31,9 +31,9 @@ Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/rep
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 31 |
-| Files currently above 500 lines | 25 |
-| `planned_refactor` files above 500 lines | 16 |
+| Manifest entries | 36 |
+| Files currently above 500 lines | 30 |
+| `planned_refactor` files above 500 lines | 21 |
 | `accepted` files above 500 lines | 9 |
 | Manifest entries already below threshold | 6 |
 
@@ -63,15 +63,16 @@ Highest active reduction targets:
 1. Manifest line counts are ceilings. A change that increases a manifest line count fails unless it is a temporary exception file approved by a dedicated policy and reviewer record.
 2. `accepted` is not a growth permit. Accepted files may not grow above their recorded line count.
 3. `planned_refactor` means "must shrink or split"; it cannot continue receiving unrelated logic.
-4. `growth_justification`, `split_plan`, `next_split_plan`, and `refactor_plan` may explain work, but they cannot make growth pass.
-5. New tracked source/test/tool files above 500 lines fail even if the same change adds them to the manifest.
-6. Total large-file debt must not increase. Debt is the sum of line counts for tracked `.js`, `.ts`, `.tsx`, `.py`, and `.css` files above the threshold.
-7. Extracted modules above 500 lines are warnings. Extracted modules above 800 lines fail unless they map to one named domain concern, are directly required by the active reduction target, and carry a two-phase stabilization target.
-8. A phase may not be marked complete unless the target file meets a material shrink target or is explicitly left open with a next reduction target.
-9. The anti-abuse gate must scan tracked filesystem files, not only manifest entries. Any tracked source/test/tool file above the threshold is counted whether or not it appears in the manifest.
-10. Baseline comparison must use the merge base against `origin/main` for ordinary task branches and must report any manifest ceiling increase relative to that base. A dedicated baseline artifact or tag may be introduced later, but it may not be advanced by the same implementation run that raises ceilings.
-11. No implementation agent may accept its own gate-policy or manifest-ceiling change. Gate-policy changes require deterministic local tests plus a separate read-only reviewer artifact from another model invocation, with the reviewer instructed to look for bypasses.
-12. A separate read-only reviewer invocation means a fresh non-interactive model process, no write tools, bounded focus files, no reliance on the implementation agent's summary as evidence, and a reviewer prompt that asks for bypass/fail-open findings before acceptance.
+4. Manifest `status` values are a closed enum: only `accepted` and `planned_refactor` are valid. Values such as `done`, `completed`, or ad hoc exemption labels fail closed.
+5. `growth_justification`, `split_plan`, `next_split_plan`, and `refactor_plan` may explain work, but they cannot make growth pass.
+6. New tracked source/test/tool files above 500 lines fail even if the same change adds them to the manifest.
+7. Total large-file debt must not increase. Debt is the sum of line counts for tracked `.js`, `.mjs`, `.ts`, `.tsx`, `.py`, and `.css` files above the threshold.
+8. Extracted modules above 500 lines are warnings. Extracted modules above 800 lines fail unless they map to one named domain concern, are directly required by the active reduction target, and carry a two-phase stabilization target.
+9. A phase may not be marked complete unless the target file meets a material shrink target or is explicitly left open with a next reduction target.
+10. The anti-abuse gate must scan tracked filesystem files, not only manifest entries. Any tracked source/test/tool file above the threshold is counted whether or not it appears in the manifest.
+11. Baseline comparison must use the merge base against `origin/main` for ordinary task branches and must report any manifest ceiling increase relative to that base. A dedicated baseline artifact or tag may be introduced later, but it may not be advanced by the same implementation run that raises ceilings.
+12. No implementation agent may accept its own gate-policy or manifest-ceiling change. Gate-policy changes require deterministic local tests plus a separate read-only reviewer artifact from another model invocation, with the reviewer instructed to look for bypasses.
+13. A separate read-only reviewer invocation means a fresh non-interactive model process, no write tools, bounded focus files, no reliance on the implementation agent's summary as evidence, and a reviewer prompt that asks for bypass/fail-open findings before acceptance.
 
 ## Material Reduction Criteria
 
@@ -155,16 +156,17 @@ git diff --check
 
 ### Phase LFA-P2: Reduction Target Enforcement
 
-Status: in_progress
+Status: pass
 
 Goal: prevent "minor shrink equals complete" reporting for existing large files.
 
 | ID | Work item | Deliverable | Acceptance gate | Status |
 | --- | --- | --- | --- | --- |
-| LFA-P2.1 | Add target metadata schema | `.largefile-manifest.json` or companion policy file | Each `planned_refactor` item can state `target_lines`, `minimum_reduction`, and `terminal_condition`. | pending |
-| LFA-P2.2 | Add completion validator | `tools/report-large-files.mjs` or a dedicated checker | A phase cannot be marked pass if the target file misses its material reduction criteria. | pending |
-| LFA-P2.3 | Update large-file queue | This document and manifest/policy metadata | Top queue items have explicit next thresholds, not vague "continue splitting" instructions. | pending |
-| LFA-P2.4 | DeepSeek reduction-policy review | Reviewer artifact | DS confirms the criteria prevent premature closeout. | pending |
+| LFA-P2.1 | Add target metadata schema | `.largefile-manifest.json` | Each `planned_refactor` item above 500 lines declares `base_lines`, `target_lines`, `minimum_reduction`, `terminal_condition`, and `next_phase`. | pass |
+| LFA-P2.2 | Add completion validator | `tools/large-file-reduction-targets.mjs`; `tools/report-large-files.mjs` | Missing, invalid, or too-weak `reduction_target` metadata fails the large-file report. | pass |
+| LFA-P2.3 | Close `.mjs` coverage gap | `tools/report-large-files.mjs`; `.largefile-manifest.json`; `test/governance-enrollment.test.js` | `.mjs` files are scanned; five pre-existing hidden `.mjs` large files were newly backfilled as planned debt, while the already-listed `tools/workbench-server.mjs` remains in the queue. | pass |
+| LFA-P2.4 | Update large-file queue | This document and manifest metadata | Queue expanded to 21 planned items with explicit target gaps and material terminal criteria. | pass |
+| LFA-P2.5 | DeepSeek reduction-policy review | `docs/examples/reviewer-risk-20260603-large-file-reduction-p2-deepseek.json` | DS initially failed the phase on status-bypass risk; after adding a closed status enum, `.mjs` reverse test, and plan consistency fixes, final delta returned PASS with no blocking or non-blocking findings. | pass |
 
 ### Phase LFA-P3: First Strict Reduction Run
 
@@ -185,7 +187,7 @@ Goal: apply the stricter rules to the highest-priority file instead of doing a s
 | --- | --- | --- | --- |
 | LFA-P0 | pass | Initial DS review failed with three blockers; plan was revised; delta DS review passed with no blocking findings. | DeepSeek PASS after delta |
 | LFA-P1 | pass | Baseline anti-abuse gate implemented; focused tests, `npm test`, `npm run check:large-files`, `npm run check:closeout`, and `git diff --check` passed. | DeepSeek PASS after delta |
-| LFA-P2 | in_progress | Reduction target enforcement selected as the next active phase. | pending |
+| LFA-P2 | pass | Focused tests passed: `node tools/run-with-node18.mjs --test test/large-file-report.test.js test/large-file-reduction-targets.test.js test/select-affected-tests.test.js test/governance-enrollment.test.js`; `npm run check:large-files`; `git diff --check`; `npm test`; `npm run check:closeout`. DeepSeek final delta PASS is recorded in `docs/examples/reviewer-risk-20260603-large-file-reduction-p2-deepseek.json`. | DeepSeek PASS after delta |
 | LFA-P3 | pending | Not started. | pending |
 
 ## Daily Run Shape

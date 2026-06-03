@@ -5,7 +5,7 @@ import { relative } from "node:path";
 import test from "node:test";
 
 const root = new URL("../", import.meta.url);
-const checkedExtensions = new Set([".js", ".ts", ".tsx", ".py", ".css"]);
+const checkedExtensions = new Set([".js", ".mjs", ".ts", ".tsx", ".py", ".css"]);
 
 function readText(path) {
   return readFileSync(new URL(path, root), "utf8");
@@ -36,7 +36,7 @@ test("ai-control-platform is enrolled in shared large-file governance", () => {
   const manifest = JSON.parse(readText(".largefile-manifest.json"));
 
   assert.equal(manifest.threshold, 500);
-  assert.equal(manifest.reviewed_at, "2026-06-02");
+  assert.equal(manifest.reviewed_at, "2026-06-03");
 
   const missing = [];
   for (const path of trackedFiles()) {

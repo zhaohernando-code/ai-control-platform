@@ -1,6 +1,6 @@
 {
   "threshold": 500,
-  "reviewed_at": "2026-06-02",
+  "reviewed_at": "2026-06-03",
   "files": {
     "legacy/root-workflow-guard/agent-workflow-guard.js": {
       "lines": 529,
@@ -24,7 +24,14 @@
       "lines": 842,
       "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-30"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 842,
+        "target_lines": 690,
+        "minimum_reduction": 150,
+        "terminal_condition": "Autonomous continuation module must fall to 690 lines or below through next-action and recovery policy extraction.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/autonomous-orchestrator.js": {
       "lines": 657,
@@ -36,7 +43,14 @@
       "lines": 869,
       "reason": "Scheduler loop contract implementation: loop execution, recovery, projection reuse, artifact validation, and execution-root propagation are still tightly coupled.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 869,
+        "target_lines": 710,
+        "minimum_reduction": 150,
+        "terminal_condition": "Autonomous scheduler loop module must fall to 710 lines or below through recovery and artifact validation extraction.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/context-work-package-execution-adapter.js": {
       "lines": 727,
@@ -54,7 +68,14 @@
       "lines": 1135,
       "reason": "Context work package runner: execution-scope and workspace mutation guard logic has been extracted to src/workflow/context-work-package-execution-scope.js; execution governance, worker dispatch, execution-root provenance, and result normalization still share one flow.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1135,
+        "target_lines": 900,
+        "minimum_reduction": 227,
+        "terminal_condition": "Context work package runner module must fall to 900 lines or below through execution governance and result normalization extraction.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/context-work-package-execution-scope.js": {
       "lines": 156,
@@ -66,20 +87,41 @@
       "lines": 892,
       "reason": "Development flow real acceptance harness: fixture setup, dual CLI command construction, provider C2C dispatch governance, model-output contract parsing, and phase evidence aggregation are kept together for the reusable closeout gate.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 892,
+        "target_lines": 740,
+        "minimum_reduction": 150,
+        "terminal_condition": "Development-flow acceptance harness must fall to 740 lines or below while keeping provider C2C governance coverage.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/frontend-acceptance.js": {
       "lines": 818,
       "reason": "Frontend acceptance validator: browser evidence schema, layout/content checks, console errors, and live-route constraints are one acceptance surface.",
       "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds a fail-closed guard that rejects nextjs_app_router artifacts unless legacy_static_shell_used is explicitly false.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 818,
+        "target_lines": 660,
+        "minimum_reduction": 150,
+        "terminal_condition": "Frontend acceptance validator must fall to 660 lines or below while retaining browser evidence and live-route checks.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/headless-cli-orchestrator.js": {
       "lines": 1855,
       "reason": "Headless CLI orchestrator: worker planning and child worker acceptance/result packaging have been extracted to bounded modules; runner dispatch, process hardening, snapshot/continuation packaging, and projected-action service execution still need staged extraction.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1855,
+        "target_lines": 1200,
+        "minimum_reduction": 250,
+        "terminal_condition": "Headless CLI orchestrator must fall below 1200 lines through behavior-preserving domain extraction.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/headless-child-acceptance.js": {
       "lines": 214,
@@ -103,25 +145,53 @@
       "lines": 1318,
       "reason": "Requirement intake pipeline: extracts structured requirements, recovery state, and workbench-ready artifacts from one evolving contract.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1318,
+        "target_lines": 1000,
+        "minimum_reduction": 250,
+        "terminal_condition": "Requirement intake module must fall to 1000 lines or below through stable parser/recovery extraction.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/workbench-projection.js": {
       "lines": 923,
       "reason": "Workbench projection composition: core aggregation remains while next-action readout and project-management readout policy have been extracted to bounded modules; remaining projection-level orchestration is kept as the projection composer.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 923,
+        "target_lines": 750,
+        "minimum_reduction": 150,
+        "terminal_condition": "Projection composer must fall to 750 lines or below and retain a concrete follow-up target while above 500 lines.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/autonomous-continuation.test.js": {
       "lines": 1357,
       "reason": "Autonomous continuation regression suite shares fixtures for next-action, recovery, reviewer, and work package dispatch behavior.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1357,
+        "target_lines": 1000,
+        "minimum_reduction": 250,
+        "terminal_condition": "Autonomous continuation root suite must fall to 1000 lines or below before this phase can close.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/autonomous-scheduler-loop.test.js": {
       "lines": 877,
       "reason": "Scheduler loop tests share replay, recovery, and continuation fixtures for the same loop contract.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 877,
+        "target_lines": 725,
+        "minimum_reduction": 150,
+        "terminal_condition": "Autonomous scheduler root suite must fall to 725 lines or below through loop/recovery fixture shards.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/context-work-package-provider-executor.test.js": {
       "lines": 897,
@@ -134,20 +204,41 @@
       "lines": 1242,
       "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1242,
+        "target_lines": 950,
+        "minimum_reduction": 249,
+        "terminal_condition": "Context work package runner root suite must fall below 950 lines through focused execution-governance shards.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/frontend-acceptance.test.js": {
       "lines": 1670,
       "reason": "Frontend acceptance tests cover content, layout, console, mounted route, favicon, and live-route false-pass regressions over shared artifacts.",
       "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds regression coverage for legacy static shell false-pass rejection.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-05-28"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1670,
+        "target_lines": 1200,
+        "minimum_reduction": 250,
+        "terminal_condition": "Frontend acceptance root suite must fall below 1200 lines without dropping live-route or legacy false-pass coverage.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/headless-cli-orchestrator.test.js": {
       "lines": 1745,
       "reason": "Headless CLI orchestrator tests share worker-result, owned-file, no-diff, and continuation acceptance fixtures.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1745,
+        "target_lines": 1200,
+        "minimum_reduction": 250,
+        "terminal_condition": "Headless CLI root suite must fall below 1200 lines through domain shards that preserve acceptance coverage.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/workbench-shell.test.js": {
       "lines": 799,
@@ -160,19 +251,40 @@
       "lines": 3175,
       "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, project-management fixtures, mobile projection, and many regression fixtures; one-screen helper counter coverage was extracted to test/workbench-projection-one-screen.test.js, and further staged split should follow schema subdomains.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 3175,
+        "target_lines": 1800,
+        "minimum_reduction": 500,
+        "terminal_condition": "Projection root suite must fall below 1800 lines before this phase can close; then continue toward below 1200 lines.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "test/workbench-server.test.js": {
       "lines": 4214,
       "reason": "Workbench server tests cover mounted static assets, APIs, state store behavior, isolated execution-root propagation, public-route evidence, and event/snapshot flows over one server fixture. Agent key route coverage was extracted to test/workbench-server-agent-key-routes.test.js as the first test shard; remaining route/state/static domains still require staged splitting.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 4214,
+        "target_lines": 2500,
+        "minimum_reduction": 500,
+        "terminal_condition": "Root server test shard must fall below 2500 lines before this phase can close; then continue toward below 1500 lines.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "tools/workbench-server.mjs": {
       "lines": 3447,
       "reason": "Workbench server entrypoint wires API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; legacy static/mounted compatibility routing was extracted to tools/workbench-static-routes.mjs; remaining route groups still require staged extraction.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-02"
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 3447,
+        "target_lines": 2000,
+        "minimum_reduction": 500,
+        "terminal_condition": "Server entrypoint must fall below 2000 lines before this phase can close; then continue toward below 1200 lines.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
     },
     "src/workflow/workbench-next-action-readout.js": {
       "lines": 497,
@@ -191,6 +303,71 @@
       "reason": "Extracted Workbench project-management task item, plan-review, and requirement work-package readout helpers kept below the large-file threshold.",
       "status": "accepted",
       "reviewed_at": "2026-06-02"
+    },
+    "tools/retired-workbench-frontend-acceptance.mjs": {
+      "lines": 1596,
+      "reason": "Retired legacy frontend acceptance script is still tracked and above the large-file threshold; it should shrink or be deleted after replacement evidence remains durable.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 1596,
+        "target_lines": 1200,
+        "minimum_reduction": 250,
+        "terminal_condition": "Retired frontend acceptance script must fall below 1200 lines or be deleted after replacement evidence is durable.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
+    },
+    "tools/check-workbench-browser-events.mjs": {
+      "lines": 983,
+      "reason": "Browser events closeout checker covers mounted runtime scenarios, API rewrites, console errors, and durable event evidence in one large script.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 983,
+        "target_lines": 830,
+        "minimum_reduction": 150,
+        "terminal_condition": "Browser-events closeout checker must fall to 830 lines or below through scenario/adapter extraction.",
+        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      }
+    },
+    "tools/run-governance-audit-skill-trial.mjs": {
+      "lines": 600,
+      "reason": "Governance audit skill trial runner combines skill fixture setup, model invocation checks, artifact validation, and report persistence.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 600,
+        "target_lines": 450,
+        "minimum_reduction": 150,
+        "terminal_condition": "Governance audit skill trial runner must fall below 500 lines or split trial fixtures into bounded helpers.",
+        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+      }
+    },
+    "tools/probe-workbench-live-route.mjs": {
+      "lines": 578,
+      "reason": "Workbench live-route probe combines public route auth handling, browser evidence capture, API checks, and artifact persistence.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 578,
+        "target_lines": 428,
+        "minimum_reduction": 150,
+        "terminal_condition": "Live-route probe must fall below 500 lines or split evidence parsing into a bounded helper.",
+        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+      }
+    },
+    "tools/check-workbench-next-served-route.mjs": {
+      "lines": 533,
+      "reason": "Next served-route checker combines mounted App Router route validation, asset checks, API rewrite checks, and browser evidence.",
+      "status": "planned_refactor",
+      "reviewed_at": "2026-06-03",
+      "reduction_target": {
+        "base_lines": 533,
+        "target_lines": 383,
+        "minimum_reduction": 150,
+        "terminal_condition": "Next served-route checker must fall below 500 lines or split route assertions into a bounded helper.",
+        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+      }
     }
   }
 }
