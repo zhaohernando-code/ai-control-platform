@@ -289,17 +289,40 @@
       "rechallenge_due": "2026-07-03"
     },
     "test/context-work-package-runner.test.js": {
-      "lines": 1242,
-      "reason": "Context work package runner tests share owned-file, dependency, and execution governance fixtures.",
+      "lines": 801,
+      "reason": "Context work package runner root tests were reduced from the P16 1242-line baseline by extracting shared workflow-state fixtures plus fixed-development gate, local completion authority, workspace mutation guard, and isolated worker worktree enforcement into bounded files under 300 lines. The root still covers dispatch execution, frontend plan slicing, retry_agent_worker lifecycle, provider identity/completion authority, verified provider profile, background dispatch staging/completion/failure, and failed-package retry, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/context-work-package-runner-test-p16-split-parity.json with 24 before / 24 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1242,
-        "target_lines": 950,
-        "minimum_reduction": 249,
-        "terminal_condition": "Context work package runner root suite must fall below 950 lines through focused execution-governance shards.",
+        "base_lines": 801,
+        "target_lines": 650,
+        "minimum_reduction": 150,
+        "terminal_condition": "Context work package runner root suite must fall to 650 lines or below through additional stable dispatch/provider shards while preserving remaining behavior assertions.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      },
+      "split_evidence": {
+        "parity_artifact": "docs/examples/context-work-package-runner-test-p16-split-parity.json",
+        "before_count": 24,
+        "after_count": 24,
+        "before_lines": 1242,
+        "after_lines": 801,
+        "moved_domains": {
+          "test/helpers/context-work-package-runner.js": "shared_context_work_package_workflow_state_fixtures",
+          "test/context-work-package-runner-execution-guards.test.js": "fixed_development_gate_local_completion_authority_workspace_mutation_guard_and_isolated_worker_worktree_enforcement"
+        }
       }
+    },
+    "test/context-work-package-runner-execution-guards.test.js": {
+      "lines": 244,
+      "reason": "Extracted context work package runner execution-guard shard kept below the near-threshold budget while preserving fixed-development owned-files gating, local completion authority rejection, workspace mutation guard, and isolated worker worktree enforcement.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/helpers/context-work-package-runner.js": {
+      "lines": 212,
+      "reason": "Extracted context work package runner test fixtures kept below the near-threshold budget while preserving reusable workflow-state setup for context-cycle, retry-agent, global-goal, and requirement-intake packages.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
     },
     "test/frontend-acceptance.test.js": {
       "lines": 577,

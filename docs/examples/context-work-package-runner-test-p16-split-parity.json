@@ -1,0 +1,65 @@
+{
+  "version": "large-file-test-split-parity.v1",
+  "phase": "LFA-P16",
+  "target": "test/context-work-package-runner.test.js",
+  "reviewed_at": "2026-06-03",
+  "base_ref": "origin/main",
+  "before": {
+    "file": "test/context-work-package-runner.test.js",
+    "line_count": 1242,
+    "test_count": 24
+  },
+  "after": {
+    "files": [
+      {
+        "file": "test/context-work-package-runner.test.js",
+        "line_count": 801,
+        "test_count": 17,
+        "retained_domains": [
+          "dispatchable_package_execution_and_lifecycle_projection",
+          "frontend_requirement_plan_slicing_and_unsliced_governance_blocking",
+          "already_satisfied_preflight",
+          "retry_agent_worker_lifecycle",
+          "no_dispatchable_package_blocking",
+          "bounded_mock_simulation",
+          "provider_identity_and_completion_authority",
+          "verified_provider_profile",
+          "background_dispatch_staging_completion_failure_and_retry"
+        ]
+      },
+      {
+        "file": "test/context-work-package-runner-execution-guards.test.js",
+        "line_count": 244,
+        "test_count": 7,
+        "moved_domain": "fixed_development_gate_local_completion_authority_workspace_mutation_guard_and_isolated_worker_worktree_enforcement"
+      },
+      {
+        "file": "test/helpers/context-work-package-runner.js",
+        "line_count": 212,
+        "test_count": 0,
+        "moved_domain": "shared_context_work_package_workflow_state_fixtures"
+      }
+    ],
+    "test_count": 24
+  },
+  "parity": {
+    "status": "pass",
+    "before_count": 24,
+    "after_count": 24,
+    "missing": [],
+    "added": [],
+    "duplicates": []
+  },
+  "focused_gates": [
+    {
+      "command": "node --check test/context-work-package-runner.test.js && node --check test/context-work-package-runner-execution-guards.test.js && node --check test/helpers/context-work-package-runner.js",
+      "status": "pass"
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test test/context-work-package-runner.test.js test/context-work-package-runner-execution-guards.test.js",
+      "status": "pass",
+      "tests": 24,
+      "passed": 24
+    }
+  ]
+}
