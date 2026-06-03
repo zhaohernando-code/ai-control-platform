@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T22:37:46+08:00
+Updated at: 2026-06-03T23:19:46+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -31,21 +31,21 @@ Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/rep
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 41 |
-| Files currently above 500 lines | 30 |
-| `planned_refactor` files above 500 lines | 21 |
+| Manifest entries | 58 |
+| Files currently above 500 lines | 29 |
+| `planned_refactor` files above 500 lines | 20 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 6 |
+| Manifest entries already below threshold | 29 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Reduced in LFA-P14; continue stable autonomous-continuation shards until below 690 lines. |
-| LFA-Q02 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Reduced in LFA-P13; continue stable server test shards until below 850 lines. |
-| LFA-Q03 | `test/frontend-acceptance.test.js` | 1670 | `planned_refactor` | Split content, layout, console, mounted route, favicon, and live-route false-pass coverage until below 1200 lines. |
-| LFA-Q04 | `tools/retired-workbench-frontend-acceptance.mjs` | 1596 | `deleted in LFA-P11` | Removed after the Next frontend-acceptance gate and legacy fail-closed wrapper remained covered by focused tests. |
-| LFA-Q05 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Reduced in LFA-P12; continue stable projection domain shards until below 800 lines. |
+| LFA-Q01 | `test/context-work-package-runner.test.js` | 1242 | `planned_refactor` | Split focused execution-governance shards until below 950 lines. |
+| LFA-Q02 | `src/workflow/headless-cli-orchestrator.js` | 1136 | `planned_refactor` | Extract child command execution, continuation/result packaging, or loop state-transition groups until below 900 lines. |
+| LFA-Q03 | `src/workflow/context-work-package-runner.js` | 1135 | `planned_refactor` | Extract execution governance and result normalization until below 900 lines. |
+| LFA-Q04 | `tools/workbench-server.mjs` | 1131 | `planned_refactor` | Extract remaining context-pack/context-work-package, project-status continuation, projection-history, or state-bootstrap groups until below 900 lines. |
+| LFA-Q05 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Continue stable server test shards until below 850 lines. |
 
 ## State Vocabulary
 
@@ -341,6 +341,21 @@ Goal: reduce `test/autonomous-continuation.test.js` below the 1000-line phase ta
 | LFA-P14.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-autonomous-continuation-test-p14-deepseek.json` | DeepSeek read-only sharded review passed: it confirmed parity, shard dependencies, assertion preservation, independent manifest entries for both shards, the 690-line follow-up target, and no premature phase pass. | pass |
 | LFA-P14.6 | Run final gates | Command evidence | Final gates passed: `npm test` 998/998, `npm run check:large-files` pass with no issues/warnings, `git diff --check` pass, and `npm run check:closeout` pass after installing root/app dependencies in the isolated worktree to satisfy browser/Next checks. | pass |
 
+### Phase LFA-P15: Requirement Intake Runtime Extraction Step 1
+
+Status: pass
+
+Goal: reduce `src/workflow/requirement-intake.js` below the 1000-line phase target without changing public imports or weakening requirement submission, generated plan validation, plan review approval/revision, frontend view slicing, requirement completion/closeout, or workflow event recording behavior.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P15.1 | Select current runtime target | This document and `.largefile-manifest.json` | Selected `src/workflow/requirement-intake.js` because it was the current runtime queue item at 1318 lines, with a required 250-line minimum reduction and a 1000-line phase target. | pass |
+| LFA-P15.2 | Extract bounded plan generation and granularity modules | `src/workflow/requirement-plan-generation.js`; `src/workflow/requirement-plan-granularity.js`; `src/workflow/requirement-intake.js`; `.largefile-manifest.json` | Root requirement intake module reduced from 1318 to 987 lines, below the 1000-line phase target. The new generation helper is 124 lines and the granularity helper is 276 lines, so both remain below the 300-line near-threshold warning boundary. The target remains open with a new 800-line target. | pass |
+| LFA-P15.3 | Prove export compatibility and manifest coverage | `docs/examples/requirement-intake-p15-extraction-parity.json`; `.largefile-manifest.json` | Compatibility artifact records root public exports, retained root domains, moved domains, and focused runtime gates. Both extracted helpers are registered as independent accepted manifest entries. | pass |
+| LFA-P15.4 | Run focused gates | Command evidence | Syntax check passed for all three runtime modules. Focused runtime gates passed 49/49: `node tools/run-with-node18.mjs --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/context-pack-cycle.test.js`. `npm run check:large-files` passed with no issues and no warnings after manifest refresh. | pass |
+| LFA-P15.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-requirement-intake-p15-deepseek.json` | DeepSeek read-only sharded review passed. It confirmed public re-exports, fail-closed plan generation validation, frontend view slicing/dependency rewriting/execution_governance coverage, manifest registration for both new helpers, the retained 800-line follow-up target, and no premature phase pass. | pass |
+| LFA-P15.6 | Run final gates | Command evidence | Final gates passed after installing root and workbench dependencies inside the isolated worktree: `npm test` passed 1001/1001, `npm run check:large-files` passed with no issues and no warnings, `git diff --check` passed, and `npm run check:closeout` passed. During closeout, the governance audit skill trial exposed a false-red parser gap for prose DeepSeek verdicts; the runner now accepts only explicit conclusion labels, blocks explicit failing verdicts, and fails closed on incidental pass words. Delta tests passed 13/13 and DeepSeek delta review passed after one failed first review was repaired. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -360,6 +375,7 @@ Goal: reduce `test/autonomous-continuation.test.js` below the 1000-line phase ta
 | LFA-P12 | pass | Selected `test/workbench-projection.test.js`; root suite is 1025 lines after extracting scheduler dispatch/continuation/policy and scheduler loop/resume coverage into two shards under 300 lines. Split parity passed 25/25 with no missing, added, or duplicate tests. Final gates passed: focused projection tests 70/70, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta |
 | LFA-P13 | pass | Selected `test/workbench-server.test.js`; root suite is 1092 lines after extracting requirement submission, pending plan generation, and failed plan retry/close coverage into a 286-line shard. Split parity passed 17/17 with no missing, added, or duplicate tests. Focused server/API/state tests passed 91/91. Final gates passed: `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. DeepSeek initial fail was repaired by adding the shard's independent manifest entry; delta review passed. | DeepSeek PASS after delta |
 | LFA-P14 | pass | Selected `test/autonomous-continuation.test.js`; root suite is 840 lines after extracting global-goal lifecycle and governance/frontend-repair continuation coverage into 257-line and 294-line shards. Split parity passed 37/37 with no missing, added, or duplicate tests. Focused autonomous continuation tests passed 37/37. Final gates passed: `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS |
+| LFA-P15 | pass | Selected `src/workflow/requirement-intake.js`; root runtime module is 987 lines after extracting 124-line plan generation and 276-line plan granularity helpers. Compatibility artifact records public exports and focused runtime gates passed 49/49. Closeout-runner prose verdict parsing was tightened after final gate discovery, with 13/13 focused tests passing. Full gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, and `npm run check:closeout`. | DeepSeek PASS; DeepSeek delta PASS |
 
 ## Daily Run Shape
 

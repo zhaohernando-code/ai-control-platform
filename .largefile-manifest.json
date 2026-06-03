@@ -172,17 +172,45 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/requirement-intake.js": {
-      "lines": 1318,
-      "reason": "Requirement intake pipeline: extracts structured requirements, recovery state, and workbench-ready artifacts from one evolving contract.",
+      "lines": 987,
+      "reason": "Requirement intake root was reduced from the P15 1318-line baseline by extracting requirement plan generation and requirement plan granularity/work-package slicing into bounded modules under 300 lines. The root still owns requirement submission, plan-review state transitions, requirement completion/closeout, summaries, and workflow event recording, so it remains planned debt instead of accepted. Extraction parity is recorded in docs/examples/requirement-intake-p15-extraction-parity.json with compatibility exports and focused runtime gates.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1318,
-        "target_lines": 1000,
-        "minimum_reduction": 250,
-        "terminal_condition": "Requirement intake module must fall to 1000 lines or below through stable parser/recovery extraction.",
+        "base_lines": 987,
+        "target_lines": 800,
+        "minimum_reduction": 150,
+        "terminal_condition": "Requirement intake root must fall to 800 lines or below through another coherent state-flow extraction while preserving submission, review, completion, closeout, and workflow event recording behavior.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      },
+      "split_evidence": {
+        "parity_artifact": "docs/examples/requirement-intake-p15-extraction-parity.json",
+        "before_lines": 1318,
+        "after_lines": 987,
+        "moved_domains": {
+          "src/workflow/requirement-plan-generation.js": "requirement_plan_prompt_generation_generated_plan_parsing_and_validation",
+          "src/workflow/requirement-plan-granularity.js": "requirement_plan_work_package_granularity_frontend_view_slicing_dependency_rewriting_and_plan_step_work_package_generation"
+        },
+        "retained_root_domains": [
+          "requirement_submission_validation_and_profile_selection",
+          "pending_plan_review_state_transitions",
+          "plan_generation_failure_persistence",
+          "plan_review_approval_and_revision_state_transitions",
+          "requirement_completion_retry_closeout_summary_and_workflow_event_recording"
+        ]
       }
+    },
+    "src/workflow/requirement-plan-generation.js": {
+      "lines": 124,
+      "reason": "Extracted requirement plan generation helper kept below the near-threshold budget while preserving prompt construction, generated JSON parsing, and fail-closed generated plan validation.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "src/workflow/requirement-plan-granularity.js": {
+      "lines": 276,
+      "reason": "Extracted requirement plan granularity helper kept below the near-threshold budget while preserving frontend view migration slicing, downstream dependency rewriting, execution governance metadata, and approved plan work-package generation.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
     },
     "src/workflow/workbench-projection.js": {
       "lines": 923,
@@ -452,13 +480,13 @@
       }
     },
     "tools/run-governance-audit-skill-trial.mjs": {
-      "lines": 600,
+      "lines": 597,
       "reason": "Governance audit skill trial runner combines skill fixture setup, model invocation checks, artifact validation, and report persistence.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 600,
-        "target_lines": 450,
+        "base_lines": 597,
+        "target_lines": 447,
         "minimum_reduction": 150,
         "terminal_condition": "Governance audit skill trial runner must fall below 500 lines or split trial fixtures into bounded helpers.",
         "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."

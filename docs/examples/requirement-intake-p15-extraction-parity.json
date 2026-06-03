@@ -1,0 +1,103 @@
+{
+  "version": "large-file-runtime-extraction-parity.v1",
+  "phase": "LFA-P15",
+  "created_at": "2026-06-03T22:49:29+08:00",
+  "target": {
+    "path": "src/workflow/requirement-intake.js",
+    "before_lines": 1318,
+    "after_lines": 987,
+    "target_lines": 1000,
+    "minimum_reduction": 250,
+    "actual_reduction": 331,
+    "target_met": true
+  },
+  "extracted_modules": {
+    "src/workflow/requirement-plan-generation.js": {
+      "lines": 124,
+      "domain": "requirement plan prompt generation, generated plan parsing, and fail-closed generated plan validation"
+    },
+    "src/workflow/requirement-plan-granularity.js": {
+      "lines": 276,
+      "domain": "requirement plan work package granularity, frontend view migration slicing, dependency rewriting, and plan-step work package generation"
+    }
+  },
+  "retained_root_domains": [
+    "requirement submission validation and profile selection",
+    "pending plan review state transitions",
+    "plan generation failure persistence",
+    "plan review approval and revision state transitions",
+    "requirement completion, retry, closeout, summary, and workflow event recording"
+  ],
+  "compatibility_exports": [
+    "REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION",
+    "WORKBENCH_REQUIREMENT_INTAKE_VERSION",
+    "applyGeneratedRequirementPlan",
+    "closeRequirementInProjectStatus",
+    "completeRequirementInProjectStatus",
+    "createRequirementPlanPrompt",
+    "createRequirementPlanWorkPackages",
+    "evaluateGeneratedRequirementPlan",
+    "markRequirementPlanGenerationFailed",
+    "normalizeRequirementPlanWorkPackageGranularity",
+    "normalizeRequirementPlanWorkPackagesGranularity",
+    "parseRequirementPlanGenerationOutput",
+    "recordRequirementIntakeSubmitted",
+    "resetRequirementPlanGeneration",
+    "submitRequirementToProjectStatus",
+    "summarizeRequirementIntake",
+    "updateRequirementPlanReview",
+    "validateRequirementSubmission"
+  ],
+  "focused_gates": [
+    {
+      "command": "node tools/run-with-node18.mjs --check src/workflow/requirement-intake.js src/workflow/requirement-plan-generation.js src/workflow/requirement-plan-granularity.js",
+      "status": "pass"
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test test/requirement-intake.test.js",
+      "status": "pass",
+      "tests": 12
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test test/requirement-intake.test.js test/workbench-server.test.js test/workbench-projection.test.js test/context-pack-cycle.test.js",
+      "status": "pass",
+      "tests": 49
+    }
+  ],
+  "large_file_gate_before_manifest_refresh": {
+    "command": "npm run check:large-files",
+    "status": "pass",
+    "warnings": [
+      {
+        "code": "line_count_below_manifest",
+        "path": "src/workflow/requirement-intake.js",
+        "manifest_lines": 1318,
+        "current_lines": 987
+      }
+    ]
+  },
+  "large_file_gate_after_manifest_refresh": {
+    "command": "npm run check:large-files",
+    "status": "pass",
+    "issues": [],
+    "warnings": [],
+    "manifest_updates": [
+      {
+        "path": "src/workflow/requirement-intake.js",
+        "lines": 987,
+        "status": "planned_refactor",
+        "next_target_lines": 800
+      },
+      {
+        "path": "src/workflow/requirement-plan-generation.js",
+        "lines": 124,
+        "status": "accepted"
+      },
+      {
+        "path": "src/workflow/requirement-plan-granularity.js",
+        "lines": 276,
+        "status": "accepted"
+      }
+    ]
+  }
+}

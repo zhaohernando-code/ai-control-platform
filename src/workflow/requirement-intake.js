@@ -1,14 +1,29 @@
 import { recordArtifact } from "./artifact-ledger.js";
 import { appendRunEvent } from "./run-manifest.js";
+import {
+  REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION,
+  evaluateGeneratedRequirementPlan
+} from "./requirement-plan-generation.js";
+import { createRequirementPlanWorkPackages } from "./requirement-plan-granularity.js";
+
+export {
+  REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION,
+  createRequirementPlanPrompt,
+  evaluateGeneratedRequirementPlan,
+  parseRequirementPlanGenerationOutput
+} from "./requirement-plan-generation.js";
+export {
+  createRequirementPlanWorkPackages,
+  normalizeRequirementPlanWorkPackageGranularity,
+  normalizeRequirementPlanWorkPackagesGranularity
+} from "./requirement-plan-granularity.js";
 
 export const WORKBENCH_REQUIREMENT_INTAKE_VERSION = "workbench-requirement-intake.v1";
-export const REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION = "requirement-plan-generation-prompt.v1";
 
 const DEFAULT_PROJECT_ID = "ai-control-platform";
 const DEFAULT_SURFACE_AREA = "workbench_frontend";
 const MAX_STORED_REQUIREMENTS = 12;
 const PLAN_REVIEW_VERSION = "workbench-plan-review.v1";
-const EXECUTION_GOVERNANCE_VERSION = "work-package-execution-governance.v1";
 
 const SURFACE_PROFILES = {
   workbench_frontend: {
@@ -183,287 +198,8 @@ function requirementSummary(input = {}, profile = {}) {
   return parts.join("。");
 }
 
-function jsonCandidate(text) {
-  const value = normalizeString(text);
-  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced) return fenced[1].trim();
-  const objectStart = value.indexOf("{");
-  const objectEnd = value.lastIndexOf("}");
-  if (objectStart !== -1 && objectEnd > objectStart) return value.slice(objectStart, objectEnd + 1);
-  return "";
-}
-
 function normalizeStringList(value) {
   return compactStrings(value).slice(0, 12);
-}
-
-const FRONTEND_VIEW_MIGRATION_SLICES = [
-  {
-    id: "workbench-home",
-    title: "工作台主页",
-    reason: "迁移工作台主页视图到 React + Next.js App Router，并使用 antd Layout、Card、Statistic、List 等基础与布局组件承载现有投影数据。",
-    owned_files: [
-      "apps/workbench",
-      "test/workbench-shell.test.js",
-      "test/frontend-acceptance.test.js"
-    ],
-    acceptance_gates: [
-      "工作台主页由 Next.js + React 渲染，页面基础布局与核心信息区使用 antd 组件。"
-    ]
-  },
-  {
-    id: "requirement-intake",
-    title: "需求录入",
-    reason: "迁移需求录入视图到 React + Next.js App Router，并使用 antd Form、Input、Select、Button、Alert 等组件承载提需求流程。",
-    owned_files: [
-      "apps/workbench",
-      "tools/workbench-server.mjs",
-      "test/requirement-intake.test.js",
-      "test/workbench-server.test.js",
-      "test/frontend-acceptance.test.js"
-    ],
-    acceptance_gates: [
-      "需求录入流程在新前端中可提交并写入后端投影，表单与反馈使用 antd 组件。"
-    ]
-  },
-  {
-    id: "plan-review",
-    title: "方案审核",
-    reason: "迁移方案评估与审核视图到 React + Next.js App Router，并使用 antd Descriptions、Typography、Space、Button、Modal 等组件承载审核动作。",
-    owned_files: [
-      "apps/workbench",
-      "src/workflow/workbench-projection.js",
-      "test/workbench-projection.test.js",
-      "test/workbench-shell.test.js",
-      "test/frontend-acceptance.test.js"
-    ],
-    acceptance_gates: [
-      "方案审核视图可展示模型生成方案并触发同意开发，审核动作后直接进入开发态。"
-    ]
-  }
-];
-
-function planStepExecutionGovernance({
-  granularity = "single_step",
-  decompositionRequired = false,
-  decompositionStatus = "not_required",
-  decompositionEvidenceId = "",
-  parentWorkPackageId = "",
-  sliceId = "",
-  gateCount = 0
-} = {}) {
-  const decomposition = {
-    required: decompositionRequired,
-    status: decompositionStatus
-  };
-  if (decompositionEvidenceId) decomposition.evidence_id = decompositionEvidenceId;
-  if (parentWorkPackageId) decomposition.parent_work_package_id = parentWorkPackageId;
-  if (sliceId) decomposition.slice_id = sliceId;
-
-  return {
-    version: EXECUTION_GOVERNANCE_VERSION,
-    granularity,
-    decomposition,
-    verification: {
-      required: true,
-      status: gateCount > 0 ? "defined" : "missing",
-      gate_count: gateCount
-    }
-  };
-}
-
-function shouldSplitFrontendViewMigrationWorkPackage(workPackage = {}) {
-  if (normalizeString(workPackage?.action) !== "execute_requirement_plan_step") return false;
-  if (workPackage?.source?.plan_step_slice || workPackage?.source?.planStepSlice) return false;
-  const text = [
-    workPackage.title,
-    workPackage.reason,
-    workPackage.source?.implementation_step,
-    workPackage.source?.implementationStep,
-    workPackage.source?.constraints
-  ].map(normalizeString).join("\n");
-  return /按视图切片迁移|切片迁移|核心视图/.test(text) &&
-    /前端重构|React|Next\.js|antd|Ant Design/i.test(text);
-}
-
-export function normalizeRequirementPlanWorkPackageGranularity(workPackage = {}) {
-  if (!shouldSplitFrontendViewMigrationWorkPackage(workPackage)) return [workPackage];
-
-  const baseId = safeIdPart(workPackage.id || workPackage.work_package_id || "requirement-plan-step");
-  const baseTitle = normalizeString(workPackage.title) || "实施步骤";
-  const baseReason = normalizeString(
-    workPackage.reason ||
-      workPackage.source?.implementation_step ||
-      workPackage.source?.implementationStep
-  );
-  const baseAcceptanceGates = uniqueStrings([
-    ...normalizeStringList(workPackage.acceptance_gates || workPackage.acceptanceGates),
-    ...normalizeStringList(workPackage.source?.acceptance_gates || workPackage.source?.acceptanceGates)
-  ]);
-  const baseOwnedFiles = normalizeStringList(workPackage.owned_files || workPackage.ownedFiles);
-  const originalDependsOn = normalizeStringList(workPackage.depends_on || workPackage.dependencies);
-
-  return FRONTEND_VIEW_MIGRATION_SLICES.map((slice, index) => {
-    const sliceId = `${baseId}-${slice.id}`;
-    const parentWorkPackageId = normalizeString(workPackage.id || workPackage.work_package_id);
-    const dependsOn = index === 0 ? originalDependsOn : [`${baseId}-${FRONTEND_VIEW_MIGRATION_SLICES[index - 1].id}`];
-    const acceptanceGates = uniqueStrings([
-      ...baseAcceptanceGates,
-      ...slice.acceptance_gates,
-      `完成已审核实施步骤 ${workPackage.source?.plan_step_index || ""} 的${slice.title}切片：${baseReason || slice.reason}`
-    ]);
-    return {
-      ...workPackage,
-      id: sliceId,
-      title: `${baseTitle}：${slice.title}切片`,
-      reason: slice.reason,
-      owned_files: uniqueStrings([
-        ...baseOwnedFiles,
-        ...slice.owned_files
-      ]),
-      acceptance_gates: acceptanceGates,
-      depends_on: dependsOn,
-      source: {
-        ...(workPackage.source || {}),
-        implementation_step: slice.reason,
-        parent_implementation_step: baseReason,
-        parent_work_package_id: parentWorkPackageId,
-        plan_step_slice: slice.id,
-        plan_step_slice_index: index + 1,
-        plan_step_slice_total: FRONTEND_VIEW_MIGRATION_SLICES.length,
-        acceptance_gates: acceptanceGates,
-        execution_governance: planStepExecutionGovernance({
-          granularity: "bounded_slice",
-          decompositionRequired: true,
-          decompositionStatus: "completed",
-          decompositionEvidenceId: `${baseId}-manager-decomposition`,
-          parentWorkPackageId,
-          sliceId: slice.id,
-          gateCount: acceptanceGates.length
-        })
-      }
-    };
-  });
-}
-
-function workPackageId(workPackage = {}) {
-  return normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId);
-}
-
-export function normalizeRequirementPlanWorkPackagesGranularity(workPackages = []) {
-  const replacementDependencies = new Map();
-  const normalizedPackages = [];
-
-  asArray(workPackages).forEach((workPackage) => {
-    const originalId = workPackageId(workPackage);
-    const packages = normalizeRequirementPlanWorkPackageGranularity(workPackage);
-    normalizedPackages.push(...packages);
-    if (originalId && packages.length > 1) {
-      replacementDependencies.set(originalId, workPackageId(packages.at(-1)));
-    }
-  });
-
-  if (replacementDependencies.size === 0) return normalizedPackages;
-
-  return normalizedPackages.map((workPackage) => {
-    const dependencies = normalizeStringList(workPackage.depends_on || workPackage.dependencies);
-    if (dependencies.length === 0) return workPackage;
-    return {
-      ...workPackage,
-      depends_on: uniqueStrings(dependencies.map((dependency) => {
-        return replacementDependencies.get(dependency) || dependency;
-      }))
-    };
-  });
-}
-
-export function createRequirementPlanPrompt(requirement = {}) {
-  return [
-    "# Requirement Plan Generation",
-    "",
-    "你处于计划生成模式。只生成方案，不写代码，不修改文件，不声称已经实现。",
-    "请基于用户需求生成可审核的中台任务方案。不要复制粘贴用户原话作为方案；需要抽象目标、范围、验收标准、风险和门禁证据。",
-    "必须只返回一个 JSON object，不要包裹解释性文字。",
-    "",
-    "输入需求：",
-    JSON.stringify({
-      id: requirement.id || null,
-      title: requirement.title || null,
-      project_id: requirement.project_id || null,
-      surface_area: requirement.surface_area || null,
-      surface_label: requirement.surface_label || null,
-      problem_statement: requirement.problem_statement || null,
-      constraints: requirement.constraints || null
-    }, null, 2),
-    "",
-    "输出 JSON schema：",
-    JSON.stringify({
-      assessment_summary: "一段中文评估摘要，说明目标、影响范围和关键不确定性",
-      proposed_acceptance_plan: "面向用户审核的中文 Markdown 方案，包含目标、实施范围、验收标准、风险、门禁证据",
-      implementation_outline: ["可执行步骤 1", "可执行步骤 2"],
-      acceptance_gates: ["需要运行或验证的门禁"],
-      risks: ["需要用户知道的风险或假设"]
-    }, null, 2)
-  ].join("\n");
-}
-
-function generatedPlanFromOutput(value) {
-  if (isObject(value)) return value;
-  const candidate = jsonCandidate(value);
-  if (!candidate) return null;
-  try {
-    const parsed = JSON.parse(candidate);
-    return isObject(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-export function evaluateGeneratedRequirementPlan(requirement = {}, generatedPlan = {}) {
-  const issues = [];
-  const assessment = normalizeString(generatedPlan.assessment_summary || generatedPlan.assessmentSummary);
-  const plan = normalizeString(generatedPlan.proposed_acceptance_plan || generatedPlan.proposedAcceptancePlan);
-  const implementationOutline = normalizeStringList(generatedPlan.implementation_outline || generatedPlan.implementationOutline);
-  const acceptanceGates = normalizeStringList(generatedPlan.acceptance_gates || generatedPlan.acceptanceGates);
-  const risks = normalizeStringList(generatedPlan.risks);
-  const problem = normalizeString(requirement.problem_statement);
-
-  if (!assessment) {
-    issues.push(issue("missing_generated_assessment_summary", "generated plan must include assessment_summary", "assessment_summary"));
-  }
-  if (!plan) {
-    issues.push(issue("missing_generated_acceptance_plan", "generated plan must include proposed_acceptance_plan", "proposed_acceptance_plan"));
-  }
-  if (implementationOutline.length === 0) {
-    issues.push(issue("missing_generated_implementation_outline", "generated plan must include implementation_outline", "implementation_outline"));
-  }
-  if (acceptanceGates.length === 0) {
-    issues.push(issue("missing_generated_acceptance_gates", "generated plan must include acceptance_gates", "acceptance_gates"));
-  }
-  if (problem && plan === problem) {
-    issues.push(issue("generated_plan_copies_problem_statement", "generated plan must not be a verbatim copy of problem_statement", "proposed_acceptance_plan"));
-  }
-
-  return {
-    status: issues.length ? "fail" : "pass",
-    assessment_summary: assessment,
-    proposed_acceptance_plan: plan,
-    implementation_outline: implementationOutline,
-    acceptance_gates: acceptanceGates,
-    risks,
-    issues
-  };
-}
-
-export function parseRequirementPlanGenerationOutput(requirement = {}, output = "") {
-  const parsed = generatedPlanFromOutput(output);
-  if (!parsed) {
-    return {
-      status: "fail",
-      issues: [issue("invalid_requirement_plan_generation_output", "plan generator must return a JSON object", "output")]
-    };
-  }
-  return evaluateGeneratedRequirementPlan(requirement, parsed);
 }
 
 function pendingPlanReview(requirement = {}, createdAt = "") {
@@ -630,73 +366,6 @@ function nextWorkPackage(requirement = {}, profile = {}) {
       constraints: requirement.constraints || ""
     }
   };
-}
-
-export function createRequirementPlanWorkPackages(projectStatus = {}, requirementId = "", profile = {}) {
-  const id = normalizeString(requirementId);
-  const planReviews = isObject(projectStatus.plan_reviews) ? projectStatus.plan_reviews : {};
-  const review = id ? planReviews[id] : null;
-  const requirement = asArray(projectStatus?.requirement_intake?.items)
-    .find((item) => normalizeString(item?.id) === id) || {};
-  const outline = normalizeStringList(review?.implementation_outline || review?.implementationOutline);
-  if (!id || !review || outline.length === 0) return [];
-
-  const title = normalizeString(requirement.title || review.requirement_title || id);
-  const ownedFiles = uniqueStrings([
-    ...normalizeStringList(requirement.owned_files || requirement.ownedFiles),
-    ...normalizeStringList(review.owned_files || review.ownedFiles),
-    ...normalizeStringList(profile.owned_files || profile.ownedFiles)
-  ]);
-  const baseAcceptanceGates = uniqueStrings([
-    ...normalizeStringList(requirement.acceptance_gates || requirement.acceptanceGates),
-    ...normalizeStringList(profile.acceptance_gates || profile.acceptanceGates)
-  ]);
-  const reviewAcceptanceGates = normalizeStringList(review.acceptance_gates || review.acceptanceGates);
-  const total = outline.length;
-
-  const packages = [];
-  let previousDependencyIds = [];
-
-  outline.forEach((step, index) => {
-    const stepNumber = String(index + 1).padStart(2, "0");
-    const packageId = `${id}-plan-step-${stepNumber}`;
-    const stepAcceptanceGates = uniqueStrings([
-      ...baseAcceptanceGates,
-      ...(reviewAcceptanceGates[index] ? [reviewAcceptanceGates[index]] : []),
-      `完成已审核实施步骤 ${index + 1}：${step}`
-    ]);
-    const workPackage = {
-      id: packageId,
-      title: `${title}：实施步骤 ${stepNumber} / ${total}`,
-      action: "execute_requirement_plan_step",
-      owned_files: ownedFiles.length > 0 ? ownedFiles : ["."],
-      acceptance_gates: stepAcceptanceGates,
-      depends_on: previousDependencyIds,
-      reason: step,
-      global_goal_id: id,
-      source: {
-        requirement_id: id,
-        plan_review_id: normalizeString(review.id),
-        plan_id: normalizeString(review.plan_id),
-        plan_step_index: index + 1,
-        plan_step_total: total,
-        implementation_step: step,
-        constraints: normalizeString(requirement.constraints),
-        acceptance_gates: stepAcceptanceGates,
-        execution_governance: planStepExecutionGovernance({
-          granularity: "single_step",
-          gateCount: stepAcceptanceGates.length
-        })
-      }
-    };
-    const normalizedPackages = normalizeRequirementPlanWorkPackagesGranularity([workPackage]);
-    packages.push(...normalizedPackages);
-    previousDependencyIds = normalizedPackages.length > 0
-      ? [normalizeString(normalizedPackages.at(-1).id)]
-      : [packageId];
-  });
-
-  return packages;
 }
 
 function nextArtifactId(workflowState = {}, requirementId = "") {

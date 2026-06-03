@@ -21,23 +21,15 @@ const DEFAULT_PROMPT_OUTPUT = "tmp/audit-skill-trial/governance-audit-current.pr
 
 function usage() {
   return [
-    "usage: run-governance-audit-skill-trial.mjs [--project-root PATH] [--skill-path PATH]",
-    "                                           [--route URL] [--claimed-stack TEXT]",
-    "                                           [--output PATH] [--raw-output PATH] [--prompt-output PATH]",
-    "                                           [--record-workbench-url URL]",
-    "                                           [--runner-command CMD --runner-arg ARG...]",
-    "                                           [--state-db PATH]",
-    "                                           [--timeout-seconds N] [--no-fail-on-blocking-verdict]",
+    "usage: run-governance-audit-skill-trial.mjs [--project-root PATH] [--skill-path PATH] [--route URL] [--claimed-stack TEXT]",
+    "       [--output PATH] [--raw-output PATH] [--prompt-output PATH] [--record-workbench-url URL]",
+    "       [--runner-command CMD --runner-arg ARG...] [--state-db PATH] [--timeout-seconds N] [--no-fail-on-blocking-verdict]",
     "",
     "Invokes the governed agent invocation profile to read governance-audit-orchestrator/SKILL.md and produce an audit-skill-trial-run.v1 artifact."
   ].join("\n");
 }
 
-function requiredValue(argv, index, arg) {
-  const value = argv[index + 1];
-  if (!value || value.startsWith("--")) throw new Error(`missing value for ${arg}`);
-  return value;
-}
+function requiredValue(argv, index, arg) { const value = argv[index + 1]; if (!value || value.startsWith("--")) throw new Error(`missing value for ${arg}`); return value; }
 
 function parseArgs(argv) {
   const options = {
@@ -106,9 +98,7 @@ function parseArgs(argv) {
   return options;
 }
 
-function ensureParent(path) {
-  mkdirSync(dirname(resolve(path)), { recursive: true });
-}
+function ensureParent(path) { mkdirSync(dirname(resolve(path)), { recursive: true }); }
 
 function buildPrompt(options) {
   const dimensions = AUDIT_SKILL_DIMENSIONS.map((dimension) => `- ${dimension}`).join("\n");
@@ -166,8 +156,7 @@ function buildPrompt(options) {
 
 function truncate(value, maxLength = 12000) {
   const text = String(value || "");
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength)}\n...[truncated ${text.length - maxLength} chars]`;
+  return text.length <= maxLength ? text : `${text.slice(0, maxLength)}\n...[truncated ${text.length - maxLength} chars]`;
 }
 
 function runEvidenceCommand(label, command, options) {
@@ -448,7 +437,15 @@ function extractJsonObject(text) {
     }
   }
   if (parsedObjects.length > 0) return parsedObjects[0];
+  const textualVerdict = extractTextualFinalVerdict(raw);
+  if (textualVerdict) return textualVerdict;
   throw new Error("governed agent output did not contain a parseable JSON object");
+}
+
+function extractTextualFinalVerdict(text) {
+  const pattern = /(?:总评|最终结论|最终判定|审计结论|overall verdict)(?:\*\*)?\s*[:：]\s*[`"'“”‘’]*\s*(带条件通过|不通过|需补证|通过)(?=\s*[`"'“”‘’]*(?:$|\s|[。.!！,，;；:：\-—]))/iu;
+  const match = String(text || "").split(/\r?\n/u).map((line) => line.match(pattern)).find(Boolean);
+  return match ? { skill_used: true, final_verdict: match[1], findings: [] } : null;
 }
 
 function normalizeArtifact(artifact, options, invocation) {
