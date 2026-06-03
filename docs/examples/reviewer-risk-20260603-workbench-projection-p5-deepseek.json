@@ -1,0 +1,77 @@
+{
+  "artifact_type": "external_reviewer_risk_assessment",
+  "reviewer": "claude-code-via-deepseek",
+  "model": "deepseek-v4-pro with deepseek-v4-flash synthesis",
+  "created_at": "2026-06-03T14:44:39+08:00",
+  "phase": "LFA-P5",
+  "subject": "Workbench projection root test large-file reduction",
+  "verdict": "pass_after_delta",
+  "scope": [
+    "test/workbench-projection.test.js",
+    "test/helpers/workbench-projection.js",
+    "test/workbench-projection-project-management.test.js",
+    "test/workbench-projection-project-management-dispatch.test.js",
+    "test/workbench-projection-governance-lifecycle.test.js",
+    "test/workbench-projection-agent-lifecycle.test.js",
+    "test/workbench-projection-agent-lifecycle-closed.test.js",
+    "test/workbench-projection-headless-evidence.test.js",
+    "test/workbench-projection-continuation.test.js",
+    "test/workbench-projection-continuation-terminal.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md"
+  ],
+  "questions": [
+    "Whether the split lost, duplicated, misplaced, or weakened projection test assertions.",
+    "Whether the shared helper introduced cross-test mutable state, path errors, or unreasonable coupling.",
+    "Whether the manifest and stateful plan honestly keep the root file as planned_refactor with a compliant next target.",
+    "Whether the split created new near-threshold or large-file bypass risk."
+  ],
+  "initial_review": {
+    "verdict": "fail",
+    "blocking_findings": [
+      {
+        "id": "p5-3-status-mismatch",
+        "summary": "The plan marked LFA-P5.3 as pass while its acceptance text still said full large-file and closeout gates were pending."
+      }
+    ],
+    "non_blocking_findings": []
+  },
+  "repairs": [
+    {
+      "id": "p5-3-status-corrected",
+      "summary": "Changed LFA-P5.3 to in_progress until full gates complete."
+    },
+    {
+      "id": "near-threshold-shards-split",
+      "summary": "Split all newly extracted projection shards below 300 lines and reran the large-file gate against staged files."
+    },
+    {
+      "id": "helper-and-import-cleanup",
+      "summary": "Changed helper task_dag construction to a shallow copy and removed unused createRunManifest imports from two shard files."
+    }
+  ],
+  "final_review": {
+    "verdict": "pass",
+    "blocking_findings": [],
+    "non_blocking_findings": [
+      {
+        "id": "task-dag-shallow-copy-not-deep",
+        "summary": "The helper shallow-copies work package objects but not nested arrays. DeepSeek assessed this as non-blocking because current fixture shapes are shallow and tests do not mutate nested work package data in place."
+      }
+    ],
+    "evidence": [
+      "Root projection test file is 1434 lines, down from the 3175-line baseline.",
+      "All extracted projection shards are below 300 lines.",
+      "Manifest keeps test/workbench-projection.test.js as planned_refactor with target_lines 1184 and minimum_reduction 250.",
+      "Plan keeps LFA-P5 in review_pending during review and does not mark full gates pass before they run.",
+      "DeepSeek delta review found no blocking behavior, import, or shared-state risk in the post-PASS cleanup."
+    ]
+  },
+  "local_gate_evidence": [
+    "Focused projection shard tests passed 55/55.",
+    "npm test passed 995/995.",
+    "npm run check:large-files passed with staged files and no warnings.",
+    "npm run check:closeout passed after installing ignored root and Workbench app dependencies in the isolated worktree.",
+    "git diff --check passed."
+  ]
+}

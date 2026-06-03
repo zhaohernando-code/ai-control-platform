@@ -248,15 +248,15 @@
       "rechallenge_due": "2026-07-03"
     },
     "test/workbench-projection.test.js": {
-      "lines": 3175,
-      "reason": "Workbench projection tests cover the full projection schema, provider failure attribution, project-management fixtures, mobile projection, and many regression fixtures; one-screen helper counter coverage was extracted to test/workbench-projection-one-screen.test.js, and further staged split should follow schema subdomains.",
+      "lines": 1434,
+      "reason": "Workbench projection root tests were reduced from the 3175-line baseline by extracting shared fixtures plus project-management, project-management-dispatch, governance-lifecycle, agent-lifecycle, headless-evidence, continuation, and continuation-terminal shards; one-screen helper counter coverage remains in its own shard. The root still covers broad projection, terminal closeout, browser evidence, reviewer, scheduler, timeline, operator-event, mobile, and input-validation contracts, so it remains planned debt until the next domain extraction brings it to 1184 lines or below.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 3175,
-        "target_lines": 1800,
-        "minimum_reduction": 500,
-        "terminal_condition": "Projection root suite must fall below 1800 lines before this phase can close; then continue toward below 1200 lines.",
+        "base_lines": 1434,
+        "target_lines": 1184,
+        "minimum_reduction": 250,
+        "terminal_condition": "Projection root suite must fall to 1184 lines or below through additional stable domain shards that preserve existing behavior assertions.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
       }
     },

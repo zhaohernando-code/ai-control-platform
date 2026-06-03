@@ -2,7 +2,7 @@
 
 Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T13:10:00+08:00
+Updated at: 2026-06-03T15:11:16+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -194,6 +194,19 @@ Goal: apply the strict reduction rule to the highest-priority runtime entrypoint
 | LFA-P4.3 | Run focused gates | Command evidence | Focused server route/state tests passed 86/86 after the final route extractions. Final gates passed: `npm test` 995/995; `npm run check:large-files`; `npm run check:closeout`; `git diff --check`. API route contract and closeout route source lists were updated to cover the extracted route modules. | pass |
 | LFA-P4.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-entrypoint-p4-deepseek.json` | Initial DS synthesis rejected the earlier 2899-line interim split as not reaching the 2000-line target. The implementation was extended to 1954 lines; final delta synthesis returned PASS with no blockers. Post-closeout runner stabilization is covered by the final gate evidence. | pass |
 
+### Phase LFA-P5: Workbench Projection Test Root Reduction Step 1
+
+Status: pass
+
+Goal: reduce `test/workbench-projection.test.js` below the 1800-line phase target through real domain test shards without weakening the projection contract.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P5.1 | Select the next highest test target | This document and `.largefile-manifest.json` | Selected `test/workbench-projection.test.js` because it was the largest remaining test root after P3/P4, with a 3175-line baseline, a required 500-line minimum reduction, and an 1800-line phase target. | pass |
+| LFA-P5.2 | Extract stable projection test domains | `test/helpers/workbench-projection.js`; `test/workbench-projection-project-management.test.js`; `test/workbench-projection-project-management-dispatch.test.js`; `test/workbench-projection-governance-lifecycle.test.js`; `test/workbench-projection-agent-lifecycle.test.js`; `test/workbench-projection-agent-lifecycle-closed.test.js`; `test/workbench-projection-headless-evidence.test.js`; `test/workbench-projection-continuation.test.js`; `test/workbench-projection-continuation-terminal.test.js` | Root projection suite reduced from 3175 to 1434 lines, below the 1800-line phase target. Extracted shards are all below 300 lines. The target remains open with a new 1184-line reduction target instead of being marked complete. | pass |
+| LFA-P5.3 | Run focused and final gates | Command evidence | Focused projection gates passed 55/55. Final gates passed: `npm test` 995/995, `npm run check:large-files` with staged files and no warnings, `npm run check:closeout`, and `git diff --check`. Root and app dependencies were installed in the isolated worktree so browser/Next closeout gates could run. | pass |
+| LFA-P5.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-projection-p5-deepseek.json` | Initial DS review failed on a plan status mismatch. After correcting status and splitting new shards below 300 lines, final DS synthesis returned PASS. A post-PASS delta review also returned PASS after helper/import cleanup. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -203,6 +216,7 @@ Goal: apply the strict reduction rule to the highest-priority runtime entrypoint
 | LFA-P2 | pass | Focused tests passed: `node tools/run-with-node18.mjs --test test/large-file-report.test.js test/large-file-reduction-targets.test.js test/select-affected-tests.test.js test/governance-enrollment.test.js`; `npm run check:large-files`; `git diff --check`; `npm test`; `npm run check:closeout`. DeepSeek final delta PASS is recorded in `docs/examples/reviewer-risk-20260603-large-file-reduction-p2-deepseek.json`. | DeepSeek PASS after delta |
 | LFA-P3 | pass | Selected Q01 `test/workbench-server.test.js`; root shard is 1717 lines after split, target tests, large-file gate, full `npm test`, and full closeout passed. DeepSeek initial fail was repaired; delta review passed with no blocking findings. | DeepSeek PASS after delta |
 | LFA-P4 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1954 lines after extracting HTTP utilities, loop/next-action support, CLI parsing, mainline preflight evaluator, snapshot/event routes, requirement routes, scheduler dispatch routes, and scheduler loop/next-action routes. Final gates passed: focused server tests 86/86, `npm test` 995/995, large-file gate, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
+| LFA-P5 | pass | Selected `test/workbench-projection.test.js`; root shard is 1434 lines after extracting shared fixtures plus project-management, project-management-dispatch, governance-lifecycle, agent-lifecycle, agent-lifecycle-closed, headless-evidence, continuation, and continuation-terminal shards, all under 300 lines. Final gates passed: focused projection tests 55/55, `npm test` 995/995, staged large-file gate with no warnings, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 
