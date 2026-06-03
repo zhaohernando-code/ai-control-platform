@@ -1,0 +1,61 @@
+{
+  "version": "deepseek-review-summary.v1",
+  "phase": "LFA-P13",
+  "reviewed_at": "2026-06-03T22:10:00+08:00",
+  "reviewer": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "synthesis_model": "deepseek-v4-flash",
+    "mode": "read_only_sharded"
+  },
+  "target": "test/workbench-server.test.js",
+  "initial_review": {
+    "status": "fail",
+    "blocking_findings": [
+      {
+        "code": "missing_manifest_entry_for_extracted_shard",
+        "message": ".largefile-manifest.json referenced test/workbench-server-requirement-plan-generation.test.js only inside split_evidence.moved_domains, but lacked an independent accepted entry for the extracted shard."
+      }
+    ],
+    "confirmed_non_blocking_evidence": [
+      "Root and extracted shard test-name parity was 17 before / 17 after with no missing, added, or duplicate tests.",
+      "WORKBENCH_SERVER_TEST_FILES included the P13 shard so generated acceptance gates covered it.",
+      "The root test suite was reduced from 1363 to 1092 lines and retained an 850-line follow-up target."
+    ]
+  },
+  "fixes": [
+    {
+      "file": ".largefile-manifest.json",
+      "summary": "Added test/workbench-server-requirement-plan-generation.test.js as an independent accepted manifest entry at 286 lines."
+    },
+    {
+      "file": "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md",
+      "summary": "Updated LFA-P13.3 to record the new shard's independent accepted manifest entry."
+    }
+  ],
+  "delta_review": {
+    "status": "pass",
+    "summary": "DeepSeek delta review confirmed the previous blocking manifest bypass risk was closed, the plan and manifest were consistent, the new shard remains below the 300-line near-threshold boundary, and no new P13 blocking issue was introduced."
+  },
+  "local_gates_before_review": [
+    {
+      "command": "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-requirement-plan-generation.test.js test/workbench-server-cli.test.js test/workbench-server-project-status-continuation.test.js test/workbench-server-agent-key-routes.test.js test/workbench-server-shard-01.test.js test/workbench-server-shard-02.test.js test/workbench-server-shard-03.test.js test/workbench-server-shard-04.test.js test/workbench-server-shard-05.test.js test/workbench-server-shard-06.test.js test/workbench-server-shard-07.test.js test/workbench-server-shard-08.test.js test/workbench-server-shard-09.test.js test/workbench-server-shard-10.test.js test/workbench-server-shard-11.test.js test/workbench-state-store.test.js test/api-route-contract.test.js",
+      "result": "pass",
+      "tests": {
+        "passed": 91,
+        "failed": 0
+      }
+    },
+    {
+      "command": "npm run check:large-files",
+      "result": "pass",
+      "issues": 0,
+      "warnings": 0
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "verdict": "pass"
+}

@@ -1,0 +1,75 @@
+{
+  "version": "large-file-split-parity.v1",
+  "phase": "LFA-P13",
+  "status": "pass",
+  "base_ref": "6e9dcb228d129af6d8232816740f328ba8682b02",
+  "target": "test/workbench-server.test.js",
+  "before": {
+    "files": [
+      "test/workbench-server.test.js"
+    ],
+    "test_count": 17,
+    "tests": [
+      "workbench server returns latest projection",
+      "workbench server builds latest projection from workflow state input",
+      "workbench server overlays repository PROJECT_STATUS into workflow projections",
+      "workbench server accepts frontend requirements into autonomous continuation flow",
+      "workbench server persists frontend requirement before model plan generation",
+      "workbench server retries and closes failed requirement plan generation",
+      "workbench server falls back to a governed requirement plan model after timeout",
+      "workbench server can apply a supplied plan when retrying failed plan generation",
+      "workbench server records plan review decisions",
+      "workbench server starts development automatically after plan review approval",
+      "workbench server stages resume execution in background without blocking projection API",
+      "workbench server completes requirement intake only with verified provider completion authority",
+      "workbench server closes requirement when all approved implementation packages finish",
+      "workbench server can complete requirement intake through configured governed agent executor",
+      "workbench server truncates generated context pack snapshot ids for long projection ids",
+      "workbench server only completes verified provider profile with configured executor",
+      "workbench next action defaults requirement implementation packages to verified provider execution"
+    ],
+    "line_count": 1363
+  },
+  "after": {
+    "files": [
+      "test/workbench-server.test.js",
+      "test/workbench-server-requirement-plan-generation.test.js"
+    ],
+    "test_count": 17,
+    "tests_by_file": {
+      "test/workbench-server.test.js": [
+        "workbench server returns latest projection",
+        "workbench server builds latest projection from workflow state input",
+        "workbench server overlays repository PROJECT_STATUS into workflow projections",
+        "workbench server falls back to a governed requirement plan model after timeout",
+        "workbench server can apply a supplied plan when retrying failed plan generation",
+        "workbench server records plan review decisions",
+        "workbench server starts development automatically after plan review approval",
+        "workbench server stages resume execution in background without blocking projection API",
+        "workbench server completes requirement intake only with verified provider completion authority",
+        "workbench server closes requirement when all approved implementation packages finish",
+        "workbench server can complete requirement intake through configured governed agent executor",
+        "workbench server truncates generated context pack snapshot ids for long projection ids",
+        "workbench server only completes verified provider profile with configured executor",
+        "workbench next action defaults requirement implementation packages to verified provider execution"
+      ],
+      "test/workbench-server-requirement-plan-generation.test.js": [
+        "workbench server accepts frontend requirements into autonomous continuation flow",
+        "workbench server persists frontend requirement before model plan generation",
+        "workbench server retries and closes failed requirement plan generation"
+      ]
+    },
+    "line_counts": {
+      "test/workbench-server.test.js": 1092,
+      "test/workbench-server-requirement-plan-generation.test.js": 286
+    }
+  },
+  "missing": [],
+  "added": [],
+  "duplicate_names": [],
+  "moved_tests": [
+    "workbench server accepts frontend requirements into autonomous continuation flow",
+    "workbench server persists frontend requirement before model plan generation",
+    "workbench server retries and closes failed requirement plan generation"
+  ]
+}

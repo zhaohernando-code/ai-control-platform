@@ -1,8 +1,8 @@
 # Large File Anti-Abuse and Reduction Plan
 
-Status: pass
+Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T21:52:38+08:00
+Updated at: 2026-06-03T22:17:32+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -42,7 +42,7 @@ Highest active reduction targets:
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
 | LFA-Q01 | `test/headless-cli-orchestrator.test.js` | 1745 | `planned_refactor` | Split by acceptance, provider, continuation, and projected-action fixtures until below 1200 lines. |
-| LFA-Q02 | `test/workbench-server.test.js` | 1717 | `planned_refactor` | Continue splitting broad projection, CLI, requirement-intake, and continuation-flow tests until below 1400 lines. |
+| LFA-Q02 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Reduced in LFA-P13; continue stable server test shards until below 850 lines. |
 | LFA-Q03 | `test/frontend-acceptance.test.js` | 1670 | `planned_refactor` | Split content, layout, console, mounted route, favicon, and live-route false-pass coverage until below 1200 lines. |
 | LFA-Q04 | `tools/retired-workbench-frontend-acceptance.mjs` | 1596 | `deleted in LFA-P11` | Removed after the Next frontend-acceptance gate and legacy fail-closed wrapper remained covered by focused tests. |
 | LFA-Q05 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Reduced in LFA-P12; continue stable projection domain shards until below 800 lines. |
@@ -311,6 +311,21 @@ Goal: reduce `test/workbench-projection.test.js` below the 1184-line phase targe
 | LFA-P12.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-projection-test-p12-deepseek.json` | Initial sharded DeepSeek synthesis failed because `.largefile-manifest.json` lacked `split_evidence` and the sharded view did not jointly prove root plus both scheduler shards. After adding manifest split evidence, delta review read the root suite, both scheduler shards, manifest entry, and parity artifact together and returned PASS with no blocking findings. | pass |
 | LFA-P12.6 | Run final gates | Command evidence | Final gates passed: focused projection tests 70/70, `npm test` 998/998, `npm run check:large-files` with no issues and no warnings, `git diff --check`, and `npm run check:closeout`. The isolated worktree required ignored dependency installs with `npm ci` at the repo root and in `apps/workbench` so Playwright and Next.js closeout gates could run. | pass |
 
+### Phase LFA-P13: Workbench Server Test Root Reduction Step 3
+
+Status: pass
+
+Goal: reduce `test/workbench-server.test.js` below the 1100-line phase target without changing Workbench server API behavior or weakening requirement submission, plan generation, failed-plan retry/close, generated acceptance gates, or existing server shard coverage.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P13.1 | Select current test target | This document and `.largefile-manifest.json` | Selected `test/workbench-server.test.js` because it is the current highest-priority queue item at 1363 lines, with a required 250-line minimum reduction and a 1100-line phase target. | pass |
+| LFA-P13.2 | Extract bounded requirement plan-generation shard | `test/workbench-server-requirement-plan-generation.test.js`; `test/workbench-server.test.js`; `test/helpers/workbench-server.js`; `.largefile-manifest.json` | Root Workbench server suite reduced from 1363 to 1092 lines, below the 1100-line phase target. The new requirement plan-generation shard is 286 lines and the shared helper remains 285 lines after adding the new shard to `WORKBENCH_SERVER_TEST_FILES`, so neither file crosses the 300-line near-threshold warning boundary. The target remains open with a new 850-line target. | pass |
+| LFA-P13.3 | Prove split parity and fixture gate coverage | `docs/examples/workbench-server-test-p13-split-parity.json`; `test/helpers/workbench-server.js`; `.largefile-manifest.json` | Test-name parity against base `6e9dcb228d129af6d8232816740f328ba8682b02` passed: 17 before / 17 after across the root plus new requirement plan-generation shard, with no missing, added, or duplicate test names. Shared fixture `WORKBENCH_SERVER_TEST_FILES` now references the P13 shard so generated acceptance gates include it, and the extracted shard is registered as an independent accepted manifest entry at 286 lines. | pass |
+| LFA-P13.4 | Run focused gates | Command evidence | Focused server/API/state gates passed 91/91: `node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-requirement-plan-generation.test.js test/workbench-server-cli.test.js test/workbench-server-project-status-continuation.test.js test/workbench-server-agent-key-routes.test.js test/workbench-server-shard-01.test.js test/workbench-server-shard-02.test.js test/workbench-server-shard-03.test.js test/workbench-server-shard-04.test.js test/workbench-server-shard-05.test.js test/workbench-server-shard-06.test.js test/workbench-server-shard-07.test.js test/workbench-server-shard-08.test.js test/workbench-server-shard-09.test.js test/workbench-server-shard-10.test.js test/workbench-server-shard-11.test.js test/workbench-state-store.test.js test/api-route-contract.test.js`. | pass |
+| LFA-P13.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-test-p13-deepseek.json` | Initial DeepSeek review failed on one blocking manifest completeness issue: the extracted P13 shard lacked an independent accepted manifest entry. Delta review passed after adding `test/workbench-server-requirement-plan-generation.test.js` to `.largefile-manifest.json` at 286 lines and syncing this plan. | pass |
+| LFA-P13.6 | Run final gates | Command evidence | Final gates passed: `npm test` 998/998, `npm run check:large-files` pass with no issues/warnings, `git diff --check` pass, and `npm run check:closeout` pass after installing root/app dependencies in the isolated worktree to satisfy browser/Next checks. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -328,6 +343,7 @@ Goal: reduce `test/workbench-projection.test.js` below the 1184-line phase targe
 | LFA-P10 | pass | Selected `test/frontend-acceptance.test.js`; root suite is 577 lines after extracting shared fixtures plus copy/content, diagnostic content, project-management semantics, and command-architecture shards, all under 300 lines. Split parity passed 36/36 with no missing, added, or duplicate tests. Final gates passed: focused frontend acceptance tests 36/36, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS |
 | LFA-P11 | pass | Selected `tools/retired-workbench-frontend-acceptance.mjs`; deleted the 1596-line retired legacy-static runner after moving still-used artifact builder exports into bounded helper modules under 300 lines. Parity artifact proved old/new artifact and option behavior matched, focused frontend acceptance/Next wiring/legacy retirement tests passed 43/43, `npm test` passed 998/998, large-file gate and full closeout passed. | DeepSeek PASS after delta |
 | LFA-P12 | pass | Selected `test/workbench-projection.test.js`; root suite is 1025 lines after extracting scheduler dispatch/continuation/policy and scheduler loop/resume coverage into two shards under 300 lines. Split parity passed 25/25 with no missing, added, or duplicate tests. Final gates passed: focused projection tests 70/70, `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS after delta |
+| LFA-P13 | pass | Selected `test/workbench-server.test.js`; root suite is 1092 lines after extracting requirement submission, pending plan generation, and failed plan retry/close coverage into a 286-line shard. Split parity passed 17/17 with no missing, added, or duplicate tests. Focused server/API/state tests passed 91/91. Final gates passed: `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. DeepSeek initial fail was repaired by adding the shard's independent manifest entry; delta review passed. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 

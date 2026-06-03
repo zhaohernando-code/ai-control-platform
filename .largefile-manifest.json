@@ -347,35 +347,34 @@
       }
     },
     "test/workbench-server.test.js": {
-      "lines": 1363,
-      "reason": "Workbench server root tests were reduced from the P9 1717-line baseline by extracting the CLI bootstrap/state-db/port-validation cluster and the project-status continuation next-action/context-pack execution-profile guard flow into bounded shards under 300 lines, then cleaning unused root imports. The root still covers projection basics, requirement intake, plan generation/review, background resume, verified-provider completion, requirement closeout, provider-context completion checks, and long context-pack snapshot id handling, so it remains planned debt instead of being accepted. Split parity is recorded in docs/examples/workbench-server-test-p9-split-parity.json with 21 before / 21 after tests and no missing, added, or duplicate names.",
+      "lines": 1092,
+      "reason": "Workbench server root tests were reduced from the P13 1363-line baseline by extracting requirement submission, pending plan generation, and failed plan generation retry/close coverage into a bounded requirement-plan-generation shard under 300 lines. The root still covers projection basics, plan generation fallback/supplied plan, plan review, background resume, verified-provider completion, requirement closeout, provider-context completion checks, and long context-pack snapshot id handling, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/workbench-server-test-p13-split-parity.json with 17 before / 17 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1363,
-        "target_lines": 1100,
-        "minimum_reduction": 250,
-        "terminal_condition": "Workbench server root suite must fall to 1100 lines or below through additional stable domain shards while preserving requirement intake and verified-provider behavior assertions.",
+        "base_lines": 1092,
+        "target_lines": 850,
+        "minimum_reduction": 219,
+        "terminal_condition": "Workbench server root suite must fall to 850 lines or below through additional stable domain shards while preserving plan review, provider completion, closeout, and provider-context assertions.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
       },
       "split_evidence": {
-        "parity_artifact": "docs/examples/workbench-server-test-p9-split-parity.json",
-        "before_count": 21,
-        "after_count": 21,
+        "parity_artifact": "docs/examples/workbench-server-test-p13-split-parity.json",
+        "before_count": 17,
+        "after_count": 17,
         "moved_domains": {
-          "test/workbench-server-cli.test.js": "workbench_server_cli_bootstrap_state_db_and_port_validation",
-          "test/workbench-server-project-status-continuation.test.js": "project_status_continuation_context_pack_and_execution_profile_guards"
+          "test/workbench-server-requirement-plan-generation.test.js": "requirement_submission_pending_plan_generation_and_retry_close"
         },
         "retained_root_domains": [
           "projection_basics",
-          "requirement_intake_and_plan_generation",
+          "plan_generation_fallback_and_supplied_plan",
           "plan_review_and_background_resume",
           "verified_provider_requirement_completion",
           "requirement_closeout_and_next_action_defaults",
           "provider_context_completion_checks",
           "long_context_pack_snapshot_id_handling"
         ],
-        "helper_gate_scope_note": "WORKBENCH_SERVER_TEST_FILES includes pre-existing P3 server shards, agent-key routes, root, and P9 shards; P9 parity counts cover only the root-to-new-shard migration set."
+        "helper_gate_scope_note": "WORKBENCH_SERVER_TEST_FILES includes pre-existing server shards plus P9 and P13 shards; P13 parity counts cover only the root-to-new-shard migration set."
       }
     },
     "tools/workbench-server.mjs": {
@@ -493,7 +492,7 @@
     },
     "test/helpers/workbench-server.js": {
       "lines": 285,
-      "reason": "Workbench server test helper kept below the near-threshold budget while preserving shared server lifecycle, request, CLI process, workflow-state, provider execution, and fixture helpers. The WORKBENCH_SERVER_TEST_FILES fixture gate enumerates the root suite, existing server shards, and P9 CLI/project-status continuation shards.",
+      "reason": "Workbench server test helper kept below the near-threshold budget while preserving shared server lifecycle, request, CLI process, workflow-state, provider execution, and fixture helpers. The WORKBENCH_SERVER_TEST_FILES fixture gate enumerates the root suite, existing server shards, and P9/P13 extracted shards.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
     },
@@ -506,6 +505,12 @@
     "test/workbench-server-project-status-continuation.test.js": {
       "lines": 264,
       "reason": "Extracted Workbench server project-status continuation shard kept below the near-threshold budget while preserving next-action context-pack creation, unsupported provider profile guards, bounded mock no-completion semantics, and local bounded completion coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-03"
+    },
+    "test/workbench-server-requirement-plan-generation.test.js": {
+      "lines": 286,
+      "reason": "Extracted Workbench server requirement plan-generation shard kept below the near-threshold budget while preserving requirement submission, pending plan generation, and failed plan retry/close coverage.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
     },
