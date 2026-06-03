@@ -127,7 +127,8 @@
       "lines": 897,
       "reason": "Provider executor tests share mock provider and structured output fixtures across success, timeout, depth-bounded parsing, and error paths.",
       "status": "accepted",
-      "reviewed_at": "2026-05-29"
+      "reviewed_at": "2026-05-29",
+      "rechallenge_due": "2026-07-03"
     },
     "test/context-work-package-runner.test.js": {
       "lines": 1242,
@@ -152,7 +153,8 @@
       "lines": 799,
       "reason": "Workbench shell tests now cover the Next.js/Ant Design shell contract, mounted runtime replacement gates, hook/API regressions, operation readouts, responsive overflow guards, and scheduler writeback invariants without reading legacy desktop/mobile shell assets.",
       "status": "accepted",
-      "reviewed_at": "2026-06-03"
+      "reviewed_at": "2026-06-03",
+      "rechallenge_due": "2026-07-03"
     },
     "test/workbench-projection.test.js": {
       "lines": 3175,

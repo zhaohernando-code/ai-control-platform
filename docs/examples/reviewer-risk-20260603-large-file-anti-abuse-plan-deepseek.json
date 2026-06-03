@@ -1,0 +1,64 @@
+{
+  "version": "ai-reviewer-verdict.v1",
+  "review_id": "reviewer-risk-20260603-large-file-anti-abuse-plan-deepseek",
+  "reviewed_at": "2026-06-03T10:15:00+08:00",
+  "reviewer": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "mode": "read_only_bounded_review"
+  },
+  "scope": {
+    "plan": "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md",
+    "focus": [
+      "large-file manifest anti-abuse semantics",
+      "material large-file reduction criteria",
+      "AI-governed reviewer independence without human code-detail review"
+    ]
+  },
+  "initial_review": {
+    "verdict": "FAIL",
+    "blocking_findings": [
+      {
+        "id": "BF-001",
+        "summary": "The undefined next target threshold shortcut could allow tiny reductions to count as terminal progress."
+      },
+      {
+        "id": "BF-002",
+        "summary": "The initial plan did not operationalize independent review strongly enough to prevent implementation self-approval."
+      },
+      {
+        "id": "BF-003",
+        "summary": "The extracted-module 400/500 line threshold could block legitimate large-file refactors or force harmful micro-shards."
+      }
+    ],
+    "non_blocking_findings": [
+      "Path-renaming bypass needed explicit filesystem scanning and similarity follow-up.",
+      "Near-threshold file accumulation needed a secondary budget.",
+      "Moving branch baselines could allow two-commit inflation.",
+      "Accepted files over 750 lines needed enforceable re-challenge."
+    ]
+  },
+  "delta_review": {
+    "verdict": "PASS",
+    "blocking_findings": [],
+    "non_blocking_findings": [
+      {
+        "id": "NBF-DELTA-001",
+        "summary": "Plan statuses needed to be updated after delta review."
+      },
+      {
+        "id": "NBF-DELTA-002",
+        "summary": "The operational meaning of a separate reviewer invocation should be clarified during LFA-P1.8."
+      },
+      {
+        "id": "NBF-DELTA-003",
+        "summary": "The 800-line extracted-module ceiling may need monitoring during the first strict test-shard split."
+      }
+    ],
+    "required_changes": []
+  },
+  "resolution": {
+    "status": "pass_after_delta",
+    "summary": "The plan now defines numeric threshold floors plus a 15% minimum reduction, replaces the overstrict extracted-module threshold with an 800-line domain-aware ceiling, requires tracked filesystem debt scanning, adds near-threshold and accepted-file re-challenge gates, and clarifies reviewer anti-self-dealing requirements."
+  }
+}

@@ -2,10 +2,14 @@
 
 Status: pass
 Created at: 2026-06-02T15:00:00+08:00  
-Updated at: 2026-06-03T09:20:00+08:00
+Updated at: 2026-06-03T10:15:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review  
 
 ## Current Decision
+
+Active successor: `docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md`.
+
+This historical plan completed the first governance cycle, but its original manifest semantics were too permissive: a model could still grow a file while updating `.largefile-manifest.json` to match. Future large-file work must follow the successor plan's debt-ceiling rules, anti-abuse gate, and material reduction criteria.
 
 `docs/governance/AI_GOVERNED_RISK_CLOSEOUT_PLAN.md` is now an archive index. The full historical plan has been moved to `docs/governance/archive/AI_GOVERNED_RISK_CLOSEOUT_PLAN.archived-20260602.md`.
 
