@@ -274,16 +274,16 @@
       }
     },
     "tools/workbench-server.mjs": {
-      "lines": 3447,
-      "reason": "Workbench server entrypoint wires API handlers, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior while the server is still a single operational boundary. Agent key and agent health routes were extracted to tools/workbench-agent-key-routes.mjs; legacy static/mounted compatibility routing was extracted to tools/workbench-static-routes.mjs; remaining route groups still require staged extraction.",
+      "lines": 1954,
+      "reason": "Workbench server entrypoint still wires API route ordering, live state stores, historical task preservation, provider dispatch execution-root propagation, and mounted public-route behavior. Agent key/health routes, legacy static routing, HTTP JSON utilities, local loop/projected next-action support, CLI parsing, mainline preflight evaluation, snapshot/event routes, requirement routes, scheduler dispatch routes, and scheduler loop/next-action routes have been extracted into bounded helper modules. Remaining reviewer, context-pack/context-work-package, projection-history, and state-bootstrap groups still require staged extraction.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 3447,
-        "target_lines": 2000,
-        "minimum_reduction": 500,
-        "terminal_condition": "Server entrypoint must fall below 2000 lines before this phase can close; then continue toward below 1200 lines.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "base_lines": 1954,
+        "target_lines": 1200,
+        "minimum_reduction": 250,
+        "terminal_condition": "Server entrypoint must fall below 1200 lines before this queue item can be reconsidered for accepted status.",
+        "next_phase": "Continue staged extraction of reviewer, context-pack/context-work-package, projection-history, and state-bootstrap groups while the entrypoint remains above 1200 lines."
       }
     },
     "src/workflow/workbench-next-action-readout.js": {

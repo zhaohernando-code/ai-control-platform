@@ -382,6 +382,22 @@ test("governance audit skill runner normalizes compact evidence plan aliases", (
           estimated_cost_or_effort: "low",
           confidence_gain: "medium"
         }
+      },
+      {
+        id: "optional-single-option",
+        dimension: "model_collaboration",
+        type: "可选迭代",
+        severity: "低",
+        disposition: "用户决策",
+        summary: "optional follow-up uses only one model-supplied option",
+        evidence_ids: ["governance-skill-invocation"],
+        decision_package: {
+          options: ["无操作（当前实现已验证通过）"],
+          tradeoffs: "none",
+          recommended_option: "无操作",
+          estimated_cost_or_effort: "0",
+          confidence_gain: "already verified"
+        }
       }
     ]
   };
@@ -413,6 +429,8 @@ test("governance audit skill runner normalizes compact evidence plan aliases", (
   assert.equal(output.findings[0].evidence_plan.minimum_command_or_entrypoint, "node --test test/workbench-next-browser-events.test.js");
   assert.equal(output.findings[0].evidence_plan.blocking_closure, false);
   assert.equal(output.findings[1].decision_package.estimated_cost, "low");
+  assert.equal(output.findings[2].decision_package.options.length, 2);
+  assert.equal(output.findings[2].decision_package.options[1], "记录为非阻断跟进，在下一轮治理中复核");
 });
 
 test("governance audit skill runner blocks closeout when invoked skill returns a failing verdict", () => {

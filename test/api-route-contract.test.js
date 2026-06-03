@@ -17,7 +17,11 @@ const read = (rel) => readFileSync(resolve(root, rel), "utf8");
 
 const BACKEND_ROUTE_SOURCES = [
   "tools/workbench-server.mjs",
-  "tools/workbench-agent-key-routes.mjs"
+  "tools/workbench-agent-key-routes.mjs",
+  "tools/workbench-basic-routes.mjs",
+  "tools/workbench-requirement-routes.mjs",
+  "tools/workbench-scheduler-dispatch-routes.mjs",
+  "tools/workbench-scheduler-loop-routes.mjs"
 ];
 const FRONTEND = "apps/workbench/lib/api/index.ts";
 const readBackendRouteSources = () => BACKEND_ROUTE_SOURCES.map(read);

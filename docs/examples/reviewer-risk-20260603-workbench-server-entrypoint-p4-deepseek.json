@@ -1,0 +1,95 @@
+{
+  "review_id": "reviewer-risk-20260603-workbench-server-entrypoint-p4-deepseek",
+  "scope": "LFA-P4 Workbench server entrypoint strict reduction",
+  "reviewer": "claude-code-through-deepseek",
+  "final_status": "pass",
+  "target": {
+    "path": "tools/workbench-server.mjs",
+    "baseline_lines": 3447,
+    "interim_lines": 2899,
+    "final_lines": 1954,
+    "initial_target_lines": 2000,
+    "next_target_lines": 1200
+  },
+  "initial_review": {
+    "status": "fail",
+    "blocking_findings": [
+      {
+        "summary": "DeepSeek rejected the interim 2899-line split because it did not reach the declared 2000-line target."
+      },
+      {
+        "summary": "DeepSeek requested confirmation that loop helper default-value semantics were moved without behavior drift."
+      },
+      {
+        "summary": "DeepSeek noted P4.4 could not close while the independent review evidence was still pending."
+      }
+    ]
+  },
+  "delta_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "summary": "The final delta review returned PASS after the server entrypoint reached 1954 lines, helper modules remained below 500 lines, manifest target advanced honestly to 1200, and route/default-value behavior was judged preserved by extraction."
+  },
+  "final_closeout_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "summary": "A post-closeout sharded DeepSeek review returned PASS after route contract and closeout source lists were synchronized with the extracted route modules, legacy static retirement assertions were preserved, and governance audit runner decision-package normalization was stabilized without growing its large-file line count."
+  },
+  "changed_files_reviewed": [
+    "tools/workbench-server.mjs",
+    "tools/workbench-basic-routes.mjs",
+    "tools/workbench-requirement-routes.mjs",
+    "tools/workbench-scheduler-dispatch-routes.mjs",
+    "tools/workbench-scheduler-loop-routes.mjs",
+    "tools/workbench-loop-client.mjs",
+    "tools/workbench-http-utils.mjs",
+    "tools/workbench-server-cli.mjs",
+    "tools/workbench-mainline-evaluator.mjs",
+    "tools/check-api-route-contract.mjs",
+    "tools/run-governance-audit-skill-trial.mjs",
+    "test/api-route-contract.test.js",
+    "test/audit-skill-trial-run.test.js",
+    "test/legacy-static-workbench-inventory.test.js",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md"
+  ],
+  "evidence": {
+    "focused_tests": {
+      "command": "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-shard-*.test.js test/workbench-server-agent-key-routes.test.js test/workbench-state-boundary.test.js",
+      "status": "pass",
+      "tests": 86
+    },
+    "large_file_gate": {
+      "command": "npm run check:large-files",
+      "status": "pass",
+      "warnings": []
+    },
+    "full_tests": {
+      "command": "npm test",
+      "status": "pass",
+      "tests": 995
+    },
+    "closeout": {
+      "command": "npm run check:closeout",
+      "status": "pass"
+    },
+    "deepseek_commands": [
+      {
+        "command": "python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_sharded_review.py --cwd <worktree> --prompt-file /tmp/ds-workbench-server-p4-review.md --focus-file tools/workbench-server.mjs --focus-file tools/workbench-http-utils.mjs --focus-file tools/workbench-loop-client.mjs --focus-file tools/workbench-server-cli.mjs --focus-file tools/workbench-mainline-evaluator.mjs --focus-file .largefile-manifest.json --focus-file docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md --max-files-per-shard 2 --shard-timeout-seconds 420 --synthesis-timeout-seconds 240 --no-progress-timeout-seconds 120 --excerpt-model deepseek-v4-flash --synthesis-model deepseek-v4-flash --effort high --observe",
+        "status": "fail"
+      },
+      {
+        "command": "python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_sharded_review.py --cwd <worktree> --prompt-file /tmp/ds-workbench-server-p4-delta.md --focus-file tools/workbench-server.mjs --focus-file tools/workbench-basic-routes.mjs --focus-file tools/workbench-requirement-routes.mjs --focus-file tools/workbench-scheduler-dispatch-routes.mjs --focus-file tools/workbench-scheduler-loop-routes.mjs --focus-file tools/workbench-loop-client.mjs --focus-file tools/workbench-http-utils.mjs --focus-file tools/workbench-server-cli.mjs --focus-file tools/workbench-mainline-evaluator.mjs --focus-file .largefile-manifest.json --focus-file docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md --max-files-per-shard 2 --shard-timeout-seconds 420 --synthesis-timeout-seconds 240 --no-progress-timeout-seconds 120 --excerpt-model deepseek-v4-flash --synthesis-model deepseek-v4-flash --effort high --observe",
+        "status": "pass"
+      },
+      {
+        "command": "python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_sharded_review.py --cwd <worktree> --prompt-file /tmp/ds-workbench-server-p4-final-closeout.md --focus-file tools/workbench-server.mjs --focus-file tools/workbench-basic-routes.mjs --focus-file tools/workbench-requirement-routes.mjs --focus-file tools/workbench-scheduler-dispatch-routes.mjs --focus-file tools/workbench-scheduler-loop-routes.mjs --focus-file tools/workbench-loop-client.mjs --focus-file tools/check-api-route-contract.mjs --focus-file tools/run-governance-audit-skill-trial.mjs --focus-file test/api-route-contract.test.js --focus-file test/audit-skill-trial-run.test.js --focus-file test/legacy-static-workbench-inventory.test.js --focus-file .largefile-manifest.json --focus-file docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md --max-files-per-shard 2 --shard-timeout-seconds 420 --synthesis-timeout-seconds 240 --no-progress-timeout-seconds 120 --excerpt-model deepseek-v4-flash --synthesis-model deepseek-v4-flash --effort high --observe",
+        "status": "pass"
+      }
+    ]
+  },
+  "residual_risks": [
+    "tools/workbench-server.mjs remains above 1200 lines and stays planned_refactor.",
+    "Remaining route groups include reviewer, context-pack/context-work-package, projection-history, and state-bootstrap wiring."
+  ]
+}

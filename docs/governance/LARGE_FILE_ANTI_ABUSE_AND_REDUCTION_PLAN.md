@@ -170,7 +170,7 @@ Goal: prevent "minor shrink equals complete" reporting for existing large files.
 
 ### Phase LFA-P3: First Strict Reduction Run
 
-Status: in_progress
+Status: pass
 
 Goal: apply the stricter rules to the highest-priority file instead of doing a small symbolic split.
 
@@ -181,6 +181,19 @@ Goal: apply the stricter rules to the highest-priority file instead of doing a s
 | LFA-P3.3 | Run target gates and full governance gate | Command evidence | Target server tests passed; split parity script confirmed 78 before / 78 after tests with no missing, added, or duplicate names. `npm test` passed 994/994, `npm run check:large-files` passed with no issues or warnings, `git diff --check` passed, and `npm run check:closeout` passed after installing ignored root and Workbench app dependencies in the isolated worktree. | pass |
 | LFA-P3.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-large-file-p3-first-reduction-deepseek.json` | Initial DS review failed on state-boundary file-level whitelist risk and a conditional shared-state mutation question. Delta review passed after adding per-call fixture-state annotations and confirming `currentSessionWorkflowState()` returns a fresh JSON-parsed object on every call. | pass |
 
+### Phase LFA-P4: Workbench Server Entrypoint Reduction Step 1
+
+Status: pass
+
+Goal: apply the strict reduction rule to the highest-priority runtime entrypoint without changing API behavior.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P4.1 | Select current top runtime target | This document and `.largefile-manifest.json` | Selected `tools/workbench-server.mjs` because it is the largest runtime entrypoint in the active queue after P3, at 3447 baseline lines with a required 500-line material reduction and a terminal target below 2000 lines. | pass |
+| LFA-P4.2 | Extract bounded support modules and route groups | `tools/workbench-http-utils.mjs`; `tools/workbench-loop-client.mjs`; `tools/workbench-server-cli.mjs`; `tools/workbench-mainline-evaluator.mjs`; `tools/workbench-basic-routes.mjs`; `tools/workbench-requirement-routes.mjs`; `tools/workbench-scheduler-dispatch-routes.mjs`; `tools/workbench-scheduler-loop-routes.mjs` | Server entrypoint reduced from 3447 to 1954 lines, below the 2000-line terminal target for this step. New helper modules are each below 500 lines. The queue item remains open with a new 1200-line target. | pass |
+| LFA-P4.3 | Run focused gates | Command evidence | Focused server route/state tests passed 86/86 after the final route extractions. Final gates passed: `npm test` 995/995; `npm run check:large-files`; `npm run check:closeout`; `git diff --check`. API route contract and closeout route source lists were updated to cover the extracted route modules. | pass |
+| LFA-P4.4 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-workbench-server-entrypoint-p4-deepseek.json` | Initial DS synthesis rejected the earlier 2899-line interim split as not reaching the 2000-line target. The implementation was extended to 1954 lines; final delta synthesis returned PASS with no blockers. Post-closeout runner stabilization is covered by the final gate evidence. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -189,6 +202,7 @@ Goal: apply the stricter rules to the highest-priority file instead of doing a s
 | LFA-P1 | pass | Baseline anti-abuse gate implemented; focused tests, `npm test`, `npm run check:large-files`, `npm run check:closeout`, and `git diff --check` passed. | DeepSeek PASS after delta |
 | LFA-P2 | pass | Focused tests passed: `node tools/run-with-node18.mjs --test test/large-file-report.test.js test/large-file-reduction-targets.test.js test/select-affected-tests.test.js test/governance-enrollment.test.js`; `npm run check:large-files`; `git diff --check`; `npm test`; `npm run check:closeout`. DeepSeek final delta PASS is recorded in `docs/examples/reviewer-risk-20260603-large-file-reduction-p2-deepseek.json`. | DeepSeek PASS after delta |
 | LFA-P3 | pass | Selected Q01 `test/workbench-server.test.js`; root shard is 1717 lines after split, target tests, large-file gate, full `npm test`, and full closeout passed. DeepSeek initial fail was repaired; delta review passed with no blocking findings. | DeepSeek PASS after delta |
+| LFA-P4 | pass | Selected `tools/workbench-server.mjs`; entrypoint is 1954 lines after extracting HTTP utilities, loop/next-action support, CLI parsing, mainline preflight evaluator, snapshot/event routes, requirement routes, scheduler dispatch routes, and scheduler loop/next-action routes. Final gates passed: focused server tests 86/86, `npm test` 995/995, large-file gate, full closeout, and diff whitespace check. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 

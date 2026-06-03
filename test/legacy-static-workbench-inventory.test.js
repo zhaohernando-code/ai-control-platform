@@ -49,6 +49,7 @@ test("legacy static Workbench inventory records deleted assets and manifest reti
 test("legacy static Workbench serving is retired and cannot be opt-in enabled", () => {
   const report = inventory();
   const server = read("tools/workbench-server.mjs");
+  const serverCli = read("tools/workbench-server-cli.mjs");
   const staticRoutes = read("tools/workbench-static-routes.mjs");
   const serverTests = workbenchServerTestSources();
   const pkg = JSON.parse(read("package.json"));
@@ -60,8 +61,8 @@ test("legacy static Workbench serving is retired and cannot be opt-in enabled", 
     "AI_CONTROL_WORKBENCH_SERVE_LEGACY_STATIC=1",
     "server constructor legacy-static option"
   ]);
-  assert.match(server, /LEGACY_STATIC_WORKBENCH_RETIRED/);
-  assert.match(server, /legacy static Workbench serving has been retired/);
+  assert.match(`${server}\n${serverCli}`, /LEGACY_STATIC_WORKBENCH_RETIRED/);
+  assert.match(`${server}\n${serverCli}`, /legacy static Workbench serving has been retired/);
   assert.doesNotMatch(server, /serveLegacyStatic:\s*args\.includes/);
   assert.match(staticRoutes, /workbench pages are served by Next\.js/);
   assert.doesNotMatch(staticRoutes, /sendStaticFile|readFileSync|apps\/workbench\/desktop\.html/);

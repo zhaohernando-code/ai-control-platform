@@ -280,12 +280,12 @@ function normalizeEvidencePlan(plan = {}, requestedFinalVerdict = "", dispositio
 }
 
 function normalizeDecisionPackage(decisionPackage = {}) {
+  const options = (Array.isArray(decisionPackage.options) ? decisionPackage.options : []).map((option) => String(option || "").trim()).filter(Boolean);
+  if (options.length < 2) options.push("记录为非阻断跟进，在下一轮治理中复核");
   return {
     ...decisionPackage,
-    estimated_cost: decisionPackage.estimated_cost ||
-      decisionPackage.estimated_cost_or_effort ||
-      decisionPackage.estimated_effort ||
-      decisionPackage.cost_or_effort
+    options,
+    estimated_cost: decisionPackage.estimated_cost || decisionPackage.estimated_cost_or_effort || decisionPackage.estimated_effort || decisionPackage.cost_or_effort
   };
 }
 

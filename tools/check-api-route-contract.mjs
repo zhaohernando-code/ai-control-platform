@@ -14,7 +14,11 @@ import {
 
 const BACKEND_ROUTE_SOURCE_PATHS = [
   "tools/workbench-server.mjs",
-  "tools/workbench-agent-key-routes.mjs"
+  "tools/workbench-agent-key-routes.mjs",
+  "tools/workbench-basic-routes.mjs",
+  "tools/workbench-requirement-routes.mjs",
+  "tools/workbench-scheduler-dispatch-routes.mjs",
+  "tools/workbench-scheduler-loop-routes.mjs"
 ];
 const FRONTEND_PATH = "apps/workbench/lib/api/index.ts";
 
