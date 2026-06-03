@@ -1,0 +1,98 @@
+{
+  "version": "large-file-split-parity.v1",
+  "phase": "LFA-P12",
+  "status": "pass",
+  "base_ref": "3ee1f297552b4a5a130540b2a2723f2586d8cfce",
+  "target": "test/workbench-projection.test.js",
+  "before": {
+    "files": [
+      "test/workbench-projection.test.js"
+    ],
+    "test_count": 25,
+    "tests": [
+      "workbench projection combines run, artifacts, model routing, reviewer and DAG state",
+      "workbench projection exposes terminal next-action details for inspect states",
+      "workbench projection exposes latest closeout publication evidence",
+      "workbench projection exposes browser event artifact evidence",
+      "workbench projection exposes failed frontend acceptance repair as next action",
+      "workbench projection exposes replay validation blockers as resume health",
+      "workbench projection exposes reviewer provider health scheduler facts",
+      "workbench projection exposes reviewer scope split shard status",
+      "workbench projection exposes reviewer shard aggregate status",
+      "workbench projection advances from reviewer aggregate continuation fact",
+      "workbench projection advances next reviewer shard after partial result",
+      "workbench projection exposes scheduler dispatch run status",
+      "workbench projection exposes scheduler dispatch continuation readiness",
+      "workbench projection exposes autonomous scheduler loop runs",
+      "workbench projection blocks invalid autonomous scheduler loop history",
+      "workbench projection exposes scheduler loop resume attempts",
+      "workbench projection exposes compact operations timeline",
+      "workbench operations timeline follows manifest order across clock skew",
+      "workbench projection exposes scheduler dispatch policy blockers",
+      "workbench projection ingests operator events before summarizing run state",
+      "workbench projection ignores stale run result when operator events are present",
+      "workbench projection can use explicit run evaluation when no operator events are present",
+      "workbench projection fails closed when operator event ingestion fails",
+      "mobile projection keeps the one-screen subset",
+      "projection input validation fails without durable sources"
+    ],
+    "line_count": 1433
+  },
+  "after": {
+    "files": [
+      "test/workbench-projection.test.js",
+      "test/workbench-projection-scheduler-dispatch.test.js",
+      "test/workbench-projection-scheduler-loop.test.js"
+    ],
+    "test_count": 25,
+    "tests_by_file": {
+      "test/workbench-projection.test.js": [
+        "workbench projection combines run, artifacts, model routing, reviewer and DAG state",
+        "workbench projection exposes terminal next-action details for inspect states",
+        "workbench projection exposes latest closeout publication evidence",
+        "workbench projection exposes browser event artifact evidence",
+        "workbench projection exposes failed frontend acceptance repair as next action",
+        "workbench projection exposes replay validation blockers as resume health",
+        "workbench projection exposes reviewer provider health scheduler facts",
+        "workbench projection exposes reviewer scope split shard status",
+        "workbench projection exposes reviewer shard aggregate status",
+        "workbench projection advances from reviewer aggregate continuation fact",
+        "workbench projection advances next reviewer shard after partial result",
+        "workbench projection exposes compact operations timeline",
+        "workbench operations timeline follows manifest order across clock skew",
+        "workbench projection ingests operator events before summarizing run state",
+        "workbench projection ignores stale run result when operator events are present",
+        "workbench projection can use explicit run evaluation when no operator events are present",
+        "workbench projection fails closed when operator event ingestion fails",
+        "mobile projection keeps the one-screen subset",
+        "projection input validation fails without durable sources"
+      ],
+      "test/workbench-projection-scheduler-dispatch.test.js": [
+        "workbench projection exposes scheduler dispatch run status",
+        "workbench projection exposes scheduler dispatch continuation readiness",
+        "workbench projection exposes scheduler dispatch policy blockers"
+      ],
+      "test/workbench-projection-scheduler-loop.test.js": [
+        "workbench projection exposes autonomous scheduler loop runs",
+        "workbench projection blocks invalid autonomous scheduler loop history",
+        "workbench projection exposes scheduler loop resume attempts"
+      ]
+    },
+    "line_counts": {
+      "test/workbench-projection.test.js": 1025,
+      "test/workbench-projection-scheduler-dispatch.test.js": 216,
+      "test/workbench-projection-scheduler-loop.test.js": 209
+    }
+  },
+  "missing": [],
+  "added": [],
+  "duplicate_names": [],
+  "moved_tests": [
+    "workbench projection exposes scheduler dispatch run status",
+    "workbench projection exposes scheduler dispatch continuation readiness",
+    "workbench projection exposes scheduler dispatch policy blockers",
+    "workbench projection exposes autonomous scheduler loop runs",
+    "workbench projection blocks invalid autonomous scheduler loop history",
+    "workbench projection exposes scheduler loop resume attempts"
+  ]
+}

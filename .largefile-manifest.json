@@ -315,16 +315,35 @@
       "rechallenge_due": "2026-07-03"
     },
     "test/workbench-projection.test.js": {
-      "lines": 1434,
-      "reason": "Workbench projection root tests were reduced from the 3175-line baseline by extracting shared fixtures plus project-management, project-management-dispatch, governance-lifecycle, agent-lifecycle, headless-evidence, continuation, and continuation-terminal shards; one-screen helper counter coverage remains in its own shard. The root still covers broad projection, terminal closeout, browser evidence, reviewer, scheduler, timeline, operator-event, mobile, and input-validation contracts, so it remains planned debt until the next domain extraction brings it to 1184 lines or below.",
+      "lines": 1025,
+      "reason": "Workbench projection root tests were reduced from the P12 1434-line baseline by extracting scheduler dispatch, scheduler continuation, scheduler policy, scheduler loop run, invalid loop, and resume-attempt coverage into bounded scheduler shards under 300 lines. The root still covers broad projection, terminal closeout, browser evidence, reviewer recovery, operations timeline, operator-event, mobile, and input-validation contracts, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/workbench-projection-test-p12-split-parity.json with 25 before / 25 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
       "reviewed_at": "2026-06-03",
       "reduction_target": {
-        "base_lines": 1434,
-        "target_lines": 1184,
-        "minimum_reduction": 250,
-        "terminal_condition": "Projection root suite must fall to 1184 lines or below through additional stable domain shards that preserve existing behavior assertions.",
+        "base_lines": 1025,
+        "target_lines": 800,
+        "minimum_reduction": 205,
+        "terminal_condition": "Projection root suite must fall to 800 lines or below through additional stable domain shards while preserving timeline, reviewer, operator-event, mobile, and input-validation assertions.",
         "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+      },
+      "split_evidence": {
+        "parity_artifact": "docs/examples/workbench-projection-test-p12-split-parity.json",
+        "before_count": 25,
+        "after_count": 25,
+        "moved_domains": {
+          "test/workbench-projection-scheduler-dispatch.test.js": "scheduler_dispatch_run_continuation_readiness_and_policy_blockers",
+          "test/workbench-projection-scheduler-loop.test.js": "autonomous_scheduler_loop_run_invalid_history_and_resume_attempts"
+        },
+        "retained_root_domains": [
+          "broad_projection_baseline",
+          "terminal_next_action",
+          "closeout_and_browser_frontend_evidence",
+          "reviewer_recovery_and_shard_status",
+          "operations_timeline",
+          "operator_events",
+          "mobile_projection",
+          "input_validation"
+        ]
       }
     },
     "test/workbench-server.test.js": {

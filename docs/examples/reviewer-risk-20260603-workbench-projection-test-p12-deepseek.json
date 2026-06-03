@@ -1,0 +1,55 @@
+{
+  "version": "deepseek-review-summary.v1",
+  "phase": "LFA-P12",
+  "reviewed_at": "2026-06-03T21:43:00+08:00",
+  "reviewer": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "mode": "read_only"
+  },
+  "target": "test/workbench-projection.test.js",
+  "initial_review": {
+    "status": "fail",
+    "blocking_findings": [
+      {
+        "code": "missing_manifest_split_evidence",
+        "message": ".largefile-manifest.json entry for test/workbench-projection.test.js lacked split_evidence with parity counts, moved domains, and retained domains."
+      },
+      {
+        "code": "review_visibility_gap",
+        "message": "Initial sharded synthesis could not jointly verify root plus both scheduler shards."
+      }
+    ]
+  },
+  "fixes": [
+    {
+      "file": ".largefile-manifest.json",
+      "summary": "Added split_evidence with parity artifact path, 25 before / 25 after counts, two moved scheduler domains, and retained root domains."
+    }
+  ],
+  "delta_review": {
+    "status": "pass",
+    "summary": "DeepSeek delta review read the root suite, both scheduler shards, manifest entry, and parity artifact together; it confirmed the prior findings were closed, the 6 scheduler tests were moved without duplicate or missing names, and no obvious assertion weakening was present."
+  },
+  "local_gates_before_review": [
+    {
+      "command": "node tools/run-with-node18.mjs --test test/workbench-projection.test.js test/workbench-projection-scheduler-dispatch.test.js test/workbench-projection-scheduler-loop.test.js test/workbench-projection-one-screen.test.js test/workbench-projection-project-management.test.js test/workbench-projection-project-management-dispatch.test.js test/workbench-projection-governance-lifecycle.test.js test/workbench-projection-agent-lifecycle.test.js test/workbench-projection-agent-lifecycle-closed.test.js test/workbench-projection-headless-evidence.test.js test/workbench-projection-continuation.test.js test/workbench-projection-continuation-terminal.test.js test/workbench-projection-fixture.test.js test/workbench-projection-purity.test.js test/workbench-projection-schema.test.js",
+      "result": "pass",
+      "tests": {
+        "passed": 70,
+        "failed": 0
+      }
+    },
+    {
+      "command": "npm run check:large-files",
+      "result": "pass",
+      "issues": 0,
+      "warnings": 0
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    }
+  ],
+  "verdict": "pass"
+}
