@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T14:18:00+08:00
+Updated at: 2026-06-04T15:07:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -28,25 +28,25 @@ This plan does not replace `docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md`; it s
 
 ## Current Baseline
 
-Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P23.
+Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P26.
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 101 |
-| Files currently above 500 lines | 20 |
-| `planned_refactor` files above 500 lines | 11 |
+| Manifest entries | 105 |
+| Files currently above 500 lines | 19 |
+| `planned_refactor` files above 500 lines | 10 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 81 |
+| Manifest entries already below threshold | 86 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance, CLI command setup, or evidence aggregation until below 500 lines. |
-| LFA-Q02 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
-| LFA-Q03 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract loop execution, recovery, projection reuse, artifact validation, or execution-root propagation until below 500 lines. |
-| LFA-Q04 | `src/workflow/autonomous-continuation.js` | 842 | `planned_refactor` | Extract next-action selection, work package generation, and governance recovery decisions until below 500 lines. |
-| LFA-Q05 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
+| LFA-Q01 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
+| LFA-Q02 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract loop execution, recovery, projection reuse, artifact validation, or execution-root propagation until below 500 lines. |
+| LFA-Q03 | `src/workflow/autonomous-continuation.js` | 842 | `planned_refactor` | Extract next-action selection, work package generation, and governance recovery decisions until below 500 lines. |
+| LFA-Q04 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
+| LFA-Q05 | `src/workflow/frontend-acceptance.js` | 818 | `planned_refactor` | Extract browser evidence schema, layout/content checks, console errors, and live-route constraints until below 500 lines. |
 
 ## State Vocabulary
 
@@ -489,7 +489,7 @@ Planned extraction map:
 
 ### Phase LFA-P24: Workbench Browser Events Checker Below-500 Extraction
 
-Status: in_progress
+Status: pass
 
 Goal: reduce `tools/check-workbench-browser-events.mjs` from 983 lines to below 500 lines in this phase, without changing the 15-scenario browser-events closeout contract, mounted Next.js App Router runtime validation, mounted API writeback behavior, legacy-static fail-closed checks, scheduler/lifecycle/projected-loop interactions, mobile projection checks, or durable artifact shape. Newly extracted modules must remain below 500 lines, and should stay below 300 lines where practical.
 
@@ -543,6 +543,52 @@ Public export compatibility map:
 | LFA-P25.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-projection-p25-deepseek.json`; command evidence | Focused projection/mobile tests passed 70/70. Syntax checks passed for root and all three extracted modules. DeepSeek code/evidence review returned PASS with no blocking findings; low-risk non-blocking notes were limited to intentional local helper duplication, dense root imports, and internal lifecycle event type use. | pass |
 | LFA-P25.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and all P25 artifacts, `git diff --check`, `npm run check:large-files` with no issues/warnings, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed only because the isolated worktree lacked ignored Playwright/Next dependencies; after `npm ci` at root and `apps/workbench`, the full closeout rerun passed including browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P26: Development Flow Real Below-500 Extraction
+
+Status: in_progress
+
+Goal: reduce `src/workflow/development-flow-real.js` from 892 lines to below 500 lines in this phase, without changing the public development-flow acceptance API, provider C2C governance command contract, isolated fixture behavior, model-output contract parsing, requirement-flow state transitions, CLI command construction, or acceptance artifact shape. Newly extracted modules must remain below 500 lines, and should stay below 300 lines where practical.
+
+Planned extraction map:
+
+- Keep `src/workflow/development-flow-real.js` as the public orchestration entrypoint: exported version constant, CLI-chain runner, real-acceptance artifact runner, write helpers, command execution, review guard, phase trace assembly, evaluation call, and compatibility re-export of provider C2C governance.
+- Extract isolated fixture and git helpers to `src/workflow/development-flow-real-fixture.js`: fixture repository creation, fixture test execution, changed-file discovery, baseline HEAD reading, changed-files-since-baseline, and diff stat. This module owns only filesystem/git fixture behavior and must not import requirement intake, agent invocation, provider executor, or the root entrypoint.
+- Extract model-output contract helpers to `src/workflow/development-flow-real-model-output.js`: `OUTPUT_SCHEMA`, JSON candidate extraction, nested structured-output normalization, model JSON parsing, and output contract validation. It defines local normalization/status helpers so the root does not become a shared utility dependency and no import cycle can form.
+- Extract provider C2C governance to `src/workflow/development-flow-real-provider-c2c.js`: workflow-state fixture construction, provider pass JSON fixture, command-argument contract checks, and `runContextProviderC2CGovernance`. This module may import the provider executor, verified provider profile, context work-package runner, and provider timeout constants, but must not import the root entrypoint. It must keep local `safeRead` ownership for live startup script inspection rather than depending on the fixture module.
+- Extract agent command and requirement-flow construction to `src/workflow/development-flow-real-command.js`: development-flow prompt construction, safe command audit redaction, CLI failure classification, requirement intake flow construction, and Codex/Claude invocation planning. This module may import requirement-intake and agent-invocation APIs plus `OUTPUT_SCHEMA`, but must not import the root entrypoint.
+
+Public export compatibility map:
+
+- Root public exports that must remain available from `src/workflow/development-flow-real.js`: `DEVELOPMENT_FLOW_REAL_VERSION`, `runContextProviderC2CGovernance`, `runDevelopmentFlowCliChain`, `runDevelopmentFlowRealAcceptance`, `writeDevelopmentFlowRealAcceptance`, and `writeDevelopmentFlowC2CGovernance`.
+- `OUTPUT_SCHEMA`, fixture helpers, parser helpers, command builders, and provider internal helpers are not currently imported directly outside the root; they may move without public re-export unless implementation-time import scan finds a direct consumer.
+- Duplicated local normalization helpers in extracted modules are intentional for P26 to keep the modules acyclic and avoid creating another cross-domain utility barrel.
+
+Provider C2C parity dimensions that must survive extraction:
+
+- Hard timeout remains equal to `DEFAULT_HARD_TIMEOUT_SECONDS`.
+- Idle timeout remains equal to `DEFAULT_IDLE_TIMEOUT_SECONDS`.
+- Provider command still uses `stream-json`.
+- Provider command still includes `--include-partial-messages`.
+- Live startup script still fails if it overrides provider timeout back to 120 seconds.
+- Provider C2C dispatch still proves isolated worker-worktree execution.
+
+Utility ownership map:
+
+- Root keeps `now`, `writeJson`, `issue`, `appendPhase`, `safeRead`, `asArray`, `normalizeString`, and `statusPass` as needed by orchestration, write helpers, and review guard.
+- Fixture module owns local `normalizeString` and imports only node filesystem/path/process helpers needed for fixture git/test operations.
+- Model-output module owns local `asArray`, `normalizeString`, `normalizeToken`, `isObject`, `issue`, and `statusPass`.
+- Provider C2C module owns local `asArray`, `normalizeString`, `normalizeToken`, `issue`, `now`, `safeRead`, and command-argument helpers.
+- Command module owns local `asArray` and `normalizeString`, and imports `OUTPUT_SCHEMA` from the model-output module.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P26.1 | Select current development-flow target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/development-flow-real.js` because it is the current LFG-Q01 planned-refactor item at 892 lines with a target gap of 393 lines. This phase may pass only if the root entry falls below 500 lines and no extracted module exceeds 500 lines. | pass |
+| LFA-P26.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-development-flow-real-p26-plan-deepseek.json` | DeepSeek returned PASS with no blocking findings. Non-blocking observations on explicit provider C2C dimensions, local `safeRead` ownership, and utility placement were folded into this plan before implementation started. | pass |
+| LFA-P26.3 | Move runtime domains into bounded modules | Runtime modules and root orchestration entry | Root entry reduced from 892 to 304 lines. Extracted modules are below 500 lines: fixture 102, model-output 127, command/requirement-flow 200, provider C2C governance 225. Syntax checks passed for the root and all four extracted modules. | pass |
+| LFA-P26.4 | Prove public API, provider C2C, and manifest compatibility | `docs/examples/development-flow-real-p26-extraction-parity.json`; `.largefile-manifest.json` | Parity artifact records direct import scan results, six expected / six actual public exports with no missing or unexpected names, root/module line counts, deterministic normalized provider C2C governance output equivalence against base `8d2451f`, explicit C2C governance dimensions, and focused development-flow/provider gates 50/50. `npm run check:large-files` passed and moved the queue head to `test/autonomous-scheduler-loop.test.js`. | pass |
+| LFA-P26.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-development-flow-real-p26-deepseek.json`; command evidence | Focused development-flow, evaluation, provider executor, and context work-package runner gates passed 50/50. Syntax checks, JSON parsing, `git diff --check`, and `npm run check:large-files` passed. The first broad DeepSeek code-review attempt exited non-zero due to max-budget before acceptance, so it was discarded; the narrowed retry returned PASS with no blocking or non-blocking findings. | pass |
+| LFA-P26.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P26 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored Playwright/Next dependencies; after `npm ci` at root and `apps/workbench`, a rerun exposed one transient Workbench server shard failure, the shard passed on focused rerun, and the final full closeout rerun passed including browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -573,6 +619,7 @@ Public export compatibility map:
 | LFA-P23 | pass | Selected `src/workflow/requirement-intake.js` at 987 lines. Root is now 38 lines after moving shared core, submission state, plan-review state, lifecycle/summary state, and workflow recording into five bounded modules under 500 lines. Public export parity passed with 18 expected / 18 actual exports and no missing, added, or duplicate names; focused requirement intake/calling-chain gates passed 69/69. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
 | LFA-P24 | pass | Selected `tools/check-workbench-browser-events.mjs` at 983 lines. Root is now 227 lines after extracting fixtures, runtime helpers, default scenarios, lifecycle scenarios, and projected/mobile scenarios into five bounded modules no larger than 255 lines. Browser-events focused gate passed with a regenerated 15-scenario artifact, final gates passed, and the large-file queue head moved to `src/workflow/workbench-projection.js`. | DeepSeek plan PASS; code delta review PASS; supplemental test-boundary review PASS |
 | LFA-P25 | pass | Selected `src/workflow/workbench-projection.js` at 923 lines. Root is now 384 lines after extracting evidence summaries, operations timeline policy, and mobile projection shaping into three bounded modules below 500 lines. Deterministic pre/post projection JSON equivalence passed, focused projection tests passed 70/70, `npm test` passed 1002/1002, large-file gate passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS after delta; code/evidence PASS |
+| LFA-P26 | pass | Selected `src/workflow/development-flow-real.js` at 892 lines. Root is now 304 lines after extracting fixture/git helpers, model-output contract parsing, command/requirement-flow construction, and provider C2C governance into four bounded modules under 500 lines. Public export parity and provider C2C normalized output parity passed; final gates passed with `npm test` 1002/1002, large-file gate, and full closeout after dependency install and one transient shard rerun. | DeepSeek plan PASS; code/evidence PASS |
 
 ## Daily Run Shape
 

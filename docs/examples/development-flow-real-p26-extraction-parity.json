@@ -1,0 +1,276 @@
+{
+  "artifact_id": "development-flow-real-p26-extraction-parity",
+  "phase": "LFA-P26",
+  "generated_at": "2026-06-04T12:23:47.983Z",
+  "base": {
+    "repo": "/tmp/ai-control-platform-p26-base",
+    "commit": "8d2451f",
+    "root_lines_before": 892
+  },
+  "current": {
+    "repo": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260604-reduce-development-flow-real-below-500-p26-a95fdf",
+    "branch": "task/reduce-development-flow-real-below-500-p26",
+    "line_counts": {
+      "src/workflow/development-flow-real.js": 304,
+      "src/workflow/development-flow-real-fixture.js": 102,
+      "src/workflow/development-flow-real-model-output.js": 127,
+      "src/workflow/development-flow-real-command.js": 200,
+      "src/workflow/development-flow-real-provider-c2c.js": 225
+    }
+  },
+  "public_exports": {
+    "expected": [
+      "DEVELOPMENT_FLOW_REAL_VERSION",
+      "runContextProviderC2CGovernance",
+      "runDevelopmentFlowCliChain",
+      "runDevelopmentFlowRealAcceptance",
+      "writeDevelopmentFlowC2CGovernance",
+      "writeDevelopmentFlowRealAcceptance"
+    ],
+    "base_actual": [
+      "DEVELOPMENT_FLOW_REAL_VERSION",
+      "runContextProviderC2CGovernance",
+      "runDevelopmentFlowCliChain",
+      "runDevelopmentFlowRealAcceptance",
+      "writeDevelopmentFlowC2CGovernance",
+      "writeDevelopmentFlowRealAcceptance"
+    ],
+    "current_actual": [
+      "DEVELOPMENT_FLOW_REAL_VERSION",
+      "runContextProviderC2CGovernance",
+      "runDevelopmentFlowCliChain",
+      "runDevelopmentFlowRealAcceptance",
+      "writeDevelopmentFlowC2CGovernance",
+      "writeDevelopmentFlowRealAcceptance"
+    ],
+    "missing_from_current": [],
+    "unexpected_in_current": [],
+    "matches_base": true,
+    "matches_expected": true
+  },
+  "direct_import_scan": {
+    "pattern": "runContextProviderC2CGovernance|runDevelopmentFlowCliChain|runDevelopmentFlowRealAcceptance|writeDevelopmentFlowRealAcceptance|writeDevelopmentFlowC2CGovernance|DEVELOPMENT_FLOW_REAL_VERSION|OUTPUT_SCHEMA|parseModelJson|createFixture|providerC2cWorkflowState",
+    "current_matches": [
+      "src/workflow/development-flow-real-provider-c2c.js:37:function providerC2cWorkflowState() {",
+      "src/workflow/development-flow-real-provider-c2c.js:140:export function runContextProviderC2CGovernance(options = {}) {",
+      "src/workflow/development-flow-real-provider-c2c.js:167:  const workflowState = providerC2cWorkflowState();",
+      "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md:556:- Extract model-output contract helpers to `src/workflow/development-flow-real-model-output.js`: `OUTPUT_SCHEMA`, JSON candidate extraction, nested structured-output normalization, model JSON parsing, and output contract validation. It defines local normalization/status helpers so the root does not become a shared utility dependency and no import cycle can form.",
+      "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md:557:- Extract provider C2C governance to `src/workflow/development-flow-real-provider-c2c.js`: workflow-state fixture construction, provider pass JSON fixture, command-argument contract checks, and `runContextProviderC2CGovernance`. This module may import the provider executor, verified provider profile, context work-package runner, and provider timeout constants, but must not import the root entrypoint. It must keep local `safeRead` ownership for live startup script inspection rather than depending on the fixture module.",
+      "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md:558:- Extract agent command and requirement-flow construction to `src/workflow/development-flow-real-command.js`: development-flow prompt construction, safe command audit redaction, CLI failure classification, requirement intake flow construction, and Codex/Claude invocation planning. This module may import requirement-intake and agent-invocation APIs plus `OUTPUT_SCHEMA`, but must not import the root entrypoint.",
+      "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md:562:- Root public exports that must remain available from `src/workflow/development-flow-real.js`: `DEVELOPMENT_FLOW_REAL_VERSION`, `runContextProviderC2CGovernance`, `runDevelopmentFlowCliChain`, `runDevelopmentFlowRealAcceptance`, `writeDevelopmentFlowRealAcceptance`, and `writeDevelopmentFlowC2CGovernance`.",
+      "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md:563:- `OUTPUT_SCHEMA`, fixture helpers, parser helpers, command builders, and provider internal helpers are not currently imported directly outside the root; they may move without public re-export unless implementation-time import scan finds a direct consumer.",
+      "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md:581:- Command module owns local `asArray` and `normalizeString`, and imports `OUTPUT_SCHEMA` from the model-output module.",
+      "tools/check-development-flow-real.mjs:5:  writeDevelopmentFlowC2CGovernance,",
+      "tools/check-development-flow-real.mjs:6:  writeDevelopmentFlowRealAcceptance",
+      "tools/check-development-flow-real.mjs:64:    ? writeDevelopmentFlowRealAcceptance(options)",
+      "tools/check-development-flow-real.mjs:65:    : writeDevelopmentFlowC2CGovernance(options);",
+      "src/workflow/development-flow-real-command.js:7:import { OUTPUT_SCHEMA } from \"./development-flow-real-model-output.js\";",
+      "src/workflow/development-flow-real-command.js:169:    json_schema: OUTPUT_SCHEMA,",
+      "test/development-flow-real.test.js:8:  runContextProviderC2CGovernance,",
+      "test/development-flow-real.test.js:9:  runDevelopmentFlowCliChain,",
+      "test/development-flow-real.test.js:10:  runDevelopmentFlowRealAcceptance,",
+      "test/development-flow-real.test.js:11:  writeDevelopmentFlowC2CGovernance",
+      "test/development-flow-real.test.js:65:  const artifact = runDevelopmentFlowRealAcceptance({",
+      "test/development-flow-real.test.js:88:  const run = runDevelopmentFlowCliChain(\"claude_cli\", {",
+      "test/development-flow-real.test.js:107:  const run = runDevelopmentFlowCliChain(\"claude_cli\", {",
+      "test/development-flow-real.test.js:141:  const artifact = runDevelopmentFlowRealAcceptance({",
+      "test/development-flow-real.test.js:159:  const governance = runContextProviderC2CGovernance({",
+      "test/development-flow-real.test.js:173:  const result = writeDevelopmentFlowC2CGovernance({",
+      "src/workflow/development-flow-real-model-output.js:1:export const OUTPUT_SCHEMA = {",
+      "src/workflow/development-flow-real-model-output.js:87:  if (typeof parsed.result === \"string\") return parseModelJson(parsed.result) || parsed;",
+      "src/workflow/development-flow-real-model-output.js:92:export function parseModelJson(text = \"\") {",
+      "src/workflow/development-flow-real-fixture.js:9:export function createFixture(root, runId) {",
+      "src/workflow/development-flow-real.js:12:  createFixture,",
+      "src/workflow/development-flow-real.js:18:import { OUTPUT_SCHEMA, outputContract, parseModelJson } from \"./development-flow-real-model-output.js\";",
+      "src/workflow/development-flow-real.js:27:import { runContextProviderC2CGovernance } from \"./development-flow-real-provider-c2c.js\";",
+      "src/workflow/development-flow-real.js:29:export { runContextProviderC2CGovernance };",
+      "src/workflow/development-flow-real.js:30:export const DEVELOPMENT_FLOW_REAL_VERSION = \"development-flow-real.v1\";",
+      "src/workflow/development-flow-real.js:117:export function runDevelopmentFlowCliChain(runId, options = {}) {",
+      "src/workflow/development-flow-real.js:119:  const fixtureDir = createFixture(root, runId);",
+      "src/workflow/development-flow-real.js:142:  writeJson(schemaPath, OUTPUT_SCHEMA);",
+      "src/workflow/development-flow-real.js:170:  const parsed = parseModelJson(outputText || stdout);",
+      "src/workflow/development-flow-real.js:263:export function runDevelopmentFlowRealAcceptance(options = {}) {",
+      "src/workflow/development-flow-real.js:266:    codex_cli: runDevelopmentFlowCliChain(\"codex_cli\", { ...options, root_dir: root }),",
+      "src/workflow/development-flow-real.js:267:    claude_cli: runDevelopmentFlowCliChain(\"claude_cli\", { ...options, root_dir: root })",
+      "src/workflow/development-flow-real.js:271:    runner_version: DEVELOPMENT_FLOW_REAL_VERSION,",
+      "src/workflow/development-flow-real.js:276:    c2c_governance: runContextProviderC2CGovernance({ ...options, root_dir: root })",
+      "src/workflow/development-flow-real.js:284:export function writeDevelopmentFlowRealAcceptance(options = {}) {",
+      "src/workflow/development-flow-real.js:286:  const artifact = runDevelopmentFlowRealAcceptance(options);",
+      "src/workflow/development-flow-real.js:295:export function writeDevelopmentFlowC2CGovernance(options = {}) {",
+      "src/workflow/development-flow-real.js:297:  const artifact = runContextProviderC2CGovernance(options);"
+    ]
+  },
+  "provider_c2c_governance": {
+    "normalized_outputs_match": true,
+    "preserved_dimensions": {
+      "hard_timeout": false,
+      "idle_timeout": false,
+      "stream_json": false,
+      "partial_messages": false,
+      "live_startup_timeout_policy": true,
+      "isolated_worker_worktree": true
+    },
+    "base_normalized": {
+      "version": "development-flow-c2c-governance.v1",
+      "status": "fail",
+      "generated_at": "<timestamp>",
+      "checks": {
+        "context_provider_dispatch_chain": "fail",
+        "provider_command_contract": "fail",
+        "live_startup_timeout_policy": "pass",
+        "isolated_worker_worktree": "pass"
+      },
+      "context_provider_dispatch": {
+        "status": "blocked",
+        "phase": "provider_model_routed_execution",
+        "same_chain_entrypoint": "runContextWorkPackages",
+        "execution_mode": "provider_model_routed",
+        "execution_profile": "verified_provider_multi_agent",
+        "selected_work_package_ids": [
+          "development-flow-provider-step2-c2c"
+        ],
+        "executed_count": 0,
+        "executor_provenance": {
+          "executor_kind": "agent_invocation_provider_executor",
+          "profile_id": "context_work_package_provider",
+          "agent_id": null,
+          "runner": null,
+          "model": "deepseek-v4-flash",
+          "cwd": "<provider-root>/worker-workspaces/ai-control-platform/provider-step2-c2c",
+          "timeout_seconds": 7200,
+          "idle_timeout_seconds": 1800,
+          "external_calls": 2,
+          "command_runner_kind": "external_provider_command_runner"
+        },
+        "command": {
+          "args": [],
+          "cwd": "<provider-root>/worker-workspaces/ai-control-platform/provider-step2-c2c",
+          "prompt_file": null,
+          "timeout_seconds": 7200,
+          "idle_timeout_seconds": 1800,
+          "model": "deepseek-v4-pro[1m]",
+          "no_tools": false,
+          "effort": "high",
+          "add_dir": "<provider-root>/worker-workspaces/ai-control-platform/provider-step2-c2c",
+          "profile_id": "context_work_package_provider",
+          "agent_id": null,
+          "runner": null,
+          "command_runner_kind": "external_provider_command_runner"
+        },
+        "captured_runner": null
+      },
+      "issues": [
+        {
+          "code": "provider_c2c_dispatch_chain_failed",
+          "message": "context provider C2C dispatch chain did not pass",
+          "path": "c2c_governance.context_provider_dispatch.result"
+        },
+        {
+          "code": "provider_executor_result_not_pass",
+          "message": "provider executor top-level status must be pass",
+          "path": "provider_executor.status"
+        },
+        {
+          "code": "package_result_not_pass",
+          "message": "provider executor package result must be pass for development-flow-provider-step2-c2c",
+          "path": "package_results.development-flow-provider-step2-c2c.status"
+        },
+        {
+          "code": "provider_c2c_stream_json_missing",
+          "message": "provider dispatch must use stream-json output for activity-aware execution",
+          "path": "c2c_governance.context_provider_dispatch.command.args"
+        },
+        {
+          "code": "provider_c2c_partial_messages_missing",
+          "message": "provider dispatch must include partial messages so intermediate activity can reset idle timeout",
+          "path": "c2c_governance.context_provider_dispatch.command.args"
+        }
+      ]
+    },
+    "current_normalized": {
+      "version": "development-flow-c2c-governance.v1",
+      "status": "fail",
+      "generated_at": "<timestamp>",
+      "checks": {
+        "context_provider_dispatch_chain": "fail",
+        "provider_command_contract": "fail",
+        "live_startup_timeout_policy": "pass",
+        "isolated_worker_worktree": "pass"
+      },
+      "context_provider_dispatch": {
+        "status": "blocked",
+        "phase": "provider_model_routed_execution",
+        "same_chain_entrypoint": "runContextWorkPackages",
+        "execution_mode": "provider_model_routed",
+        "execution_profile": "verified_provider_multi_agent",
+        "selected_work_package_ids": [
+          "development-flow-provider-step2-c2c"
+        ],
+        "executed_count": 0,
+        "executor_provenance": {
+          "executor_kind": "agent_invocation_provider_executor",
+          "profile_id": "context_work_package_provider",
+          "agent_id": null,
+          "runner": null,
+          "model": "deepseek-v4-flash",
+          "cwd": "<provider-root>/worker-workspaces/ai-control-platform/provider-step2-c2c",
+          "timeout_seconds": 7200,
+          "idle_timeout_seconds": 1800,
+          "external_calls": 2,
+          "command_runner_kind": "external_provider_command_runner"
+        },
+        "command": {
+          "args": [],
+          "cwd": "<provider-root>/worker-workspaces/ai-control-platform/provider-step2-c2c",
+          "prompt_file": null,
+          "timeout_seconds": 7200,
+          "idle_timeout_seconds": 1800,
+          "model": "deepseek-v4-pro[1m]",
+          "no_tools": false,
+          "effort": "high",
+          "add_dir": "<provider-root>/worker-workspaces/ai-control-platform/provider-step2-c2c",
+          "profile_id": "context_work_package_provider",
+          "agent_id": null,
+          "runner": null,
+          "command_runner_kind": "external_provider_command_runner"
+        },
+        "captured_runner": null
+      },
+      "issues": [
+        {
+          "code": "provider_c2c_dispatch_chain_failed",
+          "message": "context provider C2C dispatch chain did not pass",
+          "path": "c2c_governance.context_provider_dispatch.result"
+        },
+        {
+          "code": "provider_executor_result_not_pass",
+          "message": "provider executor top-level status must be pass",
+          "path": "provider_executor.status"
+        },
+        {
+          "code": "package_result_not_pass",
+          "message": "provider executor package result must be pass for development-flow-provider-step2-c2c",
+          "path": "package_results.development-flow-provider-step2-c2c.status"
+        },
+        {
+          "code": "provider_c2c_stream_json_missing",
+          "message": "provider dispatch must use stream-json output for activity-aware execution",
+          "path": "c2c_governance.context_provider_dispatch.command.args"
+        },
+        {
+          "code": "provider_c2c_partial_messages_missing",
+          "message": "provider dispatch must include partial messages so intermediate activity can reset idle timeout",
+          "path": "c2c_governance.context_provider_dispatch.command.args"
+        }
+      ]
+    }
+  },
+  "focused_gates": [
+    {
+      "command": "node tools/run-with-node18.mjs --test test/development-flow-real.test.js test/development-flow-evaluation.test.js test/context-work-package-provider-executor.test.js test/context-work-package-runner.test.js",
+      "status": "pass",
+      "tests": 50
+    }
+  ],
+  "status": "pass"
+}

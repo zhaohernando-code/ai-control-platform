@@ -88,17 +88,45 @@
       "reviewed_at": "2026-06-02"
     },
     "src/workflow/development-flow-real.js": {
-      "lines": 892,
-      "reason": "Development flow real acceptance harness: fixture setup, dual CLI command construction, provider C2C dispatch governance, model-output contract parsing, and phase evidence aggregation are kept together for the reusable closeout gate.",
-      "status": "planned_refactor",
+      "lines": 304,
+      "reason": "Development flow real acceptance harness entrypoint reduced below 500 lines in LFA-P26. Fixture setup, model-output parsing, command construction, and provider C2C governance moved into bounded modules while preserving the public acceptance API.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 892,
-        "target_lines": 499,
-        "minimum_reduction": 393,
-        "terminal_condition": "src/workflow/development-flow-real.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "split_evidence": {
+        "parity_artifact": "docs/examples/development-flow-real-p26-extraction-parity.json",
+        "before_lines": 892,
+        "after_lines": 304,
+        "extracted_modules": [
+          "src/workflow/development-flow-real-fixture.js",
+          "src/workflow/development-flow-real-model-output.js",
+          "src/workflow/development-flow-real-command.js",
+          "src/workflow/development-flow-real-provider-c2c.js"
+        ]
       }
+    },
+    "src/workflow/development-flow-real-command.js": {
+      "lines": 200,
+      "reason": "Extracted development-flow command and requirement-flow construction module kept below the large-file threshold while preserving Codex/Claude invocation planning, prompt construction, command audit redaction, and failure classification.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/development-flow-real-fixture.js": {
+      "lines": 102,
+      "reason": "Extracted development-flow isolated fixture and git helper module kept below the large-file threshold while preserving fixture repository setup, test execution, and changed-file discovery.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/development-flow-real-model-output.js": {
+      "lines": 127,
+      "reason": "Extracted development-flow model-output schema and contract parser kept below the large-file threshold while preserving structured output normalization and validation semantics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/development-flow-real-provider-c2c.js": {
+      "lines": 225,
+      "reason": "Extracted development-flow provider C2C governance module kept below the large-file threshold while preserving provider dispatch chain, timeout, stream-json, partial-message, live-startup timeout, and isolated-worktree checks.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "src/workflow/frontend-acceptance.js": {
       "lines": 818,
