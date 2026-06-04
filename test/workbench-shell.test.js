@@ -218,23 +218,23 @@ test("scheduler dispatch writeback accepts translated rendered pass without weak
 });
 
 test("browser events gate accepts only semantic cleared scheduler loop recovery readouts", () => {
-  const checker = read("tools/check-workbench-browser-events.mjs");
+  const fixtures = read("tools/workbench-browser-events-fixtures.mjs"), projectedScenarios = read("tools/workbench-browser-events-projected-scenarios.mjs");
 
-  assert.match(checker, /CLEARED_SCHEDULER_LOOP_RECOVERY_COPY = "等待状态上报；下一步查看推荐任务。"/);
-  assert.match(checker, /IDLE_SCHEDULER_LOOP_RECOVERY_COPY = "空闲，等待可派发任务"/);
-  assert.match(checker, /NO_SOURCE_RESUME_ATTEMPT_COPY = "该通道未启用；无阻塞时继续主任务。"/);
-  assert.match(checker, /RAW_SCHEDULER_LOOP_RECOVERY_TOKENS = new Set/);
-  assert.match(checker, /RAW_RESUME_ATTEMPT_CLAIM_TOKENS = new Set/);
-  assert.match(checker, /"no_dispatchable_scheduler_actions"/);
-  assert.match(checker, /"scheduler_loop_resume_attempt"/);
-  assert.match(checker, /function isClearedSchedulerLoopRecoveryReadout/);
-  assert.match(checker, /function isNoSourceResumeAttemptReadout/);
-  assert.match(checker, /RAW_SCHEDULER_LOOP_RECOVERY_TOKENS\.has\(normalized\)[\s\S]*return false/);
-  assert.match(checker, /RAW_RESUME_ATTEMPT_CLAIM_TOKENS\.has\(normalized\)[\s\S]*return false/);
-  assert.match(checker, /assert\(isClearedSchedulerLoopRecoveryReadout\(resumedLoopRecovery\)/);
-  assert.match(checker, /assert\(isNoSourceResumeAttemptReadout\(resumedLoopAttempt\)/);
-  assert.doesNotMatch(checker, /resumedLoopRecovery === "空闲"/);
-  assert.doesNotMatch(checker, /resumedLoopAttempt === "未配置"/);
+  assert.match(fixtures, /CLEARED_SCHEDULER_LOOP_RECOVERY_COPY = "等待状态上报；下一步查看推荐任务。"/);
+  assert.match(fixtures, /IDLE_SCHEDULER_LOOP_RECOVERY_COPY = "空闲，等待可派发任务"/);
+  assert.match(fixtures, /NO_SOURCE_RESUME_ATTEMPT_COPY = "该通道未启用；无阻塞时继续主任务。"/);
+  assert.match(fixtures, /RAW_SCHEDULER_LOOP_RECOVERY_TOKENS = new Set/);
+  assert.match(fixtures, /RAW_RESUME_ATTEMPT_CLAIM_TOKENS = new Set/);
+  assert.match(fixtures, /"no_dispatchable_scheduler_actions"/);
+  assert.match(fixtures, /"scheduler_loop_resume_attempt"/);
+  assert.match(fixtures, /function isClearedSchedulerLoopRecoveryReadout/);
+  assert.match(fixtures, /function isNoSourceResumeAttemptReadout/);
+  assert.match(fixtures, /RAW_SCHEDULER_LOOP_RECOVERY_TOKENS\.has\(normalized\)[\s\S]*return false/);
+  assert.match(fixtures, /RAW_RESUME_ATTEMPT_CLAIM_TOKENS\.has\(normalized\)[\s\S]*return false/);
+  assert.match(projectedScenarios, /assert\(isClearedSchedulerLoopRecoveryReadout\(resumedLoopRecovery\)/);
+  assert.match(projectedScenarios, /assert\(isNoSourceResumeAttemptReadout\(resumedLoopAttempt\)/);
+  assert.doesNotMatch(projectedScenarios, /resumedLoopRecovery === "空闲"/);
+  assert.doesNotMatch(projectedScenarios, /resumedLoopAttempt === "未配置"/);
 });
 
 test("Next shell responsive viewport is governed by runtime overflow checks", () => {

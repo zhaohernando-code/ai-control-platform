@@ -73,6 +73,7 @@ test("legacy static Workbench serving is retired and cannot be opt-in enabled", 
 test("current acceptance gates use Next runtime and legacy CLI is fail-closed", () => {
   const report = inventory();
   const browserEvents = read("tools/check-workbench-browser-events.mjs");
+  const browserEventsRuntime = read("tools/workbench-browser-events-runtime.mjs");
   const nextBrowserEvents = read("tools/check-workbench-next-browser-events.mjs");
   const nextFrontendAcceptance = read("tools/check-workbench-next-frontend-acceptance.mjs");
   const frontendAcceptance = read("tools/check-workbench-frontend-acceptance.mjs");
@@ -90,7 +91,8 @@ test("current acceptance gates use Next runtime and legacy CLI is fail-closed", 
 
   assert.match(browserEvents, /nextjs_app_router/);
   assert.match(browserEvents, /legacy_interactions_replayed:\s*true/);
-  assert.match(browserEvents, /WORKBENCH_MOUNT_PREFIX/);
+  assert.doesNotMatch(browserEvents, /WORKBENCH_MOUNT_PREFIX/);
+  assert.match(browserEventsRuntime, /WORKBENCH_MOUNT_PREFIX/);
   assert.doesNotMatch(browserEvents, /serveLegacyStatic:\s*true/);
   assert.doesNotMatch(browserEvents, /page\.goto\([^)]*desktop\.html/);
   assert.doesNotMatch(browserEvents, /page\.goto\([^)]*mobile\.html/);

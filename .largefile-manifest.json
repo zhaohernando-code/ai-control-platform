@@ -592,17 +592,54 @@
       "reviewed_at": "2026-06-02"
     },
     "tools/check-workbench-browser-events.mjs": {
-      "lines": 983,
-      "reason": "Browser events closeout checker covers mounted runtime scenarios, API rewrites, console errors, and durable event evidence in one large script.",
-      "status": "planned_refactor",
+      "lines": 227,
+      "reason": "Workbench browser-events checker root was reduced from 983 lines to a below-500 CLI/orchestration entry in P24. Fixture mutation, runtime helpers, default scenarios, lifecycle scenarios, and projected/mobile scenarios were extracted into bounded modules, while artifact creation/writeback and scenario recording remain root-owned. Extraction parity is recorded in docs/examples/workbench-browser-events-p24-extraction-parity.json.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 983,
-        "target_lines": 499,
-        "minimum_reduction": 484,
-        "terminal_condition": "tools/check-workbench-browser-events.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "split_evidence": {
+        "parity_artifact": "docs/examples/workbench-browser-events-p24-extraction-parity.json",
+        "run_artifact": "docs/examples/workbench-browser-events-p24-run-artifact.json",
+        "before_lines": 983,
+        "after_lines": 227,
+        "scenario_count": 15,
+        "extracted_modules": [
+          "tools/workbench-browser-events-fixtures.mjs",
+          "tools/workbench-browser-events-runtime.mjs",
+          "tools/workbench-browser-events-default-scenarios.mjs",
+          "tools/workbench-browser-events-lifecycle-scenarios.mjs",
+          "tools/workbench-browser-events-projected-scenarios.mjs"
+        ]
       }
+    },
+    "tools/workbench-browser-events-fixtures.mjs": {
+      "lines": 255,
+      "reason": "Extracted Workbench browser-events fixture-state helpers kept below 500 lines while preserving requirement/scheduler cleanup, reviewer shard fixture state, lifecycle cleanup/timeout injection, and terminal next-action fixture injection without Playwright/runtime/writeback imports.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-browser-events-runtime.mjs": {
+      "lines": 103,
+      "reason": "Extracted Workbench browser-events runtime helpers kept below 500 lines while preserving mounted Next runtime setup, event-ledger reads, Workbench page opening, readouts, viewport dimensions, and legacy-shell fail-closed checks.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-browser-events-default-scenarios.mjs": {
+      "lines": 127,
+      "reason": "Extracted Workbench browser-events default scenario group kept below 500 lines while preserving success, failure, provider-health, scheduler-dispatch, approved-mock, and guarded next-action UI interactions.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-browser-events-lifecycle-scenarios.mjs": {
+      "lines": 151,
+      "reason": "Extracted Workbench browser-events lifecycle scenario group kept below 500 lines while preserving timeout readouts, guarded lifecycle cleanup, and projected lifecycle cleanup loop interactions.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-browser-events-projected-scenarios.mjs": {
+      "lines": 254,
+      "reason": "Extracted Workbench browser-events projected/mobile scenario group kept below 500 lines while preserving projected mock loop, real partial shard, terminal readout, autonomous loop/resume, mobile projection, and durable global-goal lifecycle projection interactions.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "tools/run-governance-audit-skill-trial.mjs": {
       "lines": 597,

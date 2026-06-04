@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T13:12:42+08:00
+Updated at: 2026-06-04T14:18:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -28,25 +28,25 @@ This plan does not replace `docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md`; it s
 
 ## Current Baseline
 
-Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04.
+Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P23.
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 88 |
-| Files currently above 500 lines | 23 |
-| `planned_refactor` files above 500 lines | 14 |
+| Manifest entries | 93 |
+| Files currently above 500 lines | 22 |
+| `planned_refactor` files above 500 lines | 13 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 65 |
+| Manifest entries already below threshold | 71 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `src/workflow/requirement-intake.js` | 987 | `planned_refactor` | Extract requirement state transitions, closeout, or workflow event recording until below 500 lines. |
-| LFA-Q02 | `tools/check-workbench-browser-events.mjs` | 983 | `planned_refactor` | Extract browser probe setup, route checks, API checks, and event-evidence validation until below 500 lines. |
-| LFA-Q03 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Continue extracting projection orchestration subdomains until below 500 lines. |
-| LFA-Q04 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance, CLI command setup, or evidence aggregation until below 500 lines. |
-| LFA-Q05 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
+| LFA-Q01 | `tools/check-workbench-browser-events.mjs` | 983 | `planned_refactor` | Extract browser probe setup, route checks, API checks, and event-evidence validation until below 500 lines. |
+| LFA-Q02 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Continue extracting projection orchestration subdomains until below 500 lines. |
+| LFA-Q03 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance, CLI command setup, or evidence aggregation until below 500 lines. |
+| LFA-Q04 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
+| LFA-Q05 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract loop execution, recovery, projection reuse, artifact validation, or execution-root propagation until below 500 lines. |
 
 ## State Vocabulary
 
@@ -487,6 +487,30 @@ Planned extraction map:
 | LFA-P23.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-requirement-intake-p23-deepseek.json`; command evidence | Focused requirement intake, server requirement routes, projection/project-management, autonomous continuation, and work-package governance tests passed 69/69. DeepSeek sharded code/evidence review returned PASS with no blocking findings; its only non-blocking note was that the parity artifact also lists the pre-existing P15 generation/granularity modules in line_counts while manifest split_evidence correctly lists only the five P23 extracted modules. | pass |
 | LFA-P23.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and all P23 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed only because the isolated worktree had no ignored Playwright/Next dependencies; after `npm ci` at root and `apps/workbench`, the full closeout rerun passed. | pass |
 
+### Phase LFA-P24: Workbench Browser Events Checker Below-500 Extraction
+
+Status: in_progress
+
+Goal: reduce `tools/check-workbench-browser-events.mjs` from 983 lines to below 500 lines in this phase, without changing the 15-scenario browser-events closeout contract, mounted Next.js App Router runtime validation, mounted API writeback behavior, legacy-static fail-closed checks, scheduler/lifecycle/projected-loop interactions, mobile projection checks, or durable artifact shape. Newly extracted modules must remain below 500 lines, and should stay below 300 lines where practical.
+
+Planned extraction map:
+
+- Keep `tools/check-workbench-browser-events.mjs` as the CLI/orchestration entrypoint: parse flags/env, launch Playwright, run scenario groups in order, create/write/record the run artifact, own `postRunArtifactToWorkbench`, own `recordRunArtifactToTempWorkflow`, and expose the same script behavior through `npm run check:workbench:browser-events`. Keeping artifact creation/writeback in the root avoids splitting `WORKBENCH_MOUNT_PREFIX` and temp workflow writeback across unrelated helper modules.
+- Extract fixture and workflow-state construction to `tools/workbench-browser-events-fixtures.mjs`: requirement/scheduler cleanup helpers, reviewer shard fixture state, project-status writers, lifecycle cleanup/timeout injection, and terminal next-action fixture injection. This module must not import Playwright, `withRuntime`, or Workbench API writeback helpers.
+- Extract runtime/browser helpers to `tools/workbench-browser-events-runtime.mjs`: `withNextWorkbenchRuntime`, event ledger reading, Workbench page opening, readout helpers, viewport dimensions, and no-legacy-shell assertions. This module is the only extracted module allowed to import `withRuntime` and `WORKBENCH_MOUNT_PREFIX` from `tools/check-workbench-next-served-route.mjs`, and its exported runtime helper must preserve current temp directory, SQLite state-store, projection-history, and mounted Next.js startup behavior.
+- Extract default interaction scenarios to `tools/workbench-browser-events-default-scenarios.mjs`: success, failure, provider health, scheduler dry-run, scheduler approved mock, and guarded next-action click scenarios.
+- Extract lifecycle scenarios to `tools/workbench-browser-events-lifecycle-scenarios.mjs`: timeout readout, guarded lifecycle cleanup, and projected lifecycle cleanup loop scenarios.
+- Extract projected loop and mobile scenarios to `tools/workbench-browser-events-projected-scenarios.mjs`: projected mock loop, projected real partial shard, terminal next-action, autonomous loop/resume, mobile projection, and latest durable global-goal lifecycle projection scenarios.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P24.1 | Select current browser-events target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `tools/check-workbench-browser-events.mjs` because it is the current LFG-Q01 planned-refactor item at 983 lines with a target gap of 484 lines. This phase may pass only if the CLI entry falls below 500 lines and no extracted module exceeds 500 lines. | pass |
+| LFA-P24.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-workbench-browser-events-p24-plan-deepseek.json` | Initial DeepSeek review failed because artifact/writeback ownership and `withNextWorkbenchRuntime` import boundaries were not explicit enough. Delta plan made artifact/writeback ownership, fixture isolation, and runtime import boundaries explicit. Final DeepSeek plan review returned PASS with no blocking findings and allowed code extraction to start, with follow-up checks for root-owned scenario recording and exact 15-scenario artifact names. | pass |
+| LFA-P24.3 | Move browser-events domains into bounded modules | Runtime modules and root CLI entry | Root entry reduced from 983 to 227 lines. Extracted modules are below 500 lines: fixtures 255, runtime 103, default scenarios 127, lifecycle scenarios 151, projected/mobile scenarios 254. Syntax checks passed for root and all five extracted modules. | pass |
+| LFA-P24.4 | Prove scenario and artifact parity plus manifest compatibility | `docs/examples/workbench-browser-events-p24-extraction-parity.json`; `.largefile-manifest.json` | Parity artifact records 15 required scenarios, 15 actual scenarios, no missing/unexpected/duplicate scenario names, line counts, module roles, and manifest compatibility. `npm run check:large-files` passed and moved the queue head to `src/workflow/workbench-projection.js`. | pass |
+| LFA-P24.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-browser-events-p24-deepseek.json`; command evidence | `npm run check:workbench:browser-events` passed, including a refreshed run with `--output docs/examples/workbench-browser-events-p24-run-artifact.json` that wrote a 15-scenario artifact after scenario contract assertions. Initial DeepSeek code/evidence review failed on root mount-prefix boundary, implicit scenario mapping, and hardcoded projection evidence; all three were remediated. DeepSeek delta review returned PASS with no blocking findings; direct shard evidence confirmed the projected/mobile hardcoded evidence blocker was closed. | pass |
+| LFA-P24.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P24 artifacts, `git diff --check`, `npm run check:large-files`, focused shell/inventory tests, `npm test` 1002/1002, and full `npm run check:closeout`. During final gates, two stale static tests were updated to follow the new module boundaries; DeepSeek supplemental review returned PASS and confirmed the fail-closed readout semantics, mount-prefix boundary, and legacy static retirement checks were not weakened. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -515,6 +539,7 @@ Planned extraction map:
 | LFA-P21 | pass | Selected `test/headless-cli-orchestrator.test.js`; root is now 209 lines after moving whole test blocks into five bounded shards for child acceptance/output-path, child provider/prompt, loop persistence, loop projection, and hardening/parser/no-diff. P21 split parity records 33 before / 33 after tests with no missing, added, or duplicate names; final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, split parity validation, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS after delta; DeepSeek code PASS |
 | LFA-P22 | pass | Selected `test/workbench-projection.test.js` at 1025 lines. Root is now 395 lines after moving whole test blocks into bounded reviewer recovery, reviewer aggregate, operations timeline, and operator events shards. P22 split parity records 19 before / 19 after tests with no missing, added, or duplicate names. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, split parity validation, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
 | LFA-P23 | pass | Selected `src/workflow/requirement-intake.js` at 987 lines. Root is now 38 lines after moving shared core, submission state, plan-review state, lifecycle/summary state, and workflow recording into five bounded modules under 500 lines. Public export parity passed with 18 expected / 18 actual exports and no missing, added, or duplicate names; focused requirement intake/calling-chain gates passed 69/69. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
+| LFA-P24 | pass | Selected `tools/check-workbench-browser-events.mjs` at 983 lines. Root is now 227 lines after extracting fixtures, runtime helpers, default scenarios, lifecycle scenarios, and projected/mobile scenarios into five bounded modules no larger than 255 lines. Browser-events focused gate passed with a regenerated 15-scenario artifact, final gates passed, and the large-file queue head moved to `src/workflow/workbench-projection.js`. | DeepSeek plan PASS; code delta review PASS; supplemental test-boundary review PASS |
 
 ## Daily Run Shape
 

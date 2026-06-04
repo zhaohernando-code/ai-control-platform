@@ -1,0 +1,275 @@
+{
+  "version": "workbench-browser-events-run.v1",
+  "status": "pass",
+  "created_at": "2026-06-04T05:49:43.742Z",
+  "route_family": "nextjs_app_router",
+  "legacy_static_shell_used": false,
+  "legacy_interactions_replayed": true,
+  "scenario_count": 15,
+  "required_scenarios": [
+    "success",
+    "failure",
+    "provider_health_click",
+    "scheduler_dispatch_click",
+    "scheduler_dispatch_approved_mock_click",
+    "guarded_next_action_click",
+    "agent_lifecycle_pool_timeout_readout",
+    "agent_lifecycle_pool_cleanup_click",
+    "agent_lifecycle_pool_cleanup_loop_click",
+    "projected_mock_loop_click",
+    "projected_real_partial_shard_readout",
+    "terminal_next_action_readout",
+    "autonomous_scheduler_loop_click",
+    "latest_durable_global_goal_lifecycle_projection",
+    "mobile_projection"
+  ],
+  "scenarios": [
+    {
+      "scenario": "success",
+      "event_count": 1,
+      "action": "validate",
+      "run_id": "run-20260521-platform-self-trial",
+      "closeout_status": "rendered",
+      "resume_health_status": "rendered",
+      "provider_health": "healthy",
+      "scheduler_dispatch_status": "未配置",
+      "scheduler_dispatch_steps": "0",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "failure",
+      "event_count": 0,
+      "button_text": "事件写入失败"
+    },
+    {
+      "scenario": "provider_health_click",
+      "provider_health": "unhealthy",
+      "next_action": "fallback_model_or_defer_external_review",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "scheduler_dispatch_click",
+      "scheduler_dispatch_status": "通过",
+      "scheduler_dispatch_steps": "3",
+      "scheduler_policy_status": "通过",
+      "scheduler_policy_mode": "预检",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "scheduler_dispatch_approved_mock_click",
+      "scheduler_dispatch_status": "通过",
+      "scheduler_dispatch_dry_run": "否",
+      "scheduler_policy_status": "通过",
+      "scheduler_policy_mode": "execute",
+      "scheduler_next_status": "通过",
+      "scheduler_next_packages": "1",
+      "scheduler_continuation_ready": "就绪",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "guarded_next_action_click",
+      "projected_action": "enqueue_scheduler_next_cycle",
+      "button_text": "推荐动作已记录",
+      "scheduler_continuation_ready": "就绪",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "agent_lifecycle_pool_timeout_readout",
+      "desktop_status": "受阻",
+      "desktop_timed_out": "1",
+      "desktop_heartbeats": "1",
+      "desktop_latest_heartbeat": "2026-05-22T08:16:00.000Z",
+      "desktop_latest_timeout": "2026-05-22T08:20:00.000Z",
+      "desktop_next_action_status": "受阻",
+      "mobile_status": "受阻",
+      "mobile_timed_out": "1",
+      "mobile_heartbeats": "1",
+      "mobile_latest_heartbeat": "2026-05-22T08:16:00.000Z",
+      "mobile_latest_timeout": "2026-05-22T08:20:00.000Z",
+      "desktop_dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "mobile_dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "scenario": "agent_lifecycle_pool_cleanup_click",
+      "cleanup_before_status": "unevaluated",
+      "cleanup_before_open": "0",
+      "cleanup_before_unevaluated": "1",
+      "cleanup_before_unclosed": "1",
+      "cleanup_before_next_action": "cleanup_agent_lifecycle_pool",
+      "projected_action": "cleanup_agent_lifecycle_pool",
+      "cleanup_after_status": "通过",
+      "cleanup_after_open": "0",
+      "cleanup_after_unevaluated": "0",
+      "cleanup_after_unclosed": "0",
+      "cleanup_after_next_action": "等待状态上报；下一步查看推荐任务。",
+      "next_action_readout": "prepare_project_status_continuation",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "agent_lifecycle_pool_cleanup_loop_click",
+      "cleanup_before_status": "unevaluated",
+      "projected_action": "cleanup_agent_lifecycle_pool",
+      "scheduler_loop_status": "通过",
+      "scheduler_loop_strategy": "按推荐动作推进",
+      "cleanup_after_status": "通过",
+      "cleanup_after_open": "0",
+      "cleanup_after_unevaluated": "0",
+      "cleanup_after_unclosed": "0",
+      "next_action_readout": "resume_autonomous_scheduler_loop",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "projected_mock_loop_click",
+      "scheduler_loop_status": "通过",
+      "scheduler_loop_iterations": "2",
+      "scheduler_loop_strategy": "按推荐动作推进",
+      "shard_review_completed": "2",
+      "shard_review_status": "通过",
+      "shard_review_executor": "mock",
+      "shard_review_budget": "0",
+      "next_action_readout": "resume_autonomous_scheduler_loop",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "projected_real_partial_shard_readout",
+      "scheduler_loop_status": "通过",
+      "scheduler_loop_iterations": "1",
+      "scheduler_loop_strategy": "按推荐动作推进",
+      "shard_review_completed": "1",
+      "shard_review_next": "reviewer-scope-shard-002",
+      "shard_review_executor": "browser_test_real_reviewer",
+      "shard_review_budget": "1",
+      "next_action_readout": "run_reviewer_scope_shard",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "terminal_next_action_readout",
+      "next_action_readout": "inspect_scheduler_loop",
+      "desktop_terminal_status": "pending",
+      "desktop_terminal_action": "inspect_scheduler_loop",
+      "desktop_terminal_reason": "projected next action is not executable",
+      "mobile_terminal_status": "pending",
+      "mobile_terminal_action": "inspect_scheduler_loop",
+      "mobile_terminal_reason": "projected next action is not executable",
+      "desktop_dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "mobile_dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "scenario": "autonomous_scheduler_loop_click",
+      "scheduler_loop_status": "通过",
+      "scheduler_loop_iterations": "1",
+      "scheduler_loop_recovery": "就绪",
+      "resumed_loop_status": "通过",
+      "resumed_loop_recovery": "空闲，等待可派发任务",
+      "resumed_loop_attempt": "该通道未启用；无阻塞时继续主任务。",
+      "operation_events": "6",
+      "operation_rows": 6,
+      "next_action_readout": "wait_for_new_work",
+      "dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      }
+    },
+    {
+      "scenario": "mobile_projection",
+      "project_overview": "AI Control Platform",
+      "projects_total": "17",
+      "closeout_status": "rendered",
+      "resume_health_status": "",
+      "provider_health": "healthy",
+      "scheduler_dispatch_status": "未配置",
+      "scheduler_dispatch_steps": "0",
+      "scheduler_continuation_ready": "--",
+      "scheduler_loop_status": "通过",
+      "scheduler_loop_recovery": "就绪",
+      "scheduler_loop_resume_status": "通过",
+      "agent_lifecycle_pool_status": "未配置",
+      "agent_lifecycle_pool_open": "0",
+      "agent_lifecycle_pool_unevaluated": "0",
+      "agent_lifecycle_pool_unclosed": "0",
+      "agent_lifecycle_pool_timed_out": "0",
+      "agent_lifecycle_pool_heartbeats": "0",
+      "global_goals_completed": "5",
+      "global_goals_total": "17",
+      "global_goals_blocked": "0",
+      "agent_lifecycle_pool_next_action": "--",
+      "operation_rows": 6,
+      "next_action_readout": "wait_for_new_work",
+      "dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "scenario": "latest_durable_global_goal_lifecycle_projection",
+      "projection_id": "headless-live-context-cycle-1779570720000",
+      "durable_input_path": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260604-reduce-browser-events-checker-below-500-p24-790310/docs/examples/headless-live-context-cycle-1779570720000.workbench-input.json",
+      "desktop_global_completed": "3",
+      "desktop_global_total": "4",
+      "desktop_global_blocked": "0",
+      "desktop_lifecycle_status": "通过",
+      "desktop_lifecycle_open": "0",
+      "desktop_lifecycle_unevaluated": "0",
+      "desktop_lifecycle_unclosed": "0",
+      "desktop_lifecycle_heartbeats": "3",
+      "mobile_global_completed": "3",
+      "mobile_global_total": "4",
+      "mobile_global_blocked": "0",
+      "mobile_lifecycle_status": "通过",
+      "mobile_lifecycle_open": "0",
+      "mobile_lifecycle_unevaluated": "0",
+      "mobile_lifecycle_unclosed": "0",
+      "mobile_lifecycle_heartbeats": "3",
+      "expected_lifecycle_completed": "3",
+      "expected_lifecycle_evaluated": "3",
+      "expected_lifecycle_closed": "3",
+      "desktop_dimensions": {
+        "width": 1440,
+        "scrollWidth": 1440
+      },
+      "mobile_dimensions": {
+        "width": 390,
+        "scrollWidth": 390
+      }
+    }
+  ]
+}

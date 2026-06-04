@@ -1,0 +1,99 @@
+{
+  "version": "workbench-browser-events-p24-extraction-parity.v1",
+  "status": "pass",
+  "created_at": "2026-06-04T05:44:00Z",
+  "target": {
+    "file": "tools/check-workbench-browser-events.mjs",
+    "before_lines": 983,
+    "after_lines": 227,
+    "reduction": 756,
+    "below_500": true
+  },
+  "extracted_modules": {
+    "tools/workbench-browser-events-fixtures.mjs": {
+      "lines": 255,
+      "domain": "workflow-state fixtures and cleanup/injection helpers",
+      "boundary": "no Playwright, withRuntime, or Workbench API writeback imports"
+    },
+    "tools/workbench-browser-events-runtime.mjs": {
+      "lines": 103,
+      "domain": "mounted Next runtime setup, page opening, readouts, event ledger, and legacy-shell assertions",
+      "boundary": "only extracted module importing withRuntime and WORKBENCH_MOUNT_PREFIX"
+    },
+    "tools/workbench-browser-events-default-scenarios.mjs": {
+      "lines": 127,
+      "domain": "success, failure, provider-health, scheduler-dispatch, approved-mock, and guarded next-action UI scenarios"
+    },
+    "tools/workbench-browser-events-lifecycle-scenarios.mjs": {
+      "lines": 151,
+      "domain": "agent lifecycle timeout, cleanup click, and cleanup loop UI scenarios"
+    },
+    "tools/workbench-browser-events-projected-scenarios.mjs": {
+      "lines": 254,
+      "domain": "projected mock/real shard, terminal readout, autonomous loop, mobile projection, and durable projection UI scenarios"
+    }
+  },
+  "required_scenarios": [
+    "success",
+    "failure",
+    "provider_health_click",
+    "scheduler_dispatch_click",
+    "scheduler_dispatch_approved_mock_click",
+    "guarded_next_action_click",
+    "agent_lifecycle_pool_timeout_readout",
+    "agent_lifecycle_pool_cleanup_click",
+    "agent_lifecycle_pool_cleanup_loop_click",
+    "projected_mock_loop_click",
+    "projected_real_partial_shard_readout",
+    "terminal_next_action_readout",
+    "autonomous_scheduler_loop_click",
+    "latest_durable_global_goal_lifecycle_projection",
+    "mobile_projection"
+  ],
+  "actual_scenarios": [
+    "success",
+    "failure",
+    "provider_health_click",
+    "scheduler_dispatch_click",
+    "scheduler_dispatch_approved_mock_click",
+    "guarded_next_action_click",
+    "agent_lifecycle_pool_timeout_readout",
+    "agent_lifecycle_pool_cleanup_click",
+    "agent_lifecycle_pool_cleanup_loop_click",
+    "projected_mock_loop_click",
+    "projected_real_partial_shard_readout",
+    "terminal_next_action_readout",
+    "autonomous_scheduler_loop_click",
+    "mobile_projection",
+    "latest_durable_global_goal_lifecycle_projection"
+  ],
+  "scenario_comparison": {
+    "required_count": 15,
+    "actual_count": 15,
+    "missing": [],
+    "unexpected": [],
+    "duplicate_names": [],
+    "order_note": "The required_scenarios contract order is unchanged. The actual execution order preserves the pre-extraction script behavior, where mobile_projection runs before latest_durable_global_goal_lifecycle_projection."
+  },
+  "focused_gate": {
+    "command": "npm run check:workbench:browser-events -- --output docs/examples/workbench-browser-events-p24-run-artifact.json",
+    "status": "pass",
+    "scenario_count": 15,
+    "run_artifact": "docs/examples/workbench-browser-events-p24-run-artifact.json",
+    "ui_driven": true,
+    "static_artifact_fabrication": false,
+    "post_refactor_contract_assertion": "Root scenario group mapping and actual scenarioResults are asserted against required_scenarios after browser execution."
+  },
+  "manifest_compatibility": {
+    "status": "pass",
+    "ceiling_increased": false,
+    "new_extracted_modules_registered": true,
+    "all_new_modules_below_500": true
+  },
+  "deepseek_blocker_remediation": {
+    "status": "implemented",
+    "root_mount_prefix_boundary": "Root no longer imports WORKBENCH_MOUNT_PREFIX directly; API writeback URLs are built through workbenchApiUrl exported by the runtime module.",
+    "scenario_group_mapping": "Root now declares SCENARIO_GROUPS with explicit scenario-name coverage and fails after execution if any required scenario is missing or duplicated.",
+    "hardcoded_projection_fields": "Mobile and durable projection scenarios now record page readouts, locator counts, body-derived rendered checks, dimensions, and explicitly named expected_* values instead of presenting hardcoded projection counters as page evidence."
+  }
+}

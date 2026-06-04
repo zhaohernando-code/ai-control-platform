@@ -1,0 +1,115 @@
+{
+  "version": "reviewer-risk.workbench-browser-events-p24.deepseek.v1",
+  "status": "pass",
+  "created_at": "2026-06-04T05:59:43Z",
+  "reviewer": "claude-code-with-deepseek-v4-pro-sharded",
+  "scope": {
+    "phase": "LFA-P24",
+    "target": "tools/check-workbench-browser-events.mjs",
+    "reviewed_files": [
+      "tools/check-workbench-browser-events.mjs",
+      "tools/workbench-browser-events-runtime.mjs",
+      "tools/workbench-browser-events-projected-scenarios.mjs",
+      "docs/examples/workbench-browser-events-p24-extraction-parity.json",
+      "docs/examples/workbench-browser-events-p24-run-artifact.json",
+      ".largefile-manifest.json"
+    ],
+    "review_type": "read_only_delta_review_after_initial_code_evidence_failure"
+  },
+  "initial_review": {
+    "status": "fail",
+    "blocking_findings": [
+      {
+        "id": "P24-DS-CODE-01",
+        "summary": "Root checker still directly imported WORKBENCH_MOUNT_PREFIX, blurring the runtime/API boundary."
+      },
+      {
+        "id": "P24-DS-CODE-02",
+        "summary": "Root checker scenario coverage was implicit and did not visibly prove all 15 scenarios were still mapped and executed."
+      },
+      {
+        "id": "P24-DS-CODE-03",
+        "summary": "Projected/mobile evidence risked recording hardcoded projection/page values instead of page-derived evidence."
+      }
+    ]
+  },
+  "remediation": {
+    "status": "implemented",
+    "changes": [
+      "Root checker now builds mounted API URLs through workbenchApiUrl exported by tools/workbench-browser-events-runtime.mjs.",
+      "Root checker now declares SCENARIO_GROUPS with explicit scenario names and asserts required, actual, missing, unexpected, and duplicate scenario coverage after execution.",
+      "Projected/mobile/durable scenarios now record page-derived readout, locator, body, and dimension evidence; expected_* fields are labeled as expectations rather than page measurements.",
+      "Browser-events run artifact was regenerated after remediation and still records 15 scenarios."
+    ]
+  },
+  "delta_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "shard_results": [
+      {
+        "files": [
+          "tools/check-workbench-browser-events.mjs",
+          "tools/workbench-browser-events-runtime.mjs"
+        ],
+        "status": "pass",
+        "notes": [
+          "Root imports workbenchApiUrl from runtime and no longer imports WORKBENCH_MOUNT_PREFIX directly.",
+          "SCENARIO_GROUPS maps all 15 scenarios and assertScenarioContract validates full coverage and duplicate absence."
+        ]
+      },
+      {
+        "files": [
+          "tools/workbench-browser-events-projected-scenarios.mjs",
+          "docs/examples/workbench-browser-events-p24-extraction-parity.json"
+        ],
+        "status": "pass",
+        "notes": [
+          "Hardcoded evidence blocker is closed: mobile uses body text, locators, readouts, and dimensions; durable expected_* fields are marked as expectations.",
+          "Parity records a 227-line root and extracted modules no larger than 254 lines, with 15 required and 15 actual scenarios."
+        ]
+      },
+      {
+        "files": [
+          "docs/examples/workbench-browser-events-p24-run-artifact.json",
+          ".largefile-manifest.json"
+        ],
+        "status": "pass",
+        "notes": [
+          "Run artifact records scenario_count 15.",
+          "Manifest/parity evidence remains compatible with the below-500 policy."
+        ]
+      }
+    ],
+    "synthesis_arbitration": {
+      "status": "pass",
+      "note": "The final synthesis status was pass with no blocking findings. One synthesis note said projected mobile/durable evidence was unverified from compressed shard summaries, but the second shard directly reviewed tools/workbench-browser-events-projected-scenarios.mjs and explicitly marked that blocker closed; this evidence file treats the direct shard result as authoritative for that item."
+    }
+  },
+  "supplemental_test_fix_review": {
+    "status": "pass",
+    "created_at": "2026-06-04T06:08:00Z",
+    "reason": "`npm test` exposed that test/workbench-shell.test.js still read the pre-extraction root checker for semantic scheduler-loop readout guards.",
+    "reviewed_files": [
+      "test/workbench-shell.test.js",
+      "test/legacy-static-workbench-inventory.test.js",
+      "tools/workbench-browser-events-fixtures.mjs",
+      "tools/workbench-browser-events-runtime.mjs",
+      "tools/workbench-browser-events-projected-scenarios.mjs"
+    ],
+    "blocking_findings": [],
+    "notes": [
+      "DeepSeek confirmed the test change follows the new module boundary rather than weakening assertions.",
+      "The test still checks the semantic copy constants, raw fail-closed token sets, key raw tokens, fail-closed token-return pattern, and projected-scenario use of the semantic helper functions.",
+      "The test still rejects weak direct comparisons such as resumedLoopRecovery === \"空闲\" and resumedLoopAttempt === \"未配置\".",
+      "DeepSeek confirmed the legacy-static inventory test now strengthens the mount-prefix boundary: root checker must not contain WORKBENCH_MOUNT_PREFIX and runtime must contain it.",
+      "DeepSeek confirmed the legacy static fail-closed checks remain intact, including retired static behavior, no legacy static serving, and no desktop.html/mobile.html navigation in current gates."
+    ]
+  },
+  "decision": {
+    "status": "pass",
+    "accepted_for_phase_closeout": true,
+    "required_follow_up": [
+      "Run final repository gates before commit and merge."
+    ]
+  }
+}
