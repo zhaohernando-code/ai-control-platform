@@ -1,8 +1,8 @@
 # Large File Anti-Abuse and Reduction Plan
 
-Status: in_progress
+Status: pass
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T23:10:00+08:00
+Updated at: 2026-06-04T23:18:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -713,6 +713,35 @@ Parity and safety requirements:
 | LFA-P29.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-continuation-p29-deepseek.json`; command evidence | Focused autonomous continuation, closeout, frontend, projection, server, and headless gates passed 113/113 after import-boundary repairs for extracted status/project-status helpers. DeepSeek sharded code/evidence review returned `DS_CODE_PASS` with no P0/P1 blockers; its temporary manifest/status timing note is resolved by this pass writeback. | pass |
 | LFA-P29.6 | Run final gates | Command evidence | Final gates passed: syntax checks for the root and extracted modules, JSON parsing for `.largefile-manifest.json` and P29 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second attempt exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, the final full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P30: Autonomous Continuation Root Test Below-500 Split
+
+Status: in_progress
+
+Goal: reduce `test/autonomous-continuation.test.js` from 840 lines to below 500 lines in this phase without changing test names, assertions, continuation semantics, or the already-extracted global-goal and governance-repair shards. This is a test-suite split only: production code must not change in P30 unless a test-only import boundary exposes an existing defect.
+
+Planned split map:
+
+- Keep `test/autonomous-continuation.test.js` as the root compatibility suite for base continuation decisions, requirement-plan slicing, rollback/human-stop decisions, snapshot publish planning, and project-status next work packages. Target root size: below 400 lines.
+- Move reviewer recovery and recovery-input aggregation tests into `test/autonomous-continuation-reviewer-recovery.test.js`: current reviewer aggregate fixture, agent lifecycle cleanup/retry packages, reviewer scope split packages, code review coverage supplement packages, and reviewer shard aggregate pass/fail override behavior.
+- Move reviewer provider-health and smoke-stall tests into `test/autonomous-continuation-provider-health.test.js`: provider fallback package generation, smoke check below threshold, smoke-stall human stop, and smoke-stall counter reset.
+- Preserve existing helper behavior. If helper duplication is needed, keep it small and local; do not introduce a shared test helper unless it reduces meaningful duplication without creating another growing test utility.
+- Do not rename tests. Split parity must prove the pre/post test-name set is unchanged: 27 before / 27 after for the P30 root-domain set, with no missing, added, or duplicate names.
+
+Parity and safety requirements:
+
+- Generate `docs/examples/autonomous-continuation-test-p30-split-parity.json` with before/after test names, moved test mapping, root/shard line counts, and focused gate result.
+- Update `.largefile-manifest.json`: mark `test/autonomous-continuation.test.js` accepted only after it is below 500 lines, register both new shards below 500 lines, and preserve the older P14 split evidence as historical context while adding P30 split evidence.
+- Focused gate must include: `test/autonomous-continuation.test.js`, `test/autonomous-continuation-global-goals.test.js`, `test/autonomous-continuation-governance-repair.test.js`, `test/autonomous-continuation-reviewer-recovery.test.js`, `test/autonomous-continuation-provider-health.test.js`, `test/autonomous-scheduler-loop.test.js`, `test/autonomous-closeout-loop.test.js`, `test/frontend-acceptance.test.js`, `test/headless-cli-orchestrator.test.js`, and `test/workbench-server-shard-06.test.js`.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P30.1 | Select current test target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `test/autonomous-continuation.test.js` because it is the current LFG-Q01 planned-refactor item at 840 lines with a target gap of 341 lines. This phase may pass only if the root test file falls below 500 lines and no extracted test shard exceeds 500 lines. | pass |
+| LFA-P30.2 | DeepSeek plan review before split | `docs/examples/reviewer-risk-20260604-autonomous-continuation-test-p30-plan-deepseek.json` | DeepSeek returned `DS_PLAN_PASS` with no P0/P1 blockers. It verified the 27-test split map, helper/import boundaries, focused gate coverage, and below-500 feasibility before implementation. | pass |
+| LFA-P30.3 | Split reviewer recovery and provider-health domains into bounded shards | `test/autonomous-continuation.test.js`; `test/autonomous-continuation-reviewer-recovery.test.js`; `test/autonomous-continuation-provider-health.test.js` | Root file is 336 lines. New shards are 411 and 132 lines. The initial split gate passed 27/27 with unchanged moved test names and assertions across reviewer recovery, provider-health, smoke-stall, code-review coverage, and agent lifecycle continuation behavior. | pass |
+| LFA-P30.4 | Prove test-name parity and manifest compatibility | `docs/examples/autonomous-continuation-test-p30-split-parity.json`; `.largefile-manifest.json` | Split parity artifact records 27 before / 27 after tests with no missing, added, or duplicate names. `.largefile-manifest.json` marks the root accepted at 336 lines, registers both new shards, preserves P14 historical split evidence, and `npm run check:large-files` passed with the queue head advanced to `src/workflow/frontend-acceptance.js`. | pass |
+| LFA-P30.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-continuation-test-p30-deepseek.json`; command evidence | Expanded focused gate passed 96/96 across autonomous continuation shards and adjacent scheduler/closeout/frontend/headless/server coverage. DeepSeek code/evidence review returned `DS_CODE_PASS` with no P0/P1 blockers. | pass |
+| LFA-P30.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P30 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout rerun failed only because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second rerun exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -747,6 +776,7 @@ Parity and safety requirements:
 | LFA-P27 | pass | Selected `test/autonomous-scheduler-loop.test.js` at 877 lines. Root is now 339 lines after moving fallback, projected next-action, and projected lifecycle behavior into three bounded shards under 300 lines plus a 92-line helper. Split parity records 26 before / 26 after test names with an explicit moved_tests mapping. Focused gates passed 64/64, `npm test` passed 1002/1002, `npm run check:large-files` passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS; code/evidence PASS after delta |
 | LFA-P28 | pass | Selected `src/workflow/autonomous-scheduler-loop.js` at 869 lines. Root is now 359 lines after moving shared helpers/constants, driver/fallback behavior, and run artifact creation/validation into bounded modules under 500 lines. Public export parity passed 11/11, focused gates passed 46/46, DeepSeek code/evidence review found no runtime blocker, `npm test` passed 1002/1002, full closeout passed after installing ignored isolated-worktree dependencies, and `npm run check:large-files` moved the queue head to `src/workflow/autonomous-continuation.js`. | DeepSeek plan PASS; code/evidence PASS after status writeback |
 | LFA-P29 | pass | `src/workflow/autonomous-continuation.js` is now 321 lines after moving shared helpers/constants, reviewer/provider recovery, and work-package aggregation into three bounded modules under 500 lines. Public export parity passed 10/10, `npm run check:large-files` moved the queue head to `test/autonomous-continuation.test.js`, focused gates passed 113/113, DeepSeek sharded code/evidence review returned `DS_CODE_PASS`, `npm test` passed 1002/1002, and full closeout passed after installing ignored isolated-worktree dependencies. | DeepSeek plan PASS; code/evidence PASS |
+| LFA-P30 | pass | Root autonomous-continuation test suite is now 336 lines after extracting 411-line reviewer-recovery and 132-line provider-health shards. Split parity records 27 before / 27 after tests with no missing, added, or duplicate names; expanded focused gate passed 96/96; final gates passed with `npm test` 1002/1002, `npm run check:large-files`, and full closeout. Queue head is now `src/workflow/frontend-acceptance.js`. | DeepSeek plan PASS; code/evidence PASS |
 
 ## Daily Run Shape
 

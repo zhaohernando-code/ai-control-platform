@@ -396,34 +396,45 @@
       "reviewed_at": "2026-06-04"
     },
     "test/autonomous-continuation.test.js": {
-      "lines": 840,
-      "reason": "Autonomous continuation root tests were reduced from the P14 1357-line baseline by extracting global-goal lifecycle and governance/frontend-repair continuation coverage into bounded shards under 300 lines. The root still covers base continuation decisions, requirement plan slicing, reviewer recovery, provider health, rollback/human-stop, snapshot publishing, and project-status next work packages, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/autonomous-continuation-test-p14-split-parity.json with 37 before / 37 after tests and no missing, added, or duplicate names.",
-      "status": "planned_refactor",
+      "lines": 336,
+      "reason": "Autonomous continuation root tests reduced below 500 lines in LFA-P30. Reviewer recovery, agent lifecycle, code-review coverage, reviewer aggregate, provider-health, and smoke-stall coverage moved into bounded shards while the root retains base continuation decisions, requirement-plan slicing, rollback/human-stop, snapshot publishing, and project-status next-work-package coverage.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 840,
-        "target_lines": 499,
-        "minimum_reduction": 341,
-        "terminal_condition": "test/autonomous-continuation.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
       "split_evidence": {
-        "parity_artifact": "docs/examples/autonomous-continuation-test-p14-split-parity.json",
-        "before_count": 37,
-        "after_count": 37,
+        "parity_artifact": "docs/examples/autonomous-continuation-test-p30-split-parity.json",
+        "before_count": 27,
+        "after_count": 27,
+        "before_lines": 840,
+        "after_lines": 336,
         "moved_domains": {
-          "test/autonomous-continuation-global-goals.test.js": "global_goal_lifecycle_completion_and_blocking",
-          "test/autonomous-continuation-governance-repair.test.js": "self_governance_frontend_repair_and_governance_audit_repair"
+          "test/autonomous-continuation-reviewer-recovery.test.js": "reviewer_recovery_agent_lifecycle_scope_split_code_review_coverage_and_reviewer_aggregate_recovery",
+          "test/autonomous-continuation-provider-health.test.js": "reviewer_provider_health_fallback_smoke_check_smoke_stall_and_counter_reset"
         },
         "retained_root_domains": [
           "base_continuation_decisions",
           "requirement_plan_slicing",
-          "reviewer_recovery",
-          "provider_health",
           "rollback_and_human_stop",
           "snapshot_publish_plan",
           "project_status_next_work_packages"
-        ]
+        ],
+        "historical_p14": {
+          "parity_artifact": "docs/examples/autonomous-continuation-test-p14-split-parity.json",
+          "before_count": 37,
+          "after_count": 37,
+          "moved_domains": {
+            "test/autonomous-continuation-global-goals.test.js": "global_goal_lifecycle_completion_and_blocking",
+            "test/autonomous-continuation-governance-repair.test.js": "self_governance_frontend_repair_and_governance_audit_repair"
+          },
+          "retained_root_domains": [
+            "base_continuation_decisions",
+            "requirement_plan_slicing",
+            "reviewer_recovery",
+            "provider_health",
+            "rollback_and_human_stop",
+            "snapshot_publish_plan",
+            "project_status_next_work_packages"
+          ]
+        }
       }
     },
     "test/autonomous-continuation-global-goals.test.js": {
@@ -437,6 +448,18 @@
       "reason": "Extracted autonomous continuation governance repair shard kept below the near-threshold budget while preserving self-governance defect/evidence scheduling, frontend repair dedupe, and governance audit repair coverage.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
+    },
+    "test/autonomous-continuation-reviewer-recovery.test.js": {
+      "lines": 411,
+      "reason": "Extracted autonomous continuation reviewer recovery shard kept below 500 lines while preserving reviewer aggregate, agent lifecycle cleanup/retry, reviewer scope split, code review coverage supplement, and reviewer shard aggregate recovery behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/autonomous-continuation-provider-health.test.js": {
+      "lines": 132,
+      "reason": "Extracted autonomous continuation provider-health shard kept below 500 lines while preserving provider fallback package generation, smoke-check scheduling, smoke-stall human-stop behavior, and smoke-stall counter reset coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "test/autonomous-scheduler-loop.test.js": {
       "lines": 339,

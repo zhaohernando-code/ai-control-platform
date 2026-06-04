@@ -1,0 +1,246 @@
+{
+  "artifact": "autonomous-continuation-test-p30-split-parity",
+  "phase": "LFA-P30",
+  "generated_at": "2026-06-04T22:17:06+08:00",
+  "base_ref": "HEAD before P30 split in task/reduce-autonomous-continuation-test-below-500-p30",
+  "before": {
+    "file": "test/autonomous-continuation.test.js",
+    "test_count": 27,
+    "test_names": [
+      "continues when a completed run has a durable next step and no blockers",
+      "does not stop just because a cycle summary was produced",
+      "reruns when autonomous run returns recoverable next work packages",
+      "approved requirement plans split broad intake into bounded implementation steps",
+      "approved requirement plan continuation removes dependencies already completed in prior cycles",
+      "existing broad frontend view migration packages are split before dispatch",
+      "current reviewer aggregate fixture advances after provider health follow-up packages",
+      "agent lifecycle pool gaps schedule cleanup without human intervention",
+      "timed-out agent lifecycle pool schedules smaller retry worker slice",
+      "timed-out agent lifecycle retry package has default owned files",
+      "reviewer scope split facts generate concrete shard work packages",
+      "reviewer scope split continuation skips shards with recorded results",
+      "code review coverage gap schedules supplement shard work and seeds context source",
+      "reviewer shard aggregate failure overrides stale pass evaluation",
+      "reviewer shard aggregate pass clears stale rerun evaluation",
+      "reviewer shard aggregate pass clears stale reviewer recovery artifacts",
+      "provider health fallback schedules model fallback work package",
+      "provider health needs_smoke_check below threshold still schedules smoke",
+      "provider health stops for human after consecutive smoke requests reach threshold",
+      "smoke stall counter resets when a non-smoke health event interrupts the streak",
+      "rolls back without asking human when rollback is automatic",
+      "stops only for human intervention blockers",
+      "stops when continuation points at the wrong host",
+      "continuation emits a workbench snapshot publish plan when workflow state is projection-ready",
+      "continuation does not emit a snapshot publish plan when workflow state is not projection-ready",
+      "continuation does not emit a snapshot publish plan without operator event facts",
+      "project status next work packages are durable continuation inputs"
+    ]
+  },
+  "after": {
+    "files": [
+      "test/autonomous-continuation.test.js",
+      "test/autonomous-continuation-reviewer-recovery.test.js",
+      "test/autonomous-continuation-provider-health.test.js"
+    ],
+    "test_count": 27,
+    "test_names": [
+      "continues when a completed run has a durable next step and no blockers",
+      "does not stop just because a cycle summary was produced",
+      "reruns when autonomous run returns recoverable next work packages",
+      "approved requirement plans split broad intake into bounded implementation steps",
+      "approved requirement plan continuation removes dependencies already completed in prior cycles",
+      "existing broad frontend view migration packages are split before dispatch",
+      "rolls back without asking human when rollback is automatic",
+      "stops only for human intervention blockers",
+      "stops when continuation points at the wrong host",
+      "continuation emits a workbench snapshot publish plan when workflow state is projection-ready",
+      "continuation does not emit a snapshot publish plan when workflow state is not projection-ready",
+      "continuation does not emit a snapshot publish plan without operator event facts",
+      "project status next work packages are durable continuation inputs",
+      "current reviewer aggregate fixture advances after provider health follow-up packages",
+      "agent lifecycle pool gaps schedule cleanup without human intervention",
+      "timed-out agent lifecycle pool schedules smaller retry worker slice",
+      "timed-out agent lifecycle retry package has default owned files",
+      "reviewer scope split facts generate concrete shard work packages",
+      "reviewer scope split continuation skips shards with recorded results",
+      "code review coverage gap schedules supplement shard work and seeds context source",
+      "reviewer shard aggregate failure overrides stale pass evaluation",
+      "reviewer shard aggregate pass clears stale rerun evaluation",
+      "reviewer shard aggregate pass clears stale reviewer recovery artifacts",
+      "provider health fallback schedules model fallback work package",
+      "provider health needs_smoke_check below threshold still schedules smoke",
+      "provider health stops for human after consecutive smoke requests reach threshold",
+      "smoke stall counter resets when a non-smoke health event interrupts the streak"
+    ],
+    "tests_by_file": {
+      "test/autonomous-continuation.test.js": [
+        "continues when a completed run has a durable next step and no blockers",
+        "does not stop just because a cycle summary was produced",
+        "reruns when autonomous run returns recoverable next work packages",
+        "approved requirement plans split broad intake into bounded implementation steps",
+        "approved requirement plan continuation removes dependencies already completed in prior cycles",
+        "existing broad frontend view migration packages are split before dispatch",
+        "rolls back without asking human when rollback is automatic",
+        "stops only for human intervention blockers",
+        "stops when continuation points at the wrong host",
+        "continuation emits a workbench snapshot publish plan when workflow state is projection-ready",
+        "continuation does not emit a snapshot publish plan when workflow state is not projection-ready",
+        "continuation does not emit a snapshot publish plan without operator event facts",
+        "project status next work packages are durable continuation inputs"
+      ],
+      "test/autonomous-continuation-reviewer-recovery.test.js": [
+        "current reviewer aggregate fixture advances after provider health follow-up packages",
+        "agent lifecycle pool gaps schedule cleanup without human intervention",
+        "timed-out agent lifecycle pool schedules smaller retry worker slice",
+        "timed-out agent lifecycle retry package has default owned files",
+        "reviewer scope split facts generate concrete shard work packages",
+        "reviewer scope split continuation skips shards with recorded results",
+        "code review coverage gap schedules supplement shard work and seeds context source",
+        "reviewer shard aggregate failure overrides stale pass evaluation",
+        "reviewer shard aggregate pass clears stale rerun evaluation",
+        "reviewer shard aggregate pass clears stale reviewer recovery artifacts"
+      ],
+      "test/autonomous-continuation-provider-health.test.js": [
+        "provider health fallback schedules model fallback work package",
+        "provider health needs_smoke_check below threshold still schedules smoke",
+        "provider health stops for human after consecutive smoke requests reach threshold",
+        "smoke stall counter resets when a non-smoke health event interrupts the streak"
+      ]
+    }
+  },
+  "parity": {
+    "missing": [],
+    "added": [],
+    "duplicates": [],
+    "pass": true
+  },
+  "moved_tests": [
+    {
+      "name": "continues when a completed run has a durable next step and no blockers",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "does not stop just because a cycle summary was produced",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "reruns when autonomous run returns recoverable next work packages",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "approved requirement plans split broad intake into bounded implementation steps",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "approved requirement plan continuation removes dependencies already completed in prior cycles",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "existing broad frontend view migration packages are split before dispatch",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "rolls back without asking human when rollback is automatic",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "stops only for human intervention blockers",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "stops when continuation points at the wrong host",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "continuation emits a workbench snapshot publish plan when workflow state is projection-ready",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "continuation does not emit a snapshot publish plan when workflow state is not projection-ready",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "continuation does not emit a snapshot publish plan without operator event facts",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "project status next work packages are durable continuation inputs",
+      "file": "test/autonomous-continuation.test.js"
+    },
+    {
+      "name": "current reviewer aggregate fixture advances after provider health follow-up packages",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "agent lifecycle pool gaps schedule cleanup without human intervention",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "timed-out agent lifecycle pool schedules smaller retry worker slice",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "timed-out agent lifecycle retry package has default owned files",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "reviewer scope split facts generate concrete shard work packages",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "reviewer scope split continuation skips shards with recorded results",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "code review coverage gap schedules supplement shard work and seeds context source",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "reviewer shard aggregate failure overrides stale pass evaluation",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "reviewer shard aggregate pass clears stale rerun evaluation",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "reviewer shard aggregate pass clears stale reviewer recovery artifacts",
+      "file": "test/autonomous-continuation-reviewer-recovery.test.js"
+    },
+    {
+      "name": "provider health fallback schedules model fallback work package",
+      "file": "test/autonomous-continuation-provider-health.test.js"
+    },
+    {
+      "name": "provider health needs_smoke_check below threshold still schedules smoke",
+      "file": "test/autonomous-continuation-provider-health.test.js"
+    },
+    {
+      "name": "provider health stops for human after consecutive smoke requests reach threshold",
+      "file": "test/autonomous-continuation-provider-health.test.js"
+    },
+    {
+      "name": "smoke stall counter resets when a non-smoke health event interrupts the streak",
+      "file": "test/autonomous-continuation-provider-health.test.js"
+    }
+  ],
+  "line_counts": {
+    "test/autonomous-continuation.test.js": 336,
+    "test/autonomous-continuation-reviewer-recovery.test.js": 411,
+    "test/autonomous-continuation-provider-health.test.js": 132
+  },
+  "split_gate": {
+    "command": "node tools/run-with-node18.mjs --test test/autonomous-continuation.test.js test/autonomous-continuation-reviewer-recovery.test.js test/autonomous-continuation-provider-health.test.js",
+    "status": "pass",
+    "tests": 27,
+    "pass": 27,
+    "fail": 0
+  },
+  "expanded_focused_gate": {
+    "status": "pass",
+    "command": "node tools/run-with-node18.mjs --test test/autonomous-continuation.test.js test/autonomous-continuation-global-goals.test.js test/autonomous-continuation-governance-repair.test.js test/autonomous-continuation-reviewer-recovery.test.js test/autonomous-continuation-provider-health.test.js test/autonomous-scheduler-loop.test.js test/autonomous-closeout-loop.test.js test/frontend-acceptance.test.js test/headless-cli-orchestrator.test.js test/workbench-server-shard-06.test.js",
+    "tests": 96,
+    "pass": 96,
+    "fail": 0
+  }
+}
