@@ -1,0 +1,35 @@
+{
+  "status": "pass",
+  "reviewer": "claude-deepseek-v4-pro-sharded",
+  "created_at": "2026-06-04T12:50:54+08:00",
+  "scope": "P23 code and evidence review for src/workflow/requirement-intake.js below-500 extraction",
+  "prompt_file": "/tmp/p23-requirement-intake-code-review.md",
+  "command": "python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_sharded_review.py --cwd /Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260604-reduce-requirement-intake-below-500-p23-61387f --max-files-per-shard 2 --shard-timeout-seconds 300 --synthesis-timeout-seconds 180 --no-progress-timeout-seconds 120 --excerpt-model deepseek-v4-flash --synthesis-model deepseek-v4-flash --effort high --observe",
+  "focus_files": [
+    "src/workflow/requirement-intake.js",
+    "src/workflow/requirement-intake-core.js",
+    "src/workflow/requirement-submission-state.js",
+    "src/workflow/requirement-plan-review-state.js",
+    "src/workflow/requirement-lifecycle-state.js",
+    "src/workflow/requirement-intake-recording.js",
+    ".largefile-manifest.json",
+    "docs/examples/requirement-intake-p23-extraction-parity.json",
+    "docs/examples/reviewer-risk-20260604-requirement-intake-p23-plan-deepseek.json",
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md"
+  ],
+  "blocking_findings": [],
+  "non_blocking_notes": [
+    {
+      "id": "P23-CODE-NB-01",
+      "summary": "The parity artifact line_counts includes the pre-existing P15 plan-generation and plan-granularity modules in addition to the five P23 extracted modules. DeepSeek treated this as internally consistent because those two modules have independent accepted manifest entries and are not counted as P23 extracted modules in manifest split_evidence."
+    }
+  ],
+  "observed_result": "All sharded review results and final synthesis returned PASS with no blocking findings.",
+  "gates_reviewed": [
+    "syntax checks pass for root and five extracted modules",
+    "public export parity pass: 18 expected / 18 actual, no missing, added, or duplicate names",
+    "focused requirement intake and calling-chain tests pass: 69/69",
+    "npm run check:large-files pass with queue head advanced to tools/check-workbench-browser-events.mjs",
+    "JSON validation pass for manifest, P23 parity artifact, and P23 plan review artifact"
+  ]
+}

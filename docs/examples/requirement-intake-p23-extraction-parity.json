@@ -1,0 +1,101 @@
+{
+  "version": "requirement-intake-p23-extraction-parity.v1",
+  "status": "pass",
+  "created_at": "2026-06-04T12:50:54+08:00",
+  "target": "src/workflow/requirement-intake.js",
+  "supersedes": [
+    "docs/examples/requirement-intake-p15-extraction-parity.json"
+  ],
+  "before": {
+    "source": "git HEAD:src/workflow/requirement-intake.js before P23 extraction",
+    "line_count": 987,
+    "public_exports": [
+      "REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION",
+      "createRequirementPlanPrompt",
+      "evaluateGeneratedRequirementPlan",
+      "parseRequirementPlanGenerationOutput",
+      "createRequirementPlanWorkPackages",
+      "normalizeRequirementPlanWorkPackageGranularity",
+      "normalizeRequirementPlanWorkPackagesGranularity",
+      "WORKBENCH_REQUIREMENT_INTAKE_VERSION",
+      "markRequirementPlanGenerationFailed",
+      "applyGeneratedRequirementPlan",
+      "validateRequirementSubmission",
+      "submitRequirementToProjectStatus",
+      "updateRequirementPlanReview",
+      "completeRequirementInProjectStatus",
+      "resetRequirementPlanGeneration",
+      "closeRequirementInProjectStatus",
+      "summarizeRequirementIntake",
+      "recordRequirementIntakeSubmitted"
+    ]
+  },
+  "after": {
+    "line_count": 38,
+    "public_exports": [
+      "REQUIREMENT_PLAN_GENERATION_PROMPT_VERSION",
+      "createRequirementPlanPrompt",
+      "evaluateGeneratedRequirementPlan",
+      "parseRequirementPlanGenerationOutput",
+      "createRequirementPlanWorkPackages",
+      "normalizeRequirementPlanWorkPackageGranularity",
+      "normalizeRequirementPlanWorkPackagesGranularity",
+      "WORKBENCH_REQUIREMENT_INTAKE_VERSION",
+      "markRequirementPlanGenerationFailed",
+      "applyGeneratedRequirementPlan",
+      "validateRequirementSubmission",
+      "submitRequirementToProjectStatus",
+      "updateRequirementPlanReview",
+      "completeRequirementInProjectStatus",
+      "resetRequirementPlanGeneration",
+      "closeRequirementInProjectStatus",
+      "summarizeRequirementIntake",
+      "recordRequirementIntakeSubmitted"
+    ]
+  },
+  "comparison": {
+    "missing": [],
+    "added": [],
+    "duplicate_exports": []
+  },
+  "export_parity_gate": {
+    "command": "node --input-type=module import current src/workflow/requirement-intake.js exports and compare against artifact after.public_exports",
+    "actual_count": 18,
+    "expected_count": 18,
+    "missing": [],
+    "added": [],
+    "duplicate": []
+  },
+  "line_counts": {
+    "src/workflow/requirement-intake.js": 38,
+    "src/workflow/requirement-intake-core.js": 288,
+    "src/workflow/requirement-submission-state.js": 124,
+    "src/workflow/requirement-plan-review-state.js": 288,
+    "src/workflow/requirement-lifecycle-state.js": 208,
+    "src/workflow/requirement-intake-recording.js": 114,
+    "src/workflow/requirement-plan-generation.js": 124,
+    "src/workflow/requirement-plan-granularity.js": 276
+  },
+  "extracted_domains": {
+    "src/workflow/requirement-intake-core.js": "requirement intake constants, surface profiles, normalization helpers, profile selection, id/summary helpers, plan-review constructors, work-package ownership helpers, item normalization, and closed-status helpers",
+    "src/workflow/requirement-submission-state.js": "requirement submission validation and project status submission state",
+    "src/workflow/requirement-plan-review-state.js": "plan generation failure persistence, generated plan application, plan review approve/revise, and plan generation reset state",
+    "src/workflow/requirement-lifecycle-state.js": "requirement completion, failed closeout, and intake summary state",
+    "src/workflow/requirement-intake-recording.js": "workflow event and artifact recording for requirement intake submissions"
+  },
+  "focused_gate": {
+    "commands": [
+      "node tools/run-with-node18.mjs --test test/requirement-intake.test.js",
+      "node tools/run-with-node18.mjs --test --test-concurrency=1 test/requirement-intake.test.js test/workbench-server-requirement-plan-retry.test.js test/workbench-server-plan-review.test.js test/workbench-server-provider-execution.test.js test/workbench-server-requirement-closeout.test.js test/workbench-projection-project-management.test.js test/workbench-projection-project-management-dispatch.test.js test/autonomous-continuation.test.js test/project-status-continuation.test.js test/work-package-execution-governance.test.js"
+    ],
+    "results": [
+      "12/12 pass",
+      "69/69 pass"
+    ]
+  },
+  "large_file_gate": {
+    "command": "npm run check:large-files",
+    "result": "pass",
+    "next_queue_head": "tools/check-workbench-browser-events.mjs"
+  }
+}

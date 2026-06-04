@@ -214,33 +214,53 @@
       "reviewed_at": "2026-05-28"
     },
     "src/workflow/requirement-intake.js": {
-      "lines": 987,
-      "reason": "Requirement intake root was reduced from the P15 1318-line baseline by extracting requirement plan generation and requirement plan granularity/work-package slicing into bounded modules under 300 lines. The root still owns requirement submission, plan-review state transitions, requirement completion/closeout, summaries, and workflow event recording, so it remains planned debt instead of accepted. Extraction parity is recorded in docs/examples/requirement-intake-p15-extraction-parity.json with compatibility exports and focused runtime gates.",
-      "status": "planned_refactor",
+      "lines": 38,
+      "reason": "Requirement intake entrypoint was reduced from the P23 987-line baseline to a thin compatibility re-export surface below 500 lines. Shared intake core helpers, submission state, plan-review state, lifecycle/summary state, and workflow event recording were extracted into bounded modules below 500 lines. Public export parity is recorded in docs/examples/requirement-intake-p23-extraction-parity.json.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 987,
-        "target_lines": 499,
-        "minimum_reduction": 488,
-        "terminal_condition": "src/workflow/requirement-intake.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
       "split_evidence": {
-        "parity_artifact": "docs/examples/requirement-intake-p15-extraction-parity.json",
-        "before_lines": 1318,
-        "after_lines": 987,
-        "moved_domains": {
-          "src/workflow/requirement-plan-generation.js": "requirement_plan_prompt_generation_generated_plan_parsing_and_validation",
-          "src/workflow/requirement-plan-granularity.js": "requirement_plan_work_package_granularity_frontend_view_slicing_dependency_rewriting_and_plan_step_work_package_generation"
-        },
-        "retained_root_domains": [
-          "requirement_submission_validation_and_profile_selection",
-          "pending_plan_review_state_transitions",
-          "plan_generation_failure_persistence",
-          "plan_review_approval_and_revision_state_transitions",
-          "requirement_completion_retry_closeout_summary_and_workflow_event_recording"
+        "parity_artifact": "docs/examples/requirement-intake-p23-extraction-parity.json",
+        "supersedes": "docs/examples/requirement-intake-p15-extraction-parity.json",
+        "before_lines": 987,
+        "after_lines": 38,
+        "extracted_modules": [
+          "src/workflow/requirement-intake-core.js",
+          "src/workflow/requirement-submission-state.js",
+          "src/workflow/requirement-plan-review-state.js",
+          "src/workflow/requirement-lifecycle-state.js",
+          "src/workflow/requirement-intake-recording.js"
         ]
       }
+    },
+    "src/workflow/requirement-intake-core.js": {
+      "lines": 288,
+      "reason": "Extracted requirement intake core helper module kept below the large-file threshold while preserving surface profiles, shared normalization, requirement profile/id/summary helpers, plan-review constructors, work-package ownership helpers, item normalization, and closed-status helpers.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/requirement-intake-recording.js": {
+      "lines": 114,
+      "reason": "Extracted requirement intake recording helper kept below the large-file threshold while preserving workflow event and artifact ledger recording for submitted requirements.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/requirement-lifecycle-state.js": {
+      "lines": 208,
+      "reason": "Extracted requirement lifecycle state helper kept below the large-file threshold while preserving completion, failed closeout, and requirement intake summary behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/requirement-plan-review-state.js": {
+      "lines": 288,
+      "reason": "Extracted requirement plan review state helper kept below the large-file threshold while preserving plan generation failure persistence, generated plan application, approval/revision, and retry/reset behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/requirement-submission-state.js": {
+      "lines": 124,
+      "reason": "Extracted requirement submission state helper kept below the large-file threshold while preserving submission validation, profile selection, project status updates, global goal seeding, and initial work-package creation.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "src/workflow/requirement-plan-generation.js": {
       "lines": 124,

@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T12:27:10+08:00
+Updated at: 2026-06-04T13:12:42+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -450,7 +450,7 @@ Goal: reduce `test/headless-cli-orchestrator.test.js` from 1071 lines to below 5
 
 ### Phase LFA-P22: Workbench Projection Root Test Below-500 Split
 
-Status: in_progress
+Status: pass
 
 Goal: reduce `test/workbench-projection.test.js` from 1025 lines to below 500 lines in this phase, without changing workbench projection behavior, reviewer recovery/readout coverage, reviewer shard aggregation, operations timeline ordering, operator event ingestion precedence, mobile projection subset behavior, or input-validation fail-closed semantics. New test shards must stay below 300 lines where practical and below 500 lines as a hard pass condition.
 
@@ -462,6 +462,30 @@ Goal: reduce `test/workbench-projection.test.js` from 1025 lines to below 500 li
 | LFA-P22.4 | Prove split parity, helper coverage, and manifest compatibility | `docs/examples/workbench-projection-test-p22-split-parity.json`; `.largefile-manifest.json` | P22 parity artifact records 19 before / 19 after tests with no missing, added, or duplicate names, and explicitly supersedes `docs/examples/workbench-projection-test-p12-split-parity.json`. `.largefile-manifest.json` records the root at 395 accepted lines plus independent accepted entries for all four new shards. Focused projection suite passed 70/70 and `npm run check:large-files` passed with no issues or warnings. | pass |
 | LFA-P22.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-projection-test-p22-deepseek.json`; command evidence | Syntax checks passed for root/new shards/helper; focused projection suite passed 70/70; split parity validation passed for 19 current tests; `npm run check:large-files` passed with no issues or warnings. DeepSeek sharded code/evidence synthesis returned PASS with no blocking findings; bounded shard evidence gaps were resolved by later shards and synthesis. | pass |
 | LFA-P22.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P22 artifacts, split parity validation, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked Playwright dependencies; after `npm ci` in the root and `apps/workbench`, the rerun passed. | pass |
+
+### Phase LFA-P23: Requirement Intake Runtime Below-500 Extraction
+
+Status: pass
+
+Goal: reduce `src/workflow/requirement-intake.js` from 987 lines to below 500 lines in this phase, without changing the public import surface from `src/workflow/requirement-intake.js`, requirement submission validation/profile selection, plan generation failure persistence, generated plan application, plan review approval/revision behavior, requirement completion/reset/closeout behavior, summary behavior, or workflow event/artifact recording. Newly extracted modules must remain below 500 lines, and should stay below 300 lines where practical.
+
+Planned extraction map:
+
+- Keep `src/workflow/requirement-intake.js` as a compatibility re-export entrypoint for all existing public exports.
+- Extract shared constants and helpers to `src/workflow/requirement-intake-core.js`: surface profiles, normalization helpers, requirement profile selection, requirement id/summary helpers, plan-review helper constructors, work-package ownership helpers, item normalization, and closed-status helpers.
+- Extract submission state to `src/workflow/requirement-submission-state.js`: `validateRequirementSubmission` and `submitRequirementToProjectStatus`.
+- Extract plan-review state transitions to `src/workflow/requirement-plan-review-state.js`: `markRequirementPlanGenerationFailed`, `applyGeneratedRequirementPlan`, `updateRequirementPlanReview`, and `resetRequirementPlanGeneration`.
+- Extract lifecycle/summary state to `src/workflow/requirement-lifecycle-state.js`: `completeRequirementInProjectStatus`, `closeRequirementInProjectStatus`, and `summarizeRequirementIntake`.
+- Extract workflow event/artifact recording to `src/workflow/requirement-intake-recording.js`: `recordRequirementIntakeSubmitted` and artifact id generation.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P23.1 | Select current requirement intake target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/requirement-intake.js` because it is the current LFG-Q01 planned-refactor item at 987 lines with a target gap of 488 lines. This phase may pass only if the compatibility entry falls below 500 lines and no extracted module exceeds 500 lines. | pass |
+| LFA-P23.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-requirement-intake-p23-plan-deepseek.json` | DeepSeek returned PASS with no blocking findings. Non-blocking notes: keep `requirement-intake-core.js` below the 300-line warning boundary if practical, explicitly re-export `WORKBENCH_REQUIREMENT_INTAKE_VERSION`, and treat duplicated normalization helpers as future cleanup rather than P23 scope. | pass |
+| LFA-P23.3 | Move runtime domains into bounded modules | Runtime modules and root compatibility entry | Root entry is 38 lines. Extracted modules are 288, 124, 288, 208, and 114 lines. Syntax checks passed for the compatibility root and all five extracted runtime modules. | pass |
+| LFA-P23.4 | Prove public API parity and manifest compatibility | `docs/examples/requirement-intake-p23-extraction-parity.json`; `.largefile-manifest.json` | Public export parity passed with 18 expected / 18 actual exports, no missing, added, or duplicate names. Manifest registers the 38-line root and all five below-500 extracted modules; `npm run check:large-files` passed and moved the queue head to `tools/check-workbench-browser-events.mjs`. | pass |
+| LFA-P23.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-requirement-intake-p23-deepseek.json`; command evidence | Focused requirement intake, server requirement routes, projection/project-management, autonomous continuation, and work-package governance tests passed 69/69. DeepSeek sharded code/evidence review returned PASS with no blocking findings; its only non-blocking note was that the parity artifact also lists the pre-existing P15 generation/granularity modules in line_counts while manifest split_evidence correctly lists only the five P23 extracted modules. | pass |
+| LFA-P23.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and all P23 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed only because the isolated worktree had no ignored Playwright/Next dependencies; after `npm ci` at root and `apps/workbench`, the full closeout rerun passed. | pass |
 
 ## Acceptance Tracking
 
@@ -490,6 +514,7 @@ Goal: reduce `test/workbench-projection.test.js` from 1025 lines to below 500 li
 | LFA-P20 | pass | Selected `test/workbench-server.test.js`; root is now 160 lines after moving whole test blocks into bounded domain shards for requirement plan retry, plan review, background dispatch, provider execution, requirement closeout, and provider defaults. P20 split parity records 14 before / 14 after tests with no missing, added, or duplicate names. Final gates passed: focused P20 tests 14/14, expanded server/API tests 87/87, `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, `git diff --check`, standalone browser-events 15 scenarios after clearing a leftover temporary Next process, and full `npm run check:closeout`. | DeepSeek plan PASS after delta; DeepSeek code PASS |
 | LFA-P21 | pass | Selected `test/headless-cli-orchestrator.test.js`; root is now 209 lines after moving whole test blocks into five bounded shards for child acceptance/output-path, child provider/prompt, loop persistence, loop projection, and hardening/parser/no-diff. P21 split parity records 33 before / 33 after tests with no missing, added, or duplicate names; final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, split parity validation, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS after delta; DeepSeek code PASS |
 | LFA-P22 | pass | Selected `test/workbench-projection.test.js` at 1025 lines. Root is now 395 lines after moving whole test blocks into bounded reviewer recovery, reviewer aggregate, operations timeline, and operator events shards. P22 split parity records 19 before / 19 after tests with no missing, added, or duplicate names. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, split parity validation, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
+| LFA-P23 | pass | Selected `src/workflow/requirement-intake.js` at 987 lines. Root is now 38 lines after moving shared core, submission state, plan-review state, lifecycle/summary state, and workflow recording into five bounded modules under 500 lines. Public export parity passed with 18 expected / 18 actual exports and no missing, added, or duplicate names; focused requirement intake/calling-chain gates passed 69/69. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
 
 ## Daily Run Shape
 
