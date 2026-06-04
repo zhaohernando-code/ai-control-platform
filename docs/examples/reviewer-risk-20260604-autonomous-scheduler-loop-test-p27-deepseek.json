@@ -1,0 +1,36 @@
+{
+  "version": "reviewer-risk.v1",
+  "reviewed_at": "2026-06-04T16:05:00+08:00",
+  "reviewer": "claude-code-with-deepseek-v4-pro",
+  "phase": "LFA-P27-code-evidence",
+  "target": "test/autonomous-scheduler-loop.test.js",
+  "status": "pass_after_delta",
+  "initial_review": {
+    "status": "fail",
+    "blocking_findings": [
+      {
+        "code": "P27-GOVERNANCE-ARTIFACT-MISMATCH",
+        "required_fix": "Resolve the contradiction between implementation evidence and P27 plan state."
+      },
+      {
+        "code": "P27-MANIFEST-MISSING-SPLIT-EVIDENCE",
+        "required_fix": "Add structured split_evidence to the manifest root entry."
+      },
+      {
+        "code": "P27-TEST-COUNT-UNVERIFIABLE",
+        "required_fix": "Provide a full inventory mapping all 26 original test names to shard destinations."
+      }
+    ]
+  },
+  "repairs": [
+    "Updated LFA-P27 plan rows so P27.3 and P27.4 reflect completed implementation/evidence while P27.5 moved through review_pending before delta.",
+    "Added manifest split_evidence for test/autonomous-scheduler-loop.test.js with parity artifact path, 26 before / 26 after counts, 877 to 339 line counts, moved domains, and retained domains.",
+    "Extended docs/examples/autonomous-scheduler-loop-test-p27-split-parity.json with top-level before_count/after_count, 26-row moved_tests mapping, and domain_summary."
+  ],
+  "delta_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "non_blocking_findings": []
+  },
+  "decision": "PASS after delta. DeepSeek confirmed the three initial blockers were closed and no new blocker was introduced."
+}

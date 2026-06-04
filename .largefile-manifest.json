@@ -387,16 +387,45 @@
       "reviewed_at": "2026-06-03"
     },
     "test/autonomous-scheduler-loop.test.js": {
-      "lines": 877,
-      "reason": "Scheduler loop tests share replay, recovery, and continuation fixtures for the same loop contract.",
-      "status": "planned_refactor",
+      "lines": 339,
+      "reason": "Autonomous scheduler loop root tests reduced below 500 lines in LFA-P27. Projected/fallback/lifecycle behavior moved into bounded shards and shared test fixtures moved into a helper while preserving all 26 test names with split parity evidence.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 877,
-        "target_lines": 499,
-        "minimum_reduction": 378,
-        "terminal_condition": "test/autonomous-scheduler-loop.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "split_evidence": {
+        "parity_artifact": "docs/examples/autonomous-scheduler-loop-test-p27-split-parity.json",
+        "before_count": 26,
+        "after_count": 26,
+        "before_lines": 877,
+        "after_lines": 339,
+        "moved_domains": [
+          {
+            "domain": "fallback_controls",
+            "file": "test/autonomous-scheduler-loop-fallback.test.js",
+            "test_count": 4,
+            "lines": 103
+          },
+          {
+            "domain": "projected_next_action",
+            "file": "test/autonomous-scheduler-loop-projected.test.js",
+            "test_count": 4,
+            "lines": 175
+          },
+          {
+            "domain": "projected_lifecycle",
+            "file": "test/autonomous-scheduler-loop-projected-lifecycle.test.js",
+            "test_count": 4,
+            "lines": 195
+          }
+        ],
+        "retained_domains": [
+          "dispatch_chain_basics",
+          "input_validation",
+          "artifact_creation_validation",
+          "durable_recording",
+          "registry_recovery",
+          "resume_attempts",
+          "cli_service_cycle_smoke"
+        ]
       }
     },
     "test/context-work-package-provider-executor.test.js": {
@@ -918,6 +947,30 @@
     "test/headless-cli-orchestrator-loop-projection.test.js": {
       "lines": 248,
       "reason": "Extracted Headless CLI projected next-action and service projection loop tests kept below the 300-line near-threshold budget while preserving service projection refresh, service-first execution, blocker, terminal, nonlocal, and missing-service coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/autonomous-scheduler-loop-projected.test.js": {
+      "lines": 175,
+      "reason": "Extracted LFA-P27 projected next-action scheduler-loop test shard kept below 300 lines while preserving projected action iteration, snapshot normalization, context-work-package profile stripping, and blocked projected action coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/helpers/autonomous-scheduler-loop.js": {
+      "lines": 92,
+      "reason": "Shared LFA-P27 scheduler-loop test fixtures only: server lifecycle, child Node runner, fake dispatch-chain client, and fresh workflow-state pruning helper. No assertions are hidden in this helper.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/autonomous-scheduler-loop-fallback.test.js": {
+      "lines": 103,
+      "reason": "Extracted LFA-P27 fallback scheduler-loop test shard kept below 300 lines while preserving connectivity fallback and fallback refusal controls.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/autonomous-scheduler-loop-projected-lifecycle.test.js": {
+      "lines": 195,
+      "reason": "Extracted LFA-P27 projected lifecycle scheduler-loop test shard kept below 300 lines while preserving lifecycle cleanup, missing progress evidence, stale-readout blocking, and real-reviewer strategy controls.",
       "status": "accepted",
       "reviewed_at": "2026-06-04"
     }

@@ -1,0 +1,351 @@
+{
+  "version": "large-file-test-split-parity.v1",
+  "phase": "LFA-P27",
+  "target": "test/autonomous-scheduler-loop.test.js",
+  "base_ref": "2a8d2d6",
+  "generated_at": "2026-06-04T15:48:00+08:00",
+  "before": {
+    "file": "test/autonomous-scheduler-loop.test.js",
+    "line_count": 877,
+    "test_count": 26,
+    "test_names": [
+      "scheduler loop fallback retries with dispatch-chain when projected_next_action loses connectivity",
+      "scheduler loop fallback refuses when allow_strategy_fallback is not set",
+      "scheduler loop fallback refuses for approved_bounded_real_reviewer profile",
+      "scheduler loop fallback refuses when dispatch-chain client methods are missing",
+      "scheduler loop stops without dispatch when plan has no steps",
+      "scheduler loop dispatches and enqueues until iteration bound",
+      "scheduler loop can follow projected next-action recommendations",
+      "scheduler loop keeps projected next-action snapshot ids publishable",
+      "scheduler loop keeps scheduler profiles out of context work package execution",
+      "scheduler loop surfaces blocked projected next action issues",
+      "scheduler loop executes projected lifecycle cleanup through next action in place",
+      "scheduler loop blocks projected lifecycle cleanup without progress evidence",
+      "scheduler loop blocks projected next action when returned projection preserves the same readout",
+      "scheduler loop real reviewer profile requires projected strategy and passes reviewer controls",
+      "scheduler loop fails when dispatch does not produce ready continuation",
+      "scheduler loop validates bounded profile and iterations",
+      "scheduler loop run artifact captures iterations",
+      "scheduler loop run artifact validation rejects damaged run history",
+      "scheduler loop run artifact records into workflow state",
+      "scheduler loop registry and recovery policy resume from latest queued projection",
+      "scheduler loop recovery can resume from the latest executed projection",
+      "scheduler loop registry blocks invalid durable artifacts",
+      "scheduler loop resume attempts are durable workflow facts",
+      "run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url",
+      "run-autonomous-scheduler-loop CLI prints usage without required args",
+      "run-autonomous-scheduler-loop CLI can drive one workbench service cycle"
+    ]
+  },
+  "after": {
+    "files": {
+      "test/autonomous-scheduler-loop.test.js": {
+        "line_count": 339,
+        "test_count": 14,
+        "test_names": [
+          "scheduler loop stops without dispatch when plan has no steps",
+          "scheduler loop dispatches and enqueues until iteration bound",
+          "scheduler loop fails when dispatch does not produce ready continuation",
+          "scheduler loop validates bounded profile and iterations",
+          "scheduler loop run artifact captures iterations",
+          "scheduler loop run artifact validation rejects damaged run history",
+          "scheduler loop run artifact records into workflow state",
+          "scheduler loop registry and recovery policy resume from latest queued projection",
+          "scheduler loop recovery can resume from the latest executed projection",
+          "scheduler loop registry blocks invalid durable artifacts",
+          "scheduler loop resume attempts are durable workflow facts",
+          "run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url",
+          "run-autonomous-scheduler-loop CLI prints usage without required args",
+          "run-autonomous-scheduler-loop CLI can drive one workbench service cycle"
+        ]
+      },
+      "test/autonomous-scheduler-loop-fallback.test.js": {
+        "line_count": 103,
+        "test_count": 4,
+        "test_names": [
+          "scheduler loop fallback retries with dispatch-chain when projected_next_action loses connectivity",
+          "scheduler loop fallback refuses when allow_strategy_fallback is not set",
+          "scheduler loop fallback refuses for approved_bounded_real_reviewer profile",
+          "scheduler loop fallback refuses when dispatch-chain client methods are missing"
+        ]
+      },
+      "test/autonomous-scheduler-loop-projected.test.js": {
+        "line_count": 175,
+        "test_count": 4,
+        "test_names": [
+          "scheduler loop can follow projected next-action recommendations",
+          "scheduler loop keeps projected next-action snapshot ids publishable",
+          "scheduler loop keeps scheduler profiles out of context work package execution",
+          "scheduler loop surfaces blocked projected next action issues"
+        ]
+      },
+      "test/autonomous-scheduler-loop-projected-lifecycle.test.js": {
+        "line_count": 195,
+        "test_count": 4,
+        "test_names": [
+          "scheduler loop executes projected lifecycle cleanup through next action in place",
+          "scheduler loop blocks projected lifecycle cleanup without progress evidence",
+          "scheduler loop blocks projected next action when returned projection preserves the same readout",
+          "scheduler loop real reviewer profile requires projected strategy and passes reviewer controls"
+        ]
+      }
+    },
+    "helper_files": {
+      "test/helpers/autonomous-scheduler-loop.js": {
+        "line_count": 92,
+        "purpose": "Shared scheduler-loop test fixtures only; no assertions are hidden in the helper."
+      }
+    },
+    "total_test_count": 26
+  },
+  "comparison": {
+    "status": "pass",
+    "missing": [],
+    "added": [],
+    "duplicates": []
+  },
+  "focused_gate": {
+    "command": "node tools/run-with-node18.mjs --test test/autonomous-scheduler-loop.test.js test/autonomous-scheduler-loop-fallback.test.js test/autonomous-scheduler-loop-projected.test.js test/autonomous-scheduler-loop-projected-lifecycle.test.js",
+    "status": "pass",
+    "tests": 26,
+    "passed": 26
+  },
+  "before_count": 26,
+  "after_count": 26,
+  "moved_tests": [
+    {
+      "index": 1,
+      "test_name": "scheduler loop fallback retries with dispatch-chain when projected_next_action loses connectivity",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-fallback.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 2,
+      "test_name": "scheduler loop fallback refuses when allow_strategy_fallback is not set",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-fallback.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 3,
+      "test_name": "scheduler loop fallback refuses for approved_bounded_real_reviewer profile",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-fallback.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 4,
+      "test_name": "scheduler loop fallback refuses when dispatch-chain client methods are missing",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-fallback.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 5,
+      "test_name": "scheduler loop stops without dispatch when plan has no steps",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 6,
+      "test_name": "scheduler loop dispatches and enqueues until iteration bound",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 7,
+      "test_name": "scheduler loop can follow projected next-action recommendations",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 8,
+      "test_name": "scheduler loop keeps projected next-action snapshot ids publishable",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 9,
+      "test_name": "scheduler loop keeps scheduler profiles out of context work package execution",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 10,
+      "test_name": "scheduler loop surfaces blocked projected next action issues",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 11,
+      "test_name": "scheduler loop executes projected lifecycle cleanup through next action in place",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected-lifecycle.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 12,
+      "test_name": "scheduler loop blocks projected lifecycle cleanup without progress evidence",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected-lifecycle.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 13,
+      "test_name": "scheduler loop blocks projected next action when returned projection preserves the same readout",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected-lifecycle.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 14,
+      "test_name": "scheduler loop real reviewer profile requires projected strategy and passes reviewer controls",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop-projected-lifecycle.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 15,
+      "test_name": "scheduler loop fails when dispatch does not produce ready continuation",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 16,
+      "test_name": "scheduler loop validates bounded profile and iterations",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 17,
+      "test_name": "scheduler loop run artifact captures iterations",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 18,
+      "test_name": "scheduler loop run artifact validation rejects damaged run history",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 19,
+      "test_name": "scheduler loop run artifact records into workflow state",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 20,
+      "test_name": "scheduler loop registry and recovery policy resume from latest queued projection",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 21,
+      "test_name": "scheduler loop recovery can resume from the latest executed projection",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 22,
+      "test_name": "scheduler loop registry blocks invalid durable artifacts",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 23,
+      "test_name": "scheduler loop resume attempts are durable workflow facts",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 24,
+      "test_name": "run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 25,
+      "test_name": "run-autonomous-scheduler-loop CLI prints usage without required args",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    },
+    {
+      "index": 26,
+      "test_name": "run-autonomous-scheduler-loop CLI can drive one workbench service cycle",
+      "before_file": "test/autonomous-scheduler-loop.test.js",
+      "after_file": "test/autonomous-scheduler-loop.test.js",
+      "status": "preserved"
+    }
+  ],
+  "domain_summary": {
+    "test/autonomous-scheduler-loop.test.js": {
+      "line_count": 339,
+      "test_count": 14,
+      "test_names": [
+        "scheduler loop stops without dispatch when plan has no steps",
+        "scheduler loop dispatches and enqueues until iteration bound",
+        "scheduler loop fails when dispatch does not produce ready continuation",
+        "scheduler loop validates bounded profile and iterations",
+        "scheduler loop run artifact captures iterations",
+        "scheduler loop run artifact validation rejects damaged run history",
+        "scheduler loop run artifact records into workflow state",
+        "scheduler loop registry and recovery policy resume from latest queued projection",
+        "scheduler loop recovery can resume from the latest executed projection",
+        "scheduler loop registry blocks invalid durable artifacts",
+        "scheduler loop resume attempts are durable workflow facts",
+        "run-autonomous-scheduler-loop CLI fails closed for nonlocal workbench url",
+        "run-autonomous-scheduler-loop CLI prints usage without required args",
+        "run-autonomous-scheduler-loop CLI can drive one workbench service cycle"
+      ]
+    },
+    "test/autonomous-scheduler-loop-fallback.test.js": {
+      "line_count": 103,
+      "test_count": 4,
+      "test_names": [
+        "scheduler loop fallback retries with dispatch-chain when projected_next_action loses connectivity",
+        "scheduler loop fallback refuses when allow_strategy_fallback is not set",
+        "scheduler loop fallback refuses for approved_bounded_real_reviewer profile",
+        "scheduler loop fallback refuses when dispatch-chain client methods are missing"
+      ]
+    },
+    "test/autonomous-scheduler-loop-projected.test.js": {
+      "line_count": 175,
+      "test_count": 4,
+      "test_names": [
+        "scheduler loop can follow projected next-action recommendations",
+        "scheduler loop keeps projected next-action snapshot ids publishable",
+        "scheduler loop keeps scheduler profiles out of context work package execution",
+        "scheduler loop surfaces blocked projected next action issues"
+      ]
+    },
+    "test/autonomous-scheduler-loop-projected-lifecycle.test.js": {
+      "line_count": 195,
+      "test_count": 4,
+      "test_names": [
+        "scheduler loop executes projected lifecycle cleanup through next action in place",
+        "scheduler loop blocks projected lifecycle cleanup without progress evidence",
+        "scheduler loop blocks projected next action when returned projection preserves the same readout",
+        "scheduler loop real reviewer profile requires projected strategy and passes reviewer controls"
+      ]
+    }
+  }
+}

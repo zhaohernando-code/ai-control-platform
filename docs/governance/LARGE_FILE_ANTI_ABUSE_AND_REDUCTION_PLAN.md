@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T15:07:00+08:00
+Updated at: 2026-06-04T21:13:54+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -545,7 +545,7 @@ Public export compatibility map:
 
 ### Phase LFA-P26: Development Flow Real Below-500 Extraction
 
-Status: in_progress
+Status: pass
 
 Goal: reduce `src/workflow/development-flow-real.js` from 892 lines to below 500 lines in this phase, without changing the public development-flow acceptance API, provider C2C governance command contract, isolated fixture behavior, model-output contract parsing, requirement-flow state transitions, CLI command construction, or acceptance artifact shape. Newly extracted modules must remain below 500 lines, and should stay below 300 lines where practical.
 
@@ -589,6 +589,36 @@ Utility ownership map:
 | LFA-P26.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-development-flow-real-p26-deepseek.json`; command evidence | Focused development-flow, evaluation, provider executor, and context work-package runner gates passed 50/50. Syntax checks, JSON parsing, `git diff --check`, and `npm run check:large-files` passed. The first broad DeepSeek code-review attempt exited non-zero due to max-budget before acceptance, so it was discarded; the narrowed retry returned PASS with no blocking or non-blocking findings. | pass |
 | LFA-P26.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P26 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored Playwright/Next dependencies; after `npm ci` at root and `apps/workbench`, a rerun exposed one transient Workbench server shard failure, the shard passed on focused rerun, and the final full closeout rerun passed including browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P27: Autonomous Scheduler Loop Test Below-500 Split
+
+Status: pass
+
+Goal: reduce `test/autonomous-scheduler-loop.test.js` from 877 lines to below 500 lines in this phase, without changing scheduler loop driver behavior, fallback policy, projected next-action execution contracts, durable run artifact validation, registry/recovery semantics, resume-attempt recording, CLI fail-closed behavior, or service-cycle integration coverage. Newly extracted test shards and helper files must remain below 500 lines, and should stay below 300 lines where practical.
+
+Planned split map:
+
+- Keep `test/autonomous-scheduler-loop.test.js` as the root scheduler-loop contract suite for dispatch-chain basics, input validation, artifact creation/validation, durable recording, registry recovery, resume attempts, and CLI/service-cycle smoke coverage. The CLI/service-cycle smoke tests are expected to stay in the root because moving projected/fallback tests should leave the root well below 500 lines. The root must fall below 500 lines before this phase can pass.
+- Extract reusable scheduler-loop test fixtures to `test/helpers/autonomous-scheduler-loop.js`: `withServer`, `runNode`, `fakeClient`, and `currentSessionWithoutSchedulerLoop`. The helper owns only test support and must not hide assertions or import production modules except the workbench server/state-store helpers it already needs for fixture setup. `currentSessionWithoutSchedulerLoop` must document that `currentSessionWorkflowState()` returns a fresh JSON-parsed object per call and must defensively clone before mutating the scheduler-loop event/artifact arrays.
+- Extract fallback behavior tests to `test/autonomous-scheduler-loop-fallback.test.js`: connectivity fallback and fallback refusal cases. Keep `projectedNextActionUnreachableClient` local to this shard because it is used only by fallback tests.
+- Extract projected next-action behavior tests to `test/autonomous-scheduler-loop-projected.test.js`: projected action iteration, snapshot id normalization, context-work-package profile stripping, and blocked projected actions.
+- Extract projected lifecycle behavior tests to `test/autonomous-scheduler-loop-projected-lifecycle.test.js`: lifecycle cleanup progress evidence, missing-progress blocking, stale-readout blocking, and real-reviewer projected-strategy controls.
+
+Parity and safety requirements:
+
+- Generate `docs/examples/autonomous-scheduler-loop-test-p27-split-parity.json` from base `2a8d2d6` and current worktree test-name scans, with no missing, added, or duplicate test names unless explicitly justified in the artifact.
+- Preserve all 26 existing test names exactly.
+- Focused gate must include this concrete file list: `test/autonomous-scheduler-loop.test.js`, `test/autonomous-scheduler-loop-fallback.test.js`, `test/autonomous-scheduler-loop-projected.test.js`, `test/autonomous-scheduler-loop-projected-lifecycle.test.js`, `test/workbench-projection-scheduler-loop.test.js`, `test/workbench-projection-headless-evidence.test.js`, `test/headless-cli-loop-continuation.test.js`, `test/context-work-package-runner.test.js`, `test/workbench-server-shard-06.test.js`, `test/workbench-server-shard-07.test.js`, and `test/workbench-server-shard-08.test.js`.
+- The large-file manifest must mark `test/autonomous-scheduler-loop.test.js` as accepted only after it is below 500 lines and must register any new helper/shard entries with accurate line counts and bounded rationale.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P27.1 | Select current test target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `test/autonomous-scheduler-loop.test.js` because it is the current LFG-Q01 planned-refactor item at 877 lines with a target gap of 378 lines. This phase may pass only if the root test file falls below 500 lines and no extracted helper or shard exceeds 500 lines. | pass |
+| LFA-P27.2 | DeepSeek plan review before split | `docs/examples/reviewer-risk-20260604-autonomous-scheduler-loop-test-p27-plan-deepseek.json` | DeepSeek returned PASS with no blocking findings. Non-blocking findings on helper mutation aliasing, explicit focused gate enumeration, projected-only helper scope, and CLI split ambiguity were folded into this plan before implementation started. | pass |
+| LFA-P27.3 | Move projected/fallback test domains into bounded shards and helper | Test helper, fallback shard, projected-action shard, projected-lifecycle shard, and root test suite | Root test file is 339 lines. New helper/shards are below 300 lines: fallback 103, projected action 175, projected lifecycle 195, helper 92. No assertions were moved into the helper. | pass |
+| LFA-P27.4 | Prove split parity and manifest compatibility | `docs/examples/autonomous-scheduler-loop-test-p27-split-parity.json`; `.largefile-manifest.json` | Test-name parity artifact shows 26 before / 26 after tests with no missing, added, or duplicate names, plus a 26-row moved_tests mapping. `.largefile-manifest.json` records split_evidence with before/after counts, line counts, moved domains, retained domains, and accepted entries for all new shards/helper. `npm run check:large-files` passed and moved the queue head to `src/workflow/autonomous-scheduler-loop.js`. | pass |
+| LFA-P27.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-scheduler-loop-test-p27-deepseek.json`; command evidence | Focused scheduler-loop and adjacent server/projection/context gates passed 64/64. Initial DeepSeek code/evidence review failed on governance status mismatch, missing manifest split_evidence, and insufficiently explicit 26-test mapping; after repairing those three evidence issues, DeepSeek delta review returned PASS with no blocking or non-blocking findings. | pass |
+| LFA-P27.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P27 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second attempt exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, the final full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -620,6 +650,7 @@ Utility ownership map:
 | LFA-P24 | pass | Selected `tools/check-workbench-browser-events.mjs` at 983 lines. Root is now 227 lines after extracting fixtures, runtime helpers, default scenarios, lifecycle scenarios, and projected/mobile scenarios into five bounded modules no larger than 255 lines. Browser-events focused gate passed with a regenerated 15-scenario artifact, final gates passed, and the large-file queue head moved to `src/workflow/workbench-projection.js`. | DeepSeek plan PASS; code delta review PASS; supplemental test-boundary review PASS |
 | LFA-P25 | pass | Selected `src/workflow/workbench-projection.js` at 923 lines. Root is now 384 lines after extracting evidence summaries, operations timeline policy, and mobile projection shaping into three bounded modules below 500 lines. Deterministic pre/post projection JSON equivalence passed, focused projection tests passed 70/70, `npm test` passed 1002/1002, large-file gate passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS after delta; code/evidence PASS |
 | LFA-P26 | pass | Selected `src/workflow/development-flow-real.js` at 892 lines. Root is now 304 lines after extracting fixture/git helpers, model-output contract parsing, command/requirement-flow construction, and provider C2C governance into four bounded modules under 500 lines. Public export parity and provider C2C normalized output parity passed; final gates passed with `npm test` 1002/1002, large-file gate, and full closeout after dependency install and one transient shard rerun. | DeepSeek plan PASS; code/evidence PASS |
+| LFA-P27 | pass | Selected `test/autonomous-scheduler-loop.test.js` at 877 lines. Root is now 339 lines after moving fallback, projected next-action, and projected lifecycle behavior into three bounded shards under 300 lines plus a 92-line helper. Split parity records 26 before / 26 after test names with an explicit moved_tests mapping. Focused gates passed 64/64, `npm test` passed 1002/1002, `npm run check:large-files` passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS; code/evidence PASS after delta |
 
 ## Daily Run Shape
 
