@@ -1,0 +1,122 @@
+{
+  "artifact_id": "workbench-projection-p25-extraction-parity",
+  "phase": "LFA-P25",
+  "target": "src/workflow/workbench-projection.js",
+  "status": "pass",
+  "line_counts": {
+    "before": {
+      "src/workflow/workbench-projection.js": 923
+    },
+    "after": {
+      "src/workflow/workbench-projection.js": 384,
+      "src/workflow/workbench-projection-evidence.js": 153,
+      "src/workflow/workbench-operations-timeline.js": 183,
+      "src/workflow/workbench-mobile-projection.js": 226
+    },
+    "threshold": 500
+  },
+  "moved_domains": {
+    "src/workflow/workbench-projection-evidence.js": [
+      "normalizeAgentKeyHealth",
+      "summarizeCloseoutEvidence",
+      "summarizeWorkbenchBrowserEvents",
+      "summarizeResumeHealth"
+    ],
+    "src/workflow/workbench-operations-timeline.js": [
+      "AGENT_LIFECYCLE_EVENT_TYPES",
+      "summarizeOperationsTimeline"
+    ],
+    "src/workflow/workbench-mobile-projection.js": [
+      "shapeMobileWorkbenchProjection"
+    ]
+  },
+  "direct_import_scan": {
+    "command": "rg -n \"summarizeCloseoutEvidence|summarizeWorkbenchBrowserEvents|summarizeResumeHealth|summarizeOperationsTimeline|normalizeAgentKeyHealth|AGENT_LIFECYCLE_EVENT_TYPES|summarizeFrontendAcceptance\" src test tools",
+    "result": {
+      "moved_helper_consumers_outside_root": [],
+      "summarizeFrontendAcceptance_consumers": [
+        "src/workflow/autonomous-continuation.js",
+        "test/frontend-acceptance.test.js",
+        "src/workflow/frontend-acceptance.js"
+      ],
+      "conclusion": "P25 moved helpers had no direct consumers outside src/workflow/workbench-projection.js before extraction. summarizeFrontendAcceptance stays in src/workflow/frontend-acceptance.js and remains re-exported through the projection root."
+    }
+  },
+  "public_exports": {
+    "expected": [
+      "createMobileWorkbenchProjection",
+      "createNextActionReadout",
+      "createWorkbenchOneScreenProjection",
+      "createWorkbenchProjection",
+      "summarizeAgentLifecyclePool",
+      "summarizeAutonomousSchedulerLoop",
+      "summarizeCloseoutEvidence",
+      "summarizeFrontendAcceptance",
+      "summarizeHeadlessChildProvider",
+      "summarizeHeadlessProjectedActionProgress",
+      "summarizeOperationsTimeline",
+      "summarizeResumeHealth",
+      "summarizeReviewerProviderHealth",
+      "summarizeReviewerScopeSplit",
+      "summarizeReviewerShardReview",
+      "summarizeSchedulerDispatch",
+      "summarizeSchedulerDispatchContinuation",
+      "summarizeSchedulerLoopResumeAttempt",
+      "summarizeWorkbenchBrowserEvents",
+      "validateWorkbenchProjectionInput"
+    ],
+    "actual": [
+      "createMobileWorkbenchProjection",
+      "createNextActionReadout",
+      "createWorkbenchOneScreenProjection",
+      "createWorkbenchProjection",
+      "summarizeAgentLifecyclePool",
+      "summarizeAutonomousSchedulerLoop",
+      "summarizeCloseoutEvidence",
+      "summarizeFrontendAcceptance",
+      "summarizeHeadlessChildProvider",
+      "summarizeHeadlessProjectedActionProgress",
+      "summarizeOperationsTimeline",
+      "summarizeResumeHealth",
+      "summarizeReviewerProviderHealth",
+      "summarizeReviewerScopeSplit",
+      "summarizeReviewerShardReview",
+      "summarizeSchedulerDispatch",
+      "summarizeSchedulerDispatchContinuation",
+      "summarizeSchedulerLoopResumeAttempt",
+      "summarizeWorkbenchBrowserEvents",
+      "validateWorkbenchProjectionInput"
+    ],
+    "missing": [],
+    "unexpected": [],
+    "agent_lifecycle_event_types_root_public_export": false
+  },
+  "deterministic_equivalence": {
+    "method": "Temporary detached HEAD worktree at commit 90cde57 was imported as the pre-extraction module, then compared with the current worktree using one canonical input with fixed generated_at, manifest events, artifact ledger entries, model plan, and agent key health.",
+    "full_projection_json_equal": true,
+    "mobile_projection_json_equal": true,
+    "mobile_shaper_equal_to_public_mobile_wrapper": true,
+    "projection_status": "human_intervention",
+    "operations_timeline_count": 3
+  },
+  "focused_gates": {
+    "syntax": {
+      "status": "pass",
+      "command": "node --check src/workflow/workbench-projection.js && node --check src/workflow/workbench-projection-evidence.js && node --check src/workflow/workbench-operations-timeline.js && node --check src/workflow/workbench-mobile-projection.js"
+    },
+    "behavior": {
+      "status": "pass",
+      "command": "node tools/run-with-node18.mjs --test test/workbench-projection*.test.js",
+      "result": "70/70 pass"
+    },
+    "large_file_gate": {
+      "status": "pass",
+      "command": "npm run check:large-files",
+      "result": "pass with no issues and no warnings; queue head moved to src/workflow/development-flow-real.js"
+    }
+  },
+  "temp_worktree_cleanup": {
+    "path": "/tmp/aicp-p25-before",
+    "status": "removed"
+  }
+}

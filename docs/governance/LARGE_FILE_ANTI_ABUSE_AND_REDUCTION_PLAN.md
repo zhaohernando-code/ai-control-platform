@@ -32,21 +32,21 @@ Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/rep
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 93 |
-| Files currently above 500 lines | 22 |
-| `planned_refactor` files above 500 lines | 13 |
+| Manifest entries | 101 |
+| Files currently above 500 lines | 20 |
+| `planned_refactor` files above 500 lines | 11 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 71 |
+| Manifest entries already below threshold | 81 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `tools/check-workbench-browser-events.mjs` | 983 | `planned_refactor` | Extract browser probe setup, route checks, API checks, and event-evidence validation until below 500 lines. |
-| LFA-Q02 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Continue extracting projection orchestration subdomains until below 500 lines. |
-| LFA-Q03 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance, CLI command setup, or evidence aggregation until below 500 lines. |
-| LFA-Q04 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
-| LFA-Q05 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract loop execution, recovery, projection reuse, artifact validation, or execution-root propagation until below 500 lines. |
+| LFA-Q01 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance, CLI command setup, or evidence aggregation until below 500 lines. |
+| LFA-Q02 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
+| LFA-Q03 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract loop execution, recovery, projection reuse, artifact validation, or execution-root propagation until below 500 lines. |
+| LFA-Q04 | `src/workflow/autonomous-continuation.js` | 842 | `planned_refactor` | Extract next-action selection, work package generation, and governance recovery decisions until below 500 lines. |
+| LFA-Q05 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
 
 ## State Vocabulary
 
@@ -511,6 +511,38 @@ Planned extraction map:
 | LFA-P24.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-browser-events-p24-deepseek.json`; command evidence | `npm run check:workbench:browser-events` passed, including a refreshed run with `--output docs/examples/workbench-browser-events-p24-run-artifact.json` that wrote a 15-scenario artifact after scenario contract assertions. Initial DeepSeek code/evidence review failed on root mount-prefix boundary, implicit scenario mapping, and hardcoded projection evidence; all three were remediated. DeepSeek delta review returned PASS with no blocking findings; direct shard evidence confirmed the projected/mobile hardcoded evidence blocker was closed. | pass |
 | LFA-P24.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P24 artifacts, `git diff --check`, `npm run check:large-files`, focused shell/inventory tests, `npm test` 1002/1002, and full `npm run check:closeout`. During final gates, two stale static tests were updated to follow the new module boundaries; DeepSeek supplemental review returned PASS and confirmed the fail-closed readout semantics, mount-prefix boundary, and legacy static retirement checks were not weakened. | pass |
 
+### Phase LFA-P25: Workbench Projection Below-500 Extraction
+
+Status: pass
+
+Goal: reduce `src/workflow/workbench-projection.js` from 923 lines to below 500 lines in this phase, without changing `createWorkbenchProjection`, `createMobileWorkbenchProjection`, `validateWorkbenchProjectionInput`, or the existing named summary re-export surface. Newly extracted modules must remain below 500 lines, and should stay below 300 lines where practical.
+
+Planned extraction map:
+
+- Keep `src/workflow/workbench-projection.js` as the composition entrypoint: input validation, operator-event application, summary orchestration, final projection object assembly, and public compatibility exports.
+- Extract evidence/readiness helpers to `src/workflow/workbench-projection-evidence.js`: agent-key health normalization, closeout evidence, browser-events evidence, and resume-health evidence. This module owns no projection composition and must keep artifact/manifest lookup semantics unchanged. It defines local `asArray` and `normalizeString` helpers instead of importing from the root, so the root does not become a shared utility dependency and no import cycle can form.
+- Extract operations timeline helpers to `src/workflow/workbench-operations-timeline.js`: operation event type sets, operation summary/group/next-action role logic, and `summarizeOperationsTimeline`. This module defines its own local `asArray` helper and imports `GOVERNANCE_AUDIT_SKILL_TRIAL_EVENT` directly from `./governance-audit-skill-trial.js`. It exports `AGENT_LIFECYCLE_EVENT_TYPES` only for root-internal use when passing lifecycle policy into `createNextActionReadout`; the root must not add `AGENT_LIFECYCLE_EVENT_TYPES` to its public named export surface.
+- Extract mobile projection shaping to `src/workflow/workbench-mobile-projection.js`: projection-to-mobile projection field selection and list truncation. The module exposes a pure `shapeMobileWorkbenchProjection(projection)` helper and does not import the root projection module. The root keeps the public `createMobileWorkbenchProjection(input)` wrapper, calls `createWorkbenchProjection(input)`, and then delegates to the mobile shaper to avoid import cycles and preserve the existing API.
+- Expected post-extraction size: the root projection entry should land around 300-400 lines, comfortably below the 500-line terminal threshold, while each extracted module remains below 500 lines.
+
+Public export compatibility map:
+
+- Root public functions that stay implemented in `src/workflow/workbench-projection.js`: `validateWorkbenchProjectionInput`, `createWorkbenchProjection`, and `createMobileWorkbenchProjection`.
+- Evidence module functions that move but must continue to be re-exported through the root: `summarizeCloseoutEvidence`, `summarizeWorkbenchBrowserEvents`, and `summarizeResumeHealth`.
+- Operations timeline function that moves but must continue to be re-exported through the root: `summarizeOperationsTimeline`.
+- Existing external summary exports that must stay imported from their current source modules and re-exported through the root unchanged: `summarizeFrontendAcceptance` from `./frontend-acceptance.js`; `summarizeReviewerProviderHealth`, `summarizeReviewerScopeSplit`, `summarizeReviewerShardReview`, `summarizeHeadlessChildProvider`, and `summarizeHeadlessProjectedActionProgress` from `./workbench-reviewer-summaries.js`; `summarizeSchedulerDispatch`, `summarizeSchedulerDispatchContinuation`, `summarizeAutonomousSchedulerLoop`, and `summarizeSchedulerLoopResumeAttempt` from `./workbench-scheduler-summaries.js`; `summarizeAgentLifecyclePool` from `./agent-lifecycle-pool.js`; `createNextActionReadout` from `./workbench-next-action-readout.js`; and `createWorkbenchOneScreenProjection` from `./workbench-one-screen.js`.
+- `summarizeFrontendAcceptance` is explicitly out of P25 extraction scope because it is already implemented in `src/workflow/frontend-acceptance.js` and has direct consumers outside the projection root.
+- Pre-implementation scan found no direct consumers of the P25 moved helpers outside `src/workflow/workbench-projection.js`; direct consumers of `summarizeFrontendAcceptance` remain in `src/workflow/autonomous-continuation.js` and `test/frontend-acceptance.test.js`, confirming it must not be moved.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P25.1 | Select current projection target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/workbench-projection.js` because it is the current LFG-Q01 planned-refactor item at 923 lines with a target gap of 424 lines. This phase may pass only if the projection root falls below 500 lines and no extracted module exceeds 500 lines. | pass |
+| LFA-P25.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-workbench-projection-p25-plan-deepseek.json` | Initial DeepSeek review returned blocking findings on local helper ownership, exact public re-export mapping, and `summarizeFrontendAcceptance` scope. Delta review returned PASS with no blocking findings after the plan made helper ownership, re-export compatibility, `summarizeFrontendAcceptance` non-migration, mobile-cycle avoidance, and internal-only lifecycle event type usage explicit. Non-blocking notes on deterministic parity evidence and timeline governance-event import were folded into this plan. | pass |
+| LFA-P25.3 | Move projection subdomains into bounded modules | Runtime modules and root projection entry | Root projection entry reduced from 923 to 384 lines. Extracted modules are below 500 lines: evidence 153, operations timeline 183, mobile projection shaper 226. Syntax checks passed for root and all three extracted modules. | pass |
+| LFA-P25.4 | Prove projection parity plus manifest compatibility | `docs/examples/workbench-projection-p25-extraction-parity.json`; `.largefile-manifest.json` | Parity artifact records direct import scan results, 20 expected / 20 actual public exports with no missing/unexpected names, root/module line counts, deterministic same-input/same-output full projection JSON equivalence, mobile projection equivalence, and focused projection/mobile behavior tests 70/70. `npm run check:large-files` passed with no issues or warnings and moved the queue head to `src/workflow/development-flow-real.js`. | pass |
+| LFA-P25.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-projection-p25-deepseek.json`; command evidence | Focused projection/mobile tests passed 70/70. Syntax checks passed for root and all three extracted modules. DeepSeek code/evidence review returned PASS with no blocking findings; low-risk non-blocking notes were limited to intentional local helper duplication, dense root imports, and internal lifecycle event type use. | pass |
+| LFA-P25.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and all P25 artifacts, `git diff --check`, `npm run check:large-files` with no issues/warnings, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed only because the isolated worktree lacked ignored Playwright/Next dependencies; after `npm ci` at root and `apps/workbench`, the full closeout rerun passed including browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -540,6 +572,7 @@ Planned extraction map:
 | LFA-P22 | pass | Selected `test/workbench-projection.test.js` at 1025 lines. Root is now 395 lines after moving whole test blocks into bounded reviewer recovery, reviewer aggregate, operations timeline, and operator events shards. P22 split parity records 19 before / 19 after tests with no missing, added, or duplicate names. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, split parity validation, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
 | LFA-P23 | pass | Selected `src/workflow/requirement-intake.js` at 987 lines. Root is now 38 lines after moving shared core, submission state, plan-review state, lifecycle/summary state, and workflow recording into five bounded modules under 500 lines. Public export parity passed with 18 expected / 18 actual exports and no missing, added, or duplicate names; focused requirement intake/calling-chain gates passed 69/69. Final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS; code review PASS |
 | LFA-P24 | pass | Selected `tools/check-workbench-browser-events.mjs` at 983 lines. Root is now 227 lines after extracting fixtures, runtime helpers, default scenarios, lifecycle scenarios, and projected/mobile scenarios into five bounded modules no larger than 255 lines. Browser-events focused gate passed with a regenerated 15-scenario artifact, final gates passed, and the large-file queue head moved to `src/workflow/workbench-projection.js`. | DeepSeek plan PASS; code delta review PASS; supplemental test-boundary review PASS |
+| LFA-P25 | pass | Selected `src/workflow/workbench-projection.js` at 923 lines. Root is now 384 lines after extracting evidence summaries, operations timeline policy, and mobile projection shaping into three bounded modules below 500 lines. Deterministic pre/post projection JSON equivalence passed, focused projection tests passed 70/70, `npm test` passed 1002/1002, large-file gate passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS after delta; code/evidence PASS |
 
 ## Daily Run Shape
 

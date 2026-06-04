@@ -275,17 +275,45 @@
       "reviewed_at": "2026-06-03"
     },
     "src/workflow/workbench-projection.js": {
-      "lines": 923,
-      "reason": "Workbench projection composition: core aggregation remains while next-action readout and project-management readout policy have been extracted to bounded modules; remaining projection-level orchestration is kept as the projection composer.",
-      "status": "planned_refactor",
+      "lines": 384,
+      "reason": "Workbench projection composition entrypoint was reduced from the P25 923-line baseline to a below-500 projection composer. Evidence/readiness summaries, operations timeline policy, and mobile projection shaping were extracted into bounded modules below 500 lines while preserving the root public export surface. Extraction parity is recorded in docs/examples/workbench-projection-p25-extraction-parity.json.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 923,
-        "target_lines": 499,
-        "minimum_reduction": 424,
-        "terminal_condition": "src/workflow/workbench-projection.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "split_evidence": {
+        "parity_artifact": "docs/examples/workbench-projection-p25-extraction-parity.json",
+        "before_lines": 923,
+        "after_lines": 384,
+        "moved_domains": {
+          "src/workflow/workbench-projection-evidence.js": "agent_key_health_closeout_browser_events_and_resume_health_summaries",
+          "src/workflow/workbench-operations-timeline.js": "operations_timeline_event_type_policy_summary_grouping_and_next_action_role_logic",
+          "src/workflow/workbench-mobile-projection.js": "projection_to_mobile_projection_field_selection_and_list_truncation"
+        },
+        "retained_entrypoint_surface": [
+          "input_validation",
+          "operator_event_application",
+          "summary_orchestration",
+          "projection_object_assembly",
+          "public_compatibility_exports"
+        ]
       }
+    },
+    "src/workflow/workbench-projection-evidence.js": {
+      "lines": 153,
+      "reason": "Extracted Workbench projection evidence helper kept below 500 lines while preserving agent-key health normalization, closeout publish evidence, browser-events evidence, and resume-health evidence semantics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/workbench-operations-timeline.js": {
+      "lines": 183,
+      "reason": "Extracted Workbench operations timeline helper kept below 500 lines while preserving operation event type policy, summary/group mapping, next-action role classification, and internal agent lifecycle event type input for next-action readout.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/workbench-mobile-projection.js": {
+      "lines": 226,
+      "reason": "Extracted Workbench mobile projection shaper kept below 500 lines while preserving mobile field selection, nested summary fields, and list truncation limits.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "test/autonomous-continuation.test.js": {
       "lines": 840,
