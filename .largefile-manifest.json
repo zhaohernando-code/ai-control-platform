@@ -65,16 +65,20 @@
       "reviewed_at": "2026-05-29"
     },
     "src/workflow/context-work-package-runner.js": {
-      "lines": 1135,
-      "reason": "Context work package runner: execution-scope and workspace mutation guard logic has been extracted to src/workflow/context-work-package-execution-scope.js; execution governance, worker dispatch, execution-root provenance, and result normalization still share one flow.",
-      "status": "planned_refactor",
+      "lines": 472,
+      "reason": "Context work package runner entrypoint was reduced from the P18 1135-line baseline to a below-500 orchestration surface. Shared selection/normalization/artifact helpers, completion authority helpers, lifecycle fact recording, and dispatch staging/failure handling were extracted into bounded modules below 500 lines. Extraction parity is recorded in docs/examples/context-work-package-runner-p18-extraction-parity.json.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 1135,
-        "target_lines": 499,
-        "minimum_reduction": 636,
-        "terminal_condition": "src/workflow/context-work-package-runner.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "split_evidence": {
+        "parity_artifact": "docs/examples/context-work-package-runner-p18-extraction-parity.json",
+        "before_lines": 1135,
+        "after_lines": 472,
+        "extracted_modules": [
+          "src/workflow/context-work-package-runner-shared.js",
+          "src/workflow/context-work-package-runner-completion.js",
+          "src/workflow/context-work-package-runner-lifecycle.js",
+          "src/workflow/context-work-package-runner-dispatch.js"
+        ]
       }
     },
     "src/workflow/context-work-package-execution-scope.js": {
@@ -668,6 +672,30 @@
       "reason": "Extracted frontend acceptance command architecture shard kept below the near-threshold budget while preserving semantic command control, primary action overload, risky action overload, and command false-pass coverage.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
+    },
+    "src/workflow/context-work-package-runner-shared.js": {
+      "lines": 283,
+      "reason": "Extracted context work package runner shared helpers for normalization, runnable package selection, artifact metadata, local completion guard issues, and project-status sync; kept below the 500-line threshold.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/context-work-package-runner-completion.js": {
+      "lines": 26,
+      "reason": "Extracted completion-authority helper predicates for context work package runner provider/mainline results; kept below the 500-line threshold.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/context-work-package-runner-lifecycle.js": {
+      "lines": 207,
+      "reason": "Extracted context work package runner lifecycle fact generation and recording, including retry_agent_worker chains and ordinary child worker lifecycle facts; kept below the 500-line threshold.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/context-work-package-runner-dispatch.js": {
+      "lines": 202,
+      "reason": "Extracted context work package dispatch staging and dispatch-failure persistence, preserving fixed-development and execution-governance gates; kept below the 500-line threshold.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     }
   }
 }

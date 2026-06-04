@@ -1,0 +1,80 @@
+{
+  "version": "large-file-runtime-extraction-parity.v1",
+  "phase": "LFA-P18",
+  "target": "src/workflow/context-work-package-runner.js",
+  "reviewed_at": "2026-06-04",
+  "base_ref": "origin/main",
+  "before": {
+    "file": "src/workflow/context-work-package-runner.js",
+    "line_count": 1135,
+    "public_exports": [
+      "CONTEXT_WORK_PACKAGES_RUN_VERSION",
+      "adapterResultAllowsWorkPackageCompletion",
+      "packageResultAllowsWorkPackageCompletion",
+      "completionAuthorizedExecutionNodes",
+      "stageContextWorkPackageDispatch",
+      "markContextWorkPackageDispatchFailed",
+      "runContextWorkPackages"
+    ]
+  },
+  "after": {
+    "entrypoint": {
+      "file": "src/workflow/context-work-package-runner.js",
+      "line_count": 472,
+      "public_exports": [
+        "CONTEXT_WORK_PACKAGES_RUN_VERSION",
+        "adapterResultAllowsWorkPackageCompletion",
+        "completionAuthorizedExecutionNodes",
+        "markContextWorkPackageDispatchFailed",
+        "packageResultAllowsWorkPackageCompletion",
+        "runContextWorkPackages",
+        "stageContextWorkPackageDispatch"
+      ],
+      "retained_domain": "context_work_package_run_orchestration_and_compatibility_re_export_surface"
+    },
+    "extracted_modules": [
+      {
+        "file": "src/workflow/context-work-package-runner-shared.js",
+        "line_count": 283,
+        "moved_domain": "normalization_selection_granularity_project_status_sync_and_run_artifact_metadata"
+      },
+      {
+        "file": "src/workflow/context-work-package-runner-completion.js",
+        "line_count": 26,
+        "moved_domain": "completion_authority_predicates_and_authorized_package_selection"
+      },
+      {
+        "file": "src/workflow/context-work-package-runner-lifecycle.js",
+        "line_count": 207,
+        "moved_domain": "context_worker_and_retry_agent_worker_lifecycle_fact_recording"
+      },
+      {
+        "file": "src/workflow/context-work-package-runner-dispatch.js",
+        "line_count": 202,
+        "moved_domain": "dispatch_staging_and_dispatch_failure_persistence"
+      }
+    ]
+  },
+  "parity": {
+    "status": "pass",
+    "missing_public_exports": [],
+    "added_public_exports": [],
+    "below_500_policy": {
+      "status": "pass",
+      "entrypoint_below_500": true,
+      "new_modules_above_500": []
+    }
+  },
+  "focused_gates": [
+    {
+      "command": "node --check src/workflow/context-work-package-runner.js && node --check src/workflow/context-work-package-runner-shared.js && node --check src/workflow/context-work-package-runner-completion.js && node --check src/workflow/context-work-package-runner-lifecycle.js && node --check src/workflow/context-work-package-runner-dispatch.js",
+      "status": "pass"
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test test/context-work-package-runner.test.js test/context-work-package-runner-execution-guards.test.js test/context-work-package-execution-scope.test.js test/context-work-package-execution-adapter.test.js test/headless-cli-orchestrator.test.js test/autonomous-scheduler-loop.test.js test/workbench-server-shard-06.test.js test/development-flow-real.test.js",
+      "status": "pass",
+      "tests": 109,
+      "passed": 109
+    }
+  ]
+}
