@@ -181,18 +181,68 @@
       "reviewed_at": "2026-06-04"
     },
     "src/workflow/frontend-acceptance.js": {
-      "lines": 818,
-      "reason": "Frontend acceptance validator: browser evidence schema, layout/content checks, console errors, and live-route constraints are one acceptance surface.",
-      "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds a fail-closed guard that rejects nextjs_app_router artifacts unless legacy_static_shell_used is explicitly false.",
-      "status": "planned_refactor",
+      "lines": 16,
+      "reason": "Frontend acceptance root reduced below 500 lines in LFA-P31. Browser evidence validation, durable evidence, artifact recording, and core repair/summary helpers moved into bounded modules while root preserves public compatibility exports.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 818,
-        "target_lines": 499,
-        "minimum_reduction": 319,
-        "terminal_condition": "src/workflow/frontend-acceptance.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "extraction_evidence": {
+        "parity_artifact": "docs/examples/frontend-acceptance-p31-export-parity.json",
+        "before_lines": 818,
+        "after_lines": 16,
+        "expected_exports": 12,
+        "actual_exports": 12,
+        "missing_exports": [],
+        "unexpected_exports": [],
+        "extracted_modules": [
+          {
+            "file": "src/workflow/frontend-acceptance-core.js",
+            "lines": 192,
+            "domain": "public_constants_primitive_helpers_repair_package_summary_and_workflow_identity"
+          },
+          {
+            "file": "src/workflow/frontend-acceptance-validation.js",
+            "lines": 379,
+            "domain": "browser_evidence_schema_viewport_resource_content_command_layout_navigation_and_error_validation"
+          },
+          {
+            "file": "src/workflow/frontend-acceptance-recording.js",
+            "lines": 99,
+            "domain": "artifact_ledger_and_run_manifest_recording"
+          },
+          {
+            "file": "src/workflow/frontend-acceptance-durable-evidence.js",
+            "lines": 183,
+            "domain": "durable_workflow_projection_evidence_creation_and_validation"
+          }
+        ],
+        "retained_domains": [
+          "root_public_compatibility_exports_only"
+        ]
       }
+    },
+    "src/workflow/frontend-acceptance-core.js": {
+      "lines": 192,
+      "reason": "Extracted frontend acceptance core module kept below the large-file threshold while preserving public constants, blocking finding classification, repair work-package construction, workflow-state identity checks, and frontend acceptance summary behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/frontend-acceptance-durable-evidence.js": {
+      "lines": 183,
+      "reason": "Extracted frontend acceptance durable evidence module kept below the large-file threshold while preserving workflow/projection evidence creation, summary comparison, and repair action projection validation.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/frontend-acceptance-recording.js": {
+      "lines": 99,
+      "reason": "Extracted frontend acceptance recording module kept below the large-file threshold while preserving run artifact id allocation, artifact ledger recording, and manifest event writeback.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/frontend-acceptance-validation.js": {
+      "lines": 379,
+      "reason": "Extracted frontend acceptance validation module kept below the large-file threshold while preserving browser evidence schema, viewport/resource/content/project-management/control/layout/navigation/browser-error checks, and durable-evidence release validation.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "src/workflow/headless-cli-orchestrator.js": {
       "lines": 27,

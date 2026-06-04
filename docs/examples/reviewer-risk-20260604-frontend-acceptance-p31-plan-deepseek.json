@@ -1,0 +1,37 @@
+{
+  "version": "deepseek-review.v1",
+  "review_id": "reviewer-risk-20260604-frontend-acceptance-p31-plan",
+  "review_type": "plan",
+  "reviewer": "claude-code-via-deepseek-v4-pro",
+  "status": "pass",
+  "verdict": "DS_PLAN_PASS",
+  "cwd": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260604-reduce-frontend-acceptance-runtime-below-500-p31-16d79f",
+  "prompt_file": "/tmp/frontend-acceptance-p31-plan-review.md",
+  "focus_files": [
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md",
+    "src/workflow/frontend-acceptance.js",
+    "test/frontend-acceptance.test.js",
+    "test/workbench-next-frontend-acceptance.test.js"
+  ],
+  "p0_blockers": [],
+  "p1_blockers": [],
+  "advisory_findings": [
+    {
+      "id": "helper_assignment_specificity",
+      "summary": "Clarify that helpers used only by validateFrontendAcceptanceRunArtifact stay in validation, while helpers used by two or more modules stay in core."
+    },
+    {
+      "id": "recording_core_imports",
+      "summary": "State explicitly that recording imports core helpers as well as validation."
+    },
+    {
+      "id": "threshold_constants_placement",
+      "summary": "Keep content and command architecture threshold constants in validation, because they are validation-only domain policy."
+    },
+    {
+      "id": "focused_gate_extension",
+      "summary": "Add the P30 continuation reviewer-recovery and provider-health shards to the focused gate as defense-in-depth."
+    }
+  ],
+  "decision": "No P0/P1 blockers. Fold advisory items into the P31 plan before implementation."
+}

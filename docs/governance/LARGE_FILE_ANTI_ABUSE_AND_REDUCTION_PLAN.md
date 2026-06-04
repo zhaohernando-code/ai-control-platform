@@ -742,6 +742,54 @@ Parity and safety requirements:
 | LFA-P30.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-continuation-test-p30-deepseek.json`; command evidence | Expanded focused gate passed 96/96 across autonomous continuation shards and adjacent scheduler/closeout/frontend/headless/server coverage. DeepSeek code/evidence review returned `DS_CODE_PASS` with no P0/P1 blockers. | pass |
 | LFA-P30.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P30 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout rerun failed only because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second rerun exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P31: Frontend Acceptance Runtime Below-500 Extraction
+
+Status: in_progress
+
+Goal: reduce `src/workflow/frontend-acceptance.js` from 818 lines to below 500 lines in this phase, with an implementation target of a small root compatibility entrypoint, without changing browser evidence validation, content completion diagnostics, command architecture checks, navigation semantic checks, durable workflow/projection evidence validation, artifact recording, repair package generation, summary semantics, or the public export surface. Newly extracted modules must remain below 500 lines.
+
+Planned extraction map:
+
+- Keep `src/workflow/frontend-acceptance.js` as the public compatibility entrypoint only. It must re-export the existing public surface unchanged and should not own validation policy after P31.
+- Extract shared constants and primitive helpers to `src/workflow/frontend-acceptance-core.js`: public version/action constants, repair owned-file/gate constants, blocking severity classification, string/object/array helpers, issue construction, count normalization, safe id generation, finding-code normalization, workflow-state identity validation, `isBlockingFrontendFinding`, `createFrontendAcceptanceRepairWorkPackage`, and `summarizeFrontendAcceptance`.
+- Extract run artifact validation to `src/workflow/frontend-acceptance-validation.js`: browser evidence schema checks, required viewport/resource/content/project-management/control/layout/browser-error checks, navigation semantic-change checks, content completion blocker matching, command architecture blocker matching, and optional durable evidence requirement.
+- Extract artifact recording to `src/workflow/frontend-acceptance-recording.js`: fact id allocation and `recordFrontendAcceptanceRunArtifact`, keeping ledger/run-manifest mutation outside validation policy.
+- Extract durable release evidence creation and validation to `src/workflow/frontend-acceptance-durable-evidence.js`: projection summary comparison, repair work-package projection checks, durable workflow identity checks, and `createFrontendAcceptanceDurableEvidence` / `validateFrontendAcceptanceDurableEvidence`.
+- Helper placement rule: helpers called only by `validateFrontendAcceptanceRunArtifact` stay in validation; helpers called by two or more modules stay in core. Domain-specific content/command threshold constants stay in validation with their consuming validation helpers.
+- Avoid new module cycles: `frontend-acceptance-validation.js`, `frontend-acceptance-recording.js`, and `frontend-acceptance-durable-evidence.js` may import from `frontend-acceptance-core.js`; durable evidence may import core summary/repair helpers; recording may import validation and core helpers; no extracted module may import the root compatibility entrypoint.
+
+Root public export map:
+
+| Public export | Post-extraction owner |
+| --- | --- |
+| `FRONTEND_ACCEPTANCE_RUN_VERSION` | Re-export from `frontend-acceptance-core.js` |
+| `FRONTEND_ACCEPTANCE_DURABLE_EVIDENCE_VERSION` | Re-export from `frontend-acceptance-core.js` |
+| `FRONTEND_ACCEPTANCE_REPAIR_ACTION` | Re-export from `frontend-acceptance-core.js` |
+| `FRONTEND_ACCEPTANCE_REPAIR_OWNED_FILES` | Re-export from `frontend-acceptance-core.js` |
+| `FRONTEND_ACCEPTANCE_REPAIR_ACCEPTANCE_GATES` | Re-export from `frontend-acceptance-core.js` |
+| `isBlockingFrontendFinding` | Re-export from `frontend-acceptance-core.js` |
+| `createFrontendAcceptanceRepairWorkPackage` | Re-export from `frontend-acceptance-core.js` |
+| `summarizeFrontendAcceptance` | Re-export from `frontend-acceptance-core.js` |
+| `validateFrontendAcceptanceRunArtifact` | Re-export from `frontend-acceptance-validation.js` |
+| `recordFrontendAcceptanceRunArtifact` | Re-export from `frontend-acceptance-recording.js` |
+| `createFrontendAcceptanceDurableEvidence` | Re-export from `frontend-acceptance-durable-evidence.js` |
+| `validateFrontendAcceptanceDurableEvidence` | Re-export from `frontend-acceptance-durable-evidence.js` |
+
+Parity and safety requirements:
+
+- Generate `docs/examples/frontend-acceptance-p31-export-parity.json` with expected/actual public exports from the root module and no missing or unexpected names.
+- The large-file manifest must mark `src/workflow/frontend-acceptance.js` as accepted only after it is below 500 lines and must register all new runtime modules with accurate line counts and bounded rationale.
+- Focused gate must include: syntax/import checks for the root and extracted modules, `test/frontend-acceptance.test.js`, `test/frontend-acceptance-copy-content.test.js`, `test/frontend-acceptance-content-diagnostics.test.js`, `test/frontend-acceptance-project-semantics.test.js`, `test/frontend-acceptance-command-architecture.test.js`, `test/workbench-next-frontend-acceptance.test.js`, `test/workbench-shell.test.js`, `test/workbench-projection.test.js`, `test/autonomous-continuation.test.js`, `test/autonomous-continuation-reviewer-recovery.test.js`, `test/autonomous-continuation-provider-health.test.js`, and `test/workbench-server-shard-06.test.js`.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P31.1 | Select current runtime target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/frontend-acceptance.js` because it is the current LFG-Q01 planned-refactor item at 818 lines with a target gap of 319 lines. This phase may pass only if the root runtime file falls below 500 lines and no extracted runtime module exceeds 500 lines. | pass |
+| LFA-P31.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-frontend-acceptance-p31-plan-deepseek.json` | DeepSeek returned `DS_PLAN_PASS` with no P0/P1 blockers. Advisory findings on helper placement, recording core imports, validation-only thresholds, and P30 shard focused-gate coverage were folded into this plan before implementation started. | pass |
+| LFA-P31.3 | Extract validation, recording, durable evidence, and core domains into bounded modules | Runtime core/validation/recording/durable-evidence modules and root compatibility module | Root file is 16 lines. New modules are below 500 lines: core 192, validation 379, recording 99, durable evidence 183. Root is now a public compatibility re-export surface, and extracted modules do not import the root entrypoint. | pass |
+| LFA-P31.4 | Prove public export and manifest compatibility | `docs/examples/frontend-acceptance-p31-export-parity.json`; `.largefile-manifest.json` | Export parity artifact shows the same 12 public exports with no missing or unexpected names. `.largefile-manifest.json` marks the root accepted at 16 lines, registers all new modules, and `npm run check:large-files` passed with the queue head moved to `test/context-work-package-runner.test.js`. | pass |
+| LFA-P31.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-frontend-acceptance-p31-deepseek.json`; command evidence | Focused frontend acceptance, projection, continuation, and server gates passed 93/93. DeepSeek sharded code/evidence review returned `DS_CODE_PASS` with no P0/P1 blockers and final synthesis PASS. | pass |
+| LFA-P31.6 | Run final gates | Command evidence | Final gates passed: syntax/import checks, JSON parsing for `.largefile-manifest.json` and P31 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The isolated worktree first required root and `apps/workbench` `npm ci` to restore ignored dependencies for Playwright/Next browser gates; both installs completed with Node 16 engine warnings only, while the actual gates ran through the Node18 wrapper. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -777,6 +825,7 @@ Parity and safety requirements:
 | LFA-P28 | pass | Selected `src/workflow/autonomous-scheduler-loop.js` at 869 lines. Root is now 359 lines after moving shared helpers/constants, driver/fallback behavior, and run artifact creation/validation into bounded modules under 500 lines. Public export parity passed 11/11, focused gates passed 46/46, DeepSeek code/evidence review found no runtime blocker, `npm test` passed 1002/1002, full closeout passed after installing ignored isolated-worktree dependencies, and `npm run check:large-files` moved the queue head to `src/workflow/autonomous-continuation.js`. | DeepSeek plan PASS; code/evidence PASS after status writeback |
 | LFA-P29 | pass | `src/workflow/autonomous-continuation.js` is now 321 lines after moving shared helpers/constants, reviewer/provider recovery, and work-package aggregation into three bounded modules under 500 lines. Public export parity passed 10/10, `npm run check:large-files` moved the queue head to `test/autonomous-continuation.test.js`, focused gates passed 113/113, DeepSeek sharded code/evidence review returned `DS_CODE_PASS`, `npm test` passed 1002/1002, and full closeout passed after installing ignored isolated-worktree dependencies. | DeepSeek plan PASS; code/evidence PASS |
 | LFA-P30 | pass | Root autonomous-continuation test suite is now 336 lines after extracting 411-line reviewer-recovery and 132-line provider-health shards. Split parity records 27 before / 27 after tests with no missing, added, or duplicate names; expanded focused gate passed 96/96; final gates passed with `npm test` 1002/1002, `npm run check:large-files`, and full closeout. Queue head is now `src/workflow/frontend-acceptance.js`. | DeepSeek plan PASS; code/evidence PASS |
+| LFA-P31 | pass | `src/workflow/frontend-acceptance.js` is now 16 lines after moving core repair/summary helpers, run artifact validation, artifact recording, and durable evidence into four bounded modules under 500 lines. Public export parity passed 12/12, large-file gate passed, focused gates passed 93/93, DeepSeek sharded code/evidence review returned PASS, `npm test` passed 1002/1002, and full closeout passed. Queue head is now `test/context-work-package-runner.test.js`. | DeepSeek plan PASS; code/evidence PASS |
 
 ## Daily Run Shape
 

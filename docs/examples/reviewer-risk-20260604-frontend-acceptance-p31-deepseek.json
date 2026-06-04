@@ -1,0 +1,38 @@
+{
+  "version": "deepseek-review.v1",
+  "review_id": "reviewer-risk-20260604-frontend-acceptance-p31",
+  "review_type": "code_and_evidence",
+  "reviewer": "claude-code-via-deepseek-v4-pro-sharded",
+  "status": "pass",
+  "verdict": "DS_CODE_PASS",
+  "cwd": "/Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260604-reduce-frontend-acceptance-runtime-below-500-p31-16d79f",
+  "prompt_file": "/tmp/frontend-acceptance-p31-code-review.md",
+  "focus_files": [
+    "src/workflow/frontend-acceptance.js",
+    "src/workflow/frontend-acceptance-core.js",
+    "src/workflow/frontend-acceptance-validation.js",
+    "src/workflow/frontend-acceptance-recording.js",
+    "src/workflow/frontend-acceptance-durable-evidence.js",
+    ".largefile-manifest.json",
+    "docs/examples/frontend-acceptance-p31-export-parity.json",
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md"
+  ],
+  "review_mode": {
+    "wrapper": "run_claude_deepseek_sharded_review.py",
+    "max_files_per_shard": 2,
+    "shard_timeout_seconds": 300,
+    "synthesis_model": "deepseek-v4-flash",
+    "tools": "Read-only shards; no edit, server, or destructive tools"
+  },
+  "p0_blockers": [],
+  "p1_blockers": [],
+  "confirmed_evidence": [
+    "Root public compatibility entrypoint exports the same 12 symbols.",
+    "All extracted modules are below 500 lines: core 192, validation 379, recording 99, durable evidence 183.",
+    "No extracted module imports the root entrypoint.",
+    "Manifest and parity artifact reflect the P31 line counts and export parity.",
+    "Focused gate passed 93/93 before review."
+  ],
+  "synthesis": "PASS",
+  "decision": "No P0/P1 blockers. Proceed to final gates."
+}

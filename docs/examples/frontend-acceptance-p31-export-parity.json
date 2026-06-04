@@ -1,0 +1,60 @@
+{
+  "version": "frontend-acceptance-p31-export-parity.v1",
+  "phase": "LFA-P31",
+  "generated_at": "2026-06-04T00:00:00.000Z",
+  "target": "src/workflow/frontend-acceptance.js",
+  "before_lines": 818,
+  "after_lines": 16,
+  "threshold": 500,
+  "expected_exports": [
+    "FRONTEND_ACCEPTANCE_DURABLE_EVIDENCE_VERSION",
+    "FRONTEND_ACCEPTANCE_REPAIR_ACCEPTANCE_GATES",
+    "FRONTEND_ACCEPTANCE_REPAIR_ACTION",
+    "FRONTEND_ACCEPTANCE_REPAIR_OWNED_FILES",
+    "FRONTEND_ACCEPTANCE_RUN_VERSION",
+    "createFrontendAcceptanceDurableEvidence",
+    "createFrontendAcceptanceRepairWorkPackage",
+    "isBlockingFrontendFinding",
+    "recordFrontendAcceptanceRunArtifact",
+    "summarizeFrontendAcceptance",
+    "validateFrontendAcceptanceDurableEvidence",
+    "validateFrontendAcceptanceRunArtifact"
+  ],
+  "actual_exports": [
+    "FRONTEND_ACCEPTANCE_DURABLE_EVIDENCE_VERSION",
+    "FRONTEND_ACCEPTANCE_REPAIR_ACCEPTANCE_GATES",
+    "FRONTEND_ACCEPTANCE_REPAIR_ACTION",
+    "FRONTEND_ACCEPTANCE_REPAIR_OWNED_FILES",
+    "FRONTEND_ACCEPTANCE_RUN_VERSION",
+    "createFrontendAcceptanceDurableEvidence",
+    "createFrontendAcceptanceRepairWorkPackage",
+    "isBlockingFrontendFinding",
+    "recordFrontendAcceptanceRunArtifact",
+    "summarizeFrontendAcceptance",
+    "validateFrontendAcceptanceDurableEvidence",
+    "validateFrontendAcceptanceRunArtifact"
+  ],
+  "expected_count": 12,
+  "actual_count": 12,
+  "missing_exports": [],
+  "unexpected_exports": [],
+  "status": "pass",
+  "extracted_modules": [
+    {
+      "file": "src/workflow/frontend-acceptance-core.js",
+      "lines": 192
+    },
+    {
+      "file": "src/workflow/frontend-acceptance-validation.js",
+      "lines": 379
+    },
+    {
+      "file": "src/workflow/frontend-acceptance-recording.js",
+      "lines": 99
+    },
+    {
+      "file": "src/workflow/frontend-acceptance-durable-evidence.js",
+      "lines": 183
+    }
+  ]
+}
