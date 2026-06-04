@@ -401,33 +401,23 @@
       }
     },
     "test/headless-cli-orchestrator.test.js": {
-      "lines": 1071,
-      "reason": "Headless CLI orchestrator root tests were reduced from the P8 1745-line baseline by extracting shared fixtures plus CLI process, Workbench-service action, and Workbench-service loop shards under 300 lines. The first split intentionally moved the stable process/provider/projected-action CLI cluster while leaving child acceptance, provider command-runner, continuation, and injected projected-action loop coverage in the root for the next 850-line target. Split parity is recorded in docs/examples/headless-cli-orchestrator-test-p8-split-parity.json with 40 before / 40 after tests and no missing, added, or duplicate names.",
-      "status": "planned_refactor",
+      "lines": 209,
+      "reason": "Headless CLI orchestrator root tests were reduced below 500 lines in P21 by moving whole test blocks into child acceptance/output-path, child provider/prompt, loop persistence, loop projection, and hardening/parser/no-diff shards. Split parity is recorded in docs/examples/headless-cli-orchestrator-test-p21-split-parity.json with 33 before / 33 after tests and no missing, added, or duplicate names.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 1071,
-        "target_lines": 499,
-        "minimum_reduction": 572,
-        "terminal_condition": "test/headless-cli-orchestrator.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
       "split_evidence": {
-        "parity_artifact": "docs/examples/headless-cli-orchestrator-test-p8-split-parity.json",
-        "before_count": 40,
-        "after_count": 40,
+        "parity_artifact": "docs/examples/headless-cli-orchestrator-test-p21-split-parity.json",
+        "before_count": 33,
+        "after_count": 33,
         "moved_domains": {
-          "test/headless-cli-orchestrator-cli-basic.test.js": "cli_process_basic_output_loop_and_help",
-          "test/headless-cli-orchestrator-cli-service-actions.test.js": "cli_workbench_service_projected_actions",
-          "test/headless-cli-orchestrator-cli-service-loop.test.js": "cli_workbench_service_loop_and_projection_cursor"
+          "test/headless-cli-orchestrator.test.js": "baseline_main_cycle_context_env_mock_snapshot_and_input_validation",
+          "test/headless-cli-orchestrator-child-acceptance.test.js": "child_worker_acceptance_owned_files_and_output_path",
+          "test/headless-cli-orchestrator-child-provider.test.js": "child_provider_prompt_and_retry",
+          "test/headless-cli-orchestrator-hardening.test.js": "child_output_hardening_parser_and_no_diff",
+          "test/headless-cli-orchestrator-loop-persistence.test.js": "snapshot_and_loop_persistence",
+          "test/headless-cli-orchestrator-loop-projection.test.js": "projected_next_action_and_service_projection_loop"
         },
-        "retained_root_domains": [
-          "child_acceptance",
-          "provider_command_runner",
-          "continuation_loop",
-          "injected_projected_action_loop",
-          "hardening_and_no_diff_acceptance"
-        ]
+        "helper_gate_scope_note": "HEADLESS_CLI_ORCHESTRATOR_TEST_FILES includes all P21 extracted shards plus pre-existing CLI shards."
       }
     },
     "test/workbench-shell.test.js": {
@@ -612,14 +602,19 @@
     },
     "test/helpers/headless-cli-orchestrator.js": {
       "lines": 204,
-      "reason": "Extracted Headless CLI orchestrator test fixture helper kept below the near-threshold budget while preserving workbench server lifecycle setup, project status fixtures, governed agent state-store stubs, and source workflow state fixtures consumed by the root suite plus cli-basic, cli-service-actions, and cli-service-loop shards. Its acceptance gate and owned-files fixture enumerate all four headless CLI orchestrator test shards.",
+      "reason": "Extracted Headless CLI orchestrator test fixture helper kept below the near-threshold budget while preserving workbench server lifecycle setup, project status fixtures, governed agent state-store stubs, and source workflow state fixtures consumed by the root suite plus CLI and P21 extracted shards. Its acceptance gate and owned-files fixture enumerate all headless CLI orchestrator test shards.",
       "status": "accepted",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "consumed_by": [
         "test/headless-cli-orchestrator.test.js",
+        "test/headless-cli-orchestrator-child-acceptance.test.js",
+        "test/headless-cli-orchestrator-child-provider.test.js",
+        "test/headless-cli-orchestrator-hardening.test.js",
         "test/headless-cli-orchestrator-cli-basic.test.js",
         "test/headless-cli-orchestrator-cli-service-actions.test.js",
-        "test/headless-cli-orchestrator-cli-service-loop.test.js"
+        "test/headless-cli-orchestrator-cli-service-loop.test.js",
+        "test/headless-cli-orchestrator-loop-persistence.test.js",
+        "test/headless-cli-orchestrator-loop-projection.test.js"
       ]
     },
     "test/headless-cli-orchestrator-cli-basic.test.js": {
@@ -757,6 +752,36 @@
     "src/workflow/context-work-package-runner-dispatch.js": {
       "lines": 202,
       "reason": "Extracted context work package dispatch staging and dispatch-failure persistence, preserving fixed-development and execution-governance gates; kept below the 500-line threshold.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/headless-cli-orchestrator-child-acceptance.test.js": {
+      "lines": 275,
+      "reason": "Extracted Headless CLI child-worker acceptance, owned-file boundary, and output-path parsing tests kept below the 300-line near-threshold budget while preserving child acceptance semantics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/headless-cli-orchestrator-child-provider.test.js": {
+      "lines": 240,
+      "reason": "Extracted Headless CLI child provider, prompt safety, requirement-step context, deferred parent-owned gates, and governed-agent retry tests kept below the 300-line near-threshold budget.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/headless-cli-orchestrator-hardening.test.js": {
+      "lines": 129,
+      "reason": "Extracted Headless CLI child output hardening, fenced JSON parser, no-diff retry hardening, and no-diff integration acceptance tests kept below the near-threshold budget.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/headless-cli-orchestrator-loop-persistence.test.js": {
+      "lines": 79,
+      "reason": "Extracted Headless CLI snapshot persistence and bounded loop persistence tests kept below the near-threshold budget.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/headless-cli-orchestrator-loop-projection.test.js": {
+      "lines": 248,
+      "reason": "Extracted Headless CLI projected next-action and service projection loop tests kept below the 300-line near-threshold budget while preserving service projection refresh, service-first execution, blocker, terminal, nonlocal, and missing-service coverage.",
       "status": "accepted",
       "reviewed_at": "2026-06-04"
     }

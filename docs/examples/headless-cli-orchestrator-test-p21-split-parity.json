@@ -1,0 +1,123 @@
+{
+  "version": "headless-cli-orchestrator-test-p21-split-parity.v1",
+  "status": "pass",
+  "created_at": "2026-06-04T12:14:00+08:00",
+  "target": "test/headless-cli-orchestrator.test.js",
+  "before": {
+    "source": "git HEAD before P21 edits",
+    "root_file": "test/headless-cli-orchestrator.test.js",
+    "test_count": 33,
+    "tests": [
+      "headless CLI orchestrator runs one main_orchestrator cycle with bounded child lifecycle facts",
+      "headless CLI orchestrator continues existing context cycle without rematerializing completed packages",
+      "headless governed agent invocation receives sanitized workbench child-worker environment",
+      "headless CLI orchestrator blocks implicit mock child worker completion",
+      "headless child worker acceptance checks host, owned files, tests, durable state, hardening, and continuation",
+      "headless child worker acceptance allows changed files under owned directories",
+      "headless child worker acceptance allows project root owned scope",
+      "headless child worker project root scope rejects files outside the project",
+      "headless child worker acceptance includes touched files when checking owned scope",
+      "headless child worker acceptance rejects touched files outside owned scope",
+      "headless child worker acceptance rejects sibling paths outside owned directories",
+      "headless child worker acceptance rejects failed status, failed command, and missing required integration",
+      "headless CLI orchestrator can execute a real child command runner and parse structured output",
+      "headless child prompt minimizes high-risk routing keywords for external CLI providers",
+      "headless child prompt includes selected requirement plan step context",
+      "headless child prompt defers parent-owned release gates outside isolated worker execution",
+      "headless CLI orchestrator passes configured output path into child prompt and parses file output",
+      "headless CLI orchestrator can use governed agent retry and split policy",
+      "headless CLI orchestrator persists workflow snapshots into projection history",
+      "headless CLI loop continues from persisted workflow state and snapshots every iteration",
+      "headless CLI loop can execute projected next_action_readout through an injected runner",
+      "headless CLI loop refreshes same service projection after in-place projected action writes",
+      "headless CLI loop executes service projected action before local package materialization",
+      "headless CLI loop blocks projected next action without progress evidence",
+      "headless CLI loop records terminal projected next-action stops",
+      "headless CLI loop rejects nonlocal workbench next-action service URLs",
+      "headless CLI loop blocks when configured service projection cannot be loaded",
+      "headless snapshot ids stay within publisher-safe length",
+      "headless CLI orchestrator hardens timed-out child command output before retry",
+      "headless child worker output parser accepts fenced json and rejects prose",
+      "headless CLI orchestrator hardens no-diff child worker output before retry",
+      "headless CLI orchestrator accepts no-diff child output only with already-satisfied integration evidence",
+      "headless CLI orchestrator blocks wrong role before mutating workflow state"
+    ]
+  },
+  "after": {
+    "test_count": 33,
+    "tests_by_file": {
+      "test/headless-cli-orchestrator.test.js": [
+        "headless CLI orchestrator runs one main_orchestrator cycle with bounded child lifecycle facts",
+        "headless CLI orchestrator continues existing context cycle without rematerializing completed packages",
+        "headless governed agent invocation receives sanitized workbench child-worker environment",
+        "headless CLI orchestrator blocks implicit mock child worker completion",
+        "headless snapshot ids stay within publisher-safe length",
+        "headless CLI orchestrator blocks wrong role before mutating workflow state"
+      ],
+      "test/headless-cli-orchestrator-child-acceptance.test.js": [
+        "headless child worker acceptance checks host, owned files, tests, durable state, hardening, and continuation",
+        "headless child worker acceptance allows changed files under owned directories",
+        "headless child worker acceptance allows project root owned scope",
+        "headless child worker project root scope rejects files outside the project",
+        "headless child worker acceptance includes touched files when checking owned scope",
+        "headless child worker acceptance rejects touched files outside owned scope",
+        "headless child worker acceptance rejects sibling paths outside owned directories",
+        "headless child worker acceptance rejects failed status, failed command, and missing required integration",
+        "headless CLI orchestrator passes configured output path into child prompt and parses file output"
+      ],
+      "test/headless-cli-orchestrator-child-provider.test.js": [
+        "headless CLI orchestrator can execute a real child command runner and parse structured output",
+        "headless child prompt minimizes high-risk routing keywords for external CLI providers",
+        "headless child prompt includes selected requirement plan step context",
+        "headless child prompt defers parent-owned release gates outside isolated worker execution",
+        "headless CLI orchestrator can use governed agent retry and split policy"
+      ],
+      "test/headless-cli-orchestrator-hardening.test.js": [
+        "headless CLI orchestrator hardens timed-out child command output before retry",
+        "headless child worker output parser accepts fenced json and rejects prose",
+        "headless CLI orchestrator hardens no-diff child worker output before retry",
+        "headless CLI orchestrator accepts no-diff child output only with already-satisfied integration evidence"
+      ],
+      "test/headless-cli-orchestrator-loop-persistence.test.js": [
+        "headless CLI orchestrator persists workflow snapshots into projection history",
+        "headless CLI loop continues from persisted workflow state and snapshots every iteration"
+      ],
+      "test/headless-cli-orchestrator-loop-projection.test.js": [
+        "headless CLI loop can execute projected next_action_readout through an injected runner",
+        "headless CLI loop refreshes same service projection after in-place projected action writes",
+        "headless CLI loop executes service projected action before local package materialization",
+        "headless CLI loop blocks projected next action without progress evidence",
+        "headless CLI loop records terminal projected next-action stops",
+        "headless CLI loop rejects nonlocal workbench next-action service URLs",
+        "headless CLI loop blocks when configured service projection cannot be loaded"
+      ]
+    },
+    "line_counts": {
+      "test/headless-cli-orchestrator.test.js": 209,
+      "test/headless-cli-orchestrator-child-acceptance.test.js": 275,
+      "test/headless-cli-orchestrator-child-provider.test.js": 240,
+      "test/headless-cli-orchestrator-hardening.test.js": 129,
+      "test/headless-cli-orchestrator-loop-persistence.test.js": 79,
+      "test/headless-cli-orchestrator-loop-projection.test.js": 248,
+      "test/helpers/headless-cli-orchestrator.js": 204
+    }
+  },
+  "comparison": {
+    "missing": [],
+    "added": [],
+    "duplicate_names": []
+  },
+  "split_domains": {
+    "test/headless-cli-orchestrator.test.js": "baseline_main_cycle_context_env_mock_snapshot_and_input_validation",
+    "test/headless-cli-orchestrator-child-acceptance.test.js": "child_worker_acceptance_owned_files_and_output_path",
+    "test/headless-cli-orchestrator-child-provider.test.js": "child_provider_prompt_and_retry",
+    "test/headless-cli-orchestrator-hardening.test.js": "child_output_hardening_parser_and_no_diff",
+    "test/headless-cli-orchestrator-loop-persistence.test.js": "snapshot_and_loop_persistence",
+    "test/headless-cli-orchestrator-loop-projection.test.js": "projected_next_action_and_service_projection_loop"
+  },
+  "helper_gate_update": {
+    "helper": "test/helpers/headless-cli-orchestrator.js",
+    "exported_constant": "HEADLESS_CLI_ORCHESTRATOR_TEST_FILES",
+    "includes_all_after_files": true
+  }
+}

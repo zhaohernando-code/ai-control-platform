@@ -7,10 +7,10 @@ import { spawn } from "node:child_process";
 import { createRunManifest } from "../../src/workflow/run-manifest.js";
 
 export const HEADLESS_CLI_ORCHESTRATOR_TEST_FILES = [
-  "test/headless-cli-orchestrator.test.js",
-  "test/headless-cli-orchestrator-cli-basic.test.js",
-  "test/headless-cli-orchestrator-cli-service-actions.test.js",
-  "test/headless-cli-orchestrator-cli-service-loop.test.js"
+  "test/headless-cli-orchestrator.test.js", "test/headless-cli-orchestrator-child-acceptance.test.js",
+  "test/headless-cli-orchestrator-child-provider.test.js", "test/headless-cli-orchestrator-hardening.test.js",
+  "test/headless-cli-orchestrator-loop-persistence.test.js", "test/headless-cli-orchestrator-loop-projection.test.js",
+  "test/headless-cli-orchestrator-cli-basic.test.js", "test/headless-cli-orchestrator-cli-service-actions.test.js", "test/headless-cli-orchestrator-cli-service-loop.test.js"
 ];
 
 export async function withWorkbenchServer(fn, options = {}) {

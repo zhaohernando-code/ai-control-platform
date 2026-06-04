@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T11:45:23+08:00
+Updated at: 2026-06-04T12:14:48+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -32,21 +32,21 @@ Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/rep
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 79 |
-| Files currently above 500 lines | 25 |
-| `planned_refactor` files above 500 lines | 16 |
+| Manifest entries | 84 |
+| Files currently above 500 lines | 24 |
+| `planned_refactor` files above 500 lines | 15 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 54 |
+| Manifest entries already below threshold | 60 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `test/headless-cli-orchestrator.test.js` | 1071 | `planned_refactor` | Continue stable headless CLI root shards until below 500 lines. |
-| LFA-Q02 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Continue stable projection root shards until below 500 lines. |
-| LFA-Q03 | `src/workflow/requirement-intake.js` | 987 | `planned_refactor` | Extract requirement state transitions, closeout, or workflow event recording until below 500 lines. |
-| LFA-Q04 | `tools/check-workbench-browser-events.mjs` | 983 | `planned_refactor` | Extract browser probe setup, route checks, API checks, and event-evidence validation until below 500 lines. |
-| LFA-Q05 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Continue extracting projection orchestration subdomains until below 500 lines. |
+| LFA-Q01 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Continue stable projection root shards until below 500 lines. |
+| LFA-Q02 | `src/workflow/requirement-intake.js` | 987 | `planned_refactor` | Extract requirement state transitions, closeout, or workflow event recording until below 500 lines. |
+| LFA-Q03 | `tools/check-workbench-browser-events.mjs` | 983 | `planned_refactor` | Extract browser probe setup, route checks, API checks, and event-evidence validation until below 500 lines. |
+| LFA-Q04 | `src/workflow/workbench-projection.js` | 923 | `planned_refactor` | Continue extracting projection orchestration subdomains until below 500 lines. |
+| LFA-Q05 | `src/workflow/development-flow-real.js` | 892 | `planned_refactor` | Extract provider C2C governance, CLI command setup, or evidence aggregation until below 500 lines. |
 
 ## State Vocabulary
 
@@ -433,6 +433,21 @@ Goal: reduce `test/workbench-server.test.js` from 1092 lines to below 500 lines 
 | LFA-P20.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-server-test-p20-deepseek.json`; command evidence | Syntax checks passed for the root, helper, and all new shards. Focused P20 tests passed 14/14; expanded server/API focused tests passed 87/87; split parity validation passed for 14 current tests; `npm run check:large-files` passed with no issues or warnings. DeepSeek sharded code/evidence review returned PASS with no blocking findings. | pass |
 | LFA-P20.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P20 artifacts; `git diff --check`; `npm run check:large-files`; focused P20 root/shard tests 14/14; expanded server/API tests 87/87; `npm test` 1002/1002; and full `npm run check:closeout`. The first full closeout retry exposed a transient local Next browser-events timeout on port 4191; after clearing the leftover temporary Next dev process, the standalone browser-events gate passed 15 scenarios and the full closeout rerun passed, including frontend acceptance and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P21: Headless CLI Orchestrator Root Test Below-500 Split
+
+Status: pass
+
+Goal: reduce `test/headless-cli-orchestrator.test.js` from 1071 lines to below 500 lines in this phase, without changing headless CLI runtime behavior, child-worker acceptance semantics, prompt safety checks, provider execution, projected next-action loop behavior, snapshot publishing, or hardening/no-diff gates. New test shards must stay below 300 lines where practical and below 500 lines as a hard pass condition.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P21.1 | Select current test target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `test/headless-cli-orchestrator.test.js` because it is the current Q01 planned-refactor item at 1071 lines. This phase may pass only if the root test falls below 500 lines and no newly extracted shard exceeds 500 lines. | pass |
+| LFA-P21.2 | DeepSeek plan review before test movement | `docs/examples/reviewer-risk-20260604-headless-cli-orchestrator-test-p21-plan-deepseek.json` | Initial DeepSeek review failed because the plan used a stale 31-test count instead of the actual 33 tests, and the proposed child-provider and loop-projection shards were too close to the 300-line near-threshold budget. Revised mapping accounts for all 33 current root tests: keep the main orchestrator smoke, existing context cycle continuation, sanitized child-worker environment, implicit mock block, long snapshot-id, and wrong-role input-validation tests in the root; move child-worker acceptance, owned-file boundary, and child output-path parsing tests to `test/headless-cli-orchestrator-child-acceptance.test.js` (budget <290 lines); move real child command runner, prompt minimization, requirement step context, deferred parent-owned gates, and governed-agent retry coverage to `test/headless-cli-orchestrator-child-provider.test.js` (budget <260 lines); move snapshot persistence and loop snapshot persistence to `test/headless-cli-orchestrator-loop-persistence.test.js` (budget <160 lines); move projected next-action, service projection refresh, service-first projection, projected-action blocker/terminal/nonlocal/missing-service checks to `test/headless-cli-orchestrator-loop-projection.test.js` (budget <270 lines); move timed-out child hardening, fenced JSON parser, no-diff retry hardening, and no-diff integration acceptance to `test/headless-cli-orchestrator-hardening.test.js` (budget <180 lines). DeepSeek delta review returned PASS with no blocking findings; it noted child-acceptance remains near the 300-line threshold and must be checked with actual line counts. | pass |
+| LFA-P21.3 | Move tests into bounded shards without changing assertions | Test shard files and root test | Moved whole `test(...)` blocks into five bounded shards without `.skip`/`.todo` conversions or assertion edits. Current line counts: root 209, child-acceptance 275, child-provider 240, loop-projection 248, hardening 129, loop-persistence 79; helper remains 204 and does not exceed its accepted manifest ceiling. Syntax checks passed for the root, helper, and all new shards; focused P21 root/shard tests passed 33/33. | pass |
+| LFA-P21.4 | Prove split parity, helper coverage, and manifest compatibility | `docs/examples/headless-cli-orchestrator-test-p21-split-parity.json`; `test/helpers/headless-cli-orchestrator.js`; `.largefile-manifest.json` | Split parity records 33 before / 33 after tests with no missing, added, or duplicate names, derived from actual test-name extraction. `HEADLESS_CLI_ORCHESTRATOR_TEST_FILES` includes every retained shard, `.largefile-manifest.json` records the root at 209 accepted lines plus accepted entries for all five new shards, and `npm run check:large-files` passed with no issues or warnings. | pass |
+| LFA-P21.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-headless-cli-orchestrator-test-p21-deepseek.json`; command evidence | Syntax checks passed; focused P21 root/shard tests passed 33/33; expanded headless/scheduler/projection/context gates passed 104/104; split parity validation passed for 33 current tests; `npm run check:large-files` passed with no issues or warnings. DeepSeek sharded code/evidence synthesis returned PASS with no blocking findings; one plan-document shard correctly noted P21.5/P21.6 were pending at review time, so final status remains gated on LFA-P21.6. | pass |
+| LFA-P21.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and all P21 artifacts; split parity validation 33/33 from actual shard files; `git diff --check`; `npm run check:large-files`; `npm test` 1002/1002; and full `npm run check:closeout`. The first closeout attempt failed because this fresh worktree lacked Playwright dependencies; after running `npm ci` in the repo root and `apps/workbench`, the rerun passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -458,6 +473,7 @@ Goal: reduce `test/workbench-server.test.js` from 1092 lines to below 500 lines 
 | LFA-P18 | pass | Selected `src/workflow/context-work-package-runner.js`; root entrypoint is 472 lines after extracting four bounded modules, all below 500 lines. Public export compatibility artifact is written, focused gates passed 109/109, large-file gate passes after manifest refresh, DeepSeek review returned PASS, and final gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, JSON parsing, and full closeout. | DeepSeek PASS |
 | LFA-P19 | pass | Selected `tools/workbench-server.mjs`; root entrypoint is 408 lines after extracting state/projection access, scheduler helpers, context routes, and context work-package routes into four bounded modules under 500 lines. RouteContext dependencies and structured diagnostics are covered by static API contract and runtime 409 assertions. Focused gates passed 129/129, `npm test` passed 1002/1002, `npm run check:large-files` passed, JSON parsing and `git diff --check` passed, and full closeout passed. DeepSeek plan review and code/doc review both passed after delta repairs. | DeepSeek PASS after plan and code deltas |
 | LFA-P20 | pass | Selected `test/workbench-server.test.js`; root is now 160 lines after moving whole test blocks into bounded domain shards for requirement plan retry, plan review, background dispatch, provider execution, requirement closeout, and provider defaults. P20 split parity records 14 before / 14 after tests with no missing, added, or duplicate names. Final gates passed: focused P20 tests 14/14, expanded server/API tests 87/87, `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, `git diff --check`, standalone browser-events 15 scenarios after clearing a leftover temporary Next process, and full `npm run check:closeout`. | DeepSeek plan PASS after delta; DeepSeek code PASS |
+| LFA-P21 | pass | Selected `test/headless-cli-orchestrator.test.js`; root is now 209 lines after moving whole test blocks into five bounded shards for child acceptance/output-path, child provider/prompt, loop persistence, loop projection, and hardening/parser/no-diff. P21 split parity records 33 before / 33 after tests with no missing, added, or duplicate names; final gates passed: `npm test` 1002/1002, `npm run check:large-files`, JSON parsing, split parity validation, `git diff --check`, and full `npm run check:closeout`. | DeepSeek plan PASS after delta; DeepSeek code PASS |
 
 ## Daily Run Shape
 

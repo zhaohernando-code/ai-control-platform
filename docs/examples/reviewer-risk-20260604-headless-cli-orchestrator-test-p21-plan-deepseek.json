@@ -1,0 +1,41 @@
+{
+  "status": "pass_after_delta",
+  "reviewer": "claude-deepseek-v4-pro",
+  "created_at": "2026-06-04T12:03:00+08:00",
+  "scope": "P21 pre-implementation plan review for test/headless-cli-orchestrator.test.js below-500 split",
+  "blocking_findings": [
+    {
+      "id": "P21-COUNT-MISMATCH",
+      "severity": "P0",
+      "summary": "The plan claimed 31 current root tests, but DeepSeek counted 33 test(...) calls. The mapping descriptions covered the tests, but stale numeric parity targets could allow a false 31/31 split artifact.",
+      "required_change": "Correct P21 to require 33 before / 33 after split parity based on actual current test names."
+    },
+    {
+      "id": "P21-LOOP-PROJECTION-NEAR-THRESHOLD",
+      "severity": "P1",
+      "summary": "The proposed loop-projection shard packed nine tests into a budget that could exceed the 300-line near-threshold once imports are added.",
+      "required_change": "Split snapshot/loop persistence away from projected-action service-loop tests or explicitly justify a near-threshold shard."
+    },
+    {
+      "id": "P21-CHILD-PROVIDER-NEAR-THRESHOLD",
+      "severity": "P1",
+      "summary": "The proposed child-provider shard packed six tests into a budget that could approach the 300-line near-threshold once imports are added.",
+      "required_change": "Move output-path parsing out of child-provider or otherwise reduce the shard budget pressure."
+    }
+  ],
+  "non_blocking_notes": [
+    "DeepSeek confirmed the content-level domain mapping was otherwise sound and did not identify helper gate or circular dependency risks.",
+    "DeepSeek noted hardening and child-acceptance domains were structurally low-risk."
+  ],
+  "delta_review": {
+    "status": "pass",
+    "blocking_findings": [],
+    "notes": [
+      "P21 now uses 33 before / 33 after parity derived from actual test-name extraction.",
+      "Loop-projection budget risk is addressed by splitting loop persistence into its own shard.",
+      "Child-provider budget risk is addressed by moving output-path parsing into child acceptance.",
+      "Child-acceptance remains near the 300-line threshold and must be checked with actual line counts during implementation."
+    ]
+  },
+  "delta_required": false
+}
