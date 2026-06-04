@@ -3,6 +3,28 @@ import { createReviewerGateRequest, createReviewerTimeoutFinding } from "../../s
 import { buildModelCollaborationPlan } from "../../src/workflow/model-router.js";
 import { createRunManifest } from "../../src/workflow/run-manifest.js";
 
+export const WORKBENCH_PROJECTION_TEST_FILES = [
+  "test/workbench-projection.test.js",
+  "test/workbench-projection-agent-lifecycle-closed.test.js",
+  "test/workbench-projection-agent-lifecycle.test.js",
+  "test/workbench-projection-continuation-terminal.test.js",
+  "test/workbench-projection-continuation.test.js",
+  "test/workbench-projection-fixture.test.js",
+  "test/workbench-projection-governance-lifecycle.test.js",
+  "test/workbench-projection-headless-evidence.test.js",
+  "test/workbench-projection-one-screen.test.js",
+  "test/workbench-projection-operations-timeline.test.js",
+  "test/workbench-projection-operator-events.test.js",
+  "test/workbench-projection-project-management-dispatch.test.js",
+  "test/workbench-projection-project-management.test.js",
+  "test/workbench-projection-purity.test.js",
+  "test/workbench-projection-reviewer-aggregate.test.js",
+  "test/workbench-projection-reviewer-recovery.test.js",
+  "test/workbench-projection-scheduler-dispatch.test.js",
+  "test/workbench-projection-scheduler-loop.test.js",
+  "test/workbench-projection-schema.test.js"
+];
+
 export function contextPack() {
   return {
     requirement_summary: "继续开发新中台：构建工作台 projection assembler",
@@ -10,8 +32,8 @@ export function contextPack() {
     target_project_id: "ai-control-platform",
     non_goals: ["不修改 stock_dashboard", "不开发孤立 UI"],
     forbidden_actions: ["不得写入业务项目", "不得把 reviewer timeout 作为人工阻塞"],
-    owned_files: ["src/workflow/workbench-projection.js", "test/workbench-projection.test.js"],
-    acceptance_gates: ["node --test test/workbench-projection.test.js"],
+    owned_files: ["src/workflow/workbench-projection.js", ...WORKBENCH_PROJECTION_TEST_FILES],
+    acceptance_gates: [`node tools/run-with-node18.mjs --test ${WORKBENCH_PROJECTION_TEST_FILES.join(" ")}`],
     rollback_conditions: ["projection 丢失 run decision"],
     subtasks: [
       {
@@ -22,7 +44,7 @@ export function contextPack() {
       {
         id: "projection-test",
         title: "Workbench projection tests",
-        owned_files: ["test/workbench-projection.test.js"],
+        owned_files: WORKBENCH_PROJECTION_TEST_FILES,
         depends_on: ["projection-runtime"]
       }
     ]

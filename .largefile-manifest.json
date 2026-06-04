@@ -428,36 +428,59 @@
       "rechallenge_due": "2026-07-03"
     },
     "test/workbench-projection.test.js": {
-      "lines": 1025,
-      "reason": "Workbench projection root tests were reduced from the P12 1434-line baseline by extracting scheduler dispatch, scheduler continuation, scheduler policy, scheduler loop run, invalid loop, and resume-attempt coverage into bounded scheduler shards under 300 lines. The root still covers broad projection, terminal closeout, browser evidence, reviewer recovery, operations timeline, operator-event, mobile, and input-validation contracts, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/workbench-projection-test-p12-split-parity.json with 25 before / 25 after tests and no missing, added, or duplicate names.",
-      "status": "planned_refactor",
+      "lines": 395,
+      "reason": "Workbench projection root tests were reduced from the P22 1025-line baseline to a below-500 root. Reviewer recovery, reviewer aggregate, operations timeline, and operator-event coverage moved into bounded shards under 300 lines. Split parity is recorded in docs/examples/workbench-projection-test-p22-split-parity.json with all 19 P22 root tests accounted for, superseding the earlier P12 parity artifact.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 1025,
-        "target_lines": 499,
-        "minimum_reduction": 526,
-        "terminal_condition": "test/workbench-projection.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
       "split_evidence": {
-        "parity_artifact": "docs/examples/workbench-projection-test-p12-split-parity.json",
-        "before_count": 25,
-        "after_count": 25,
+        "parity_artifact": "docs/examples/workbench-projection-test-p22-split-parity.json",
+        "supersedes": [
+          "docs/examples/workbench-projection-test-p12-split-parity.json"
+        ],
+        "before_count": 19,
+        "after_count": 19,
         "moved_domains": {
-          "test/workbench-projection-scheduler-dispatch.test.js": "scheduler_dispatch_run_continuation_readiness_and_policy_blockers",
-          "test/workbench-projection-scheduler-loop.test.js": "autonomous_scheduler_loop_run_invalid_history_and_resume_attempts"
+          "test/workbench-projection-reviewer-recovery.test.js": "reviewer_provider_health_scope_split_and_partial_next_shard_progress",
+          "test/workbench-projection-reviewer-aggregate.test.js": "reviewer_shard_aggregate_status_and_aggregate_continuation",
+          "test/workbench-projection-operations-timeline.test.js": "operations_timeline_readout_and_manifest_ordering_under_clock_skew",
+          "test/workbench-projection-operator-events.test.js": "operator_event_ingestion_precedence_and_fail_closed_validation"
         },
         "retained_root_domains": [
-          "broad_projection_baseline",
-          "terminal_next_action",
-          "closeout_and_browser_frontend_evidence",
-          "reviewer_recovery_and_shard_status",
-          "operations_timeline",
-          "operator_events",
-          "mobile_projection",
-          "input_validation"
-        ]
+          "broad_projection_smoke",
+          "terminal_next_action_details",
+          "closeout_publication_evidence",
+          "browser_event_artifact_evidence",
+          "failed_frontend_acceptance_repair",
+          "replay_validation_resume_health",
+          "mobile_projection_subset",
+          "input_validation_fail_closed"
+        ],
+        "helper_gate_scope_note": "WORKBENCH_PROJECTION_TEST_FILES includes the root, all P22 extracted shards, and pre-existing projection shards."
       }
+    },
+    "test/workbench-projection-reviewer-recovery.test.js": {
+      "lines": 169,
+      "reason": "Extracted Workbench projection reviewer recovery tests for provider health, scope split, and partial next-shard progress; kept below 300 lines as part of the P22 root below-500 split.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-projection-reviewer-aggregate.test.js": {
+      "lines": 184,
+      "reason": "Extracted Workbench projection reviewer aggregate tests for aggregate status and continuation after aggregate completion; kept below 300 lines as part of the P22 root below-500 split.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-projection-operations-timeline.test.js": {
+      "lines": 180,
+      "reason": "Extracted Workbench projection operations timeline tests for compact timeline readout and manifest-order behavior under clock skew; kept below 300 lines as part of the P22 root below-500 split.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-projection-operator-events.test.js": {
+      "lines": 126,
+      "reason": "Extracted Workbench projection operator event tests for ingestion precedence, stale-run suppression, explicit evaluation fallback, and fail-closed validation; kept below 300 lines as part of the P22 root below-500 split.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "test/workbench-server.test.js": {
       "lines": 160,

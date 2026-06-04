@@ -1,0 +1,104 @@
+{
+  "version": "workbench-projection-test-p22-split-parity.v1",
+  "status": "pass",
+  "created_at": "2026-06-04T12:23:35+08:00",
+  "target": "test/workbench-projection.test.js",
+  "supersedes": [
+    "docs/examples/workbench-projection-test-p12-split-parity.json"
+  ],
+  "before": {
+    "source": "git HEAD:test/workbench-projection.test.js before P22 split",
+    "test_count": 19,
+    "test_names": [
+      "workbench projection combines run, artifacts, model routing, reviewer and DAG state",
+      "workbench projection exposes terminal next-action details for inspect states",
+      "workbench projection exposes latest closeout publication evidence",
+      "workbench projection exposes browser event artifact evidence",
+      "workbench projection exposes failed frontend acceptance repair as next action",
+      "workbench projection exposes replay validation blockers as resume health",
+      "workbench projection exposes reviewer provider health scheduler facts",
+      "workbench projection exposes reviewer scope split shard status",
+      "workbench projection exposes reviewer shard aggregate status",
+      "workbench projection advances from reviewer aggregate continuation fact",
+      "workbench projection advances next reviewer shard after partial result",
+      "workbench projection exposes compact operations timeline",
+      "workbench operations timeline follows manifest order across clock skew",
+      "workbench projection ingests operator events before summarizing run state",
+      "workbench projection ignores stale run result when operator events are present",
+      "workbench projection can use explicit run evaluation when no operator events are present",
+      "workbench projection fails closed when operator event ingestion fails",
+      "mobile projection keeps the one-screen subset",
+      "projection input validation fails without durable sources"
+    ]
+  },
+  "after": {
+    "test_count": 19,
+    "tests_by_file": {
+      "test/workbench-projection.test.js": [
+        "workbench projection combines run, artifacts, model routing, reviewer and DAG state",
+        "workbench projection exposes terminal next-action details for inspect states",
+        "workbench projection exposes latest closeout publication evidence",
+        "workbench projection exposes browser event artifact evidence",
+        "workbench projection exposes failed frontend acceptance repair as next action",
+        "workbench projection exposes replay validation blockers as resume health",
+        "mobile projection keeps the one-screen subset",
+        "projection input validation fails without durable sources"
+      ],
+      "test/workbench-projection-reviewer-recovery.test.js": [
+        "workbench projection exposes reviewer provider health scheduler facts",
+        "workbench projection exposes reviewer scope split shard status",
+        "workbench projection advances next reviewer shard after partial result"
+      ],
+      "test/workbench-projection-reviewer-aggregate.test.js": [
+        "workbench projection exposes reviewer shard aggregate status",
+        "workbench projection advances from reviewer aggregate continuation fact"
+      ],
+      "test/workbench-projection-operations-timeline.test.js": [
+        "workbench projection exposes compact operations timeline",
+        "workbench operations timeline follows manifest order across clock skew"
+      ],
+      "test/workbench-projection-operator-events.test.js": [
+        "workbench projection ingests operator events before summarizing run state",
+        "workbench projection ignores stale run result when operator events are present",
+        "workbench projection can use explicit run evaluation when no operator events are present",
+        "workbench projection fails closed when operator event ingestion fails"
+      ]
+    }
+  },
+  "comparison": {
+    "missing": [],
+    "added": [],
+    "duplicate_names": []
+  },
+  "line_counts": {
+    "test/workbench-projection.test.js": 395,
+    "test/workbench-projection-reviewer-recovery.test.js": 169,
+    "test/workbench-projection-reviewer-aggregate.test.js": 184,
+    "test/workbench-projection-operations-timeline.test.js": 180,
+    "test/workbench-projection-operator-events.test.js": 126,
+    "test/helpers/workbench-projection.js": 110
+  },
+  "split_domains": {
+    "retained_root": [
+      "broad_projection_smoke",
+      "terminal_next_action_details",
+      "closeout_publication_evidence",
+      "browser_event_artifact_evidence",
+      "failed_frontend_acceptance_repair",
+      "replay_validation_resume_health",
+      "mobile_projection_subset",
+      "input_validation_fail_closed"
+    ],
+    "moved": {
+      "test/workbench-projection-reviewer-recovery.test.js": "reviewer_provider_health_scope_split_and_partial_next_shard_progress",
+      "test/workbench-projection-reviewer-aggregate.test.js": "reviewer_shard_aggregate_status_and_aggregate_continuation",
+      "test/workbench-projection-operations-timeline.test.js": "operations_timeline_readout_and_manifest_ordering_under_clock_skew",
+      "test/workbench-projection-operator-events.test.js": "operator_event_ingestion_precedence_and_fail_closed_validation"
+    }
+  },
+  "helper_gate_update": {
+    "helper": "test/helpers/workbench-projection.js",
+    "acceptance_gate_uses": "WORKBENCH_PROJECTION_TEST_FILES",
+    "file_count": 19
+  }
+}

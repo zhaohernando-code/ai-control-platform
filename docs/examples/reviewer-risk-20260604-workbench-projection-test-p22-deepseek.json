@@ -1,0 +1,38 @@
+{
+  "status": "pass",
+  "reviewer": "claude-deepseek-v4-pro",
+  "created_at": "2026-06-04T12:34:53+08:00",
+  "scope": "P22 code and evidence review for test/workbench-projection.test.js below-500 split",
+  "blocking_findings": [],
+  "non_blocking_notes": [
+    {
+      "id": "P22-CODE-NB-01",
+      "summary": "Early bounded shards could not see all files independently, but later shards and synthesis confirmed helper coverage, parity evidence, and manifest consistency."
+    },
+    {
+      "id": "P22-CODE-NB-02",
+      "summary": "All four new shards (169/184/180/126 lines) and the root test file (395 lines) satisfy the below-500 target without near-threshold abuse."
+    },
+    {
+      "id": "P22-CODE-NB-03",
+      "summary": "The P22 parity artifact records 19 before / 19 after tests with no missing, added, or duplicate names and supersedes the older P12 split artifact."
+    }
+  ],
+  "review_commands": [
+    "python3 /Users/hernando_zhao/.codex/skills/claude-deepseek-review/scripts/run_claude_deepseek_sharded_review.py --cwd /Users/hernando_zhao/codex/worker-workspaces/ai-control-platform/20260604-reduce-workbench-projection-test-below-500-p22-77bbd2 --focus-file test/workbench-projection.test.js --focus-file test/workbench-projection-reviewer-recovery.test.js --focus-file test/workbench-projection-reviewer-aggregate.test.js --focus-file test/workbench-projection-operations-timeline.test.js --focus-file test/workbench-projection-operator-events.test.js --focus-file test/helpers/workbench-projection.js --focus-file .largefile-manifest.json --focus-file docs/examples/workbench-projection-test-p22-split-parity.json --focus-file docs/examples/reviewer-risk-20260604-workbench-projection-test-p22-plan-deepseek.json --focus-file docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md --max-files-per-shard 2 --shard-timeout-seconds 300 --synthesis-timeout-seconds 180 --no-progress-timeout-seconds 120 --excerpt-model deepseek-v4-flash --synthesis-model deepseek-v4-flash --effort high --observe --prompt-file /tmp/p22-workbench-projection-test-code-review.md"
+  ],
+  "verified_evidence": {
+    "syntax_checks": "pass",
+    "focused_projection_suite": "70/70 pass",
+    "split_parity": "19/19 pass",
+    "large_file_gate": "pass",
+    "line_counts": {
+      "test/workbench-projection.test.js": 395,
+      "test/workbench-projection-reviewer-recovery.test.js": 169,
+      "test/workbench-projection-reviewer-aggregate.test.js": 184,
+      "test/workbench-projection-operations-timeline.test.js": 180,
+      "test/workbench-projection-operator-events.test.js": 126,
+      "test/helpers/workbench-projection.js": 110
+    }
+  }
+}
