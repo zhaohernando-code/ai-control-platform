@@ -1,0 +1,97 @@
+{
+  "version": "large-file-runtime-extraction-parity.v1",
+  "phase": "LFA-P17",
+  "target": "src/workflow/headless-cli-orchestrator.js",
+  "reviewed_at": "2026-06-04",
+  "base_ref": "origin/main",
+  "before": {
+    "file": "src/workflow/headless-cli-orchestrator.js",
+    "line_count": 1136,
+    "public_exports": [
+      "HEADLESS_CLI_ORCHESTRATOR_VERSION",
+      "CHILD_WORKER_ROLE",
+      "HEADLESS_MAIN_ORCHESTRATOR_ROLE",
+      "evaluateHeadlessChildWorkerOutput",
+      "headlessChildWorkerPrompt",
+      "parseHeadlessChildWorkerOutput",
+      "DEFAULT_CHILD_WORKER_TIMEOUT_MS",
+      "MAX_HEADLESS_LOOP_ITERATIONS",
+      "createHeadlessProviderExecutor",
+      "runHeadlessCliMainOrchestrator",
+      "runHeadlessCliMainOrchestratorLoop",
+      "publishHeadlessWorkflowSnapshot",
+      "validateHeadlessInput"
+    ]
+  },
+  "after": {
+    "entrypoint": {
+      "file": "src/workflow/headless-cli-orchestrator.js",
+      "line_count": 27,
+      "public_exports": [
+        "HEADLESS_CLI_ORCHESTRATOR_VERSION",
+        "CHILD_WORKER_ROLE",
+        "HEADLESS_MAIN_ORCHESTRATOR_ROLE",
+        "evaluateHeadlessChildWorkerOutput",
+        "headlessChildWorkerPrompt",
+        "parseHeadlessChildWorkerOutput",
+        "DEFAULT_CHILD_WORKER_TIMEOUT_MS",
+        "MAX_HEADLESS_LOOP_ITERATIONS",
+        "createHeadlessProviderExecutor",
+        "runHeadlessCliMainOrchestrator",
+        "runHeadlessCliMainOrchestratorLoop",
+        "publishHeadlessWorkflowSnapshot",
+        "validateHeadlessInput"
+      ],
+      "retained_domain": "compatibility_re_export_surface"
+    },
+    "extracted_modules": [
+      {
+        "file": "src/workflow/headless-orchestrator-utils.js",
+        "line_count": 102,
+        "moved_domain": "shared_input_validation_normalization_identity_and_project_status_evaluation"
+      },
+      {
+        "file": "src/workflow/headless-child-worker-runtime.js",
+        "line_count": 394,
+        "moved_domain": "agent_invocation_template_command_runner_output_parsing_isolated_worktree_and_real_child_worker_execution"
+      },
+      {
+        "file": "src/workflow/headless-provider-executor.js",
+        "line_count": 93,
+        "moved_domain": "provider_executor_child_output_evaluation_completion_authority_and_provenance"
+      },
+      {
+        "file": "src/workflow/headless-main-orchestrator-cycle.js",
+        "line_count": 313,
+        "moved_domain": "single_headless_main_orchestrator_cycle_state_transition_lifecycle_dispatch_snapshot_and_continuation"
+      },
+      {
+        "file": "src/workflow/headless-main-orchestrator-loop.js",
+        "line_count": 228,
+        "moved_domain": "bounded_headless_loop_projected_next_action_snapshot_persistence_and_iteration_control"
+      }
+    ]
+  },
+  "parity": {
+    "status": "pass",
+    "missing_public_exports": [],
+    "added_public_exports": [],
+    "below_500_policy": {
+      "status": "pass",
+      "entrypoint_below_500": true,
+      "new_modules_above_500": []
+    }
+  },
+  "focused_gates": [
+    {
+      "command": "node --check src/workflow/headless-cli-orchestrator.js && node --check src/workflow/headless-orchestrator-utils.js && node --check src/workflow/headless-child-worker-runtime.js && node --check src/workflow/headless-provider-executor.js && node --check src/workflow/headless-main-orchestrator-cycle.js && node --check src/workflow/headless-main-orchestrator-loop.js",
+      "status": "pass"
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test test/headless-cli-orchestrator.test.js test/headless-cli-orchestrator-cli-basic.test.js test/headless-cli-orchestrator-cli-service-actions.test.js test/headless-cli-orchestrator-cli-service-loop.test.js test/headless-cli-loop-continuation.test.js test/headless-process-hardening.test.js test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js",
+      "status": "pass",
+      "tests": 88,
+      "passed": 88
+    }
+  ]
+}

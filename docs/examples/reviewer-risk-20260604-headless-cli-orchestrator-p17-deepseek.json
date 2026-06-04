@@ -1,0 +1,108 @@
+{
+  "version": "external-review-record.v1",
+  "phase": "LFA-P17",
+  "target": "src/workflow/headless-cli-orchestrator.js",
+  "reviewed_at": "2026-06-04",
+  "status": "pass",
+  "reviewer": {
+    "provider": "claude-code-via-deepseek",
+    "model": "deepseek-v4-pro",
+    "mode": "read_only_sharded_review"
+  },
+  "initial_review": {
+    "status": "fail",
+    "classification": "evidence_gap",
+    "blocking_findings": [
+      {
+        "id": "DS-P17-1",
+        "severity": "P1",
+        "summary": "The governance plan still showed LFA-P17.5 as pending during the review run, so the reviewer treated the required review gate as incomplete."
+      },
+      {
+        "id": "DS-P17-2",
+        "severity": "P1",
+        "summary": "Sharded review could not cross-check behavior equivalence across all extracted modules from source-level evidence."
+      },
+      {
+        "id": "DS-P17-3",
+        "severity": "P1",
+        "summary": "Sharded review could not independently confirm that every original public export remains available after extraction."
+      }
+    ],
+    "code_defect_identified": false
+  },
+  "supplemental_evidence": {
+    "public_export_check": {
+      "method": "Compare documented original export surface with dynamic import keys from current src/workflow/headless-cli-orchestrator.js.",
+      "status": "pass",
+      "expected_exports": [
+        "HEADLESS_CLI_ORCHESTRATOR_VERSION",
+        "CHILD_WORKER_ROLE",
+        "HEADLESS_MAIN_ORCHESTRATOR_ROLE",
+        "evaluateHeadlessChildWorkerOutput",
+        "headlessChildWorkerPrompt",
+        "parseHeadlessChildWorkerOutput",
+        "DEFAULT_CHILD_WORKER_TIMEOUT_MS",
+        "MAX_HEADLESS_LOOP_ITERATIONS",
+        "createHeadlessProviderExecutor",
+        "runHeadlessCliMainOrchestrator",
+        "runHeadlessCliMainOrchestratorLoop",
+        "publishHeadlessWorkflowSnapshot",
+        "validateHeadlessInput"
+      ],
+      "current_exports": [
+        "CHILD_WORKER_ROLE",
+        "DEFAULT_CHILD_WORKER_TIMEOUT_MS",
+        "HEADLESS_CLI_ORCHESTRATOR_VERSION",
+        "HEADLESS_MAIN_ORCHESTRATOR_ROLE",
+        "MAX_HEADLESS_LOOP_ITERATIONS",
+        "createHeadlessProviderExecutor",
+        "evaluateHeadlessChildWorkerOutput",
+        "headlessChildWorkerPrompt",
+        "parseHeadlessChildWorkerOutput",
+        "publishHeadlessWorkflowSnapshot",
+        "runHeadlessCliMainOrchestrator",
+        "runHeadlessCliMainOrchestratorLoop",
+        "validateHeadlessInput"
+      ],
+      "missing_exports": [],
+      "added_exports": []
+    },
+    "below_500_check": {
+      "status": "pass",
+      "line_counts": {
+        "src/workflow/headless-cli-orchestrator.js": 27,
+        "src/workflow/headless-orchestrator-utils.js": 102,
+        "src/workflow/headless-child-worker-runtime.js": 394,
+        "src/workflow/headless-provider-executor.js": 93,
+        "src/workflow/headless-main-orchestrator-cycle.js": 313,
+        "src/workflow/headless-main-orchestrator-loop.js": 228
+      },
+      "files_at_or_above_500": []
+    },
+    "focused_gates": [
+      {
+        "command": "node --check src/workflow/headless-cli-orchestrator.js && node --check src/workflow/headless-orchestrator-utils.js && node --check src/workflow/headless-child-worker-runtime.js && node --check src/workflow/headless-provider-executor.js && node --check src/workflow/headless-main-orchestrator-cycle.js && node --check src/workflow/headless-main-orchestrator-loop.js",
+        "status": "pass"
+      },
+      {
+        "command": "node tools/run-with-node18.mjs --test test/headless-cli-orchestrator.test.js test/headless-cli-orchestrator-cli-basic.test.js test/headless-cli-orchestrator-cli-service-actions.test.js test/headless-cli-orchestrator-cli-service-loop.test.js test/headless-cli-loop-continuation.test.js test/headless-process-hardening.test.js test/autonomous-scheduler-loop.test.js test/workbench-projection.test.js",
+        "status": "pass",
+        "tests": 88,
+        "passed": 88
+      },
+      {
+        "command": "npm run check:large-files",
+        "status": "pass"
+      }
+    ]
+  },
+  "delta_review_required": true,
+  "delta_review_result": {
+    "status": "pass",
+    "model_output": "PASS",
+    "blocking_findings": [],
+    "review_mode": "read_only_delta_review_full_p17_file_set",
+    "reviewed_at": "2026-06-04"
+  }
+}

@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-03T23:38:52+08:00
+Updated at: 2026-06-04T09:51:58+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -15,6 +15,7 @@ This plan changes the governance model:
 - Existing large files may hold steady or shrink; they may not grow by updating the ledger.
 - New large files may not be added to the ledger as a normal bypass.
 - A large-file governance phase is not complete merely because a file shrank a little. It must meet a material reduction target or explicitly remain open.
+- Starting with LFA-P17, the selected file must fall below 500 lines before a phase can be marked `pass`; intermediate reductions above 500 lines remain `in_progress`.
 
 ## Scope
 
@@ -27,25 +28,25 @@ This plan does not replace `docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md`; it s
 
 ## Current Baseline
 
-Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-03.
+Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04.
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 60 |
-| Files currently above 500 lines | 29 |
-| `planned_refactor` files above 500 lines | 20 |
+| Manifest entries | 65 |
+| Files currently above 500 lines | 28 |
+| `planned_refactor` files above 500 lines | 19 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 31 |
+| Manifest entries already below threshold | 37 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `src/workflow/headless-cli-orchestrator.js` | 1136 | `planned_refactor` | Extract child command execution, continuation/result packaging, or loop state-transition groups until below 900 lines. |
-| LFA-Q02 | `src/workflow/context-work-package-runner.js` | 1135 | `planned_refactor` | Extract execution governance and result normalization until below 900 lines. |
-| LFA-Q03 | `tools/workbench-server.mjs` | 1131 | `planned_refactor` | Extract remaining context-pack/context-work-package, project-status continuation, projection-history, or state-bootstrap groups until below 900 lines. |
-| LFA-Q04 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Continue stable server test shards until below 850 lines. |
-| LFA-Q05 | `test/headless-cli-orchestrator.test.js` | 1071 | `planned_refactor` | Continue stable headless CLI root shards until below 850 lines. |
+| LFA-Q01 | `src/workflow/context-work-package-runner.js` | 1135 | `planned_refactor` | Extract execution governance and result normalization until below 500 lines. |
+| LFA-Q02 | `tools/workbench-server.mjs` | 1131 | `planned_refactor` | Extract remaining context-pack/context-work-package, project-status continuation, projection-history, or state-bootstrap groups until below 500 lines. |
+| LFA-Q03 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Continue stable server test shards until below 500 lines. |
+| LFA-Q04 | `test/headless-cli-orchestrator.test.js` | 1071 | `planned_refactor` | Continue stable headless CLI root shards until below 500 lines. |
+| LFA-Q05 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Continue stable projection root shards until below 500 lines. |
 
 ## State Vocabulary
 
@@ -371,6 +372,21 @@ Goal: reduce `test/context-work-package-runner.test.js` below the 950-line phase
 | LFA-P16.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260603-context-work-package-runner-test-p16-deepseek.json` | DeepSeek read-only sharded review passed. It confirmed fixture factory independence, execution-guard fail-closed assertion preservation, parity evidence, manifest registration, the retained 650-line follow-up target, and no premature phase pass. | pass |
 | LFA-P16.6 | Run final gates | Command evidence | Final gates passed after installing root and workbench dependencies inside the isolated worktree: `npm test` passed 1001/1001, `npm run check:large-files` passed with no issues and no warnings, `git diff --check` passed, JSON artifacts parsed, and `npm run check:closeout` passed. The first closeout attempt failed only because the fresh worktree lacked `playwright`; root/app `npm ci` resolved the environment gap and the full rerun passed. | pass |
 
+### Phase LFA-P17: Headless CLI Orchestrator Below-500 Extraction
+
+Status: pass
+
+Goal: reduce `src/workflow/headless-cli-orchestrator.js` from 1136 lines to below 500 lines in this phase, without weakening input validation, child worker execution, provider executor completion authority, lifecycle facts, context work-package dispatch, snapshot publishing, projected next-action loop behavior, or public exports. New extracted modules must stay below 500 lines and should remain below the 300-line near-threshold budget where practical.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P17.1 | Select current runtime target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/headless-cli-orchestrator.js` because it is the current highest-priority runtime queue item at 1136 lines. Under the new policy, this phase may pass only if the root file is below 500 lines and no newly extracted module exceeds 500 lines. | pass |
+| LFA-P17.2 | Extract bounded orchestration modules | `src/workflow/headless-orchestrator-utils.js`; `src/workflow/headless-child-worker-runtime.js`; `src/workflow/headless-provider-executor.js`; `src/workflow/headless-main-orchestrator-cycle.js`; `src/workflow/headless-main-orchestrator-loop.js`; `src/workflow/headless-cli-orchestrator.js`; `.largefile-manifest.json` | Root orchestrator reduced from 1136 to 27 lines, below the 500-line terminal target. Extracted modules are 102, 394, 93, 313, and 228 lines, all below 500, and preserve the existing public entrypoint through re-exports. | pass |
+| LFA-P17.3 | Prove export compatibility and manifest coverage | `docs/examples/headless-cli-orchestrator-p17-extraction-parity.json`; `.largefile-manifest.json` | Compatibility artifact records public exports, moved domains, line counts, focused gates, and below-500 policy compliance. All extracted modules are registered as accepted manifest entries. Remaining planned-refactor manifest targets were tightened to below-500 terminal targets. | pass |
+| LFA-P17.4 | Run focused gates | Command evidence | Syntax checks passed for the root and all five extracted modules. Focused headless/scheduler/projection gates passed 88/88. `npm run check:large-files` passed with no issues and no warnings after manifest refresh. | pass |
+| LFA-P17.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260604-headless-cli-orchestrator-p17-deepseek.json` | Initial DeepSeek review returned an evidence-gap fail, not a concrete code defect. Supplemental export/line-count evidence was recorded, and the full-file delta DeepSeek review returned PASS with no blocking findings. | pass |
+| LFA-P17.6 | Run final gates | Command evidence | Final gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, JSON parsing for manifest/parity/reviewer artifacts, and `npm run check:closeout` after installing root and `apps/workbench` dependencies in the isolated worktree. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -392,6 +408,7 @@ Goal: reduce `test/context-work-package-runner.test.js` below the 950-line phase
 | LFA-P14 | pass | Selected `test/autonomous-continuation.test.js`; root suite is 840 lines after extracting global-goal lifecycle and governance/frontend-repair continuation coverage into 257-line and 294-line shards. Split parity passed 37/37 with no missing, added, or duplicate tests. Focused autonomous continuation tests passed 37/37. Final gates passed: `npm test` 998/998, large-file gate, diff whitespace check, and full closeout. | DeepSeek PASS |
 | LFA-P15 | pass | Selected `src/workflow/requirement-intake.js`; root runtime module is 987 lines after extracting 124-line plan generation and 276-line plan granularity helpers. Compatibility artifact records public exports and focused runtime gates passed 49/49. Closeout-runner prose verdict parsing was tightened after final gate discovery, with 13/13 focused tests passing. Full gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, and `npm run check:closeout`. | DeepSeek PASS; DeepSeek delta PASS |
 | LFA-P16 | pass | Selected `test/context-work-package-runner.test.js`; root suite is 801 lines after extracting a 244-line execution-guards shard and 212-line shared fixture helper. Split parity passed 24/24 with no missing, added, or duplicate tests. Focused context-work-package runner tests passed 24/24. Final gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, JSON parsing, and full closeout. | DeepSeek PASS |
+| LFA-P17 | pass | Selected `src/workflow/headless-cli-orchestrator.js`; root entrypoint is 27 lines after extracting five bounded modules, all below 500 lines. Public export compatibility artifact is written, focused gates passed 88/88, large-file gate passes with remaining planned-refactor targets tightened below 500, DeepSeek delta review returned PASS after evidence-gap repair, and final closeout passed. | DeepSeek PASS after delta |
 
 ## Daily Run Shape
 

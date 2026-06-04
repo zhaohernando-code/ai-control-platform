@@ -24,13 +24,13 @@
       "lines": 842,
       "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 842,
-        "target_lines": 690,
-        "minimum_reduction": 150,
-        "terminal_condition": "Autonomous continuation module must fall to 690 lines or below through next-action and recovery policy extraction.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 343,
+        "terminal_condition": "src/workflow/autonomous-continuation.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "src/workflow/autonomous-orchestrator.js": {
@@ -43,13 +43,13 @@
       "lines": 869,
       "reason": "Scheduler loop contract implementation: loop execution, recovery, projection reuse, artifact validation, and execution-root propagation are still tightly coupled.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 869,
-        "target_lines": 710,
-        "minimum_reduction": 150,
-        "terminal_condition": "Autonomous scheduler loop module must fall to 710 lines or below through recovery and artifact validation extraction.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 370,
+        "terminal_condition": "src/workflow/autonomous-scheduler-loop.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "src/workflow/context-work-package-execution-adapter.js": {
@@ -68,13 +68,13 @@
       "lines": 1135,
       "reason": "Context work package runner: execution-scope and workspace mutation guard logic has been extracted to src/workflow/context-work-package-execution-scope.js; execution governance, worker dispatch, execution-root provenance, and result normalization still share one flow.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 1135,
-        "target_lines": 900,
-        "minimum_reduction": 227,
-        "terminal_condition": "Context work package runner module must fall to 900 lines or below through execution governance and result normalization extraction.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 636,
+        "terminal_condition": "src/workflow/context-work-package-runner.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "src/workflow/context-work-package-execution-scope.js": {
@@ -87,13 +87,13 @@
       "lines": 892,
       "reason": "Development flow real acceptance harness: fixture setup, dual CLI command construction, provider C2C dispatch governance, model-output contract parsing, and phase evidence aggregation are kept together for the reusable closeout gate.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 892,
-        "target_lines": 740,
-        "minimum_reduction": 150,
-        "terminal_condition": "Development-flow acceptance harness must fall to 740 lines or below while keeping provider C2C governance coverage.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 393,
+        "terminal_condition": "src/workflow/development-flow-real.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "src/workflow/frontend-acceptance.js": {
@@ -101,27 +101,65 @@
       "reason": "Frontend acceptance validator: browser evidence schema, layout/content checks, console errors, and live-route constraints are one acceptance surface.",
       "growth_justification": "LFG-P6.2 Next.js acceptance hardening adds a fail-closed guard that rejects nextjs_app_router artifacts unless legacy_static_shell_used is explicitly false.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 818,
-        "target_lines": 660,
-        "minimum_reduction": 150,
-        "terminal_condition": "Frontend acceptance validator must fall to 660 lines or below while retaining browser evidence and live-route checks.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 319,
+        "terminal_condition": "src/workflow/frontend-acceptance.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "src/workflow/headless-cli-orchestrator.js": {
-      "lines": 1136,
-      "reason": "Headless CLI orchestrator has been reduced from the P7 1855-line baseline by extracting child-worker prompt construction, process-hardening evidence, snapshot publishing, projected workbench client access, and projected next-action execution into bounded modules below 300 lines. The main file still owns child command execution, workflow-state transitions, continuation packaging, and loop orchestration, so it remains planned debt rather than accepted.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
-      "reduction_target": {
-        "base_lines": 1136,
-        "target_lines": 900,
-        "minimum_reduction": 228,
-        "terminal_condition": "Headless CLI orchestrator must fall to 900 lines or below through another coherent extraction step before this queue item can be reconsidered; if it remains above 500 lines, it stays planned_refactor.",
-        "next_phase": "Extract child command execution, continuation/result packaging, or loop state-transition groups without weakening headless CLI and scheduler-loop evidence coverage."
+      "lines": 27,
+      "reason": "Headless CLI orchestrator entrypoint was reduced from the P17 1136-line baseline to a thin compatibility re-export surface below 500 lines. Child-worker runtime, provider executor, main cycle, loop orchestration, and shared input utilities were extracted into bounded modules below 500 lines. Extraction parity is recorded in docs/examples/headless-cli-orchestrator-p17-extraction-parity.json.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04",
+      "split_evidence": {
+        "parity_artifact": "docs/examples/headless-cli-orchestrator-p17-extraction-parity.json",
+        "before_lines": 1136,
+        "after_lines": 27,
+        "moved_domains": {
+          "src/workflow/headless-orchestrator-utils.js": "shared_input_validation_normalization_identity_and_project_status_evaluation",
+          "src/workflow/headless-child-worker-runtime.js": "agent_invocation_template_command_runner_output_parsing_isolated_worktree_and_real_child_worker_execution",
+          "src/workflow/headless-provider-executor.js": "provider_executor_child_output_evaluation_completion_authority_and_provenance",
+          "src/workflow/headless-main-orchestrator-cycle.js": "single_headless_main_orchestrator_cycle_state_transition_lifecycle_dispatch_snapshot_and_continuation",
+          "src/workflow/headless-main-orchestrator-loop.js": "bounded_headless_loop_projected_next_action_snapshot_persistence_and_iteration_control"
+        },
+        "retained_entrypoint_surface": [
+          "public_re_exports_only"
+        ]
       }
+    },
+    "src/workflow/headless-orchestrator-utils.js": {
+      "lines": 102,
+      "reason": "Extracted Headless CLI shared utility module kept below 500 lines while preserving normalization, input validation, workflow identity checks, and PROJECT_STATUS global-goal run evaluation helpers.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/headless-child-worker-runtime.js": {
+      "lines": 394,
+      "reason": "Extracted Headless CLI child-worker runtime kept below 500 lines while preserving agent invocation setup, sanitized child environment, structured output parsing, timeout/retry evidence, isolated worker worktree creation/cleanup, and merge integration evidence.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/headless-provider-executor.js": {
+      "lines": 93,
+      "reason": "Extracted Headless CLI provider executor kept below 500 lines while preserving child output selection, evaluation, completion authority, model role, and executor provenance semantics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/headless-main-orchestrator-cycle.js": {
+      "lines": 313,
+      "reason": "Extracted Headless CLI single-cycle orchestrator kept below 500 lines while preserving project-status continuation, context-pack materialization, child lifecycle facts, context work-package dispatch, hardening on rejected child output, lifecycle cleanup, projection, snapshot publishing, and continuation decisions.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/headless-main-orchestrator-loop.js": {
+      "lines": 228,
+      "reason": "Extracted Headless CLI loop orchestrator kept below 500 lines while preserving bounded iteration validation, service projected-next-action execution, projected action progress recording, snapshot persistence enforcement, and continuation input handoff.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "src/workflow/headless-child-worker-prompt.js": {
       "lines": 120,
@@ -175,13 +213,13 @@
       "lines": 987,
       "reason": "Requirement intake root was reduced from the P15 1318-line baseline by extracting requirement plan generation and requirement plan granularity/work-package slicing into bounded modules under 300 lines. The root still owns requirement submission, plan-review state transitions, requirement completion/closeout, summaries, and workflow event recording, so it remains planned debt instead of accepted. Extraction parity is recorded in docs/examples/requirement-intake-p15-extraction-parity.json with compatibility exports and focused runtime gates.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 987,
-        "target_lines": 800,
-        "minimum_reduction": 150,
-        "terminal_condition": "Requirement intake root must fall to 800 lines or below through another coherent state-flow extraction while preserving submission, review, completion, closeout, and workflow event recording behavior.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 488,
+        "terminal_condition": "src/workflow/requirement-intake.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/requirement-intake-p15-extraction-parity.json",
@@ -216,26 +254,26 @@
       "lines": 923,
       "reason": "Workbench projection composition: core aggregation remains while next-action readout and project-management readout policy have been extracted to bounded modules; remaining projection-level orchestration is kept as the projection composer.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 923,
-        "target_lines": 750,
-        "minimum_reduction": 150,
-        "terminal_condition": "Projection composer must fall to 750 lines or below and retain a concrete follow-up target while above 500 lines.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 424,
+        "terminal_condition": "src/workflow/workbench-projection.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "test/autonomous-continuation.test.js": {
       "lines": 840,
       "reason": "Autonomous continuation root tests were reduced from the P14 1357-line baseline by extracting global-goal lifecycle and governance/frontend-repair continuation coverage into bounded shards under 300 lines. The root still covers base continuation decisions, requirement plan slicing, reviewer recovery, provider health, rollback/human-stop, snapshot publishing, and project-status next work packages, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/autonomous-continuation-test-p14-split-parity.json with 37 before / 37 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 840,
-        "target_lines": 690,
-        "minimum_reduction": 150,
-        "terminal_condition": "Autonomous continuation root suite must fall to 690 lines or below through additional stable continuation-domain shards while preserving provider health, reviewer recovery, rollback/human-stop, snapshot publishing, and project-status next-work-package assertions.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 341,
+        "terminal_condition": "test/autonomous-continuation.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/autonomous-continuation-test-p14-split-parity.json",
@@ -272,13 +310,13 @@
       "lines": 877,
       "reason": "Scheduler loop tests share replay, recovery, and continuation fixtures for the same loop contract.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 877,
-        "target_lines": 725,
-        "minimum_reduction": 150,
-        "terminal_condition": "Autonomous scheduler root suite must fall to 725 lines or below through loop/recovery fixture shards.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 378,
+        "terminal_condition": "test/autonomous-scheduler-loop.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "test/context-work-package-provider-executor.test.js": {
@@ -292,13 +330,13 @@
       "lines": 801,
       "reason": "Context work package runner root tests were reduced from the P16 1242-line baseline by extracting shared workflow-state fixtures plus fixed-development gate, local completion authority, workspace mutation guard, and isolated worker worktree enforcement into bounded files under 300 lines. The root still covers dispatch execution, frontend plan slicing, retry_agent_worker lifecycle, provider identity/completion authority, verified provider profile, background dispatch staging/completion/failure, and failed-package retry, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/context-work-package-runner-test-p16-split-parity.json with 24 before / 24 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 801,
-        "target_lines": 650,
-        "minimum_reduction": 150,
-        "terminal_condition": "Context work package runner root suite must fall to 650 lines or below through additional stable dispatch/provider shards while preserving remaining behavior assertions.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 302,
+        "terminal_condition": "test/context-work-package-runner.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/context-work-package-runner-test-p16-split-parity.json",
@@ -328,13 +366,13 @@
       "lines": 577,
       "reason": "Frontend acceptance root tests were reduced from the P10 1670-line baseline by extracting shared artifact/viewport fixtures plus copy/content, diagnostic content, project-management semantics, and command-architecture false-pass domains into bounded helpers and shards under 300 lines. The root still covers artifact schema, viewport/resource readiness, durable release evidence, CLI default latest-projection mode, browser console errors, legacy shell rejection, navigation semantic-change guards, repair work package scheduling, closeout wiring, and public live-route gate wiring, so it remains planned debt rather than accepted. Split parity is recorded in docs/examples/frontend-acceptance-test-p10-split-parity.json with 36 before / 36 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 577,
-        "target_lines": 426,
+        "target_lines": 427,
         "minimum_reduction": 150,
-        "terminal_condition": "Frontend acceptance root suite must fall below 500 lines or to 426 lines or below through another stable extraction while preserving release evidence, navigation, repair, and closeout wiring assertions.",
-        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+        "terminal_condition": "test/frontend-acceptance.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/frontend-acceptance-test-p10-split-parity.json",
@@ -362,13 +400,13 @@
       "lines": 1071,
       "reason": "Headless CLI orchestrator root tests were reduced from the P8 1745-line baseline by extracting shared fixtures plus CLI process, Workbench-service action, and Workbench-service loop shards under 300 lines. The first split intentionally moved the stable process/provider/projected-action CLI cluster while leaving child acceptance, provider command-runner, continuation, and injected projected-action loop coverage in the root for the next 850-line target. Split parity is recorded in docs/examples/headless-cli-orchestrator-test-p8-split-parity.json with 40 before / 40 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 1071,
-        "target_lines": 850,
-        "minimum_reduction": 215,
-        "terminal_condition": "Headless CLI root suite must fall to 850 lines or below through additional stable domain shards while preserving orchestrator and loop behavior assertions.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 572,
+        "terminal_condition": "test/headless-cli-orchestrator.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/headless-cli-orchestrator-test-p8-split-parity.json",
@@ -399,13 +437,13 @@
       "lines": 1025,
       "reason": "Workbench projection root tests were reduced from the P12 1434-line baseline by extracting scheduler dispatch, scheduler continuation, scheduler policy, scheduler loop run, invalid loop, and resume-attempt coverage into bounded scheduler shards under 300 lines. The root still covers broad projection, terminal closeout, browser evidence, reviewer recovery, operations timeline, operator-event, mobile, and input-validation contracts, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/workbench-projection-test-p12-split-parity.json with 25 before / 25 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 1025,
-        "target_lines": 800,
-        "minimum_reduction": 205,
-        "terminal_condition": "Projection root suite must fall to 800 lines or below through additional stable domain shards while preserving timeline, reviewer, operator-event, mobile, and input-validation assertions.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 526,
+        "terminal_condition": "test/workbench-projection.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/workbench-projection-test-p12-split-parity.json",
@@ -431,13 +469,13 @@
       "lines": 1092,
       "reason": "Workbench server root tests were reduced from the P13 1363-line baseline by extracting requirement submission, pending plan generation, and failed plan generation retry/close coverage into a bounded requirement-plan-generation shard under 300 lines. The root still covers projection basics, plan generation fallback/supplied plan, plan review, background resume, verified-provider completion, requirement closeout, provider-context completion checks, and long context-pack snapshot id handling, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/workbench-server-test-p13-split-parity.json with 17 before / 17 after tests and no missing, added, or duplicate names.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 1092,
-        "target_lines": 850,
-        "minimum_reduction": 219,
-        "terminal_condition": "Workbench server root suite must fall to 850 lines or below through additional stable domain shards while preserving plan review, provider completion, closeout, and provider-context assertions.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 593,
+        "terminal_condition": "test/workbench-server.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       },
       "split_evidence": {
         "parity_artifact": "docs/examples/workbench-server-test-p13-split-parity.json",
@@ -462,13 +500,13 @@
       "lines": 1131,
       "reason": "Workbench server entrypoint has been reduced from the P6 1954-line baseline by extracting requirement plan/auto-advance services plus reviewer and workflow evidence routes into bounded modules. The entrypoint still wires server bootstrap, projection/history/state access, scheduler/context-pack/context-work-package routes, project-status continuation, and runtime route ordering, so it remains planned debt rather than accepted.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 1131,
-        "target_lines": 900,
-        "minimum_reduction": 227,
-        "terminal_condition": "Server entrypoint must fall below 900 lines through another coherent extraction step before this queue item can be reconsidered; if it remains above 500 lines, it stays planned_refactor.",
-        "next_phase": "Extract remaining context-pack/context-work-package, project-status continuation, projection-history, or state-bootstrap groups without weakening API route contract coverage."
+        "target_lines": 499,
+        "minimum_reduction": 632,
+        "terminal_condition": "tools/workbench-server.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "src/workflow/workbench-next-action-readout.js": {
@@ -493,52 +531,52 @@
       "lines": 983,
       "reason": "Browser events closeout checker covers mounted runtime scenarios, API rewrites, console errors, and durable event evidence in one large script.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 983,
-        "target_lines": 830,
-        "minimum_reduction": 150,
-        "terminal_condition": "Browser-events closeout checker must fall to 830 lines or below through scenario/adapter extraction.",
-        "next_phase": "Continue staged extraction if the file remains above 500 lines after this target."
+        "target_lines": 499,
+        "minimum_reduction": 484,
+        "terminal_condition": "tools/check-workbench-browser-events.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "tools/run-governance-audit-skill-trial.mjs": {
       "lines": 597,
       "reason": "Governance audit skill trial runner combines skill fixture setup, model invocation checks, artifact validation, and report persistence.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 597,
         "target_lines": 447,
         "minimum_reduction": 150,
-        "terminal_condition": "Governance audit skill trial runner must fall below 500 lines or split trial fixtures into bounded helpers.",
-        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+        "terminal_condition": "tools/run-governance-audit-skill-trial.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "tools/probe-workbench-live-route.mjs": {
       "lines": 578,
       "reason": "Workbench live-route probe combines public route auth handling, browser evidence capture, API checks, and artifact persistence.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 578,
         "target_lines": 428,
         "minimum_reduction": 150,
-        "terminal_condition": "Live-route probe must fall below 500 lines or split evidence parsing into a bounded helper.",
-        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+        "terminal_condition": "tools/probe-workbench-live-route.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "tools/check-workbench-next-served-route.mjs": {
       "lines": 533,
       "reason": "Next served-route checker combines mounted App Router route validation, asset checks, API rewrite checks, and browser evidence.",
       "status": "planned_refactor",
-      "reviewed_at": "2026-06-03",
+      "reviewed_at": "2026-06-04",
       "reduction_target": {
         "base_lines": 533,
         "target_lines": 383,
         "minimum_reduction": 150,
-        "terminal_condition": "Next served-route checker must fall below 500 lines or split route assertions into a bounded helper.",
-        "next_phase": "If this target drops the file below 500 lines, refresh the manifest status with evidence; otherwise continue staged extraction."
+        "terminal_condition": "tools/check-workbench-next-served-route.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
+        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
       }
     },
     "test/helpers/headless-cli-orchestrator.js": {
