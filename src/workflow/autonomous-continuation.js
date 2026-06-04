@@ -1,83 +1,47 @@
 import { projectionPublishIssues, snapshotIssues } from "./workbench-snapshots.js";
 import { createWorkbenchProjection } from "./workbench-projection.js";
-import { evaluateRunResult } from "./autonomous-run.js";
 import { evaluateGlobalGoalCompletion } from "./global-goal-completion.js";
-import { summarizeAgentLifecyclePool } from "./agent-lifecycle-pool.js";
 import {
-  createFrontendAcceptanceRepairWorkPackage,
-  summarizeFrontendAcceptance
-} from "./frontend-acceptance.js";
-import { createSelfGovernanceReport } from "./self-governance.js";
+  asArray,
+  compactStrings,
+  COMPLETE,
+  CONTINUE,
+  DEFAULT_NEXT_STEP_OWNED_FILES,
+  isObject,
+  issue,
+  normalizeString,
+  normalizeToken,
+  projectStatus,
+  RERUN,
+  RERUN_STATUSES,
+  ROLLBACK,
+  ROLLBACK_STATUSES,
+  statusOf,
+  STOP_FOR_HUMAN,
+  STOP_STATUSES,
+  uniqueStrings,
+  workflowStateFrom
+} from "./autonomous-continuation-utils.js";
 import {
-  summarizeGovernanceAuditSkillTrial
-} from "./governance-audit-skill-trial.js";
-import { createCodeReviewCoverageDispatch } from "./code-review-coverage-dispatch.js";
+  reviewerSmokeStallBlockers,
+  runEvaluationFrom
+} from "./autonomous-continuation-reviewer.js";
 import {
-  createRequirementPlanWorkPackages,
-  normalizeRequirementPlanWorkPackagesGranularity
-} from "./requirement-intake.js";
-import { WORK_ITEM_COMPLETE_SYNONYMS } from "./status-vocabulary.js";
+  acceptanceGatesFromWorkPackage,
+  nextWorkPackagesFrom
+} from "./autonomous-continuation-work-packages.js";
 
-const CONTINUE = "continue";
-const RERUN = "rerun";
-const ROLLBACK = "rollback";
-const STOP_FOR_HUMAN = "stop_for_human";
-const COMPLETE = "complete";
-
-const STOP_STATUSES = new Set(["human_intervention", "blocked", "stop_for_human"]);
-const RERUN_STATUSES = new Set(["rerun", "retry"]);
-const ROLLBACK_STATUSES = new Set(["rollback"]);
-const DEFAULT_NEXT_STEP_OWNED_FILES = [
-  "PROJECT_STATUS.json",
-  "src/workflow",
-  "docs/contracts",
-  "docs/examples/process-hardening-current.json"
-];
-
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
-function normalizeString(value) {
-  return String(value || "").trim();
-}
-
-function normalizeToken(value) {
-  return normalizeString(value).toLowerCase();
-}
-
-function isObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function compactStrings(value) {
-  return asArray(value).map(normalizeString).filter(Boolean);
-}
-
-function uniqueStrings(value) {
-  return [...new Set(compactStrings(value))];
-}
-
-function issue(code, message, path) {
-  return { code, message, path };
-}
-
-function statusOf(value) {
-  return normalizeToken(value?.status || value?.decision || value?.action || value);
-}
-
-function reviewerSmokeStallBlockers(input) {
-  const stall = reviewerProviderSmokeStall(input);
-  if (!stall.stalled) return [];
-  return [{
-    id: "reviewer_provider_smoke_stalled",
-    category: "recovery_exhausted",
-    message: stall.reason,
-    requires_human: true,
-    smoke_check_count: stall.smoke_check_count,
-    threshold: REVIEWER_SMOKE_STALL_THRESHOLD
-  }];
-}
+export {
+  COMPLETE,
+  CONTINUE,
+  RERUN,
+  ROLLBACK,
+  STOP_FOR_HUMAN
+} from "./autonomous-continuation-utils.js";
+export {
+  REVIEWER_SMOKE_STALL_THRESHOLD,
+  reviewerProviderSmokeStall
+} from "./autonomous-continuation-reviewer.js";
 
 function blockersFrom(input) {
   const runEvaluation = runEvaluationFrom(input);
@@ -121,487 +85,6 @@ function nextStepFrom(input) {
       input?.projectStatus?.next_step ||
       runEvaluation?.next_step
   );
-}
-
-function nextWorkPackagesFrom(input) {
-  const runEvaluation = runEvaluationFrom(input);
-  const aggregate = latestCompletedReviewerShardAggregate(input);
-  const providerPackages = aggregate ? [] : reviewerProviderWorkPackagesFrom(input);
-  const scopeSplitPackages = aggregate ? [] : reviewerScopeSplitWorkPackagesFrom(input);
-  const lifecyclePoolPackages = agentLifecyclePoolWorkPackagesFrom(input);
-  const frontendRepairPackages = frontendAcceptanceRepairWorkPackagesFrom(input);
-  const governanceAuditRepairPackages = governanceAuditRepairWorkPackagesFrom(input);
-  const selfGovernancePackages = selfGovernanceWorkPackagesFrom(input);
-  const codeReviewCoveragePackages = codeReviewCoverageWorkPackagesFrom(input);
-  const globalGoalCompletion = evaluateGlobalGoalCompletion(input);
-  const directPackages = [
-    ...asArray(input?.next_work_packages),
-    ...asArray(input?.nextWorkPackages),
-    ...asArray(input?.project_status?.next_work_packages),
-    ...asArray(input?.projectStatus?.next_work_packages),
-    ...asArray(runEvaluation?.next_work_packages),
-    ...asArray(runEvaluation?.projection?.next_work_packages),
-    ...providerPackages,
-    ...scopeSplitPackages,
-    ...lifecyclePoolPackages,
-    ...frontendRepairPackages,
-    ...governanceAuditRepairPackages,
-    ...selfGovernancePackages,
-    ...codeReviewCoveragePackages
-  ];
-  const expandedDirectPackages = filterCompletedWorkPackages(
-    normalizeRequirementPlanWorkPackages(expandRequirementPlanWorkPackages(input, directPackages)),
-    input
-  );
-  if (expandedDirectPackages.length > 0) {
-    return dedupeWorkPackages(expandedDirectPackages);
-  }
-  return dedupeWorkPackages(globalGoalCompletion.next_work_packages);
-}
-
-function normalizeRequirementPlanWorkPackages(workPackages = []) {
-  return normalizeRequirementPlanWorkPackagesGranularity(workPackages);
-}
-
-function completedWorkPackageIds(input = {}) {
-  const workflowState = workflowStateFrom(input) || input;
-  // Work-package terminality = shared work-item-complete set (pass synonyms + done +
-  // accepted/closed). Shared so ok/success/succeeded agree with the scheduler — the old
-  // inline copy dropped them, leaving a "succeeded" package looking incomplete here.
-  const completeStatuses = new Set(WORK_ITEM_COMPLETE_SYNONYMS);
-  return new Set([
-    ...asArray(workflowState?.manifest?.work_packages),
-    ...asArray(workflowState?.task_dag || workflowState?.taskDag)
-  ]
-    .filter((workPackage) => completeStatuses.has(normalizeToken(workPackage?.status || workPackage?.result)))
-    .map((workPackage) => workPackageId(workPackage))
-    .filter(Boolean));
-}
-
-function filterCompletedWorkPackages(workPackages = [], input = {}) {
-  const completedIds = completedWorkPackageIds(input);
-  if (completedIds.size === 0) return workPackages;
-  return asArray(workPackages)
-    .filter((workPackage) => !completedIds.has(workPackageId(workPackage)))
-    .map((workPackage) => {
-      const dependsOn = compactStrings(workPackage.depends_on || workPackage.dependencies)
-        .filter((dependencyId) => !completedIds.has(dependencyId));
-      if (dependsOn.length === compactStrings(workPackage.depends_on || workPackage.dependencies).length) {
-        return workPackage;
-      }
-      return {
-        ...workPackage,
-        depends_on: dependsOn
-      };
-    });
-}
-
-function requirementIdForWorkPackage(workPackage = {}) {
-  return normalizeString(
-    workPackage.source?.requirement_id ||
-      workPackage.source?.requirementId ||
-      workPackage.global_goal_id ||
-      workPackage.globalGoalId
-  );
-}
-
-function approvedPlanReviewFor(projectStatus = {}, requirementId = "") {
-  const review = isObject(projectStatus?.plan_reviews) ? projectStatus.plan_reviews[requirementId] : null;
-  const phase = normalizeToken(review?.phase || review?.status);
-  return phase === "in_development" ? review : null;
-}
-
-function expandRequirementPlanWorkPackages(input = {}, workPackages = []) {
-  const status = projectStatus(input);
-  return asArray(workPackages).flatMap((workPackage) => {
-    if (normalizeString(workPackage?.action) !== "continue_requirement_intake") return [workPackage];
-    const requirementId = requirementIdForWorkPackage(workPackage);
-    if (!approvedPlanReviewFor(status, requirementId)) return [workPackage];
-    const planPackages = createRequirementPlanWorkPackages(status, requirementId, workPackage);
-    return planPackages.length > 0 ? planPackages : [workPackage];
-  });
-}
-
-function workPackageId(workPackage = {}, fallback = "") {
-  return normalizeString(workPackage.id || workPackage.work_package_id || workPackage.workPackageId || fallback);
-}
-
-function acceptanceGatesFromWorkPackage(workPackage = {}) {
-  return uniqueStrings([
-    ...compactStrings(workPackage.acceptance_gates || workPackage.acceptanceGates),
-    ...compactStrings(workPackage.source?.acceptance_gates || workPackage.source?.acceptanceGates)
-  ]);
-}
-
-function mergeWorkPackages(current = {}, incoming = {}) {
-  const merged = { ...current, ...incoming };
-  const ownedFiles = uniqueStrings([
-    ...compactStrings(current.owned_files || current.ownedFiles),
-    ...compactStrings(incoming.owned_files || incoming.ownedFiles)
-  ]);
-  const acceptanceGates = uniqueStrings([
-    ...acceptanceGatesFromWorkPackage(current),
-    ...acceptanceGatesFromWorkPackage(incoming)
-  ]);
-  const dependsOn = uniqueStrings([
-    ...compactStrings(current.depends_on || current.dependencies),
-    ...compactStrings(incoming.depends_on || incoming.dependencies)
-  ]);
-
-  for (const field of ["id", "work_package_id", "title", "action", "global_goal_id", "globalGoalId", "reason"]) {
-    if (!normalizeString(merged[field]) && normalizeString(current[field])) {
-      merged[field] = current[field];
-    }
-  }
-  if (!merged.frontend_acceptance && !merged.frontendAcceptance) {
-    merged.frontend_acceptance = current.frontend_acceptance || current.frontendAcceptance;
-  }
-  if (current.source || incoming.source) {
-    merged.source = { ...(current.source || {}), ...(incoming.source || {}) };
-  }
-  if (ownedFiles.length > 0) merged.owned_files = ownedFiles;
-  if (acceptanceGates.length > 0) merged.acceptance_gates = acceptanceGates;
-  if (dependsOn.length > 0) merged.depends_on = dependsOn;
-
-  return merged;
-}
-
-function dedupeWorkPackages(workPackages = []) {
-  const orderedKeys = [];
-  const byKey = new Map();
-
-  asArray(workPackages).filter(Boolean).forEach((workPackage, index) => {
-    const key = workPackageId(workPackage, `continuation-${index + 1}`);
-    if (!byKey.has(key)) {
-      orderedKeys.push(key);
-      byKey.set(key, workPackage);
-      return;
-    }
-    byKey.set(key, mergeWorkPackages(byKey.get(key), workPackage));
-  });
-
-  return orderedKeys.map((key) => byKey.get(key));
-}
-
-function explicitRunEvaluation(input = {}) {
-  return input?.run_evaluation || input?.runEvaluation || null;
-}
-
-function latestReviewerShardAggregate(input = {}) {
-  const explicit = input?.reviewer_shard_aggregate || input?.reviewerShardAggregate;
-  if (explicit) return explicit;
-
-  const events = asArray(input?.workflow_state?.manifest?.events)
-    .filter((event) => event?.type === "reviewer_shard_aggregate");
-  return events.at(-1)?.metadata || null;
-}
-
-function latestCompletedReviewerShardAggregate(input = {}) {
-  const aggregate = latestReviewerShardAggregate(input);
-  if (!aggregate) return null;
-  if (normalizeToken(aggregate.status) === "pending" || Number(aggregate.pending_shards || 0) > 0) return null;
-  return aggregate;
-}
-
-function reviewerShardAggregateEvaluation(input = {}) {
-  const aggregate = latestCompletedReviewerShardAggregate(input);
-  const workflowState = workflowStateFrom(input);
-  const manifest = workflowState?.manifest;
-  if (!aggregate || !manifest) return null;
-
-  return evaluateRunResult({
-    ...manifest,
-    artifacts: asArray(manifest.artifacts).filter((artifact) => !preAggregateReviewerRecoveryArtifact(artifact)),
-    review_findings: asArray(aggregate.merged_findings)
-  });
-}
-
-function preAggregateReviewerRecoveryArtifact(artifact = {}) {
-  const metadata = artifact.metadata || {};
-  const type = normalizeToken(metadata.type || artifact.type || artifact.producer);
-  const category = normalizeToken(metadata.category || metadata.source?.category || artifact.category);
-  const producer = normalizeToken(artifact.producer || metadata.producer);
-  return Boolean(
-    type === "reviewer_gate" ||
-      type === "reviewer_provider_health" ||
-      type === "reviewer_scope_split" ||
-      type === "reviewer_shard_result" ||
-      category === "reviewer_timeout" ||
-      producer === "reviewer-provider-health" ||
-      producer === "reviewer-scope-splitter" ||
-      producer === "reviewer-shard-result" ||
-      producer === "reviewer-shard-aggregate" ||
-      normalizeString(artifact.id).includes("reviewer-timeout")
-  );
-}
-
-function runEvaluationFrom(input = {}) {
-  const explicit = explicitRunEvaluation(input);
-  const explicitStatus = statusOf(explicit);
-  if (STOP_STATUSES.has(explicitStatus) || ROLLBACK_STATUSES.has(explicitStatus)) {
-    return explicit;
-  }
-
-  return reviewerShardAggregateEvaluation(input) || explicit;
-}
-
-function latestReviewerProviderHealth(input = {}) {
-  const explicit = input?.reviewer_provider_health || input?.provider_health || input?.workflow_state?.reviewer_provider_health;
-  if (explicit) return explicit;
-
-  const events = asArray(input?.workflow_state?.manifest?.events)
-    .filter((event) => event?.type === "reviewer_provider_health");
-  return events.at(-1)?.metadata || null;
-}
-
-function latestReviewerScopeSplit(input = {}) {
-  const explicit = input?.reviewer_scope_split || input?.scope_split || input?.workflow_state?.reviewer_scope_split;
-  if (explicit) return explicit;
-
-  const events = asArray(input?.workflow_state?.manifest?.events)
-    .filter((event) => event?.type === "reviewer_scope_split");
-  return events.at(-1)?.metadata || null;
-}
-
-function reviewerShardResultIds(input = {}) {
-  return new Set(asArray(input?.workflow_state?.manifest?.events)
-    .filter((event) => event?.type === "reviewer_shard_result")
-    .map((event) => normalizeString(event?.metadata?.shard_id || event?.metadata?.shardId))
-    .filter(Boolean));
-}
-
-function providerHealthActionTitle(action) {
-  return {
-    provider_smoke_check: "Run reviewer provider smoke check",
-    rerun_without_tools: "Rerun DeepSeek reviewer without tools",
-    split_scope: "Split reviewer scope into smaller checks",
-    fallback_model_or_defer_external_review: "Fallback reviewer model or defer external review"
-  }[action] || `Handle reviewer provider action ${action}`;
-}
-
-function providerHealthOwnedFiles(action) {
-  if (action === "fallback_model_or_defer_external_review") {
-    return ["src/workflow/model-router.js", "src/workflow/reviewer-provider-health.js"];
-  }
-  return ["src/workflow/llm-reviewer-gate.js", "src/workflow/reviewer-provider-health.js"];
-}
-
-const REVIEWER_SMOKE_STALL_THRESHOLD = 2;
-
-function reviewerProviderHealthEvents(input = {}) {
-  return asArray(input?.workflow_state?.manifest?.events)
-    .filter((event) => event?.type === "reviewer_provider_health");
-}
-
-function isNeedsSmokeCheckEvent(event = {}) {
-  const meta = event?.metadata || {};
-  if (normalizeToken(meta.recovery_status) === "needs_smoke_check") return true;
-  const actions = asArray(meta.scheduled_actions || meta.scheduledActions);
-  return actions.length === 1 && normalizeToken(actions[0]) === "provider_smoke_check";
-}
-
-function reviewerProviderSmokeStall(input = {}) {
-  const events = reviewerProviderHealthEvents(input);
-  if (events.length === 0) {
-    return { stalled: false, smoke_check_count: 0, reason: null };
-  }
-  let trailing = 0;
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    if (isNeedsSmokeCheckEvent(events[i])) {
-      trailing += 1;
-    } else {
-      break;
-    }
-  }
-  if (trailing < REVIEWER_SMOKE_STALL_THRESHOLD) {
-    return { stalled: false, smoke_check_count: trailing, reason: null };
-  }
-  return {
-    stalled: true,
-    smoke_check_count: trailing,
-    reason: `reviewer provider smoke check generated ${trailing} consecutive times without resolution; stop scheduling reviewer work until a human resolves provider health`
-  };
-}
-
-function reviewerProviderWorkPackagesFrom(input = {}) {
-  const stall = reviewerProviderSmokeStall(input);
-  if (stall.stalled) return [];
-
-  const health = latestReviewerProviderHealth(input);
-  const splitPlan = latestReviewerScopeSplit(input);
-  const hasConcreteSplitShards = asArray(splitPlan?.shards).length > 0 && splitPlan?.status !== "fail";
-  const actions = asArray(health?.scheduled_actions || health?.scheduledActions);
-  const nextAction = normalizeString(health?.next_action || health?.nextAction);
-  const scheduledActions = actions.length > 0 ? actions : (nextAction ? [nextAction] : []);
-
-  return scheduledActions
-    .filter((action) => !(action === "split_scope" && hasConcreteSplitShards))
-    .map((action) => ({
-      id: `reviewer-provider-${normalizeString(action).replace(/_/g, "-")}`,
-      title: providerHealthActionTitle(action),
-      action,
-      owned_files: providerHealthOwnedFiles(action),
-      reason: health?.reason || health?.retry_strategy || "reviewer provider health requires scheduler follow-up"
-    }));
-}
-
-function reviewerScopeSplitWorkPackagesFrom(input = {}) {
-  const splitPlan = latestReviewerScopeSplit(input);
-  const completedShardIds = reviewerShardResultIds(input);
-  if (!splitPlan || splitPlan.status === "fail") return [];
-
-  return asArray(splitPlan.shards)
-    .filter((shard) => statusOf(shard) !== "completed" && statusOf(shard) !== "pass")
-    .filter((shard) => !completedShardIds.has(normalizeString(shard.id)))
-    .map((shard) => ({
-      id: normalizeString(shard.id),
-      title: `Run bounded reviewer shard ${normalizeString(shard.id).replace(/^reviewer-scope-shard-/, "")}`,
-      action: "run_reviewer_scope_shard",
-      shard_id: normalizeString(shard.id),
-      owned_files: compactStrings(shard.files),
-      reason: splitPlan.split_reason || "reviewer scope split plan requires per-shard external review",
-      reviewer: {
-        provider: shard.provider || splitPlan.provider,
-        model: shard.model || splitPlan.model,
-        profile: shard.profile || splitPlan.profile,
-        allowed_tools: asArray(shard.allowed_tools),
-        dispatch_mode: shard.dispatch_mode
-      }
-    }))
-    .filter((workPackage) => workPackage.id);
-}
-
-function selfGovernanceWorkPackagesFrom(input = {}) {
-  const report = createSelfGovernanceReport({
-    ...input,
-    workflow_state: workflowStateFrom(input) || input?.workflow_state
-  });
-  return report.status === "available" ? asArray(report.next_work_packages) : [];
-}
-
-function codeReviewCoverageWorkPackagesFrom(input = {}) {
-  const dispatch = createCodeReviewCoverageDispatch({
-    ...input,
-    workflow_state: workflowStateFrom(input) || input?.workflow_state
-  });
-  return dispatch.status === "needs_dispatch" ? asArray(dispatch.supplemental_work_packages) : [];
-}
-
-function agentLifecyclePoolFrom(input = {}) {
-  const explicit = input?.agent_lifecycle_pool || input?.agentLifecyclePool || input?.workflow_state?.agent_lifecycle_pool;
-  if (explicit) return explicit;
-  const workflowState = workflowStateFrom(input);
-  return summarizeAgentLifecyclePool(workflowState?.manifest, workflowState?.artifact_ledger || workflowState?.artifactLedger);
-}
-
-function timedOutWorkersFrom(pool = {}) {
-  const workers = asArray(pool?.timed_out_workers || pool?.timedOutWorkers);
-  if (workers.length > 0) return workers;
-
-  const workerId = normalizeString(pool?.timed_out_worker || pool?.timedOutWorker || pool?.worker_id || pool?.workerId);
-  return workerId ? [{ worker_id: workerId }] : [];
-}
-
-function retryWorkerOwnedFiles(worker = {}, pool = {}) {
-  const declared = compactStrings(worker.owned_files || worker.ownedFiles || pool.owned_files || pool.ownedFiles);
-  return declared.length > 0
-    ? declared
-    : [
-        "src/workflow/agent-lifecycle-pool.js",
-        "src/workflow/autonomous-continuation.js",
-        "docs/examples/process-hardening-current.json",
-        "test/agent-lifecycle-pool.test.js",
-        "test/autonomous-continuation.test.js"
-      ];
-}
-
-function agentLifecyclePoolWorkPackagesFrom(input = {}) {
-  const pool = agentLifecyclePoolFrom(input);
-  const status = normalizeToken(pool?.status);
-  const timedOutCount = Number(pool?.timed_out || pool?.timedOut || 0);
-  const timedOutWorkers = timedOutWorkersFrom(pool);
-  if (timedOutCount > 0) {
-    const retryWorker = timedOutWorkers[0] || {};
-    const workerId = normalizeString(retryWorker.worker_id || retryWorker.workerId || retryWorker.id) || "timed-out-worker";
-    const poolId = normalizeString(pool.pool_id || pool.poolId || "latest");
-
-    return [
-      {
-        id: `agent-worker-retry-${poolId.replace(/[^a-zA-Z0-9_-]+/g, "-")}-${workerId.replace(/[^a-zA-Z0-9_-]+/g, "-")}`,
-        title: `Retry timed-out agent worker ${workerId}`,
-        action: "retry_agent_worker",
-        owned_files: retryWorkerOwnedFiles(retryWorker, pool),
-        reason: pool.latest_issue || `agent lifecycle pool ${poolId} has ${timedOutCount} timed-out worker(s); retry the smallest worker slice before whole-pool cleanup`,
-        pool_id: poolId,
-        worker_id: workerId,
-        retry_worker: {
-          ...retryWorker,
-          worker_id: workerId,
-          pool_id: poolId
-        },
-        retry_workers: timedOutWorkers,
-        timed_out_workers: timedOutWorkers
-      }
-    ];
-  }
-
-  const needsCleanup = status === "cleanup_required" ||
-    status === "blocked" ||
-    status === "open" ||
-    status === "unevaluated" ||
-    status === "unclosed" ||
-    Number(pool?.open || 0) > 0 ||
-    Number(pool?.unevaluated || 0) > 0 ||
-    Number(pool?.unclosed || 0) > 0;
-
-  if (!needsCleanup) return [];
-
-  return [
-    {
-      id: `agent-lifecycle-pool-cleanup-${normalizeString(pool.pool_id || "latest").replace(/[^a-zA-Z0-9_-]+/g, "-")}`,
-      title: "Clean up agent lifecycle pool",
-      action: "cleanup_agent_lifecycle_pool",
-      owned_files: [
-        "src/workflow/agent-lifecycle-pool.js",
-        "src/workflow/workbench-projection.js",
-        "src/workflow/autonomous-continuation.js",
-        "src/workflow/process-hardening.js",
-        "docs/examples/process-hardening-current.json",
-        "test/agent-lifecycle-pool.test.js",
-        "test/autonomous-continuation.test.js",
-        "test/workbench-projection.test.js",
-        "test/process-hardening.test.js"
-      ],
-      reason: pool.latest_issue || `agent lifecycle pool ${status || "cleanup_required"}: open=${pool.open || 0}, unevaluated=${pool.unevaluated || 0}, unclosed=${pool.unclosed || 0}`
-    }
-  ];
-}
-
-function frontendAcceptanceRepairWorkPackagesFrom(input = {}) {
-  const explicit = input?.frontend_acceptance || input?.frontendAcceptance || input?.workflow_state?.frontend_acceptance;
-  const workflowState = workflowStateFrom(input);
-  const summary = explicit || summarizeFrontendAcceptance(
-    workflowState?.manifest,
-    workflowState?.artifact_ledger || workflowState?.artifactLedger
-  );
-  const workPackage = summary?.repair_work_package || summary?.repairWorkPackage || createFrontendAcceptanceRepairWorkPackage(summary);
-
-  return workPackage ? [workPackage] : [];
-}
-
-function governanceAuditRepairWorkPackagesFrom(input = {}) {
-  const explicit = input?.governance_audit || input?.governanceAudit || input?.workflow_state?.governance_audit;
-  const workflowState = workflowStateFrom(input);
-  const summary = explicit || summarizeGovernanceAuditSkillTrial(
-    workflowState?.manifest,
-    workflowState?.artifact_ledger || workflowState?.artifactLedger
-  );
-  const workPackage = summary?.repair_work_package || summary?.repairWorkPackage;
-  return workPackage ? [workPackage] : [];
-}
-
-function projectStatus(input) {
-  return input?.project_status || input?.projectStatus || {};
 }
 
 function continuationReasons(input, action) {
@@ -718,10 +201,6 @@ function snapshotIdFrom(input) {
     "latest-autonomous-run";
 }
 
-function workflowStateFrom(input) {
-  return input?.workflow_state || input?.workflowState || null;
-}
-
 function createSnapshotPublishPlan(input) {
   const workflowState = workflowStateFrom(input);
   if (!workflowState) return { plan: null, issues: [] };
@@ -758,7 +237,7 @@ function createSnapshotPublishPlan(input) {
   return { plan, issues: [] };
 }
 
-export function validateContinuationInput(input = {}) {
+function validateContinuationInput(input = {}) {
   const issues = [];
 
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -779,7 +258,7 @@ export function validateContinuationInput(input = {}) {
   };
 }
 
-export function decideContinuation(input = {}) {
+function decideContinuation(input = {}) {
   const validation = validateContinuationInput(input);
   const runEvaluation = runEvaluationFrom(input);
   const runStatus = statusOf(runEvaluation || input.decision || input.status);
@@ -822,7 +301,7 @@ export function decideContinuation(input = {}) {
   };
 }
 
-export function assertShouldContinue(input = {}) {
+function assertShouldContinue(input = {}) {
   const decision = decideContinuation(input);
 
   if (!decision.should_continue) {
@@ -839,4 +318,4 @@ export function assertShouldContinue(input = {}) {
   return decision;
 }
 
-export { COMPLETE, CONTINUE, RERUN, ROLLBACK, STOP_FOR_HUMAN, REVIEWER_SMOKE_STALL_THRESHOLD, reviewerProviderSmokeStall };
+export { assertShouldContinue, decideContinuation, validateContinuationInput };

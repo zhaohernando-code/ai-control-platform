@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T21:39:00+08:00
+Updated at: 2026-06-04T23:10:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -28,25 +28,25 @@ This plan does not replace `docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md`; it s
 
 ## Current Baseline
 
-Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P28 implementation gates.
+Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P29 implementation gates.
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 112 |
-| Files currently above 500 lines | 17 |
-| `planned_refactor` files above 500 lines | 8 |
+| Manifest entries | 115 |
+| Files currently above 500 lines | 16 |
+| `planned_refactor` files above 500 lines | 7 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 95 |
+| Manifest entries already below threshold | 99 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `src/workflow/autonomous-continuation.js` | 842 | `planned_refactor` | Extract next-action selection, work package generation, and governance recovery decisions until below 500 lines. |
-| LFA-Q02 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
-| LFA-Q03 | `src/workflow/frontend-acceptance.js` | 818 | `planned_refactor` | Extract browser evidence schema, layout/content checks, console errors, and live-route constraints until below 500 lines. |
-| LFA-Q04 | `test/context-work-package-runner.test.js` | 801 | `planned_refactor` | Split remaining context work-package runner coverage domains until below 500 lines. |
-| LFA-Q05 | `tools/run-governance-audit-skill-trial.mjs` | 597 | `planned_refactor` | Extract skill fixture setup, model invocation checks, artifact validation, and report persistence until below 500 lines. |
+| LFA-Q01 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
+| LFA-Q02 | `src/workflow/frontend-acceptance.js` | 818 | `planned_refactor` | Extract browser evidence schema, layout/content checks, console errors, and live-route constraints until below 500 lines. |
+| LFA-Q03 | `test/context-work-package-runner.test.js` | 801 | `planned_refactor` | Split remaining context work-package runner coverage domains until below 500 lines. |
+| LFA-Q04 | `tools/run-governance-audit-skill-trial.mjs` | 597 | `planned_refactor` | Extract skill fixture setup, model invocation checks, artifact validation, and report persistence until below 500 lines. |
+| LFA-Q05 | `tools/probe-workbench-live-route.mjs` | 578 | `planned_refactor` | Extract public route auth handling, browser evidence capture, API checks, and artifact persistence until below 500 lines. |
 
 ## State Vocabulary
 
@@ -666,6 +666,53 @@ Parity and safety requirements:
 | LFA-P28.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-scheduler-loop-p28-deepseek.json`; command evidence | Focused scheduler-loop, server, projection, and CLI gates passed 46/46. DeepSeek code/evidence review reported no runtime behavior defect; its only blocking finding was that P28.5/P28.6 were still pending at review time, which is resolved here for P28.5 while P28.6 remains gated on final commands. | pass |
 | LFA-P28.6 | Run final gates | Command evidence | Final gates passed: syntax checks for the root and extracted modules, JSON parsing for `.largefile-manifest.json` and P28 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second attempt exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, the final full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P29: Autonomous Continuation Runtime Below-500 Extraction
+
+Status: in_progress
+
+Goal: reduce `src/workflow/autonomous-continuation.js` from 842 lines to below 500 lines in this phase, with an implementation target of no more than 400 lines for the root entrypoint, without changing continuation decisions, human-blocker detection, global-goal completion behavior, reviewer provider recovery, reviewer shard aggregate recovery, requirement-plan work-package expansion, frontend/governance/code-review repair scheduling, agent lifecycle cleanup/retry scheduling, context-pack seed shape, snapshot publish planning, or the public export surface. Newly extracted modules must remain below 500 lines and should stay below 300 lines where practical.
+
+Planned extraction map:
+
+- Keep `src/workflow/autonomous-continuation.js` as the public decision entrypoint: `validateContinuationInput`, `decideContinuation`, `assertShouldContinue`, public compatibility re-exports, and these root-private helpers: `blockersFrom`, `hasHumanBlocker`, `nextStepFrom`, `continuationReasons`, `createContextPackSeed`, `nextWorkPackagesWithNextStepFallback`, `defaultNextStepOwnedFiles`, `snapshotIdFrom`, and `createSnapshotPublishPlan`.
+- Extract shared constants and primitive helpers to `src/workflow/autonomous-continuation-utils.js`: public action constants, status sets, `DEFAULT_NEXT_STEP_OWNED_FILES`, `asArray`, `normalizeString`, `normalizeToken`, `isObject`, `compactStrings`, `uniqueStrings`, `issue`, `statusOf`, `projectStatus`, and `workflowStateFrom`. This module must not import evaluation, projection, workbench, or workflow-state mutation modules.
+- Extract reviewer/provider recovery to `src/workflow/autonomous-continuation-reviewer.js`: `REVIEWER_SMOKE_STALL_THRESHOLD`, `reviewerProviderSmokeStall`, reviewer smoke blockers, reviewer shard aggregate evaluation, pre-aggregate recovery artifact filtering, reviewer provider health package generation, reviewer scope split package generation, and reviewer shard result tracking.
+- Extract continuation work-package aggregation to `src/workflow/autonomous-continuation-work-packages.js`: `nextWorkPackagesFrom`, `normalizeRequirementPlanWorkPackages`, requirement-plan expansion/filtering, work-package id/merge/dedupe helpers, acceptance-gate aggregation, agent lifecycle cleanup/retry packages, frontend acceptance repair packages, governance audit repair packages, self-governance packages, and code-review coverage dispatch packages.
+- Preserve all existing public exports from `src/workflow/autonomous-continuation.js` exactly. The extracted modules may expose internal helpers to the root, but root public exports must remain: action constants, `REVIEWER_SMOKE_STALL_THRESHOLD`, `reviewerProviderSmokeStall`, `validateContinuationInput`, `decideContinuation`, and `assertShouldContinue`.
+- Avoid new module cycles: `autonomous-continuation-reviewer.js` and `autonomous-continuation-work-packages.js` may import the shared utils module, but they must not import the root entrypoint.
+- Allowed acyclic imports are explicit: the root may import `runEvaluationFrom` and `reviewerSmokeStallBlockers` from `autonomous-continuation-reviewer.js`; the root may import `nextWorkPackagesFrom` and `acceptanceGatesFromWorkPackage` from `autonomous-continuation-work-packages.js`; the work-packages module may import `runEvaluationFrom`, `latestCompletedReviewerShardAggregate`, `reviewerProviderWorkPackagesFrom`, and `reviewerScopeSplitWorkPackagesFrom` from the reviewer module. The reviewer module must not import the work-packages module or root entrypoint.
+- The root decision path must continue to prefer completed reviewer shard aggregate evaluation over stale explicit `run_evaluation`, and provider-health work packages must remain suppressed when a concrete reviewer scope split already exists.
+
+Root public export map:
+
+| Public export | Post-extraction owner |
+| --- | --- |
+| `CONTINUE` | Re-export from `autonomous-continuation-utils.js` |
+| `RERUN` | Re-export from `autonomous-continuation-utils.js` |
+| `ROLLBACK` | Re-export from `autonomous-continuation-utils.js` |
+| `STOP_FOR_HUMAN` | Re-export from `autonomous-continuation-utils.js` |
+| `COMPLETE` | Re-export from `autonomous-continuation-utils.js` |
+| `REVIEWER_SMOKE_STALL_THRESHOLD` | Re-export from `autonomous-continuation-reviewer.js` |
+| `reviewerProviderSmokeStall` | Re-export from `autonomous-continuation-reviewer.js` |
+| `validateContinuationInput` | Root module |
+| `decideContinuation` | Root module |
+| `assertShouldContinue` | Root module |
+
+Parity and safety requirements:
+
+- Generate `docs/examples/autonomous-continuation-p29-export-parity.json` with expected/actual public exports from the root module and no missing or unexpected names.
+- The large-file manifest must mark `src/workflow/autonomous-continuation.js` as accepted only after it is below 500 lines and must register all new runtime modules with accurate line counts and bounded rationale.
+- Focused gate must include: `test/autonomous-continuation.test.js`, `test/autonomous-continuation-global-goals.test.js`, `test/autonomous-continuation-governance-repair.test.js`, `test/autonomous-scheduler-loop.test.js`, `test/frontend-acceptance.test.js`, `test/continuation-closeout-contract.test.js`, `test/autonomous-closeout-loop.test.js`, `test/headless-cli-orchestrator.test.js`, `test/workbench-projection-scheduler-loop.test.js`, `test/workbench-server-shard-06.test.js`, `test/workbench-server-shard-07.test.js`, and `test/workbench-server-shard-08.test.js`.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P29.1 | Select current runtime target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/autonomous-continuation.js` because it is the current LFG-Q01 planned-refactor item at 842 lines with a target gap of 343 lines. This phase may pass only if the root runtime file falls below 500 lines and no extracted module exceeds 500 lines. | pass |
+| LFA-P29.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-autonomous-continuation-p29-plan-deepseek.json` | DeepSeek returned PASS with no blocking findings. Non-blocking findings on root helper ownership, acyclic cross-module import surfaces, `normalizeRequirementPlanWorkPackages` placement, scheduler-loop focused gate coverage, and root line-count headroom were folded into this plan before implementation started. | pass |
+| LFA-P29.3 | Extract reviewer recovery and work-package aggregation domains into bounded modules | Runtime helper/reviewer/work-package modules and root compatibility module | Root file is 321 lines. New modules are below 500 lines: utils 67, reviewer 212, work-packages 320. Root retains the public decision entrypoint, input validation, human-blocker classification, context-pack seed creation, next-step fallback, and snapshot publish planning. | pass |
+| LFA-P29.4 | Prove public export and manifest compatibility | `docs/examples/autonomous-continuation-p29-export-parity.json`; `.largefile-manifest.json` | Export parity artifact shows 10 expected / 10 actual root exports with no missing or unexpected names. `.largefile-manifest.json` records extraction_evidence, marks the root accepted at 321 lines, registers all new modules, and `npm run check:large-files` passed with the queue head moved to `test/autonomous-continuation.test.js`. | pass |
+| LFA-P29.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-continuation-p29-deepseek.json`; command evidence | Focused autonomous continuation, closeout, frontend, projection, server, and headless gates passed 113/113 after import-boundary repairs for extracted status/project-status helpers. DeepSeek sharded code/evidence review returned `DS_CODE_PASS` with no P0/P1 blockers; its temporary manifest/status timing note is resolved by this pass writeback. | pass |
+| LFA-P29.6 | Run final gates | Command evidence | Final gates passed: syntax checks for the root and extracted modules, JSON parsing for `.largefile-manifest.json` and P29 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second attempt exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, the final full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -699,6 +746,7 @@ Parity and safety requirements:
 | LFA-P26 | pass | Selected `src/workflow/development-flow-real.js` at 892 lines. Root is now 304 lines after extracting fixture/git helpers, model-output contract parsing, command/requirement-flow construction, and provider C2C governance into four bounded modules under 500 lines. Public export parity and provider C2C normalized output parity passed; final gates passed with `npm test` 1002/1002, large-file gate, and full closeout after dependency install and one transient shard rerun. | DeepSeek plan PASS; code/evidence PASS |
 | LFA-P27 | pass | Selected `test/autonomous-scheduler-loop.test.js` at 877 lines. Root is now 339 lines after moving fallback, projected next-action, and projected lifecycle behavior into three bounded shards under 300 lines plus a 92-line helper. Split parity records 26 before / 26 after test names with an explicit moved_tests mapping. Focused gates passed 64/64, `npm test` passed 1002/1002, `npm run check:large-files` passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS; code/evidence PASS after delta |
 | LFA-P28 | pass | Selected `src/workflow/autonomous-scheduler-loop.js` at 869 lines. Root is now 359 lines after moving shared helpers/constants, driver/fallback behavior, and run artifact creation/validation into bounded modules under 500 lines. Public export parity passed 11/11, focused gates passed 46/46, DeepSeek code/evidence review found no runtime blocker, `npm test` passed 1002/1002, full closeout passed after installing ignored isolated-worktree dependencies, and `npm run check:large-files` moved the queue head to `src/workflow/autonomous-continuation.js`. | DeepSeek plan PASS; code/evidence PASS after status writeback |
+| LFA-P29 | pass | `src/workflow/autonomous-continuation.js` is now 321 lines after moving shared helpers/constants, reviewer/provider recovery, and work-package aggregation into three bounded modules under 500 lines. Public export parity passed 10/10, `npm run check:large-files` moved the queue head to `test/autonomous-continuation.test.js`, focused gates passed 113/113, DeepSeek sharded code/evidence review returned `DS_CODE_PASS`, `npm test` passed 1002/1002, and full closeout passed after installing ignored isolated-worktree dependencies. | DeepSeek plan PASS; code/evidence PASS |
 
 ## Daily Run Shape
 

@@ -1,0 +1,46 @@
+{
+  "phase": "LFA-P29",
+  "target": "src/workflow/autonomous-continuation.js",
+  "generated_at": "2026-06-04T22:18:00+08:00",
+  "expected_exports": [
+    "COMPLETE",
+    "CONTINUE",
+    "RERUN",
+    "REVIEWER_SMOKE_STALL_THRESHOLD",
+    "ROLLBACK",
+    "STOP_FOR_HUMAN",
+    "assertShouldContinue",
+    "decideContinuation",
+    "reviewerProviderSmokeStall",
+    "validateContinuationInput"
+  ],
+  "actual_exports": [
+    "COMPLETE",
+    "CONTINUE",
+    "RERUN",
+    "REVIEWER_SMOKE_STALL_THRESHOLD",
+    "ROLLBACK",
+    "STOP_FOR_HUMAN",
+    "assertShouldContinue",
+    "decideContinuation",
+    "reviewerProviderSmokeStall",
+    "validateContinuationInput"
+  ],
+  "missing_exports": [],
+  "unexpected_exports": [],
+  "expected_export_count": 10,
+  "actual_export_count": 10,
+  "module_line_counts": {
+    "src/workflow/autonomous-continuation.js": 321,
+    "src/workflow/autonomous-continuation-utils.js": 67,
+    "src/workflow/autonomous-continuation-reviewer.js": 212,
+    "src/workflow/autonomous-continuation-work-packages.js": 320
+  },
+  "focused_gate": {
+    "command": "node tools/run-with-node18.mjs --test test/autonomous-continuation.test.js test/autonomous-continuation-global-goals.test.js test/autonomous-continuation-governance-repair.test.js test/autonomous-scheduler-loop.test.js test/frontend-acceptance.test.js test/continuation-closeout-contract.test.js test/autonomous-closeout-loop.test.js test/headless-cli-orchestrator.test.js test/workbench-projection-scheduler-loop.test.js test/workbench-server-shard-06.test.js test/workbench-server-shard-07.test.js test/workbench-server-shard-08.test.js",
+    "status": "pass",
+    "tests": 113,
+    "pass": 113,
+    "fail": 0
+  }
+}

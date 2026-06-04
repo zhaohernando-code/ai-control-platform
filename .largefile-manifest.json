@@ -21,16 +21,43 @@
       "reviewed_at": "2026-05-30"
     },
     "src/workflow/autonomous-continuation.js": {
-      "lines": 842,
-      "reason": "Autonomous continuation planner: consolidates next-action selection, work package generation, and governance recovery decisions.",
-      "status": "planned_refactor",
+      "lines": 321,
+      "reason": "Autonomous continuation runtime root reduced below 500 lines in LFA-P29. Shared constants, reviewer/provider recovery, and work-package aggregation moved into bounded modules while root preserves public decision exports and snapshot publish planning.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 842,
-        "target_lines": 499,
-        "minimum_reduction": 343,
-        "terminal_condition": "src/workflow/autonomous-continuation.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "extraction_evidence": {
+        "parity_artifact": "docs/examples/autonomous-continuation-p29-export-parity.json",
+        "before_lines": 842,
+        "after_lines": 321,
+        "expected_exports": 10,
+        "actual_exports": 10,
+        "missing_exports": [],
+        "unexpected_exports": [],
+        "extracted_modules": [
+          {
+            "file": "src/workflow/autonomous-continuation-utils.js",
+            "lines": 67,
+            "domain": "public_action_constants_status_sets_and_primitive_helpers"
+          },
+          {
+            "file": "src/workflow/autonomous-continuation-reviewer.js",
+            "lines": 212,
+            "domain": "reviewer_provider_recovery_shard_aggregate_and_smoke_stall_decisions"
+          },
+          {
+            "file": "src/workflow/autonomous-continuation-work-packages.js",
+            "lines": 320,
+            "domain": "requirement_plan_expansion_work_package_dedupe_and_repair_package_generation"
+          }
+        ],
+        "retained_domains": [
+          "root_public_decision_entrypoint",
+          "input_validation",
+          "human_blocker_classification",
+          "next_step_fallback",
+          "context_pack_seed_creation",
+          "snapshot_publish_planning"
+        ]
       }
     },
     "src/workflow/autonomous-orchestrator.js": {
@@ -1014,6 +1041,24 @@
     "src/workflow/autonomous-scheduler-loop-artifacts.js": {
       "lines": 92,
       "reason": "Extracted LFA-P28 scheduler-loop run artifact creation and validation into a bounded module below the near-threshold budget.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/autonomous-continuation-utils.js": {
+      "lines": 67,
+      "reason": "Extracted LFA-P29 autonomous-continuation public action constants, status sets, default owned files, and primitive normalization helpers into a bounded shared module below 500 lines.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/autonomous-continuation-reviewer.js": {
+      "lines": 212,
+      "reason": "Extracted LFA-P29 reviewer shard aggregate evaluation, provider health follow-up packages, scope split packages, and smoke-stall blocker logic into a bounded reviewer module below 500 lines.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/autonomous-continuation-work-packages.js": {
+      "lines": 320,
+      "reason": "Extracted LFA-P29 requirement-plan expansion, work-package normalization, dedupe/merge, acceptance gates, and repair package generation into a bounded module below 500 lines.",
       "status": "accepted",
       "reviewed_at": "2026-06-04"
     }
