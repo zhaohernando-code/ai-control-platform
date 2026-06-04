@@ -470,34 +470,27 @@
       }
     },
     "test/workbench-server.test.js": {
-      "lines": 1092,
-      "reason": "Workbench server root tests were reduced from the P13 1363-line baseline by extracting requirement submission, pending plan generation, and failed plan generation retry/close coverage into a bounded requirement-plan-generation shard under 300 lines. The root still covers projection basics, plan generation fallback/supplied plan, plan review, background resume, verified-provider completion, requirement closeout, provider-context completion checks, and long context-pack snapshot id handling, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/workbench-server-test-p13-split-parity.json with 17 before / 17 after tests and no missing, added, or duplicate names.",
-      "status": "planned_refactor",
+      "lines": 160,
+      "reason": "Workbench server root tests were reduced from the P20 1092-line baseline to a below-500 projection and context-pack snapshot-id root. Requirement plan retry, plan review, background dispatch, provider execution, requirement closeout, and provider default coverage moved into bounded shards under 300 lines. Split parity is recorded in docs/examples/workbench-server-test-p20-split-parity.json with all 14 P20 root tests accounted for.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 1092,
-        "target_lines": 499,
-        "minimum_reduction": 593,
-        "terminal_condition": "test/workbench-server.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
       "split_evidence": {
-        "parity_artifact": "docs/examples/workbench-server-test-p13-split-parity.json",
-        "before_count": 17,
-        "after_count": 17,
+        "parity_artifact": "docs/examples/workbench-server-test-p20-split-parity.json",
+        "before_count": 14,
+        "after_count": 14,
         "moved_domains": {
-          "test/workbench-server-requirement-plan-generation.test.js": "requirement_submission_pending_plan_generation_and_retry_close"
+          "test/workbench-server-requirement-plan-retry.test.js": "requirement_plan_fallback_and_supplied_plan_retry",
+          "test/workbench-server-plan-review.test.js": "plan_review_decision_and_auto_development",
+          "test/workbench-server-background-dispatch.test.js": "context_work_package_background_dispatch_staging",
+          "test/workbench-server-provider-execution.test.js": "verified_provider_requirement_and_provider_context_execution",
+          "test/workbench-server-requirement-closeout.test.js": "requirement_closeout_and_governed_agent_executor_completion",
+          "test/workbench-server-provider-defaults.test.js": "provider_default_next_action_execution_profile"
         },
         "retained_root_domains": [
           "projection_basics",
-          "plan_generation_fallback_and_supplied_plan",
-          "plan_review_and_background_resume",
-          "verified_provider_requirement_completion",
-          "requirement_closeout_and_next_action_defaults",
-          "provider_context_completion_checks",
           "long_context_pack_snapshot_id_handling"
         ],
-        "helper_gate_scope_note": "WORKBENCH_SERVER_TEST_FILES includes pre-existing server shards plus P9 and P13 shards; P13 parity counts cover only the root-to-new-shard migration set."
+        "helper_gate_scope_note": "WORKBENCH_SERVER_TEST_FILES includes all P20 extracted shards plus pre-existing server shards."
       }
     },
     "tools/workbench-server.mjs": {
@@ -649,7 +642,7 @@
     },
     "test/helpers/workbench-server.js": {
       "lines": 285,
-      "reason": "Workbench server test helper kept below the near-threshold budget while preserving shared server lifecycle, request, CLI process, workflow-state, provider execution, and fixture helpers. The WORKBENCH_SERVER_TEST_FILES fixture gate enumerates the root suite, existing server shards, and P9/P13 extracted shards.",
+      "reason": "Workbench server test helper kept below the near-threshold budget while preserving shared server lifecycle, request, CLI process, workflow-state, provider execution, and fixture helpers. The WORKBENCH_SERVER_TEST_FILES fixture gate enumerates the root suite, existing server shards, and P9/P13/P20 extracted shards.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
     },
@@ -670,6 +663,42 @@
       "reason": "Extracted Workbench server requirement plan-generation shard kept below the near-threshold budget while preserving requirement submission, pending plan generation, and failed plan retry/close coverage.",
       "status": "accepted",
       "reviewed_at": "2026-06-03"
+    },
+    "test/workbench-server-requirement-plan-retry.test.js": {
+      "lines": 159,
+      "reason": "Extracted Workbench server requirement plan retry shard kept below the near-threshold budget while preserving governed fallback model timeout handling and operator-supplied plan retry coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-server-plan-review.test.js": {
+      "lines": 201,
+      "reason": "Extracted Workbench server plan-review shard kept below the near-threshold budget while preserving plan review decision persistence and automatic development start after approval.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-server-background-dispatch.test.js": {
+      "lines": 145,
+      "reason": "Extracted Workbench server background-dispatch shard kept below the near-threshold budget while preserving nonblocking context work-package dispatch staging and projection readback coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-server-provider-execution.test.js": {
+      "lines": 216,
+      "reason": "Extracted Workbench server provider-execution shard kept below the near-threshold budget while preserving verified provider requirement execution and provider-context completion authority coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-server-requirement-closeout.test.js": {
+      "lines": 208,
+      "reason": "Extracted Workbench server requirement-closeout shard kept below the near-threshold budget while preserving automatic requirement completion and governed agent executor completion coverage.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "test/workbench-server-provider-defaults.test.js": {
+      "lines": 87,
+      "reason": "Extracted Workbench server provider-defaults shard kept below the near-threshold budget while preserving default provider-routed execution for requirement implementation next actions.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "test/helpers/frontend-acceptance-fixtures.js": {
       "lines": 298,

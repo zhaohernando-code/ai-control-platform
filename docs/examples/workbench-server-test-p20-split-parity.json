@@ -1,0 +1,101 @@
+{
+  "version": "large-file-split-parity.v1",
+  "phase": "LFA-P20",
+  "status": "pass",
+  "base_ref": "09e0163cdcff80bf62ff361a1dbabd6ad4539f46",
+  "target": "test/workbench-server.test.js",
+  "before": {
+    "files": [
+      "test/workbench-server.test.js"
+    ],
+    "test_count": 14,
+    "tests": [
+      "workbench server returns latest projection",
+      "workbench server builds latest projection from workflow state input",
+      "workbench server overlays repository PROJECT_STATUS into workflow projections",
+      "workbench server falls back to a governed requirement plan model after timeout",
+      "workbench server can apply a supplied plan when retrying failed plan generation",
+      "workbench server records plan review decisions",
+      "workbench server starts development automatically after plan review approval",
+      "workbench server stages resume execution in background without blocking projection API",
+      "workbench server completes requirement intake only with verified provider completion authority",
+      "workbench server closes requirement when all approved implementation packages finish",
+      "workbench server can complete requirement intake through configured governed agent executor",
+      "workbench server truncates generated context pack snapshot ids for long projection ids",
+      "workbench server only completes verified provider profile with configured executor",
+      "workbench next action defaults requirement implementation packages to verified provider execution"
+    ],
+    "line_count": 1092
+  },
+  "after": {
+    "files": [
+      "test/workbench-server.test.js",
+      "test/workbench-server-requirement-plan-retry.test.js",
+      "test/workbench-server-plan-review.test.js",
+      "test/workbench-server-background-dispatch.test.js",
+      "test/workbench-server-provider-execution.test.js",
+      "test/workbench-server-requirement-closeout.test.js",
+      "test/workbench-server-provider-defaults.test.js"
+    ],
+    "test_count": 14,
+    "tests_by_file": {
+      "test/workbench-server.test.js": [
+        "workbench server returns latest projection",
+        "workbench server builds latest projection from workflow state input",
+        "workbench server overlays repository PROJECT_STATUS into workflow projections",
+        "workbench server truncates generated context pack snapshot ids for long projection ids"
+      ],
+      "test/workbench-server-requirement-plan-retry.test.js": [
+        "workbench server falls back to a governed requirement plan model after timeout",
+        "workbench server can apply a supplied plan when retrying failed plan generation"
+      ],
+      "test/workbench-server-plan-review.test.js": [
+        "workbench server records plan review decisions",
+        "workbench server starts development automatically after plan review approval"
+      ],
+      "test/workbench-server-background-dispatch.test.js": [
+        "workbench server stages resume execution in background without blocking projection API"
+      ],
+      "test/workbench-server-provider-execution.test.js": [
+        "workbench server completes requirement intake only with verified provider completion authority",
+        "workbench server only completes verified provider profile with configured executor"
+      ],
+      "test/workbench-server-requirement-closeout.test.js": [
+        "workbench server closes requirement when all approved implementation packages finish",
+        "workbench server can complete requirement intake through configured governed agent executor"
+      ],
+      "test/workbench-server-provider-defaults.test.js": [
+        "workbench next action defaults requirement implementation packages to verified provider execution"
+      ]
+    },
+    "line_counts": {
+      "test/workbench-server.test.js": 160,
+      "test/workbench-server-requirement-plan-retry.test.js": 159,
+      "test/workbench-server-plan-review.test.js": 201,
+      "test/workbench-server-background-dispatch.test.js": 145,
+      "test/workbench-server-provider-execution.test.js": 216,
+      "test/workbench-server-requirement-closeout.test.js": 208,
+      "test/workbench-server-provider-defaults.test.js": 87
+    }
+  },
+  "missing": [],
+  "added": [],
+  "duplicate_names": [],
+  "moved_tests": [
+    "workbench server falls back to a governed requirement plan model after timeout",
+    "workbench server can apply a supplied plan when retrying failed plan generation",
+    "workbench server records plan review decisions",
+    "workbench server starts development automatically after plan review approval",
+    "workbench server stages resume execution in background without blocking projection API",
+    "workbench server completes requirement intake only with verified provider completion authority",
+    "workbench server closes requirement when all approved implementation packages finish",
+    "workbench server can complete requirement intake through configured governed agent executor",
+    "workbench server only completes verified provider profile with configured executor",
+    "workbench next action defaults requirement implementation packages to verified provider execution"
+  ],
+  "helper_gate_update": {
+    "file": "test/helpers/workbench-server.js",
+    "field": "WORKBENCH_SERVER_TEST_FILES",
+    "status": "updated_with_all_p20_shards"
+  }
+}

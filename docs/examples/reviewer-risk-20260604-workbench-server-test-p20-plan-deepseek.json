@@ -1,0 +1,44 @@
+{
+  "version": "reviewer-risk.v1",
+  "phase": "LFA-P20-plan",
+  "reviewer": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "mode": "read_only_bounded_review"
+  },
+  "status": "pass_after_delta",
+  "initial_review": {
+    "verdict": "FAIL",
+    "blocking_findings": [
+      {
+        "id": "BF-P20-01",
+        "summary": "Split plan omitted explicit target assignments for context-pack snapshot truncation, provider-context dual-call, and next-action provider default tests."
+      },
+      {
+        "id": "BF-P20-02",
+        "summary": "Plan review gate remained pending and must pass before any test movement."
+      },
+      {
+        "id": "BF-P20-03",
+        "summary": "Agent-executor and verified-provider/closeout boundaries were ambiguous and could create a near-threshold replacement shard."
+      }
+    ],
+    "non_blocking_findings": [
+      "Parity artifact schema should be explicit.",
+      "WORKBENCH_SERVER_TEST_FILES helper update should be named in the plan.",
+      "Manifest registration wording should cover all extracted shards that require governance, not only near-threshold files."
+    ]
+  },
+  "required_delta_changes": [
+    "Map all current root tests to explicit retained or target shard locations.",
+    "Add per-shard line-count budgets and split provider/agent/closeout clusters to avoid a near-threshold shard.",
+    "Name parity schema, WORKBENCH_SERVER_TEST_FILES update, and manifest compatibility checks before implementation."
+  ],
+  "delta_review": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "verdict": "PASS",
+    "blocking_findings": [],
+    "remaining_required_changes": []
+  }
+}
