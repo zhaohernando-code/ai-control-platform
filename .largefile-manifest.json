@@ -40,16 +40,41 @@
       "reviewed_at": "2026-05-30"
     },
     "src/workflow/autonomous-scheduler-loop.js": {
-      "lines": 869,
-      "reason": "Scheduler loop contract implementation: loop execution, recovery, projection reuse, artifact validation, and execution-root propagation are still tightly coupled.",
-      "status": "planned_refactor",
+      "lines": 359,
+      "reason": "Autonomous scheduler loop runtime root reduced below 500 lines in LFA-P28. Driver/fallback behavior and run artifact creation/validation moved into bounded modules while root preserves public compatibility, registry/recovery, and workflow-state recording semantics.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 869,
-        "target_lines": 499,
-        "minimum_reduction": 370,
-        "terminal_condition": "src/workflow/autonomous-scheduler-loop.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "extraction_evidence": {
+        "parity_artifact": "docs/examples/autonomous-scheduler-loop-p28-export-parity.json",
+        "before_lines": 869,
+        "after_lines": 359,
+        "expected_exports": 11,
+        "actual_exports": 11,
+        "missing_exports": [],
+        "unexpected_exports": [],
+        "extracted_modules": [
+          {
+            "file": "src/workflow/autonomous-scheduler-loop-utils.js",
+            "lines": 23,
+            "domain": "constants_and_primitive_helpers"
+          },
+          {
+            "file": "src/workflow/autonomous-scheduler-loop-driver.js",
+            "lines": 426,
+            "domain": "input_driver_projected_action_and_fallback_behavior"
+          },
+          {
+            "file": "src/workflow/autonomous-scheduler-loop-artifacts.js",
+            "lines": 92,
+            "domain": "run_artifact_creation_and_validation"
+          }
+        ],
+        "retained_domains": [
+          "root_public_compatibility",
+          "registry_and_recovery",
+          "workflow_state_recording",
+          "resume_attempt_recording"
+        ]
       }
     },
     "src/workflow/context-work-package-execution-adapter.js": {
@@ -971,6 +996,24 @@
     "test/autonomous-scheduler-loop-projected-lifecycle.test.js": {
       "lines": 195,
       "reason": "Extracted LFA-P27 projected lifecycle scheduler-loop test shard kept below 300 lines while preserving lifecycle cleanup, missing progress evidence, stale-readout blocking, and real-reviewer strategy controls.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/autonomous-scheduler-loop-utils.js": {
+      "lines": 23,
+      "reason": "Extracted LFA-P28 scheduler-loop constants and primitive helper functions. The module has no workflow-state mutation imports and remains below the near-threshold budget.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/autonomous-scheduler-loop-driver.js": {
+      "lines": 426,
+      "reason": "Extracted LFA-P28 scheduler-loop input normalization, projected next-action execution, dispatch-chain execution, and fallback policy into one bounded driver module below 500 lines.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "src/workflow/autonomous-scheduler-loop-artifacts.js": {
+      "lines": 92,
+      "reason": "Extracted LFA-P28 scheduler-loop run artifact creation and validation into a bounded module below the near-threshold budget.",
       "status": "accepted",
       "reviewed_at": "2026-06-04"
     }

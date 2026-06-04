@@ -1,0 +1,51 @@
+{
+  "version": "public-export-parity.v1",
+  "created_at": "2026-06-04T21:36:00+08:00",
+  "target": "src/workflow/autonomous-scheduler-loop.js",
+  "phase": "LFA-P28",
+  "base_ref": "75f9d70",
+  "status": "pass",
+  "expected_count": 11,
+  "actual_count": 11,
+  "expected_exports": [
+    "AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION",
+    "SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION",
+    "buildSchedulerLoopRunRegistry",
+    "createSchedulerLoopRunArtifact",
+    "evaluateSchedulerLoopRecovery",
+    "recordAutonomousSchedulerLoopRunArtifact",
+    "recordSchedulerLoopResumeAttempt",
+    "runSchedulerLoopDriver",
+    "runSchedulerLoopDriverWithFallback",
+    "schedulerLoopInput",
+    "validateSchedulerLoopRunArtifact"
+  ],
+  "actual_exports": [
+    "AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION",
+    "SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION",
+    "buildSchedulerLoopRunRegistry",
+    "createSchedulerLoopRunArtifact",
+    "evaluateSchedulerLoopRecovery",
+    "recordAutonomousSchedulerLoopRunArtifact",
+    "recordSchedulerLoopResumeAttempt",
+    "runSchedulerLoopDriver",
+    "runSchedulerLoopDriverWithFallback",
+    "schedulerLoopInput",
+    "validateSchedulerLoopRunArtifact"
+  ],
+  "missing_exports": [],
+  "unexpected_exports": [],
+  "module_line_counts": {
+    "src/workflow/autonomous-scheduler-loop.js": 359,
+    "src/workflow/autonomous-scheduler-loop-utils.js": 23,
+    "src/workflow/autonomous-scheduler-loop-driver.js": 426,
+    "src/workflow/autonomous-scheduler-loop-artifacts.js": 92
+  },
+  "focused_gate": {
+    "status": "pass",
+    "command": "node tools/run-with-node18.mjs --test test/autonomous-scheduler-loop.test.js test/autonomous-scheduler-loop-fallback.test.js test/autonomous-scheduler-loop-projected.test.js test/autonomous-scheduler-loop-projected-lifecycle.test.js test/workbench-projection-scheduler-loop.test.js test/workbench-projection-operations-timeline.test.js test/workbench-server-shard-06.test.js test/workbench-server-shard-07.test.js test/workbench-server-shard-08.test.js test/headless-cli-loop-continuation.test.js",
+    "tests": 46,
+    "pass": 46,
+    "fail": 0
+  }
+}

@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T21:13:54+08:00
+Updated at: 2026-06-04T21:39:00+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -28,25 +28,25 @@ This plan does not replace `docs/governance/LARGE_FILE_GOVERNANCE_PLAN.md`; it s
 
 ## Current Baseline
 
-Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P26.
+Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/report-large-files.mjs` on 2026-06-04, refreshed after LFA-P28 implementation gates.
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 105 |
-| Files currently above 500 lines | 19 |
-| `planned_refactor` files above 500 lines | 10 |
+| Manifest entries | 112 |
+| Files currently above 500 lines | 17 |
+| `planned_refactor` files above 500 lines | 8 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 86 |
+| Manifest entries already below threshold | 95 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `test/autonomous-scheduler-loop.test.js` | 877 | `planned_refactor` | Split scheduler loop replay, recovery, and continuation fixture domains until below 500 lines. |
-| LFA-Q02 | `src/workflow/autonomous-scheduler-loop.js` | 869 | `planned_refactor` | Extract loop execution, recovery, projection reuse, artifact validation, or execution-root propagation until below 500 lines. |
-| LFA-Q03 | `src/workflow/autonomous-continuation.js` | 842 | `planned_refactor` | Extract next-action selection, work package generation, and governance recovery decisions until below 500 lines. |
-| LFA-Q04 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
-| LFA-Q05 | `src/workflow/frontend-acceptance.js` | 818 | `planned_refactor` | Extract browser evidence schema, layout/content checks, console errors, and live-route constraints until below 500 lines. |
+| LFA-Q01 | `src/workflow/autonomous-continuation.js` | 842 | `planned_refactor` | Extract next-action selection, work package generation, and governance recovery decisions until below 500 lines. |
+| LFA-Q02 | `test/autonomous-continuation.test.js` | 840 | `planned_refactor` | Split remaining autonomous continuation root coverage domains until below 500 lines. |
+| LFA-Q03 | `src/workflow/frontend-acceptance.js` | 818 | `planned_refactor` | Extract browser evidence schema, layout/content checks, console errors, and live-route constraints until below 500 lines. |
+| LFA-Q04 | `test/context-work-package-runner.test.js` | 801 | `planned_refactor` | Split remaining context work-package runner coverage domains until below 500 lines. |
+| LFA-Q05 | `tools/run-governance-audit-skill-trial.mjs` | 597 | `planned_refactor` | Extract skill fixture setup, model invocation checks, artifact validation, and report persistence until below 500 lines. |
 
 ## State Vocabulary
 
@@ -619,6 +619,53 @@ Parity and safety requirements:
 | LFA-P27.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-scheduler-loop-test-p27-deepseek.json`; command evidence | Focused scheduler-loop and adjacent server/projection/context gates passed 64/64. Initial DeepSeek code/evidence review failed on governance status mismatch, missing manifest split_evidence, and insufficiently explicit 26-test mapping; after repairing those three evidence issues, DeepSeek delta review returned PASS with no blocking or non-blocking findings. | pass |
 | LFA-P27.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P27 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second attempt exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, the final full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
 
+### Phase LFA-P28: Autonomous Scheduler Loop Runtime Below-500 Extraction
+
+Status: in_progress
+
+Goal: reduce `src/workflow/autonomous-scheduler-loop.js` from 869 lines to below 500 lines in this phase, without changing the public scheduler-loop API, projected-next-action execution behavior, dispatch-chain fallback policy, run artifact schema/validation, registry and recovery semantics, workflow-state recording, or resume-attempt artifact shape. Newly extracted runtime modules must remain below 500 lines and should stay below 300 lines where practical.
+
+Planned extraction map:
+
+- Keep `src/workflow/autonomous-scheduler-loop.js` as the compatibility surface and owner of registry/recovery plus workflow-state recording if that remains below 500 lines after extraction. Keep root-only `manifestIdentity`, `artifactFromLoopEvent`, `runReadoutFromEvent`, `nextAutonomousSchedulerLoopArtifactId`, and `nextSchedulerLoopResumeAttemptArtifactId` private in the root unless implementation proves a cleaner bounded extraction is needed.
+- Extract shared constants and primitive helpers to `src/workflow/autonomous-scheduler-loop-utils.js`: versions, `MAX_SNAPSHOT_ID_LENGTH`, `asArray`, `normalizeString`, `issue`, `safeIdPart`, and `isObject`. This module must not import workflow-state mutation code.
+- Extract driver/input/fallback behavior to `src/workflow/autonomous-scheduler-loop-driver.js`: `schedulerLoopInput`, `runSchedulerLoopDriver`, and `runSchedulerLoopDriverWithFallback`. Driver-private helpers are `boundedMaxIterations`, `requireClient`, `planStepCount`, `planPhase`, `planStatus`, `continuationReady`, `loopSnapshotId`, `projectedNextProjectionId`, `projectedActionResultProjection`, `projectedReadoutKey`, `projectedProgressKey`, `projectionShowsProjectedActionProgress`, `isTerminalProjectedAction`, `projectedNextActionInput`, `dispatchChainClientReady`, and `isConnectivityFailurePhase`.
+- Extract run artifact creation and validation to `src/workflow/autonomous-scheduler-loop-artifacts.js`: `createSchedulerLoopRunArtifact` and `validateSchedulerLoopRunArtifact`.
+- Preserve all existing public exports from `src/workflow/autonomous-scheduler-loop.js` exactly. Any new module exports are internal unless tests or routes already require them.
+- The root registry path must explicitly import `validateSchedulerLoopRunArtifact` from the artifacts module for `runReadoutFromEvent`; this cross-module validation call is load-bearing.
+- After extraction, `APPROVED_BOUNDED_REAL_REVIEWER_PROFILE` and `APPROVED_MOCK_REVIEWER_PROFILE` should be imported only by the driver module.
+
+Root public export map:
+
+| Public export | Post-extraction owner |
+| --- | --- |
+| `runSchedulerLoopDriver` | Re-export from `autonomous-scheduler-loop-driver.js` |
+| `runSchedulerLoopDriverWithFallback` | Re-export from `autonomous-scheduler-loop-driver.js` |
+| `schedulerLoopInput` | Re-export from `autonomous-scheduler-loop-driver.js` |
+| `createSchedulerLoopRunArtifact` | Re-export from `autonomous-scheduler-loop-artifacts.js` |
+| `validateSchedulerLoopRunArtifact` | Re-export from `autonomous-scheduler-loop-artifacts.js` |
+| `AUTONOMOUS_SCHEDULER_LOOP_RUN_VERSION` | Re-export from `autonomous-scheduler-loop-utils.js` |
+| `SCHEDULER_LOOP_RESUME_ATTEMPT_VERSION` | Re-export from `autonomous-scheduler-loop-utils.js` |
+| `buildSchedulerLoopRunRegistry` | Root module |
+| `evaluateSchedulerLoopRecovery` | Root module |
+| `recordAutonomousSchedulerLoopRunArtifact` | Root module |
+| `recordSchedulerLoopResumeAttempt` | Root module |
+
+Parity and safety requirements:
+
+- Generate `docs/examples/autonomous-scheduler-loop-p28-export-parity.json` with expected/actual public exports from the root module and no missing or unexpected names.
+- The large-file manifest must mark `src/workflow/autonomous-scheduler-loop.js` as accepted only after it is below 500 lines and must register all new runtime modules with accurate line counts and bounded rationale.
+- Focused gate must include: `test/autonomous-scheduler-loop.test.js`, `test/autonomous-scheduler-loop-fallback.test.js`, `test/autonomous-scheduler-loop-projected.test.js`, `test/autonomous-scheduler-loop-projected-lifecycle.test.js`, `test/workbench-projection-scheduler-loop.test.js`, `test/workbench-projection-operations-timeline.test.js`, `test/workbench-server-shard-06.test.js`, `test/workbench-server-shard-07.test.js`, `test/workbench-server-shard-08.test.js`, and `test/headless-cli-loop-continuation.test.js`.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P28.1 | Select current runtime target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `src/workflow/autonomous-scheduler-loop.js` because it is the current LFG-Q01 planned-refactor item at 869 lines with a target gap of 370 lines. This phase may pass only if the root runtime file falls below 500 lines and no extracted module exceeds 500 lines. | pass |
+| LFA-P28.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260604-autonomous-scheduler-loop-p28-plan-deepseek.json` | DeepSeek returned PASS with no blocking findings. Non-blocking findings on explicit driver helper ownership, registry-to-artifact-validator import, reviewer policy import cleanup, manifestIdentity root scope, and public re-export mapping were folded into this plan before implementation started. | pass |
+| LFA-P28.3 | Extract driver and artifact domains into bounded modules | Runtime helper/driver/artifact modules and root compatibility module | Root file is 359 lines. New modules are below 500 lines: driver 426, artifacts 92, utils 23. Root retains registry/recovery and workflow-state recording; driver owns reviewer policy imports; artifacts owns run artifact creation/validation. | pass |
+| LFA-P28.4 | Prove public export and manifest compatibility | `docs/examples/autonomous-scheduler-loop-p28-export-parity.json`; `.largefile-manifest.json` | Export parity artifact shows 11 expected / 11 actual root exports with no missing or unexpected names. `.largefile-manifest.json` records extraction_evidence, marks the root accepted at 359 lines, registers all new modules, and `npm run check:large-files` passed with the queue head moved to `src/workflow/autonomous-continuation.js`. | pass |
+| LFA-P28.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-autonomous-scheduler-loop-p28-deepseek.json`; command evidence | Focused scheduler-loop, server, projection, and CLI gates passed 46/46. DeepSeek code/evidence review reported no runtime behavior defect; its only blocking finding was that P28.5/P28.6 were still pending at review time, which is resolved here for P28.5 while P28.6 remains gated on final commands. | pass |
+| LFA-P28.6 | Run final gates | Command evidence | Final gates passed: syntax checks for the root and extracted modules, JSON parsing for `.largefile-manifest.json` and P28 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The first closeout attempt failed because the isolated worktree lacked ignored root Playwright dependencies; after root `npm ci`, the second attempt exposed missing ignored `apps/workbench` Next dependencies; after `apps/workbench npm ci`, the final full closeout passed including public browser route, browser-events 15 scenarios, frontend acceptance, and scheduler dispatch writeback. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -651,6 +698,7 @@ Parity and safety requirements:
 | LFA-P25 | pass | Selected `src/workflow/workbench-projection.js` at 923 lines. Root is now 384 lines after extracting evidence summaries, operations timeline policy, and mobile projection shaping into three bounded modules below 500 lines. Deterministic pre/post projection JSON equivalence passed, focused projection tests passed 70/70, `npm test` passed 1002/1002, large-file gate passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS after delta; code/evidence PASS |
 | LFA-P26 | pass | Selected `src/workflow/development-flow-real.js` at 892 lines. Root is now 304 lines after extracting fixture/git helpers, model-output contract parsing, command/requirement-flow construction, and provider C2C governance into four bounded modules under 500 lines. Public export parity and provider C2C normalized output parity passed; final gates passed with `npm test` 1002/1002, large-file gate, and full closeout after dependency install and one transient shard rerun. | DeepSeek plan PASS; code/evidence PASS |
 | LFA-P27 | pass | Selected `test/autonomous-scheduler-loop.test.js` at 877 lines. Root is now 339 lines after moving fallback, projected next-action, and projected lifecycle behavior into three bounded shards under 300 lines plus a 92-line helper. Split parity records 26 before / 26 after test names with an explicit moved_tests mapping. Focused gates passed 64/64, `npm test` passed 1002/1002, `npm run check:large-files` passed, and full closeout passed after installing ignored root/app dependencies in the isolated worktree. | DeepSeek plan PASS; code/evidence PASS after delta |
+| LFA-P28 | pass | Selected `src/workflow/autonomous-scheduler-loop.js` at 869 lines. Root is now 359 lines after moving shared helpers/constants, driver/fallback behavior, and run artifact creation/validation into bounded modules under 500 lines. Public export parity passed 11/11, focused gates passed 46/46, DeepSeek code/evidence review found no runtime blocker, `npm test` passed 1002/1002, full closeout passed after installing ignored isolated-worktree dependencies, and `npm run check:large-files` moved the queue head to `src/workflow/autonomous-continuation.js`. | DeepSeek plan PASS; code/evidence PASS after status writeback |
 
 ## Daily Run Shape
 
