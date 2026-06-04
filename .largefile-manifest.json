@@ -501,17 +501,51 @@
       }
     },
     "tools/workbench-server.mjs": {
-      "lines": 1131,
-      "reason": "Workbench server entrypoint has been reduced from the P6 1954-line baseline by extracting requirement plan/auto-advance services plus reviewer and workflow evidence routes into bounded modules. The entrypoint still wires server bootstrap, projection/history/state access, scheduler/context-pack/context-work-package routes, project-status continuation, and runtime route ordering, so it remains planned debt rather than accepted.",
-      "status": "planned_refactor",
+      "lines": 408,
+      "reason": "Workbench server entrypoint was reduced from the P19 1131-line baseline to a below-500 bootstrap and route-dispatch surface. State/projection helpers, scheduler utilities, project-status/context-pack routes, and context work-package dispatch routes were extracted into bounded modules below 500 lines. RouteContext dependency and structured diagnostic parity are recorded in docs/examples/workbench-server-p19-extraction-parity.json.",
+      "status": "accepted",
       "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 1131,
-        "target_lines": 499,
-        "minimum_reduction": 632,
-        "terminal_condition": "tools/workbench-server.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "split_evidence": {
+        "parity_artifact": "docs/examples/workbench-server-p19-extraction-parity.json",
+        "before_lines": 1131,
+        "after_lines": 408,
+        "moved_domains": {
+          "tools/workbench-server-state-access.mjs": "server_state_history_projection_snapshot_event_and_project_status_helpers",
+          "tools/workbench-server-scheduler-utils.mjs": "scheduler_dispatch_continuation_metadata_context_work_package_background_and_projection_readiness_helpers",
+          "tools/workbench-context-routes.mjs": "project_status_continuation_and_context_pack_cycle_routes",
+          "tools/workbench-context-work-package-routes.mjs": "foreground_and_background_context_work_package_dispatch_route"
+        },
+        "retained_entrypoint_domains": [
+          "http_server_bootstrap",
+          "route_ordering_and_route_context_composition",
+          "agent_health_timer",
+          "cli_startup_exports"
+        ]
       }
+    },
+    "tools/workbench-server-state-access.mjs": {
+      "lines": 287,
+      "reason": "Extracted Workbench server state-access helper kept below 500 lines while preserving history path safety, workflow state read/write, projection lookup, project status overlay, operator event validation, and live SQLite snapshot access.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-server-scheduler-utils.mjs": {
+      "lines": 346,
+      "reason": "Extracted Workbench server scheduler utility helper kept below 500 lines while preserving scheduler dispatch artifact lookup, generated continuation path validation, projection-readiness history decoration, scheduler plan options, and context work-package background job launch metadata.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-context-routes.mjs": {
+      "lines": 109,
+      "reason": "Extracted Workbench project-status continuation and context-pack cycle routes kept below 500 lines with explicit routeContext dependency injection and preserved snapshot/project-status writeback behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
+    },
+    "tools/workbench-context-work-package-routes.mjs": {
+      "lines": 141,
+      "reason": "Extracted Workbench context work-package route kept below 500 lines while preserving foreground/background dispatch, SQLite live-state guard, explicit provider/background dependencies, and structured failure diagnostics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-04"
     },
     "src/workflow/workbench-next-action-readout.js": {
       "lines": 497,
@@ -627,9 +661,9 @@
     },
     "test/workbench-server-project-status-continuation.test.js": {
       "lines": 264,
-      "reason": "Extracted Workbench server project-status continuation shard kept below the near-threshold budget while preserving next-action context-pack creation, unsupported provider profile guards, bounded mock no-completion semantics, and local bounded completion coverage.",
+      "reason": "Extracted Workbench server project-status continuation shard kept below the near-threshold budget while preserving next-action context-pack creation, unsupported provider profile guards, bounded mock no-completion semantics, structured 409 diagnostics, and local bounded completion coverage.",
       "status": "accepted",
-      "reviewed_at": "2026-06-03"
+      "reviewed_at": "2026-06-04"
     },
     "test/workbench-server-requirement-plan-generation.test.js": {
       "lines": 286,

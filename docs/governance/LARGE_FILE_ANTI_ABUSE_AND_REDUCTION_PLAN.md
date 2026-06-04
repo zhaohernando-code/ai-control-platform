@@ -2,7 +2,7 @@
 
 Status: in_progress
 Created at: 2026-06-03T09:45:00+08:00
-Updated at: 2026-06-04T10:25:14+08:00
+Updated at: 2026-06-04T11:12:49+08:00
 Owner mode: AI-governed, evidence-first, no human code-detail review
 
 ## Current Decision
@@ -32,21 +32,21 @@ Source: `.largefile-manifest.json` and `node tools/run-with-node18.mjs tools/rep
 
 | Metric | Count |
 | --- | ---: |
-| Manifest entries | 69 |
-| Files currently above 500 lines | 27 |
-| `planned_refactor` files above 500 lines | 18 |
+| Manifest entries | 73 |
+| Files currently above 500 lines | 26 |
+| `planned_refactor` files above 500 lines | 17 |
 | `accepted` files above 500 lines | 9 |
-| Manifest entries already below threshold | 42 |
+| Manifest entries already below threshold | 47 |
 
 Highest active reduction targets:
 
 | Priority | File | Lines | Status | Required terminal direction |
 | --- | --- | ---: | --- | --- |
-| LFA-Q01 | `tools/workbench-server.mjs` | 1131 | `planned_refactor` | Extract remaining context-pack/context-work-package, project-status continuation, projection-history, or state-bootstrap groups until below 500 lines. |
-| LFA-Q02 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Continue stable server test shards until below 500 lines. |
-| LFA-Q03 | `test/headless-cli-orchestrator.test.js` | 1071 | `planned_refactor` | Continue stable headless CLI root shards until below 500 lines. |
-| LFA-Q04 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Continue stable projection root shards until below 500 lines. |
-| LFA-Q05 | `src/workflow/requirement-intake.js` | 987 | `planned_refactor` | Extract requirement state transitions, closeout, or workflow event recording until below 500 lines. |
+| LFA-Q01 | `test/workbench-server.test.js` | 1092 | `planned_refactor` | Continue stable server test shards until below 500 lines. |
+| LFA-Q02 | `test/headless-cli-orchestrator.test.js` | 1071 | `planned_refactor` | Continue stable headless CLI root shards until below 500 lines. |
+| LFA-Q03 | `test/workbench-projection.test.js` | 1025 | `planned_refactor` | Continue stable projection root shards until below 500 lines. |
+| LFA-Q04 | `src/workflow/requirement-intake.js` | 987 | `planned_refactor` | Extract requirement state transitions, closeout, or workflow event recording until below 500 lines. |
+| LFA-Q05 | `tools/check-workbench-browser-events.mjs` | 983 | `planned_refactor` | Extract browser probe setup, route checks, API checks, and event-evidence validation until below 500 lines. |
 
 ## State Vocabulary
 
@@ -402,6 +402,22 @@ Goal: reduce `src/workflow/context-work-package-runner.js` from 1135 lines to be
 | LFA-P18.5 | DeepSeek reduction review | `docs/examples/reviewer-risk-20260604-context-work-package-runner-p18-deepseek.json` | DeepSeek read-only review returned `通过` with synthesis `PASS`, confirming public compatibility, behavior-preserving extraction, below-500 compliance, manifest registration, no oversized replacement module, and no premature plan completion. | pass |
 | LFA-P18.6 | Run final gates | Command evidence | Final gates passed: `npm test` passed 1001/1001; `npm run check:large-files` passed; `git diff --check` passed; JSON parsing passed for the manifest, P18 parity artifact, and DeepSeek review artifact; `npm run check:closeout` passed after installing root and `apps/workbench` dependencies in the isolated worktree. | pass |
 
+### Phase LFA-P19: Workbench Server Below-500 Extraction
+
+Status: pass
+
+Goal: reduce `tools/workbench-server.mjs` from 1131 lines to below 500 lines in this phase, without weakening the Workbench API route surface, SQLite-first live state boundary, projection/history reads, project-status continuation, context-pack materialization, context work-package background/foreground dispatch, scheduler/reviewer/requirement route ordering, agent health timer behavior, or CLI startup. New extracted modules must stay below 500 lines and must be registered independently in `.largefile-manifest.json`.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P19.1 | Select current server target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `tools/workbench-server.mjs` because it is the current highest-priority runtime queue item at 1131 lines. This phase may pass only if the root server entrypoint is below 500 lines and no newly extracted module exceeds 500 lines. | pass |
+| LFA-P19.2 | DeepSeek plan review before code extraction | `docs/examples/reviewer-risk-20260604-workbench-server-p19-plan-deepseek.json` | Initial DeepSeek review found blockers around oversized helper extraction, routeContext compatibility, context-work-package closure injection, and structured diagnostics. The plan was revised to require multiple bounded helper modules, explicit dependency injection, routeContext key evidence, and structured diagnostic assertions; DeepSeek delta review returned `通过`. | pass |
+| LFA-P19.3 | Extract state/projection and scheduler helper surface into multiple bounded modules | `tools/workbench-server-state-access.mjs`; `tools/workbench-server-scheduler-utils.mjs`; `tools/workbench-server.mjs`; `.largefile-manifest.json` | State/history/projection/snapshot/event helpers and scheduler continuation/background helpers were extracted into two bounded modules. Current line counts: server 408, state-access 287, scheduler-utils 346. A moved-helper import gap around `relative` was caught by focused tests and repaired with explicit module imports. | pass |
+| LFA-P19.4 | Extract project-status/context-pack/context-work-package routes with explicit dependency injection | `tools/workbench-context-routes.mjs`; `tools/workbench-context-work-package-routes.mjs`; `tools/workbench-server.mjs`; `.largefile-manifest.json` | Project-status continuation, context-pack cycle, and context work-package foreground/background dispatch moved into bounded route modules at 109 and 141 lines. Handlers receive explicit routeContext dependencies for provider executor, background launcher, state store/db path, projection, and read/write helpers. | pass |
+| LFA-P19.5 | Prove routeContext, diagnostics, exports, and manifest compatibility | `docs/examples/workbench-server-p19-extraction-parity.json`; `test/api-route-contract.test.js`; `test/workbench-server-project-status-continuation.test.js`; `.largefile-manifest.json` | P19 parity artifact records exports, moved routes, line counts, routeContext keys, and diagnostic fields. API route contract now includes the extracted route modules plus a routeContext/diagnostic static test. Runtime server coverage asserts structured 409 diagnostics retain `phase`, governance fields, completion authority, executor provenance, and package results. | pass |
+| LFA-P19.6 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-workbench-server-p19-deepseek.json`; command evidence | Focused server/API/context/scheduler gates passed 129/129 with `--test-concurrency=1`; `npm run check:large-files` passed with no issues or warnings; JSON parsing passed for P19 artifacts. DeepSeek initial code/document review found two documentation blockers around ambiguous corrected-gate status and premature artifact-level pass status; both were repaired, and DeepSeek delta review returned PASS with no new blockers. | pass |
+| LFA-P19.7 | Run final gates | Command evidence | Final gates passed: syntax checks for `tools/workbench-server.mjs`, the four extracted modules, and `tools/check-api-route-contract.mjs`; JSON parsing passed for the manifest and P19 artifacts; `git diff --check` passed; `npm run check:large-files` passed with no issues or warnings; focused route/server/context/scheduler gates passed 129/129; `npm test` passed 1002/1002; `npm run check:closeout` passed after root and Workbench app dependencies were installed in the isolated worktree. The first closeout retry exposed a stale local Next runtime on port 4191; browser-events passed independently on 4291 and the full closeout passed after the stale port cleared. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -425,6 +441,7 @@ Goal: reduce `src/workflow/context-work-package-runner.js` from 1135 lines to be
 | LFA-P16 | pass | Selected `test/context-work-package-runner.test.js`; root suite is 801 lines after extracting a 244-line execution-guards shard and 212-line shared fixture helper. Split parity passed 24/24 with no missing, added, or duplicate tests. Focused context-work-package runner tests passed 24/24. Final gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, JSON parsing, and full closeout. | DeepSeek PASS |
 | LFA-P17 | pass | Selected `src/workflow/headless-cli-orchestrator.js`; root entrypoint is 27 lines after extracting five bounded modules, all below 500 lines. Public export compatibility artifact is written, focused gates passed 88/88, large-file gate passes with remaining planned-refactor targets tightened below 500, DeepSeek delta review returned PASS after evidence-gap repair, and final closeout passed. | DeepSeek PASS after delta |
 | LFA-P18 | pass | Selected `src/workflow/context-work-package-runner.js`; root entrypoint is 472 lines after extracting four bounded modules, all below 500 lines. Public export compatibility artifact is written, focused gates passed 109/109, large-file gate passes after manifest refresh, DeepSeek review returned PASS, and final gates passed: `npm test` 1001/1001, `npm run check:large-files`, `git diff --check`, JSON parsing, and full closeout. | DeepSeek PASS |
+| LFA-P19 | pass | Selected `tools/workbench-server.mjs`; root entrypoint is 408 lines after extracting state/projection access, scheduler helpers, context routes, and context work-package routes into four bounded modules under 500 lines. RouteContext dependencies and structured diagnostics are covered by static API contract and runtime 409 assertions. Focused gates passed 129/129, `npm test` passed 1002/1002, `npm run check:large-files` passed, JSON parsing and `git diff --check` passed, and full closeout passed. DeepSeek plan review and code/doc review both passed after delta repairs. | DeepSeek PASS after plan and code deltas |
 
 ## Daily Run Shape
 

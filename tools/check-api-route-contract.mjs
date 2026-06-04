@@ -16,6 +16,8 @@ const BACKEND_ROUTE_SOURCE_PATHS = [
   "tools/workbench-server.mjs",
   "tools/workbench-agent-key-routes.mjs",
   "tools/workbench-basic-routes.mjs",
+  "tools/workbench-context-routes.mjs",
+  "tools/workbench-context-work-package-routes.mjs",
   "tools/workbench-requirement-routes.mjs",
   "tools/workbench-reviewer-routes.mjs",
   "tools/workbench-workflow-evidence-routes.mjs",

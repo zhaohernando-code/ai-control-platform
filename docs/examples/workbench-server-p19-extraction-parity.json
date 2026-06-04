@@ -1,0 +1,115 @@
+{
+  "version": "large-file-extraction-parity.v1",
+  "phase": "LFA-P19",
+  "status": "pass",
+  "implementation_parity_status": "pass",
+  "target": "tools/workbench-server.mjs",
+  "line_counts": {
+    "before": 1131,
+    "after": {
+      "tools/workbench-server.mjs": 408,
+      "tools/workbench-server-state-access.mjs": 287,
+      "tools/workbench-server-scheduler-utils.mjs": 346,
+      "tools/workbench-context-routes.mjs": 109,
+      "tools/workbench-context-work-package-routes.mjs": 141
+    },
+    "threshold": 500
+  },
+  "public_exports_preserved": [
+    "createWorkbenchServer",
+    "startWorkbenchServer"
+  ],
+  "moved_routes": [
+    {
+      "module": "tools/workbench-context-routes.mjs",
+      "routes": [
+        "POST /api/workbench/project-status-continuation",
+        "POST /api/workbench/context-pack-cycle"
+      ]
+    },
+    {
+      "module": "tools/workbench-context-work-package-routes.mjs",
+      "routes": [
+        "POST /api/workbench/context-work-packages-run"
+      ]
+    }
+  ],
+  "route_context_keys_preserved": [
+    "prepareContinuationFromProjectStatus",
+    "recordProjectStatusContinuationPrepared",
+    "materializeContextPackCycleFromWorkflowState",
+    "generatedContextPackSnapshotId",
+    "contextWorkPackageProviderExecutor",
+    "contextWorkPackageBackgroundLauncher",
+    "backgroundContextWorkPackageRequested",
+    "backgroundContextWorkPackageOutputPath",
+    "contextWorkPackageRunOptions",
+    "runContextWorkPackages",
+    "stageContextWorkPackageDispatch",
+    "createMainlineAlreadySatisfiedEvaluator",
+    "isSqliteSnapshotPath",
+    "sqliteSnapshotIdFromInputPath",
+    "stateDbPath",
+    "options"
+  ],
+  "structured_diagnostic_fields_preserved": [
+    "issues",
+    "phase",
+    "fixed_development_mode_gate",
+    "work_package_execution_governance",
+    "completion_authority",
+    "executor_provenance"
+  ],
+  "regression_coverage": [
+    {
+      "file": "test/api-route-contract.test.js",
+      "assertion": "static routeContext dependency and diagnostic field contract"
+    },
+    {
+      "file": "test/workbench-server-project-status-continuation.test.js",
+      "assertion": "runtime 409 context-work-package response preserves phase, governance, completion authority, executor provenance, package results, and no-completion status"
+    },
+    {
+      "file": "test/api-route-contract.test.js",
+      "assertion": "backend route extraction includes newly extracted context route modules"
+    }
+  ],
+  "focused_gates": [
+    {
+      "command": "node tools/run-with-node18.mjs --test test/workbench-server.test.js test/workbench-server-shard-*.test.js test/api-route-contract.test.js test/context-work-package-runner.test.js test/context-work-package-runner-execution-guards.test.js test/autonomous-scheduler-loop.test.js",
+      "status": "pass",
+      "result": "127/127"
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test test/api-route-contract.test.js test/workbench-server-project-status-continuation.test.js",
+      "status": "pass",
+      "result": "8/8"
+    },
+    {
+      "command": "node tools/run-with-node18.mjs --test --test-concurrency=1 test/workbench-server.test.js test/workbench-server-project-status-continuation.test.js test/workbench-server-shard-*.test.js test/api-route-contract.test.js test/context-work-package-runner.test.js test/context-work-package-runner-execution-guards.test.js test/autonomous-scheduler-loop.test.js",
+      "status": "pass",
+      "result": "129/129"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "result": "1002/1002"
+    },
+    {
+      "command": "npm run check:large-files",
+      "status": "pass",
+      "result": "no issues or warnings"
+    },
+    {
+      "command": "npm run check:closeout",
+      "status": "pass",
+      "result": "full closeout pass; browser-events 15 scenarios; frontend acceptance pass; scheduler writeback pass"
+    }
+  ],
+  "notes": [
+    "A focused rerun initially exposed a moved-helper import gap: metadataPath used relative without importing it in tools/workbench-server-scheduler-utils.mjs.",
+    "The helper import gap was repaired by making scheduler utils import relative and projection-history dependencies explicitly.",
+    "The runtime diagnostic assertion was corrected from an incorrect expected phase value to the observed preserved contract value `simulated_execution`; the final assertion still requires status, phase, governance diagnostic fields, completion authority, executor provenance, package results, and no-completion status.",
+    "One broad concurrent focused run produced a transient 500 in test/workbench-server-shard-04.test.js; the shard passed on isolated rerun after the same code state."
+  ]
+}

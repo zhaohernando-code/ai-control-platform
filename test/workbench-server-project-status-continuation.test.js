@@ -202,8 +202,8 @@ test("workbench server executes project status continuation next action", async 
     const stateAfterDirectMockRun = JSON.parse(readFileSync(cycleInputPath, "utf8"));
 
     assert.equal(directMockRun.status, 409);
-    assert.equal(directMock.status, "validated");
     assert.equal(directMock.error, "context work package run validated without completion authority");
+    assert.deepEqual([directMock.status, directMock.phase, Object.hasOwn(directMock, "fixed_development_mode_gate"), Object.hasOwn(directMock, "work_package_execution_governance")], ["validated", "simulated_execution", true, true]);
     assert.equal(directMock.allows_work_package_completion, false);
     assert.equal(directMock.completion_authority.allows_work_package_completion, false);
     assert.equal(directMock.executor_provenance.executor_kind, "deterministic_mock_multi_agent");

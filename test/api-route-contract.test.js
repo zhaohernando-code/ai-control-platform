@@ -19,6 +19,8 @@ const BACKEND_ROUTE_SOURCES = [
   "tools/workbench-server.mjs",
   "tools/workbench-agent-key-routes.mjs",
   "tools/workbench-basic-routes.mjs",
+  "tools/workbench-context-routes.mjs",
+  "tools/workbench-context-work-package-routes.mjs",
   "tools/workbench-requirement-routes.mjs",
   "tools/workbench-reviewer-routes.mjs",
   "tools/workbench-workflow-evidence-routes.mjs",
@@ -105,4 +107,52 @@ test("api route contract: backend-only allowlist is load-bearing and audited", (
     withoutAllow.issues.some((i) => i.code === "backend_only_route" && i.path.includes("governance-audit-skill-trial")),
     "the allowlisted route is exactly governance-audit-skill-trial"
   );
+});
+
+test("workbench route extraction keeps explicit routeContext dependencies and diagnostics", () => {
+  const serverSource = read("tools/workbench-server.mjs");
+  const contextRoutesSource = read("tools/workbench-context-routes.mjs");
+  const contextWorkPackageSource = read("tools/workbench-context-work-package-routes.mjs");
+  const routeContextBlock = serverSource.match(/const routeContext = \{([\s\S]*?)\n      \};/)?.[1] || "";
+
+  for (const key of [
+    "prepareContinuationFromProjectStatus",
+    "recordProjectStatusContinuationPrepared",
+    "materializeContextPackCycleFromWorkflowState",
+    "generatedContextPackSnapshotId",
+    "contextWorkPackageProviderExecutor",
+    "contextWorkPackageBackgroundLauncher",
+    "backgroundContextWorkPackageRequested",
+    "backgroundContextWorkPackageOutputPath",
+    "contextWorkPackageRunOptions",
+    "runContextWorkPackages",
+    "stageContextWorkPackageDispatch",
+    "createMainlineAlreadySatisfiedEvaluator",
+    "isSqliteSnapshotPath",
+    "sqliteSnapshotIdFromInputPath",
+    "stateDbPath",
+    "options"
+  ]) {
+    assert.match(routeContextBlock, new RegExp(`\\b${key}\\b`), `${key} must be injected into routeContext`);
+  }
+
+  for (const key of [
+    "prepareContinuationFromProjectStatus",
+    "recordProjectStatusContinuationPrepared",
+    "materializeContextPackCycleFromWorkflowState",
+    "generatedContextPackSnapshotId"
+  ]) {
+    assert.match(contextRoutesSource, new RegExp(`\\b${key}\\b`), `${key} must remain an explicit context route dependency`);
+  }
+
+  for (const key of [
+    "issues",
+    "phase",
+    "fixed_development_mode_gate",
+    "work_package_execution_governance",
+    "completion_authority",
+    "executor_provenance"
+  ]) {
+    assert.match(contextWorkPackageSource, new RegExp(`\\b${key}\\b`), `${key} must remain in context work package diagnostics`);
+  }
 });
