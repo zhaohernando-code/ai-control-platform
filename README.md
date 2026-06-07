@@ -1,88 +1,97 @@
 # AI Control Platform
 
-AI Control Platform 是新的中台基座仓库。它承载 AI 项目组的需求固化、任务拆解、并行 agent 调度、质量门禁、自动恢复、发布验收、项目体检和 Ops Workbench。
+AI Control Platform 是一个面向多项目软件研发的 AI 控制平台原型。它把需求录入、方案审核、任务拆解、Agent 调度、外部模型评审、质量门禁、恢复决策和工作台观察整合到同一套可追踪流程中，用于探索“由 AI 执行、由证据和门禁约束”的工程交付方式。
 
-本仓库不是 `stock_dashboard` 的子模块，也不是旧 `local-control-server` 或 `dashboard-ui` 的补丁层。旧控制面项目只能作为可迁移组件和历史能力来源；新中台的领域模型、流程门禁和产品体验以本仓库为准。
+这个仓库重点展示的是平台级工程能力：如何把模糊需求转成可执行工作包，如何让多个模型和工具在受控边界内协作，如何把每次运行的决策、证据、产物和失败恢复记录沉淀为可复盘状态。
 
-## 当前边界
+## Features
 
-- 平台本体：本仓库。
-- 被纳管项目：`stock_dashboard`、`lobechat` 等业务项目。
-- 可迁移组件：`local-control-server`、`dashboard-ui`。
-- 禁止落点：平台工作台、任务 DAG、Recovery Engine、LLM Reviewer、CI/CD 门禁、跨项目体检不得继续写入被纳管业务项目。
+- Requirement intake: 将用户需求记录为结构化任务，并生成可审核的实施方案。
+- Work package orchestration: 使用 Task DAG、Context Pack 和 Work Package 管理跨模块执行边界。
+- Multi-agent execution control: 支持子任务分发、Agent 生命周期记录、执行证据回写和失败闭环。
+- Reviewer gate: 将外部 LLM reviewer 作为质量门禁，而不是只依赖执行模型自评。
+- Recovery engine: 根据运行状态、产物证据和阻塞原因生成恢复动作或下一轮任务。
+- Ops Workbench: 提供 Next.js 工作台，用于查看项目、任务、运行状态、评审结果和下一步动作。
+- Governance checks: 包含工作树隔离、流程硬化、主线发布准备、已知风险关闭和前端验收等自动化检查。
 
-## 必读入口
+## Architecture
 
-- `PROJECT_RULES.md`：仓库级边界和执行规则。
-- `PROJECT_PLAN.md`：阶段计划。
-- `PROCESS.md`：防跑偏开发流程。
-- `docs/contracts/AUTONOMOUS_DEVELOPMENT_FLOW_CN.md`：可代码化流程合同。
-- `docs/contracts/CONTEXT_PACK_CN.md`：Context Pack 与 Work Package 派发合同。
-- `docs/contracts/AUTONOMOUS_RUN_EVALUATION_CN.md`：自主运行评估与恢复决策合同。
-- `docs/contracts/RUN_MANIFEST_LEDGER_DAG_CN.md`：Run Manifest、Artifact Ledger 与 Task DAG 合同。
-- `docs/contracts/LLM_REVIEWER_GATE_CN.md`：外部 LLM Reviewer Gate 合同。
-- `docs/contracts/MODEL_ROUTING_POLICY_CN.md`：多 LLM 协同与模型路由合同。
-- `docs/contracts/WORKBENCH_PROJECTION_CN.md`：PC / mobile 工作台 Projection 合同。
-- `docs/contracts/AUTONOMOUS_CONTINUATION_CN.md`：自主继续与停机条件合同。
-- `docs/contracts/PLATFORM_FOUNDATION_DESIGN_CN.md`：中文设计稿。
-- `docs/contracts/PLATFORM_CAPABILITY_MATRIX_CN.md`：真实能力矩阵。
-- `docs/contracts/RECOVERY_ENGINE_REDESIGN_CN.md`：Recovery Engine 重设计合同。
-
-## 本地验证
-
-本仓库要求 Node.js 18+。完整 closeout 门禁：
-
-```bash
-npm run check:closeout
+```text
+User requirement
+  -> plan generation and review
+  -> task DAG / work package split
+  -> context package dispatch
+  -> agent execution
+  -> artifact ledger and run manifest
+  -> reviewer gate
+  -> closeout / recovery / continuation
+  -> Ops Workbench projection
 ```
 
-首次 checkout 或 hook 丢失时先接入共享治理 hook：
+Key directories:
+
+- `src/workflow/`: workflow contracts, orchestration, recovery, reviewer, state, and governance logic.
+- `tools/`: CLI entrypoints for checks, schedulers, workbench APIs, replay, and closeout.
+- `apps/workbench/`: Next.js App Router frontend for the operator workbench.
+- `test/`: Node.js regression tests for workflow behavior and platform gates.
+- `docs/contracts/`: durable process and data contracts.
+- `docs/examples/`: example workflow states, projections, and evidence artifacts.
+
+## Tech Stack
+
+- Runtime: Node.js 18+
+- Frontend: Next.js 14, React 18, TypeScript, Ant Design
+- Workflow core: JavaScript ES modules
+- State and evidence: SQLite-backed workbench state, JSON manifests, artifact ledgers
+- Testing: Node test runner, Playwright-based browser checks
+
+## Quick Start
+
+Install root dependencies and run the workflow regression suite:
 
 ```bash
-npm run install:git-hooks
-```
-
-分项验证：
-
-```bash
+npm install
 npm test
-npm run test:affected   # 开发期加速：只跑被改动传递影响的测试;无法静态判定时回退全套。合入仍以 npm test 为准
-npm run test:coverage   # 覆盖率(Node 内置,无第三方依赖),scope=src/workflow/**,阈值 lines>=88/functions>=92
-npm run check:onboarding
-npm run check:process-hardening
-npm run check:workbench:browser-events
-node tools/build-workbench-projection.mjs docs/examples/current-session-workbench-input.json docs/examples/current-session-workbench-projection.json
-node tools/check-workbench-projection.mjs docs/examples/current-session-workbench-projection.json
+```
+
+Run the Workbench frontend:
+
+```bash
+cd apps/workbench
+npm install
+npm run dev
+```
+
+For the local Workbench service and API bridge, use the project script:
+
+```bash
 scripts/start-workbench-live.sh
 ```
 
-> 注：`npm test` / `npm run test:*` 必须从隔离 task worktree 运行(`pretest` 守卫会拦主检出);覆盖率 baseline 留档于 `docs/examples/coverage-baseline.json`。
+The default development frontend runs on port `4181`; the service script starts the mounted workbench runtime and API bridge with the project defaults.
 
-## Workbench
+## Validation
 
-公开入口是 `apps/workbench` 的 Next.js App Router 应用，生产挂载路径为
-`/projects/ai-control-platform/`。`tools/workbench-server.mjs` 只作为
-`/api/workbench/*` 后端服务运行；页面、动态路由和 `_next/*` 资源由 Next
-运行时负责，不再读取 `.next/server/app/*.html` 做静态托管。
+Common checks:
 
-历史 `apps/workbench/desktop.html` / `apps/workbench/mobile.html` 仅保留给测试
-兼容和迁移对照，不是线上公开入口。
+```bash
+npm run test:affected
+npm run test:coverage
+npm run check:process-hardening
+npm run check:workbench:frontend-acceptance
+npm run check:closeout
+```
 
-API 后端提供：
+The full closeout check is intentionally broader than a unit test run. It validates process evidence, workbench behavior, closeout gates, and release readiness assumptions that matter for an AI-operated development flow.
 
-- `GET /api/workbench/projection`
-- `GET /api/workbench/projections`
-- `GET /api/workbench/events`
-- `POST /api/workbench/events`
-- `GET /api/workbench/snapshot?id=<id>`
-- `POST /api/workbench/snapshots`
+## Project Notes
 
-`/api/workbench/projection` 会优先使用 projection history item 的 `input_path` 动态生成 projection；没有 `input_path` 的历史项才回退到 `projection_path` 静态文件。History path 必须是受控根目录下的相对路径：`docs/examples/` 或配置的 snapshot root。
-`POST /api/workbench/snapshots` 可发布新的 projection-ready workflow state input，并更新 projection history。
+This repository is a platform prototype, not a generic task tracker. Its design assumes that AI agents can perform implementation work, but only inside explicit boundaries with durable state, review gates, replayable evidence, and recovery rules.
 
-Operator events 可以通过 `src/workflow/operator-events.js` 摄入为 Run Manifest events 和 Artifact Ledger artifacts，避免工作台操作停留在 UI 临时状态。
+Related internal operating documents are kept out of the main narrative and can be read from:
 
-## 迁移区
-
-- `docs/migrations/` 保存当前会话迁入的新中台历史材料和 Trial 证据。
-- `legacy/` 保存从错误宿主迁出的旧代码快照，仅作为重构输入，不参与默认测试或运行时。
+- `PROJECT_STATUS.json`: current phase and handoff state
+- `PROJECT_RULES.md`: repository rules and execution boundaries
+- `PROCESS.md`: reusable workflow lessons
+- `DECISIONS.md`: durable architecture and product decisions
+- `PROJECT_PLAN.md`: long-lived plan and milestones
