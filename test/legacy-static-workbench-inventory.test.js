@@ -78,6 +78,7 @@ test("current acceptance gates use Next runtime and legacy CLI is fail-closed", 
   const nextFrontendAcceptance = read("tools/check-workbench-next-frontend-acceptance.mjs");
   const frontendAcceptance = read("tools/check-workbench-frontend-acceptance.mjs");
   const frontendAcceptanceTests = read("test/frontend-acceptance.test.js");
+  const frontendAcceptanceResourceTests = read("test/frontend-acceptance-resource-readiness.test.js");
   const schedulerWriteback = read("tools/check-scheduler-dispatch-writeback.mjs");
   const shellTests = read("test/workbench-shell.test.js");
   const gateFiles = new Set(report.acceptance_gate_dependencies.map((item) => item.file));
@@ -86,6 +87,7 @@ test("current acceptance gates use Next runtime and legacy CLI is fail-closed", 
   assert.ok(gateFiles.has("tools/check-workbench-next-frontend-acceptance.mjs"));
   assert.ok(gateFiles.has("tools/check-workbench-frontend-acceptance.mjs"));
   assert.ok(gateFiles.has("test/frontend-acceptance.test.js"));
+  assert.ok(gateFiles.has("test/frontend-acceptance-resource-readiness.test.js"));
   assert.ok(gateFiles.has("tools/check-scheduler-dispatch-writeback.mjs"));
   assert.ok(gateFiles.has("test/workbench-shell.test.js"));
 
@@ -109,7 +111,7 @@ test("current acceptance gates use Next runtime and legacy CLI is fail-closed", 
   assert.doesNotMatch(frontendAcceptance, /serveLegacyStatic:\s*true/);
   assert.doesNotMatch(frontendAcceptanceTests, /projects\/ai-control-platform\/apps\/workbench\/desktop\.html/);
   assert.doesNotMatch(frontendAcceptanceTests, /projects\/ai-control-platform\/apps\/workbench\/mobile\.html/);
-  assert.match(frontendAcceptanceTests, /mounted_safe_favicon_count/);
+  assert.match(frontendAcceptanceResourceTests, /mounted_safe_favicon_count/);
   assert.match(schedulerWriteback, /nextjs_app_router/);
   assert.match(schedulerWriteback, /WORKBENCH_MOUNT_PREFIX/);
   assert.doesNotMatch(schedulerWriteback, /serveLegacyStatic:\s*true/);
