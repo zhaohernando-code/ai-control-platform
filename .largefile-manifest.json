@@ -903,17 +903,49 @@
       "reviewed_at": "2026-06-08"
     },
     "tools/probe-workbench-live-route.mjs": {
-      "lines": 578,
-      "reason": "Workbench live-route probe combines public route auth handling, browser evidence capture, API checks, and artifact persistence.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 578,
-        "target_lines": 428,
-        "minimum_reduction": 150,
-        "terminal_condition": "tools/probe-workbench-live-route.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "lines": 310,
+      "reason": "Workbench live-route probe root reduced below 500 lines in LFA-P35. URL/auth route policy and HTTP/HTML request probing moved into bounded tool modules while root preserves CLI parsing, project status loading, probe orchestration, artifact construction, validation, writeout, and exit policy.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08",
+      "extraction_evidence": {
+        "parity_artifact": "docs/examples/probe-workbench-live-route-p35-extraction-parity.json",
+        "before_lines": 578,
+        "after_lines": 310,
+        "net_reduction": 268,
+        "extracted_modules": [
+          {
+            "file": "tools/workbench-live-route-url-auth.mjs",
+            "lines": 135,
+            "domain": "headers_edge_auth_route_classification_mount_url_construction_and_project_mount_checks"
+          },
+          {
+            "file": "tools/workbench-live-route-http.mjs",
+            "lines": 154,
+            "domain": "http_https_requests_redirects_auth_redirect_detection_html_json_and_mounted_asset_detection"
+          }
+        ],
+        "retained_domains": [
+          "cli_argument_parsing",
+          "project_status_loading",
+          "probe_orchestration",
+          "artifact_construction",
+          "live_route_validation",
+          "artifact_writeout",
+          "cli_exit_policy"
+        ]
       }
+    },
+    "tools/workbench-live-route-url-auth.mjs": {
+      "lines": 135,
+      "reason": "Extracted live-route URL/auth helpers kept below 500 lines while preserving header registration, shared edge auth token resolution, route classification, project mount URL construction, and mounted-route checks.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
+    },
+    "tools/workbench-live-route-http.mjs": {
+      "lines": 154,
+      "reason": "Extracted live-route HTTP helpers kept below 500 lines while preserving HTTP/HTTPS request behavior, bounded redirects, auth redirect detection, Workbench HTML marker detection, JSON detection, and mounted asset extraction.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
     },
     "tools/check-workbench-next-served-route.mjs": {
       "lines": 216,
