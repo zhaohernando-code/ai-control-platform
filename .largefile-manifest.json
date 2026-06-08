@@ -859,17 +859,48 @@
       "reviewed_at": "2026-06-04"
     },
     "tools/run-governance-audit-skill-trial.mjs": {
-      "lines": 597,
-      "reason": "Governance audit skill trial runner combines skill fixture setup, model invocation checks, artifact validation, and report persistence.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 597,
-        "target_lines": 447,
-        "minimum_reduction": 150,
-        "terminal_condition": "tools/run-governance-audit-skill-trial.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "lines": 416,
+      "reason": "Governance audit skill trial runner root reduced below 500 lines in LFA-P33. Evidence collection and compact verdict expansion moved into bounded workflow modules while root preserves prompt construction, custom runner wiring, workbench recording, parsing, validation, and exit policy.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08",
+      "extraction_evidence": {
+        "parity_artifact": "docs/examples/run-governance-audit-skill-trial-p33-extraction-parity.json",
+        "before_lines": 597,
+        "after_lines": 416,
+        "net_reduction": 181,
+        "extracted_modules": [
+          {
+            "file": "src/workflow/governance-audit-evidence.js",
+            "lines": 74,
+            "domain": "runner_preflight_evidence_collection_and_truncation"
+          },
+          {
+            "file": "src/workflow/governance-audit-artifact-expansion.js",
+            "lines": 130,
+            "domain": "compact_verdict_expansion_finding_normalization_and_model_evidence_id_bounding"
+          }
+        ],
+        "retained_domains": [
+          "prompt_construction",
+          "runner_command_wiring",
+          "workbench_recording",
+          "output_parsing",
+          "artifact_normalization_wrapper",
+          "cli_exit_policy"
+        ]
       }
+    },
+    "src/workflow/governance-audit-evidence.js": {
+      "lines": 74,
+      "reason": "Extracted governance audit skill trial evidence helpers kept below 500 lines while preserving command execution environment, output truncation, evidence item normalization, and preflight evidence command list.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
+    },
+    "src/workflow/governance-audit-artifact-expansion.js": {
+      "lines": 130,
+      "reason": "Extracted governance audit skill trial artifact expansion helpers kept below 500 lines while preserving compact verdict expansion, dimension normalization, repair schedule defaults, evidence plans, optional decision package defaults, and bounding model-returned finding evidence ids to known runner evidence.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
     },
     "tools/probe-workbench-live-route.mjs": {
       "lines": 578,
