@@ -1,0 +1,49 @@
+{
+  "version": "deepseek-flash-landing-review.v1",
+  "phase": "LFA-P32",
+  "reviewed_at": "2026-06-08",
+  "reviewer": {
+    "provider": "claude-code",
+    "shard_model": "deepseek-v4-flash",
+    "excerpt_model": "deepseek-v4-flash",
+    "synthesis_model": "deepseek-v4-flash",
+    "mode": "sharded_read_only_mechanical_landing_review"
+  },
+  "status": "pass",
+  "verdict": "DS_FLASH_LANDING_PASS",
+  "blockers": [],
+  "advisory": [
+    {
+      "severity": "advisory",
+      "summary": "Final status rows for P32.5 and P32.6 must be updated after gates complete.",
+      "resolution": "P32.5 is updated with the Flash review and focused gate result; P32.6 remains pending until final gates complete."
+    },
+    {
+      "severity": "advisory",
+      "summary": "Some shards could not independently verify the full before/after baseline inside their limited file scope.",
+      "resolution": "Codex final audit uses the generated parity artifact with 24 before / 24 after tests and reruns the focused gates."
+    }
+  ],
+  "review_summary": {
+    "mechanical_split_consistent": true,
+    "assertion_weakening_detected": false,
+    "test_deletion_detected": false,
+    "duplicate_test_detected": false,
+    "manifest_parity_chain_consistent": true,
+    "focused_expanded_gate": {
+      "status": "pass",
+      "passed": 63,
+      "failed": 0
+    },
+    "large_file_gate": "pass"
+  },
+  "focus_files": [
+    "test/context-work-package-runner.test.js",
+    "test/context-work-package-runner-provider-simulation.test.js",
+    "test/context-work-package-runner-provider-authority.test.js",
+    "test/context-work-package-runner-dispatch-state.test.js",
+    "docs/examples/context-work-package-runner-test-p32-split-parity.json",
+    ".largefile-manifest.json",
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md"
+  ]
+}

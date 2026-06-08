@@ -1,0 +1,43 @@
+{
+  "version": "deepseek-plan-review.v1",
+  "phase": "LFA-P32",
+  "reviewed_at": "2026-06-08",
+  "reviewer": {
+    "provider": "claude-code",
+    "model": "deepseek-v4-pro",
+    "mode": "bounded_read_only_plan_review"
+  },
+  "status": "pass",
+  "verdict": "DS_PLAN_PASS",
+  "blockers": [],
+  "advisory": [
+    {
+      "severity": "advisory",
+      "summary": "Cross-reference P16 split evidence in the P32 parity artifact to preserve the durable reduction chain from 1242 to 801 to below 500 lines.",
+      "resolution": "Folded into the P32 compatibility and evidence requirements."
+    },
+    {
+      "severity": "advisory",
+      "summary": "Keep the shared helper below the 300-line near-threshold boundary; it starts P32 at 212 lines.",
+      "resolution": "Folded into the planned extraction notes."
+    },
+    {
+      "severity": "advisory",
+      "summary": "If root line count unexpectedly creeps above 500, the retained frontend view slicing test is the natural fallback extraction candidate.",
+      "resolution": "Recorded as implementation guidance; projected root line count is comfortably below 500."
+    }
+  ],
+  "review_summary": {
+    "mapped_root_tests": 17,
+    "retained_root_tests": 5,
+    "moved_tests": 12,
+    "projected_root_lines": 292,
+    "projected_shards_below_300": true,
+    "p0_p1_blockers_found": false
+  },
+  "focus_files": [
+    "docs/governance/LARGE_FILE_ANTI_ABUSE_AND_REDUCTION_PLAN.md",
+    "test/context-work-package-runner.test.js",
+    ".largefile-manifest.json"
+  ]
+}

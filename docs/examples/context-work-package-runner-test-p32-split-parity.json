@@ -1,0 +1,161 @@
+{
+  "version": "test-split-parity.v1",
+  "phase": "LFA-P32",
+  "generated_at": "2026-06-08",
+  "base_ref": "origin/main",
+  "before_files": [
+    "test/context-work-package-runner.test.js",
+    "test/context-work-package-runner-execution-guards.test.js"
+  ],
+  "after_files": [
+    "test/context-work-package-runner.test.js",
+    "test/context-work-package-runner-execution-guards.test.js",
+    "test/context-work-package-runner-provider-simulation.test.js",
+    "test/context-work-package-runner-provider-authority.test.js",
+    "test/context-work-package-runner-dispatch-state.test.js"
+  ],
+  "source_file": "test/context-work-package-runner.test.js",
+  "prior_split_evidence": {
+    "phase": "LFA-P16",
+    "parity_artifact": "docs/examples/context-work-package-runner-test-p16-split-parity.json",
+    "before_lines": 1242,
+    "after_lines": 801
+  },
+  "before_count": 24,
+  "after_count": 24,
+  "before_by_file": {
+    "test/context-work-package-runner.test.js": [
+      "context work package runner executes dispatchable packages and updates workflow state",
+      "context work package runner splits materialized broad frontend view migration before execution",
+      "context work package runner blocks broad unsliced requirement plan steps before child execution",
+      "context work package runner can complete already-satisfied packages before provider dispatch",
+      "context work package runner executes retry_agent_worker by recording a closed lifecycle chain",
+      "context work package runner blocks when no packages can dispatch",
+      "context work package runner returns bounded mock simulation without completing packages",
+      "context work package runner blocks explicit non-local identities without local fallback",
+      "context work package runner only completes provider results with completion authority",
+      "context work package runner blocks provider routed mode without supported adapter profile",
+      "context work package runner completes verified provider profile with durable provenance and authority",
+      "context work package dispatch can be staged as running before background provider execution",
+      "context work package dispatch scopes implicit selection by requirement id",
+      "context work package dispatch does not fall back to another requirement",
+      "context work package runner can complete a staged running package by explicit id",
+      "context work package dispatch failure is persisted as failed",
+      "context work package dispatch retries a failed package whose dependencies are complete"
+    ],
+    "test/context-work-package-runner-execution-guards.test.js": [
+      "context work package runner blocks local bounded global-goal completion without child authority",
+      "context work package runner blocks local bounded requirement intake completion without child authority",
+      "context work package runner blocks managed project paths before completion",
+      "context work package runner blocks fixed gate before provider routed adapter",
+      "no-code provider execution fails closed when it mutates the worktree",
+      "code-output context work packages require an isolated worker worktree",
+      "code-output context work packages may run in an isolated worker worktree"
+    ]
+  },
+  "after_by_file": {
+    "test/context-work-package-runner.test.js": [
+      "context work package runner executes dispatchable packages and updates workflow state",
+      "context work package runner splits materialized broad frontend view migration before execution",
+      "context work package runner blocks broad unsliced requirement plan steps before child execution",
+      "context work package runner executes retry_agent_worker by recording a closed lifecycle chain",
+      "context work package runner blocks when no packages can dispatch"
+    ],
+    "test/context-work-package-runner-execution-guards.test.js": [
+      "context work package runner blocks local bounded global-goal completion without child authority",
+      "context work package runner blocks local bounded requirement intake completion without child authority",
+      "context work package runner blocks managed project paths before completion",
+      "context work package runner blocks fixed gate before provider routed adapter",
+      "no-code provider execution fails closed when it mutates the worktree",
+      "code-output context work packages require an isolated worker worktree",
+      "code-output context work packages may run in an isolated worker worktree"
+    ],
+    "test/context-work-package-runner-provider-simulation.test.js": [
+      "context work package runner can complete already-satisfied packages before provider dispatch",
+      "context work package runner returns bounded mock simulation without completing packages",
+      "context work package runner blocks explicit non-local identities without local fallback",
+      "context work package runner blocks provider routed mode without supported adapter profile"
+    ],
+    "test/context-work-package-runner-provider-authority.test.js": [
+      "context work package runner only completes provider results with completion authority",
+      "context work package runner completes verified provider profile with durable provenance and authority"
+    ],
+    "test/context-work-package-runner-dispatch-state.test.js": [
+      "context work package dispatch can be staged as running before background provider execution",
+      "context work package dispatch scopes implicit selection by requirement id",
+      "context work package dispatch does not fall back to another requirement",
+      "context work package runner can complete a staged running package by explicit id",
+      "context work package dispatch failure is persisted as failed",
+      "context work package dispatch retries a failed package whose dependencies are complete"
+    ]
+  },
+  "missing_tests": [],
+  "added_tests": [],
+  "duplicate_tests": [],
+  "moved_tests": {
+    "context work package runner can complete already-satisfied packages before provider dispatch": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-provider-simulation.test.js"
+    },
+    "context work package runner returns bounded mock simulation without completing packages": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-provider-simulation.test.js"
+    },
+    "context work package runner blocks explicit non-local identities without local fallback": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-provider-simulation.test.js"
+    },
+    "context work package runner blocks provider routed mode without supported adapter profile": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-provider-simulation.test.js"
+    },
+    "context work package runner only completes provider results with completion authority": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-provider-authority.test.js"
+    },
+    "context work package runner completes verified provider profile with durable provenance and authority": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-provider-authority.test.js"
+    },
+    "context work package dispatch can be staged as running before background provider execution": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-dispatch-state.test.js"
+    },
+    "context work package dispatch scopes implicit selection by requirement id": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-dispatch-state.test.js"
+    },
+    "context work package dispatch does not fall back to another requirement": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-dispatch-state.test.js"
+    },
+    "context work package runner can complete a staged running package by explicit id": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-dispatch-state.test.js"
+    },
+    "context work package dispatch failure is persisted as failed": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-dispatch-state.test.js"
+    },
+    "context work package dispatch retries a failed package whose dependencies are complete": {
+      "from": "test/context-work-package-runner.test.js",
+      "to": "test/context-work-package-runner-dispatch-state.test.js"
+    }
+  },
+  "line_counts": {
+    "test/context-work-package-runner.test.js": 292,
+    "test/context-work-package-runner-execution-guards.test.js": 244,
+    "test/context-work-package-runner-provider-simulation.test.js": 147,
+    "test/context-work-package-runner-provider-authority.test.js": 174,
+    "test/context-work-package-runner-dispatch-state.test.js": 205,
+    "test/helpers/context-work-package-runner.js": 212
+  },
+  "reduction": {
+    "before_root_lines": 801,
+    "after_root_lines": 292,
+    "target_lines": 499,
+    "target_met": true,
+    "removed_root_lines": 509
+  },
+  "status": "pass"
+}

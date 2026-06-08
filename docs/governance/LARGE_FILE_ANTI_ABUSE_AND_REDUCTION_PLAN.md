@@ -790,6 +790,34 @@ Parity and safety requirements:
 | LFA-P31.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260604-frontend-acceptance-p31-deepseek.json`; command evidence | Focused frontend acceptance, projection, continuation, and server gates passed 93/93. DeepSeek sharded code/evidence review returned `DS_CODE_PASS` with no P0/P1 blockers and final synthesis PASS. | pass |
 | LFA-P31.6 | Run final gates | Command evidence | Final gates passed: syntax/import checks, JSON parsing for `.largefile-manifest.json` and P31 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The isolated worktree first required root and `apps/workbench` `npm ci` to restore ignored dependencies for Playwright/Next browser gates; both installs completed with Node 16 engine warnings only, while the actual gates ran through the Node18 wrapper. | pass |
 
+### Phase LFA-P32: Context Work Package Runner Root Test Below-500 Split
+
+Goal: reduce `test/context-work-package-runner.test.js` from 801 lines to below 500 lines in this phase without weakening dispatch execution, frontend plan slicing governance, broad unsliced blocker behavior, retry_agent_worker lifecycle facts, no-dispatch failure, provider simulation semantics, verified provider completion authority, background dispatch staging, requirement-scoped selection, dispatch failure persistence, or failed-package retry behavior. New test shards must stay below 500 lines and should stay below the 300-line near-threshold warning boundary whenever the behavior domain allows it.
+
+Planned extraction:
+
+- Keep `test/context-work-package-runner.test.js` as the root suite for baseline local dispatch/projection lifecycle, broad frontend plan slicing, broad unsliced plan blocking, retry_agent_worker lifecycle recording, and no-dispatch blocker coverage.
+- Move provider preflight/simulation/identity guard tests to `test/context-work-package-runner-provider-simulation.test.js`: already-satisfied preflight, bounded mock simulation without completion, explicit non-local identity blocking, and unsupported provider profile blocking.
+- Move verified provider completion-authority tests to `test/context-work-package-runner-provider-authority.test.js`: adapter result without completed status, missing package authority, authorized provider completion, and verified provider durable provenance.
+- Move background dispatch state tests to `test/context-work-package-runner-dispatch-state.test.js`: staging as running, requirement-scoped implicit selection, no fallback to another requirement, explicit staged completion, dispatch failure persistence, and retry of failed packages whose dependencies are complete.
+- Reuse `test/helpers/context-work-package-runner.js`; only add helper APIs if they reduce real duplication without making the helper cross the 300-line near-threshold boundary. The helper starts P32 at 212 lines, leaving roughly 88 lines before the near-threshold warning.
+
+Compatibility and evidence requirements:
+
+- Generate `docs/examples/context-work-package-runner-test-p32-split-parity.json` with before/after test-name parity across the root plus all context-work-package-runner shards. It must report no missing, added, or duplicate tests, include a `moved_tests` mapping for all tests moved in P32, and cross-reference the prior P16 split evidence so the durable chain remains P16 1242-to-801 followed by P32 801-to-below-500.
+- The large-file manifest must mark `test/context-work-package-runner.test.js` as accepted only after it is below 500 lines, register each new shard with accurate line counts, and keep prior P16 split evidence intact.
+- Focused gate must include: syntax/import checks for the root, helper, and all context-work-package-runner shards; `node tools/run-with-node18.mjs --test test/context-work-package-runner.test.js test/context-work-package-runner-execution-guards.test.js test/context-work-package-runner-provider-simulation.test.js test/context-work-package-runner-provider-authority.test.js test/context-work-package-runner-dispatch-state.test.js`; `npm run check:large-files`.
+- Expanded regression gate before DeepSeek code review must include `test/context-work-package-execution-scope.test.js`, `test/autonomous-continuation.test.js`, `test/autonomous-continuation-reviewer-recovery.test.js`, `test/autonomous-continuation-provider-health.test.js`, and `test/workbench-server-shard-06.test.js` because these consume context package runner completion, dispatch, or scheduler continuation behavior.
+
+| ID | Work item | Deliverable | Acceptance gate | Status |
+| --- | --- | --- | --- | --- |
+| LFA-P32.1 | Select current test target and apply below-500 policy | This document and `.largefile-manifest.json` | Selected `test/context-work-package-runner.test.js` because it is the current LFG-Q01 planned-refactor item at 801 lines with a target gap of 302 lines. This phase may pass only if the root test file falls below 500 lines and no newly extracted shard exceeds 500 lines. | pass |
+| LFA-P32.2 | DeepSeek plan review before extraction | `docs/examples/reviewer-risk-20260608-context-work-package-runner-test-p32-plan-deepseek.json` | DeepSeek returned `DS_PLAN_PASS` with no P0/P1 blockers. Advisory findings on P16-to-P32 parity traceability, helper near-threshold headroom, and the retained frontend slicing test as the fallback extraction candidate were folded into the plan before implementation. | pass |
+| LFA-P32.3 | Extract provider simulation, provider authority, and dispatch-state domains into bounded shards | New context-work-package-runner test shards and root suite | Root file is 292 lines. New shards are below the 300-line near-threshold boundary: provider simulation 147, provider authority 174, and dispatch state 205. The existing P16 execution-guards shard remains 244 lines and the helper remains 212 lines. | pass |
+| LFA-P32.4 | Prove test-name parity and manifest compatibility | `docs/examples/context-work-package-runner-test-p32-split-parity.json`; `.largefile-manifest.json` | Split parity artifact records 24 before / 24 after tests across the root plus all context-work-package-runner shards, with no missing, added, or duplicate names and 12 moved tests. `.largefile-manifest.json` marks the root accepted at 292 lines, registers all new shards, preserves the P16 split evidence chain, and `npm run check:large-files` passed with the queue head moved to `tools/run-governance-audit-skill-trial.mjs`. | pass |
+| LFA-P32.5 | Run focused gates and DeepSeek code review | `docs/examples/reviewer-risk-20260608-context-work-package-runner-test-p32-deepseek.json`; command evidence | Focused and expanded context runner gates passed 63/63. Under the cost-saving mode, DS v4 Flash sharded read-only mechanical landing review returned `DS_FLASH_LANDING_PASS` with no P0/P1 blockers; Codex retains final merge authority through parity, diff, and full gate review. | pass |
+| LFA-P32.6 | Run final gates | Command evidence | Final gates passed: JSON parsing for `.largefile-manifest.json` and P32 artifacts, `git diff --check`, `npm run check:large-files`, `npm test` 1002/1002, and full `npm run check:closeout`. The isolated worktree first required root and `apps/workbench` `npm ci` to restore ignored Playwright/Next dependencies for browser gates; both installs completed with Node 16 engine warnings only, while actual gates ran through the Node18 wrapper. | pass |
+
 ## Acceptance Tracking
 
 | Phase | Status | Latest evidence | Reviewer |
@@ -826,15 +854,17 @@ Parity and safety requirements:
 | LFA-P29 | pass | `src/workflow/autonomous-continuation.js` is now 321 lines after moving shared helpers/constants, reviewer/provider recovery, and work-package aggregation into three bounded modules under 500 lines. Public export parity passed 10/10, `npm run check:large-files` moved the queue head to `test/autonomous-continuation.test.js`, focused gates passed 113/113, DeepSeek sharded code/evidence review returned `DS_CODE_PASS`, `npm test` passed 1002/1002, and full closeout passed after installing ignored isolated-worktree dependencies. | DeepSeek plan PASS; code/evidence PASS |
 | LFA-P30 | pass | Root autonomous-continuation test suite is now 336 lines after extracting 411-line reviewer-recovery and 132-line provider-health shards. Split parity records 27 before / 27 after tests with no missing, added, or duplicate names; expanded focused gate passed 96/96; final gates passed with `npm test` 1002/1002, `npm run check:large-files`, and full closeout. Queue head is now `src/workflow/frontend-acceptance.js`. | DeepSeek plan PASS; code/evidence PASS |
 | LFA-P31 | pass | `src/workflow/frontend-acceptance.js` is now 16 lines after moving core repair/summary helpers, run artifact validation, artifact recording, and durable evidence into four bounded modules under 500 lines. Public export parity passed 12/12, large-file gate passed, focused gates passed 93/93, DeepSeek sharded code/evidence review returned PASS, `npm test` passed 1002/1002, and full closeout passed. Queue head is now `test/context-work-package-runner.test.js`. | DeepSeek plan PASS; code/evidence PASS |
+| LFA-P32 | pass | `test/context-work-package-runner.test.js` is now 292 lines after moving provider simulation, provider completion authority, and dispatch-state coverage into bounded shards under 300 lines. Split parity passed 24/24 with no missing, added, or duplicate tests; focused/expanded gates passed 63/63; DS Flash landing review returned PASS; `npm test` passed 1002/1002; full closeout passed; and large-file gate moved the queue head to `tools/run-governance-audit-skill-trial.mjs`. | DeepSeek plan PASS; DS Flash landing PASS; Codex final audit PASS |
 
 ## Daily Run Shape
 
 Each future scheduled run must:
 
 1. Run the anti-abuse large-file gate before selecting a reduction target.
-2. Reject changes that raise manifest ceilings or total large-file debt.
-3. Select at most one planned-refactor target unless an explicit multi-file extraction risk exists.
-4. State the target file, base line count, required reduction, and terminal threshold before editing.
-5. Treat sub-target progress as `in_progress`, not `pass`.
-6. Run local gates and DeepSeek review before merge.
-7. Clean the worktree only after merge/push and, if runtime-facing, publish verification.
+2. Use DS v4 Pro for the read-only reduction plan and high-risk design review. Pro must state the target file, base line count, required reduction, terminal threshold, behavior inventory, test/manifest/parity evidence, and prohibited shortcuts before implementation starts.
+3. Use DS v4 Flash only for bounded mechanical landing such as whole-block movement, import repair, parity artifact generation, manifest line-count refresh, and status-file updates. Flash must not delete assertions, weaken gates, decide that a risk is closed, or expand scope beyond the approved Pro plan.
+4. Use Codex as the final reviewer and merge arbiter. Codex must inspect the diff, validate parity, verify manifest accounting, run local gates, run required DeepSeek review, and decide whether the work can merge.
+5. Reject changes that raise manifest ceilings or total large-file debt.
+6. Select at most one planned-refactor target unless an explicit multi-file extraction risk exists.
+7. Treat sub-target progress as `in_progress`, not `pass`.
+8. Clean the worktree only after merge/push and, if runtime-facing, publish verification.

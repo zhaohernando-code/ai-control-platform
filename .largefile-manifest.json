@@ -561,27 +561,34 @@
       "rechallenge_due": "2026-07-03"
     },
     "test/context-work-package-runner.test.js": {
-      "lines": 801,
-      "reason": "Context work package runner root tests were reduced from the P16 1242-line baseline by extracting shared workflow-state fixtures plus fixed-development gate, local completion authority, workspace mutation guard, and isolated worker worktree enforcement into bounded files under 300 lines. The root still covers dispatch execution, frontend plan slicing, retry_agent_worker lifecycle, provider identity/completion authority, verified provider profile, background dispatch staging/completion/failure, and failed-package retry, so it remains planned debt instead of accepted. Split parity is recorded in docs/examples/context-work-package-runner-test-p16-split-parity.json with 24 before / 24 after tests and no missing, added, or duplicate names.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 801,
-        "target_lines": 499,
-        "minimum_reduction": 302,
-        "terminal_condition": "test/context-work-package-runner.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
+      "lines": 292,
+      "reason": "Context work package runner root tests reduced below 500 lines in LFA-P32. Provider simulation, provider completion-authority, and background dispatch state coverage moved into bounded shards while root retains baseline local dispatch/projection lifecycle, frontend plan slicing governance, broad unsliced plan blocking, retry_agent_worker lifecycle recording, and no-dispatch blocker coverage. P16 split evidence remains chained through docs/examples/context-work-package-runner-test-p16-split-parity.json, and P32 split parity is recorded in docs/examples/context-work-package-runner-test-p32-split-parity.json with 24 before / 24 after tests and no missing, added, or duplicate names.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08",
       "split_evidence": {
-        "parity_artifact": "docs/examples/context-work-package-runner-test-p16-split-parity.json",
+        "parity_artifact": "docs/examples/context-work-package-runner-test-p32-split-parity.json",
         "before_count": 24,
         "after_count": 24,
-        "before_lines": 1242,
-        "after_lines": 801,
+        "before_lines": 801,
+        "after_lines": 292,
+        "previous_split_evidence": {
+          "phase": "LFA-P16",
+          "parity_artifact": "docs/examples/context-work-package-runner-test-p16-split-parity.json",
+          "before_lines": 1242,
+          "after_lines": 801
+        },
         "moved_domains": {
-          "test/helpers/context-work-package-runner.js": "shared_context_work_package_workflow_state_fixtures",
-          "test/context-work-package-runner-execution-guards.test.js": "fixed_development_gate_local_completion_authority_workspace_mutation_guard_and_isolated_worker_worktree_enforcement"
-        }
+          "test/context-work-package-runner-provider-simulation.test.js": "already_satisfied_preflight_bounded_mock_simulation_non_local_identity_and_unsupported_provider_profile",
+          "test/context-work-package-runner-provider-authority.test.js": "provider_completion_authority_gating_and_verified_provider_provenance",
+          "test/context-work-package-runner-dispatch-state.test.js": "background_dispatch_staging_requirement_scoping_completion_failure_persistence_and_retry"
+        },
+        "retained_domains": [
+          "baseline_local_dispatch_projection_lifecycle",
+          "frontend_plan_slicing_governance",
+          "broad_unsliced_plan_blocking",
+          "retry_agent_worker_lifecycle_recording",
+          "no_dispatchable_package_blocker"
+        ]
       }
     },
     "test/context-work-package-runner-execution-guards.test.js": {
@@ -1134,6 +1141,24 @@
       "reason": "Extracted LFA-P29 requirement-plan expansion, work-package normalization, dedupe/merge, acceptance gates, and repair package generation into a bounded module below 500 lines.",
       "status": "accepted",
       "reviewed_at": "2026-06-04"
+    },
+    "test/context-work-package-runner-provider-simulation.test.js": {
+      "lines": 147,
+      "reason": "Extracted context work package runner provider simulation shard kept below the near-threshold budget while preserving already-satisfied preflight, bounded mock simulation without completion authority, explicit non-local identity blocking, and unsupported provider profile behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
+    },
+    "test/context-work-package-runner-provider-authority.test.js": {
+      "lines": 174,
+      "reason": "Extracted context work package runner provider authority shard kept below the near-threshold budget while preserving adapter completion gating, per-package authority checks, authorized provider completion, and verified provider durable provenance behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
+    },
+    "test/context-work-package-runner-dispatch-state.test.js": {
+      "lines": 205,
+      "reason": "Extracted context work package runner dispatch-state shard kept below the near-threshold budget while preserving background dispatch staging, requirement-scoped selection, no cross-requirement fallback, explicit staged completion, dispatch failure persistence, and failed-package retry behavior.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
     }
   }
 }
