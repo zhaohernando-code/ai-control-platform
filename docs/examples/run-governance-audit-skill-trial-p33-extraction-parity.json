@@ -1,0 +1,102 @@
+{
+  "version": "large-file-extraction-parity.v1",
+  "phase_id": "LFA-P33",
+  "target": "tools/run-governance-audit-skill-trial.mjs",
+  "status": "pass",
+  "planning_review": {
+    "reviewer": "deepseek-v4-pro",
+    "verdict": "DS_PRO_PLAN_PASS",
+    "selected_target": "tools/run-governance-audit-skill-trial.mjs",
+    "mechanical_landing": "deepseek-v4-flash attempted but stopped before modifying files because the external call hit its budget limit; Codex applied the approved mechanical extraction plan without changing moved function bodies."
+  },
+  "line_counts": {
+    "before_lines": 597,
+    "after_lines": 416,
+    "net_reduction": 181,
+    "threshold": 500,
+    "required_minimum_reduction": 150
+  },
+  "moved_functions": [
+    {
+      "name": "truncate",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-evidence.js"
+    },
+    {
+      "name": "runEvidenceCommand",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-evidence.js"
+    },
+    {
+      "name": "collectPreflightEvidence",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-evidence.js"
+    },
+    {
+      "name": "dimensionSkillName",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-artifact-expansion.js"
+    },
+    {
+      "name": "defaultRepairSchedule",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-artifact-expansion.js"
+    },
+    {
+      "name": "normalizeDimensionId",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-artifact-expansion.js"
+    },
+    {
+      "name": "normalizeEvidencePlan",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-artifact-expansion.js"
+    },
+    {
+      "name": "normalizeDecisionPackage",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-artifact-expansion.js"
+    },
+    {
+      "name": "expandCompactAuditVerdict",
+      "from": "tools/run-governance-audit-skill-trial.mjs",
+      "to": "src/workflow/governance-audit-artifact-expansion.js"
+    }
+  ],
+  "retained_in_root": [
+    "argument parsing",
+    "prompt construction",
+    "custom runner wiring",
+    "workbench artifact recording",
+    "JSON/text verdict extraction",
+    "artifact normalization wrapper",
+    "CLI execution and exit policy"
+  ],
+  "extracted_modules": [
+    {
+      "file": "src/workflow/governance-audit-evidence.js",
+      "lines": 74,
+      "domain": "runner preflight evidence collection and command output truncation"
+    },
+    {
+      "file": "src/workflow/governance-audit-artifact-expansion.js",
+      "lines": 130,
+      "domain": "compact governance audit verdict expansion, finding normalization, and model evidence id bounding"
+    }
+  ],
+  "post_review_closeout_fix": {
+    "issue": "A real closeout governance audit compact verdict referenced an unknown evidence id returned by the model, causing validation and Workbench recording to fail closed.",
+    "fix": "Compact finding evidence ids are now filtered to the runner-collected evidence id set, with a governance-skill-invocation fallback when running through a custom runner without preflight evidence.",
+    "test": "test/audit-skill-trial-run-prose.test.js covers unknown compact finding evidence ids."
+  },
+  "prohibited_shortcuts_respected": true,
+  "verification_commands": [
+    "node --check tools/run-governance-audit-skill-trial.mjs",
+    "node --check src/workflow/governance-audit-evidence.js",
+    "node --check src/workflow/governance-audit-artifact-expansion.js",
+    "node --test test/audit-skill-trial-run.test.js test/audit-skill-trial-run-prose.test.js",
+    "npm run check:large-files",
+    "npm run check:closeout"
+  ],
+  "verification_status": "pass"
+}

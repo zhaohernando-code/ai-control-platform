@@ -57,3 +57,26 @@ test("governance audit skill runner does not infer pass from non-verdict prose",
   assert.equal(result.status, 1);
   assert.match(result.stderr, /did not contain a parseable JSON object/);
 });
+
+test("governance audit skill runner filters compact findings to known evidence ids", () => {
+  const { result, outputPath } = runWithProseResult(JSON.stringify({
+    skill_used: true,
+    final_verdict: "带条件通过",
+    findings: [
+      {
+        id: "unknown-evidence-from-model",
+        dimension: "quality_gate",
+        type: "可选迭代",
+        severity: "低",
+        disposition: "延后",
+        summary: "模型返回了不存在的证据 id",
+        evidence_ids: ["audit-skill-trial-run.test.js"],
+        user_visible: false
+      }
+    ]
+  }));
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const output = JSON.parse(readFileSync(outputPath, "utf8"));
+  assert.deepEqual(output.findings[0].evidence_ids, ["governance-skill-invocation"]);
+});
