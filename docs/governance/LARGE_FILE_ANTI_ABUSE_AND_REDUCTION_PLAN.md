@@ -858,6 +858,8 @@ Compatibility and evidence requirements:
 
 ## Daily Run Shape
 
+This plan uses the shared operating model in `docs/governance/AI_GOVERNANCE_ROLE_MODEL.md`. Full closeout readiness, including ignored dependency bootstrap for fresh isolated worktrees, is governed by `docs/governance/CLOSEOUT_DEPENDENCY_PREFLIGHT_POLICY.md`.
+
 Each future scheduled run must:
 
 1. Run the anti-abuse large-file gate before selecting a reduction target.

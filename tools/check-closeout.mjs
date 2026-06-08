@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -16,6 +17,28 @@ const WORKBENCH_HOST = process.env.AI_CONTROL_WORKBENCH_HOST || "127.0.0.1";
 const MAINLINE_BRANCH = process.env.AI_CONTROL_MAINLINE_BRANCH || "main";
 const REQUIRE_MAINLINE_CLOSEOUT = process.env.AI_CONTROL_CLOSEOUT_REQUIRE_MAINLINE === "1";
 const CLOSEOUT_CHILD_TIMEOUT_MS = Number.parseInt(process.env.AI_CONTROL_CLOSEOUT_CHILD_TIMEOUT_MS || "", 10) || 15 * 60 * 1000;
+const CLOSEOUT_DEPENDENCY_INSTALL_TIMEOUT_MS =
+  Number.parseInt(process.env.AI_CONTROL_CLOSEOUT_DEPENDENCY_INSTALL_TIMEOUT_MS || "", 10) || 2 * 60 * 1000;
+const SKIP_DEPENDENCY_PREFLIGHT_ENV = "AI_CONTROL_CLOSEOUT_SKIP_DEPENDENCY_PREFLIGHT";
+const FORCE_DEPENDENCY_INSTALL_ENV = "AI_CONTROL_CLOSEOUT_FORCE_DEPENDENCY_INSTALL";
+const CLOSEOUT_DEPENDENCIES = [
+  {
+    id: "root-playwright",
+    label: "root Playwright",
+    cwd: ".",
+    packageName: "playwright",
+    lockfile: "package-lock.json",
+    installCommand: ["npm", "ci"]
+  },
+  {
+    id: "workbench-next",
+    label: "Workbench Next.js",
+    cwd: "apps/workbench",
+    packageName: "next",
+    lockfile: "apps/workbench/package-lock.json",
+    installCommand: ["npm", "ci"]
+  }
+];
 
 function withoutLiveRouteEvidenceEnv(env = process.env) {
   const nextEnv = { ...env };
@@ -39,6 +62,144 @@ function run(label, args, options = {}) {
   }
 }
 
+function resolvePackageFrom(packageName, cwd) {
+  try {
+    createRequire(join(cwd, "package.json")).resolve(packageName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function dependencyStatus(dependency, projectRoot, resolver) {
+  const cwd = join(projectRoot, dependency.cwd);
+  return {
+    ...dependency,
+    absoluteCwd: cwd,
+    lockfilePath: join(projectRoot, dependency.lockfile),
+    resolved: resolver(dependency.packageName, cwd)
+  };
+}
+
+export function ensureCloseoutDependencyReadiness(options = {}) {
+  const projectRoot = options.projectRoot || process.cwd();
+  const env = options.env || process.env;
+  const logger = options.logger || console;
+  const exists = options.exists || existsSync;
+  const spawn = options.spawn || spawnSync;
+  const resolver = options.resolver || resolvePackageFrom;
+  const installTimeoutMs = options.installTimeoutMs || CLOSEOUT_DEPENDENCY_INSTALL_TIMEOUT_MS;
+  const skipInstall = env[SKIP_DEPENDENCY_PREFLIGHT_ENV] === "1";
+  const forceInstall = env[FORCE_DEPENDENCY_INSTALL_ENV] === "1";
+  const initialDependencies = CLOSEOUT_DEPENDENCIES.map((dependency) => dependencyStatus(dependency, projectRoot, resolver));
+  const dependenciesToInstall = initialDependencies.filter((dependency) => forceInstall || !dependency.resolved);
+  const installs = [];
+
+  logger.log("\n[closeout] dependency readiness");
+
+  if (dependenciesToInstall.length === 0) {
+    const result = {
+      status: "pass",
+      action: "skipped",
+      reason: "required closeout dependencies already resolve",
+      dependencies: initialDependencies.map(({ id, label, resolved }) => ({ id, label, resolved }))
+    };
+    logger.log(JSON.stringify(result, null, 2));
+    return result;
+  }
+
+  if (skipInstall) {
+    const result = {
+      status: "fail",
+      exitCode: 4,
+      reason: "dependency preflight skipped and required closeout dependencies are missing",
+      missing_dependencies: dependenciesToInstall
+        .filter((dependency) => !dependency.resolved)
+        .map(({ id, label, cwd, packageName }) => ({ id, label, cwd, packageName }))
+    };
+    logger.error(JSON.stringify(result, null, 2));
+    return result;
+  }
+
+  for (const dependency of dependenciesToInstall) {
+    if (!exists(dependency.lockfilePath)) {
+      const result = {
+        status: "fail",
+        exitCode: 2,
+        reason: "package-lock.json missing; cannot perform reproducible closeout dependency install",
+        dependency: {
+          id: dependency.id,
+          label: dependency.label,
+          cwd: dependency.cwd,
+          lockfile: dependency.lockfile
+        },
+        installs
+      };
+      logger.error(JSON.stringify(result, null, 2));
+      return result;
+    }
+
+    logger.log(JSON.stringify({
+      status: "installing",
+      dependency: dependency.id,
+      cwd: dependency.cwd,
+      command: dependency.installCommand.join(" ")
+    }, null, 2));
+    const installResult = spawn(dependency.installCommand[0], dependency.installCommand.slice(1), {
+      cwd: dependency.absoluteCwd,
+      stdio: "inherit",
+      env,
+      timeout: installTimeoutMs
+    });
+    installs.push({
+      dependency: dependency.id,
+      cwd: dependency.cwd,
+      status: installResult.status ?? null,
+      signal: installResult.signal ?? null,
+      error: installResult.error?.message || null
+    });
+    if (installResult.error || installResult.status !== 0) {
+      const result = {
+        status: "fail",
+        exitCode: 3,
+        reason: "closeout dependency install failed",
+        dependency: {
+          id: dependency.id,
+          label: dependency.label,
+          cwd: dependency.cwd,
+          command: dependency.installCommand.join(" ")
+        },
+        install: installs.at(-1)
+      };
+      logger.error(JSON.stringify(result, null, 2));
+      return result;
+    }
+  }
+
+  const finalDependencies = CLOSEOUT_DEPENDENCIES.map((dependency) => dependencyStatus(dependency, projectRoot, resolver));
+  const unresolvedDependencies = finalDependencies.filter((dependency) => !dependency.resolved);
+  if (unresolvedDependencies.length > 0) {
+    const result = {
+      status: "fail",
+      exitCode: 5,
+      reason: "closeout dependencies still do not resolve after install",
+      unresolved_dependencies: unresolvedDependencies.map(({ id, label, cwd, packageName }) => ({ id, label, cwd, packageName })),
+      installs
+    };
+    logger.error(JSON.stringify(result, null, 2));
+    return result;
+  }
+
+  const result = {
+    status: "pass",
+    action: "installed",
+    installs,
+    dependencies: finalDependencies.map(({ id, label, resolved }) => ({ id, label, resolved }))
+  };
+  logger.log(JSON.stringify(result, null, 2));
+  return result;
+}
+
 function gitOutput(args) {
   const result = spawnSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   if (result.error || result.status !== 0) return "";
@@ -51,6 +212,11 @@ function shouldRunMainlineReleaseReadiness() {
 }
 
 export function runCloseoutChecks() {
+  const dependencyReadiness = ensureCloseoutDependencyReadiness();
+  if (dependencyReadiness.status !== "pass") {
+    process.exit(dependencyReadiness.exitCode || 1);
+  }
+
   const testFiles = readdirSync("test")
     .filter((file) => file.endsWith(".test.js"))
     .sort()
