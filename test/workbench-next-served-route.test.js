@@ -8,7 +8,11 @@ function read(path) {
 
 test("Next served-route gate is wired as a first-class Workbench check", () => {
   const pkg = JSON.parse(read("package.json"));
-  const gate = read("tools/check-workbench-next-served-route.mjs");
+  const gate = [
+    read("tools/check-workbench-next-served-route.mjs"),
+    read("tools/workbench-next-served-route-runtime.mjs"),
+    read("tools/workbench-next-served-route-browser-audit.mjs")
+  ].join("\n");
 
   assert.equal(
     pkg.scripts["check:workbench:next-served-route"],
