@@ -81,7 +81,12 @@
     {
       "gate": "node --test test/frontend-acceptance.test.js",
       "file": "test/frontend-acceptance.test.js",
-      "legacy_static_requirement": "none; fixture-level artifact tests use mounted Next route paths and mounted favicon evidence"
+      "legacy_static_requirement": "none; fixture-level artifact tests use mounted Next route paths and durable release evidence"
+    },
+    {
+      "gate": "node --test test/frontend-acceptance-resource-readiness.test.js",
+      "file": "test/frontend-acceptance-resource-readiness.test.js",
+      "legacy_static_requirement": "none; resource-readiness artifact tests use mounted Next route paths and mounted favicon evidence"
     },
     {
       "gate": "scheduler dispatch writeback browser verification",

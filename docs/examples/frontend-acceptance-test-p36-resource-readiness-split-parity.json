@@ -1,0 +1,77 @@
+{
+  "version": "large-file-extraction-parity.v1",
+  "phase_id": "LFA-P36",
+  "target": "test/frontend-acceptance.test.js",
+  "status": "pending_review_and_closeout",
+  "planning_review": {
+    "reviewer": "codex-local-structure-scan",
+    "verdict": "selected_final_planned_refactor_item",
+    "notes": "The large-file queue had only test/frontend-acceptance.test.js remaining. Codex selected the resource-readiness cluster because the tests are independent artifact validation cases with narrow shared fixture imports and no implementation changes."
+  },
+  "line_counts": {
+    "before_lines": 577,
+    "after_lines": 406,
+    "net_reduction": 171,
+    "threshold": 500,
+    "reduction_target": 427,
+    "required_minimum_reduction": 150
+  },
+  "split_summary": {
+    "before_count": 36,
+    "after_count": 36,
+    "missing_tests": [],
+    "added_tests": [],
+    "duplicate_tests": [],
+    "moved_tests": [
+      "frontend acceptance artifact fails closed on blocking findings",
+      "frontend acceptance artifact requires desktop and mobile viewport evidence",
+      "frontend acceptance requires mounted route and explicit workbench favicon readiness",
+      "frontend acceptance blocks root favicon fallback links",
+      "frontend acceptance accepts mounted Next workbench favicon links",
+      "frontend acceptance requires mounted SVG favicon MIME evidence"
+    ]
+  },
+  "extracted_modules": [
+    {
+      "file": "test/frontend-acceptance-resource-readiness.test.js",
+      "lines": 178,
+      "domain": "artifact false-pass validation, required viewport evidence, mounted route and favicon readiness, root favicon fallback rejection, mounted Next favicon acceptance, and mounted SVG MIME drift"
+    }
+  ],
+  "retained_in_root": [
+    "durable workflow and projection summary",
+    "release durable evidence validation",
+    "CLI latest projection defaults",
+    "latest projection evidence",
+    "browser console error fail-closed behavior",
+    "legacy shell rejection",
+    "navigation semantic-change guard",
+    "repair work package scheduling",
+    "frontend acceptance closeout wiring",
+    "public live-route gate wiring"
+  ],
+  "post_extraction_review": {
+    "reviewer": "deepseek-v4-flash",
+    "verdict": "DS_P36_REVIEW_PASS",
+    "notes": "Read-only bounded review found no duplicated or missing test names, no manifest completion mislabel, and no assertion or test-coverage weakening in the extracted resource-readiness shard.",
+    "delta_review": {
+      "verdict": "DS_P36_DELTA_REVIEW_PASS",
+      "notes": "Read-only delta review found the legacy-static inventory update to be a reasonable follow-up to the split, with no hidden legacy static coverage gap."
+    }
+  },
+  "verification_commands": [
+    "node --check test/frontend-acceptance.test.js",
+    "node --check test/frontend-acceptance-resource-readiness.test.js",
+    "node --test test/frontend-acceptance.test.js test/frontend-acceptance-resource-readiness.test.js",
+    "npm run check:large-files",
+    "npm test",
+    "npm run check:closeout"
+  ],
+  "verification_status": "full_closeout_passed",
+  "verification_notes": [
+    "Initial target checks passed for node --check, focused frontend acceptance tests, and npm run check:large-files.",
+    "The first final npm test rerun passed; the first closeout rerun failed one workbench-server-shard-03 scheduler-dispatch assertion with 400 instead of 201.",
+    "The failed shard was rerun directly and passed.",
+    "A second npm run check:closeout passed, so the first closeout failure was treated as transient and not as a P36 test split regression."
+  ]
+}

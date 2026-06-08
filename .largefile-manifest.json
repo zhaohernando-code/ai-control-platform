@@ -604,29 +604,25 @@
       "reviewed_at": "2026-06-03"
     },
     "test/frontend-acceptance.test.js": {
-      "lines": 577,
-      "reason": "Frontend acceptance root tests were reduced from the P10 1670-line baseline by extracting shared artifact/viewport fixtures plus copy/content, diagnostic content, project-management semantics, and command-architecture false-pass domains into bounded helpers and shards under 300 lines. The root still covers artifact schema, viewport/resource readiness, durable release evidence, CLI default latest-projection mode, browser console errors, legacy shell rejection, navigation semantic-change guards, repair work package scheduling, closeout wiring, and public live-route gate wiring, so it remains planned debt rather than accepted. Split parity is recorded in docs/examples/frontend-acceptance-test-p10-split-parity.json with 36 before / 36 after tests and no missing, added, or duplicate names.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 577,
-        "target_lines": 427,
-        "minimum_reduction": 150,
-        "terminal_condition": "test/frontend-acceptance.test.js must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
-      },
+      "lines": 406,
+      "reason": "Frontend acceptance root tests were reduced below 500 lines in LFA-P36 by moving the resource-readiness cluster into a bounded shard while preserving the P10 split coverage. The root now retains durable release evidence, CLI latest-projection defaults, browser error and legacy shell guards, navigation semantics, repair package scheduling, closeout wiring, and public live-route gate wiring.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08",
       "split_evidence": {
-        "parity_artifact": "docs/examples/frontend-acceptance-test-p10-split-parity.json",
+        "parity_artifact": "docs/examples/frontend-acceptance-test-p36-resource-readiness-split-parity.json",
+        "supersedes": [
+          "docs/examples/frontend-acceptance-test-p10-split-parity.json"
+        ],
         "before_count": 36,
         "after_count": 36,
         "moved_domains": {
+          "test/frontend-acceptance-resource-readiness.test.js": "artifact_false_pass_viewport_mounted_route_favicon_and_svg_mime_readiness",
           "test/frontend-acceptance-copy-content.test.js": "copy_content_and_operator_readability",
           "test/frontend-acceptance-content-diagnostics.test.js": "content_completion_diagnostics_and_placeholder_false_passes",
           "test/frontend-acceptance-project-semantics.test.js": "project_management_semantics_false_passes",
           "test/frontend-acceptance-command-architecture.test.js": "semantic_command_controls_and_architecture_false_passes"
         },
         "retained_root_domains": [
-          "artifact_schema_and_viewport_resource_readiness",
           "durable_release_evidence_and_projection_summary",
           "cli_default_latest_projection_mode",
           "browser_console_errors_and_legacy_shell_guard",
@@ -636,6 +632,12 @@
         ],
         "helper_scope_note": "Shared P10 helpers contain only artifact, viewport, and workflow-state fixtures and remain below the 300-line near-threshold warning boundary."
       }
+    },
+    "test/frontend-acceptance-resource-readiness.test.js": {
+      "lines": 178,
+      "reason": "Extracted frontend acceptance resource-readiness shard kept below the near-threshold budget while preserving artifact false-pass validation, required viewport evidence, mounted route and favicon readiness, root favicon fallback rejection, mounted Next favicon acceptance, and mounted SVG MIME drift checks.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
     },
     "test/headless-cli-orchestrator.test.js": {
       "lines": 209,
