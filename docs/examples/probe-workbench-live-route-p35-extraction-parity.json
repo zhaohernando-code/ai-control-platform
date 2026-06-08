@@ -1,0 +1,58 @@
+{
+  "version": "large-file-extraction-parity.v1",
+  "phase_id": "LFA-P35",
+  "target": "tools/probe-workbench-live-route.mjs",
+  "status": "pending_review_and_closeout",
+  "planning_review": {
+    "reviewer": "codex-local-structure-scan",
+    "verdict": "selected_lowest_remaining_runtime_risk",
+    "notes": "The remaining queue had the live-route probe and frontend acceptance root test. Codex selected the live-route probe because its URL/auth and HTTP/HTML helper boundaries were explicit, while the frontend acceptance file is a test aggregate with higher coverage-regression risk."
+  },
+  "line_counts": {
+    "before_lines": 578,
+    "after_lines": 310,
+    "net_reduction": 268,
+    "threshold": 500,
+    "required_minimum_reduction": 150
+  },
+  "extracted_modules": [
+    {
+      "file": "tools/workbench-live-route-url-auth.mjs",
+      "lines": 135,
+      "domain": "header registration, shared edge auth token resolution, route classification, project mount URL construction, and mounted-route checks"
+    },
+    {
+      "file": "tools/workbench-live-route-http.mjs",
+      "lines": 154,
+      "domain": "HTTP/HTTPS requests, bounded redirect following, auth redirect detection, Workbench HTML marker detection, JSON detection, and mounted asset extraction"
+    }
+  ],
+  "retained_in_root": [
+    "CLI argument parsing",
+    "project status loading",
+    "probe orchestration",
+    "artifact construction",
+    "live-route evidence validation",
+    "artifact writeout",
+    "CLI summary and exit policy"
+  ],
+  "post_extraction_review": {
+    "reviewer": "deepseek-v4-flash",
+    "verdict": "DS_P35_REVIEW_PASS",
+    "notes": "Read-only bounded review found no auth, redirect, route-validation, import-direction, or test-weakening regression in the extraction."
+  },
+  "verification_commands": [
+    "node --check tools/probe-workbench-live-route.mjs",
+    "node --check tools/workbench-live-route-url-auth.mjs",
+    "node --check tools/workbench-live-route-http.mjs",
+    "node --test test/live-route-probe.test.js test/live-route-acceptance.test.js",
+    "npm run check:large-files",
+    "npm run check:closeout"
+  ],
+  "verification_status": "full_closeout_passed",
+  "verification_notes": [
+    "The first full npm test run failed one workbench-server-shard-06 scheduler-resume assertion, while large-file, diff, and closeout gates passed.",
+    "The failed shard was rerun directly and passed.",
+    "A second full npm test run passed 1013/1013, so the initial failure was treated as transient and not as a P35 extraction regression."
+  ]
+}

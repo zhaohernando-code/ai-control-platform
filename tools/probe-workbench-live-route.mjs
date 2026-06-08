@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
 import { dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -11,13 +8,26 @@ import {
   validateWorkbenchLiveRouteEvidenceArtifact,
   WORKBENCH_LIVE_ROUTE_EVIDENCE_VERSION
 } from "../src/workflow/live-route-acceptance.js";
+import {
+  applyDefaultEdgeAgentAuth,
+  addHeader,
+  isLocalRoute,
+  isProjectMount,
+  mountedUrl,
+  noteHeader,
+  resolveRouteUrl,
+  routeAllowed
+} from "./workbench-live-route-url-auth.mjs";
+import {
+  assetPathMounted,
+  extractReferencedAssetUrls,
+  looksLikeWorkbenchHtml,
+  parseJsonObject,
+  safeRequest
+} from "./workbench-live-route-http.mjs";
 
 const DEFAULT_PROJECT_STATUS_PATH = "PROJECT_STATUS.json";
 const DEFAULT_OUTPUT_PATH = "tmp/workbench-live-route-evidence.json";
-const DEFAULT_EDGE_AGENT_TOKEN_HELPER = "/Users/hernando_zhao/codex/scripts/edge-agent-auth-token.sh";
-const EDGE_AGENT_AUTH_HEADER = "X-HZ-Dev-Auth-Bypass-Token";
-const MAX_REDIRECTS = 5;
-const MAX_BODY_BYTES = 2 * 1024 * 1024;
 
 function usage() {
   return [
@@ -76,289 +86,11 @@ function requiredValue(argv, index, arg) {
   return value;
 }
 
-function noteHeader(options, name) {
-  if (!options.headerNames.includes(name)) options.headerNames.push(name);
-}
-
-function addHeader(options, rawHeader) {
-  const separator = rawHeader.indexOf(":");
-  if (separator <= 0) throw new Error("invalid --header format; expected 'Name: value'");
-  const name = rawHeader.slice(0, separator).trim();
-  const value = rawHeader.slice(separator + 1).trim();
-  if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/u.test(name) || !value) {
-    throw new Error("invalid --header format; expected non-empty HTTP header name and value");
-  }
-  options.headers[name] = value;
-  noteHeader(options, name);
-}
-
-function hasExplicitAuthHeader(headers = {}) {
-  return Object.keys(headers).some((name) => {
-    const normalized = name.toLowerCase();
-    return normalized === "cookie" || normalized === "authorization" || normalized === EDGE_AGENT_AUTH_HEADER.toLowerCase();
-  });
-}
-
 function readJson(path, label) {
   try {
     return JSON.parse(readFileSync(path, "utf8"));
   } catch (error) {
     throw new Error(`failed to read ${label} JSON at ${path}: ${error.message}`);
-  }
-}
-
-function ensureTrailingSlash(value) {
-  const url = new URL(value);
-  if (!url.pathname.endsWith("/") && !url.pathname.split("/").at(-1)?.includes(".")) {
-    url.pathname = `${url.pathname}/`;
-  }
-  return url.toString();
-}
-
-function resolveRouteUrl(projectStatus, explicitUrl) {
-  if (explicitUrl) return ensureTrailingSlash(explicitUrl);
-  const expected = extractExpectedPublicRouteUrls(projectStatus);
-  if (expected.length === 0) {
-    throw new Error("missing --url and no expected public workbench route could be inferred from PROJECT_STATUS");
-  }
-  return expected[0];
-}
-
-function isLocalHostname(hostname) {
-  const normalized = String(hostname || "").toLowerCase();
-  return normalized === "localhost" || normalized === "0.0.0.0" || normalized === "::1" || normalized.startsWith("127.");
-}
-
-function isLocalRoute(value) {
-  try {
-    const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) && isLocalHostname(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function isPublicHttpsRoute(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && !isLocalHostname(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function isSharedEdgeRoute(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" && ["hernando-zhao.cn", "www.hernando-zhao.cn"].includes(url.hostname);
-  } catch {
-    return false;
-  }
-}
-
-function resolveEdgeAgentAuthToken(routeUrl, env = process.env) {
-  if (!isSharedEdgeRoute(routeUrl) || env.WORKBENCH_LIVE_ROUTE_AUTO_EDGE_AUTH === "0") {
-    return "";
-  }
-
-  const envToken = String(env.HZ_DEV_AUTH_BYPASS_TOKEN || "").trim();
-  if (envToken) return envToken;
-
-  const helperPath = String(env.EDGE_AGENT_AUTH_TOKEN_HELPER || DEFAULT_EDGE_AGENT_TOKEN_HELPER).trim();
-  if (!helperPath) return "";
-
-  try {
-    return execFileSync(helperPath, [], {
-      encoding: "utf8",
-      timeout: 15000,
-      stdio: ["ignore", "pipe", "pipe"]
-    }).trim();
-  } catch {
-    return "";
-  }
-}
-
-function applyDefaultEdgeAgentAuth(options, routeUrl) {
-  if (hasExplicitAuthHeader(options.headers)) return;
-  const token = resolveEdgeAgentAuthToken(routeUrl, options.env || process.env);
-  if (!token) return;
-  options.headers[EDGE_AGENT_AUTH_HEADER] = token;
-  noteHeader(options, EDGE_AGENT_AUTH_HEADER);
-}
-
-function routeAllowed(value, allowInsecureLocalTest) {
-  return isPublicHttpsRoute(value) || (allowInsecureLocalTest && isLocalRoute(value));
-}
-
-function projectMountPrefix(routeUrl, projectId) {
-  const url = new URL(routeUrl);
-  const marker = `/projects/${projectId}/`;
-  const index = url.pathname.indexOf(marker);
-  return index >= 0 ? url.pathname.slice(0, index + marker.length) : marker;
-}
-
-function mountedUrl(routeUrl, projectId, suffix) {
-  const url = new URL(routeUrl);
-  url.pathname = `${projectMountPrefix(routeUrl, projectId)}${suffix}`;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
-}
-
-function isProjectMount(value, projectId) {
-  try {
-    const url = new URL(value);
-    const mountPath = `/projects/${projectId}`;
-    return url.pathname === mountPath || url.pathname.startsWith(`${mountPath}/`);
-  } catch {
-    return false;
-  }
-}
-
-function looksLikeWorkbenchHtml(body) {
-  const text = String(body || "");
-  return (
-    /<title>\s*AI Control Platform Workbench\s*<\/title>/iu.test(text) ||
-    /data-view=["']desktop["']/iu.test(text) ||
-    /data-bind=["']headline["']/iu.test(text) ||
-    (/Control Platform/iu.test(text) && /workbench/iu.test(text))
-  );
-}
-
-function redirectLocation(response) {
-  const location = response.headers.location;
-  return Array.isArray(location) ? location[0] : location || "";
-}
-
-function setCookieValues(headers) {
-  const value = headers["set-cookie"];
-  if (Array.isArray(value)) return value;
-  return value ? [value] : [];
-}
-
-function detectAuthRedirect(response, fromUrl) {
-  const status = Number(response.status || 0);
-  const location = redirectLocation(response);
-  if (status === 401 || status === 403) return false;
-  if (status < 300 || status >= 400 || !location) return false;
-  const resolved = new URL(location, fromUrl);
-  const path = `${resolved.pathname}?${resolved.searchParams.toString()}`.toLowerCase();
-  const clearsSession = setCookieValues(response.headers)
-    .some((cookie) => /hz_auth_session=;/iu.test(cookie) || /hz_auth_session=\s*(?:;|$)/iu.test(cookie));
-  return (
-    resolved.searchParams.has("next") ||
-    /(?:^|\/)(login|auth|signin|oauth)(?:\/|$)/iu.test(resolved.pathname) ||
-    path.includes("next=%2fprojects%2f") ||
-    clearsSession
-  );
-}
-
-async function requestText(url, headers, options = {}, redirects = []) {
-  const parsed = new URL(url);
-  const transport = parsed.protocol === "https:" ? httpsRequest : httpRequest;
-  const response = await new Promise((resolve, reject) => {
-    const requestOptions = {
-      method: "GET",
-      headers,
-      timeout: 15000
-    };
-    if (parsed.protocol === "https:" && options.allowInsecureLocalTest && isLocalHostname(parsed.hostname)) {
-      requestOptions.rejectUnauthorized = false;
-    }
-    const req = transport(parsed, requestOptions, (res) => {
-      const chunks = [];
-      let total = 0;
-      res.on("data", (chunk) => {
-        total += chunk.length;
-        if (total <= MAX_BODY_BYTES) chunks.push(chunk);
-      });
-      res.on("end", () => {
-        resolve({
-          url,
-          status: res.statusCode || 0,
-          headers: res.headers,
-          body: Buffer.concat(chunks).toString("utf8")
-        });
-      });
-    });
-    req.on("timeout", () => {
-      req.destroy(new Error("request timed out"));
-    });
-    req.on("error", reject);
-    req.end();
-  });
-
-  const authRedirectDetected = detectAuthRedirect(response, url);
-  const location = redirectLocation(response);
-  const status = Number(response.status || 0);
-  if (status >= 300 && status < 400 && location && redirects.length < MAX_REDIRECTS) {
-    const nextUrl = new URL(location, url).toString();
-    return requestText(nextUrl, headers, options, [
-      ...redirects,
-      {
-        from_url: url,
-        to_url: nextUrl,
-        http_status: status,
-        auth_redirect_detected: authRedirectDetected
-      }
-    ]);
-  }
-
-  return {
-    ...response,
-    finalUrl: url,
-    redirects,
-    authRedirectDetected: authRedirectDetected || redirects.some((redirect) => redirect.auth_redirect_detected)
-  };
-}
-
-function safeRequest(label, url, headers, options) {
-  const requestFn = options.requestText || requestText;
-  return requestFn(url, headers, options).catch((error) => ({
-    label,
-    url,
-    finalUrl: url,
-    status: 0,
-    headers: {},
-    body: "",
-    redirects: [],
-    authRedirectDetected: false,
-    error: error.message
-  }));
-}
-
-function parseJsonObject(body) {
-  try {
-    const value = JSON.parse(body);
-    return Boolean(value && typeof value === "object" && !Array.isArray(value));
-  } catch {
-    return false;
-  }
-}
-
-function extractReferencedAssetUrls(html, baseUrl) {
-  const body = String(html || "");
-  const refs = [];
-  const pattern = /\b(?:src|href)=["']([^"']*(?:\/_next\/static\/|\/favicon\.svg)[^"']*)["']/giu;
-  for (const match of body.matchAll(pattern)) {
-    try {
-      refs.push(new URL(match[1], baseUrl).toString());
-    } catch {
-      // Ignore malformed HTML refs; the rendered-route checks will still fail if core markers are missing.
-    }
-  }
-  return [...new Set(refs)];
-}
-
-function assetPathMounted(url, projectId) {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.pathname.startsWith(`/projects/${projectId}/_next/static/`) ||
-      parsed.pathname === `/projects/${projectId}/favicon.svg`
-    );
-  } catch {
-    return false;
   }
 }
 
@@ -378,7 +110,7 @@ export async function probeWorkbenchLiveRoute(inputOptions = {}) {
   const projectStatus = readJson(options.projectStatusPath, "project status");
   const projectId = String(projectStatus.project || "ai-control-platform").trim() || "ai-control-platform";
   const expectedRouteUrls = extractExpectedPublicRouteUrls(projectStatus);
-  const routeUrl = resolveRouteUrl(projectStatus, options.url);
+  const routeUrl = resolveRouteUrl(projectStatus, options.url, expectedRouteUrls);
   applyDefaultEdgeAgentAuth(options, routeUrl);
   const shellUrl = mountedUrl(routeUrl, projectId, "flow");
   const apiUrl = mountedUrl(routeUrl, projectId, "api/workbench/projection");
