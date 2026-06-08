@@ -1,0 +1,53 @@
+{
+  "version": "large-file-extraction-parity.v1",
+  "phase_id": "LFA-P34",
+  "target": "tools/check-workbench-next-served-route.mjs",
+  "status": "pass",
+  "planning_review": {
+    "reviewer": "deepseek-v4-pro",
+    "verdict": "inconclusive_timeout",
+    "notes": "Broad and single-target DS Pro planning attempts were bounded with log-only output but hit no-progress timeout. Codex selected the lowest-risk remaining target from local structure and applied a mechanical extraction fallback."
+  },
+  "post_extraction_review": {
+    "reviewer": "deepseek-v4-flash",
+    "verdict": "DS_P34_REVIEW_PASS",
+    "notes": "No blocking import-direction, behavior-semantic, or test-weakening issues found."
+  },
+  "line_counts": {
+    "before_lines": 533,
+    "after_lines": 216,
+    "net_reduction": 317,
+    "threshold": 500,
+    "required_minimum_reduction": 150
+  },
+  "extracted_modules": [
+    {
+      "file": "tools/workbench-next-served-route-runtime.mjs",
+      "lines": 154,
+      "domain": "Next runtime startup, mounted route readiness polling, Workbench API test server lifecycle, and runtime cleanup"
+    },
+    {
+      "file": "tools/workbench-next-served-route-browser-audit.mjs",
+      "lines": 185,
+      "domain": "Playwright viewport, navigation, route-set, API rewrite, favicon, runtime error, and legacy-shell audits"
+    }
+  ],
+  "retained_in_root": [
+    "public export compatibility for WORKBENCH_MOUNT_PREFIX and withRuntime",
+    "CLI argument parsing",
+    "artifact finding generation",
+    "artifact writeout",
+    "runNextServedRouteCheck orchestration",
+    "CLI exit policy"
+  ],
+  "verification_commands": [
+    "node --check tools/check-workbench-next-served-route.mjs",
+    "node --check tools/workbench-next-served-route-runtime.mjs",
+    "node --check tools/workbench-next-served-route-browser-audit.mjs",
+    "node --test test/workbench-next-served-route.test.js test/workbench-next-frontend-acceptance.test.js test/workbench-shell.test.js",
+    "npm run check:large-files",
+    "npm run check:workbench:next-served-route",
+    "npm run check:closeout"
+  ],
+  "verification_status": "full_closeout_passed"
+}

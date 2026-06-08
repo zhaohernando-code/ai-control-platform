@@ -916,17 +916,48 @@
       }
     },
     "tools/check-workbench-next-served-route.mjs": {
-      "lines": 533,
-      "reason": "Next served-route checker combines mounted App Router route validation, asset checks, API rewrite checks, and browser evidence.",
-      "status": "planned_refactor",
-      "reviewed_at": "2026-06-04",
-      "reduction_target": {
-        "base_lines": 533,
-        "target_lines": 383,
-        "minimum_reduction": 150,
-        "terminal_condition": "tools/check-workbench-next-served-route.mjs must fall below 500 lines through coherent extraction or deletion while preserving its documented behavior surface.",
-        "next_phase": "This item cannot be marked pass while it remains at or above 500 lines."
+      "lines": 216,
+      "reason": "Next served-route checker root reduced below 500 lines in LFA-P34. Runtime server lifecycle and Playwright browser audit domains moved into bounded tool modules while root preserves public export compatibility, artifact finding generation, run orchestration, writeout, and CLI exit policy.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08",
+      "extraction_evidence": {
+        "parity_artifact": "docs/examples/check-workbench-next-served-route-p34-extraction-parity.json",
+        "before_lines": 533,
+        "after_lines": 216,
+        "net_reduction": 317,
+        "extracted_modules": [
+          {
+            "file": "tools/workbench-next-served-route-runtime.mjs",
+            "lines": 154,
+            "domain": "next_runtime_startup_route_readiness_api_server_lifecycle_and_cleanup"
+          },
+          {
+            "file": "tools/workbench-next-served-route-browser-audit.mjs",
+            "lines": 185,
+            "domain": "playwright_viewport_navigation_route_set_api_rewrite_favicon_and_legacy_shell_audits"
+          }
+        ],
+        "retained_domains": [
+          "public_export_compatibility",
+          "cli_argument_parsing",
+          "artifact_finding_generation",
+          "artifact_writeout",
+          "run_orchestration",
+          "cli_exit_policy"
+        ]
       }
+    },
+    "tools/workbench-next-served-route-runtime.mjs": {
+      "lines": 154,
+      "reason": "Extracted Next served-route runtime helpers kept below 500 lines while preserving Workbench API test server lifecycle, Next dev server startup, mounted route readiness polling, and cleanup semantics.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
+    },
+    "tools/workbench-next-served-route-browser-audit.mjs": {
+      "lines": 185,
+      "reason": "Extracted Next served-route browser audit helpers kept below 500 lines while preserving viewport, navigation, route-set, API rewrite, favicon, runtime error, overflow, and legacy static shell checks.",
+      "status": "accepted",
+      "reviewed_at": "2026-06-08"
     },
     "test/helpers/headless-cli-orchestrator.js": {
       "lines": 204,
